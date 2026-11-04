@@ -105,7 +105,7 @@ private fun PawlyApp() {
     }
     LaunchedEffect(diaryEntries) {
         val json = JSONArray()
-        diaryEntries.forEach(json::put)
+        diaryEntries.forEach { entry -> json.put(entry) }
         preferences.edit().putString("diary_entries", json.toString()).apply()
     }
 
@@ -243,7 +243,7 @@ private fun HomeScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricCard(if (walkDone) "0" else "1", "planes pendientes", Icons.Filled.Explore, Modifier.weight(1f))
+                MetricCard(listOf(walkDone, medicineDone).count { !it }.toString(), "tareas pendientes", Icons.Filled.Explore, Modifier.weight(1f))
                 MetricCard(diaryCount.toString(), "recuerdos guardados", Icons.Filled.PhotoLibrary, Modifier.weight(1f))
             }
         }
