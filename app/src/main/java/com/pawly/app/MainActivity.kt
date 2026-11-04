@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 10055)
-Total output lines: 822
-
 package com.pawly.app
 
 import android.os.Bundle
@@ -48,8 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
@@ -450,7 +445,14 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
                 @Suppress("DEPRECATION")
                 Geocoder(context, Locale.getDefault()).getFromLocation(point.first, point.second, 1)
                     ?.firstOrNull()?.getAddressLine(0)
-         …55 tokens truncated…ntext.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+            }.getOrNull()
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
             @Suppress("MissingPermission")
             val location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 ?: manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
