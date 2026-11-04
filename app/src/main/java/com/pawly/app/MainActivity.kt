@@ -1,6 +1,8 @@
 package com.pawly.app
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -360,6 +362,7 @@ private data class Place(
 
 @Composable
 private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit) {
+    val context = LocalContext.current
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
@@ -380,6 +383,18 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
             Text("EXPLORA", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
             Text("El mundo es mejor\ncuando vais juntos.", style = MaterialTheme.typography.headlineLarge)
             Text("Ideas para vuestra próxima aventura.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(8.dp))
+            FilledTonalButton(
+                onClick = {
+                    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=parques+para+perros"))
+                    if (mapIntent.resolveActivity(context.packageManager) != null) context.startActivity(mapIntent)
+                },
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Filled.MyLocation, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Buscar cerca en el mapa")
+            }
         }
         item {
             OutlinedTextField(
