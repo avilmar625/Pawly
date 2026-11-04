@@ -13,11 +13,11 @@ Pawly es una aplicación Android para organizar la vida cotidiana con perros: ru
 
 ## Funcionalidades actuales
 
-- **Inicio:** resumen del perfil de demostración y tareas cotidianas interactivas.
-- **Explorar:** búsqueda y filtros por categorías, con ideas genéricas y favoritos de demostración.
+- **Inicio:** perfil editable del perro, tareas cotidianas y resumen actualizado.
+- **Explorar:** búsqueda y filtros por categorías, con ideas genéricas y favoritos guardados en el dispositivo.
 - **Salud:** panel organizativo para vacunas, desparasitación y revisiones; no ofrece pautas veterinarias.
-- **Diario:** creación de recuerdos de texto durante la sesión.
-- **Diseño:** interfaz Material 3, paleta natural y navegación inferior.
+- **Diario:** recuerdos de texto persistentes, con recuento actualizado.
+- **Persistencia local:** perfil, tareas, favoritos y diario se conservan entre sesiones en el dispositivo; no hay sincronización ni cuenta.
 
 ## Tecnología
 
@@ -61,9 +61,9 @@ El APK de depuración se genera en `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Transparencia y privacidad
 
-La versión actual utiliza contenido ilustrativo. Los elementos de Explorar no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. El diario y las casillas de tareas todavía utilizan estado temporal en memoria y no deben considerarse un registro permanente.
+Los elementos de Explorar son ideas genéricas y no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. La agenda de cuidados todavía no permite registrar fechas y no envía notificaciones. Los datos de perfil, tareas, favoritos y diario se guardan localmente en el almacenamiento privado de la app; no se sincronizan y se excluyen de copias automáticas del sistema.
 
-No introduzcas información personal o médica sensible en esta versión de demostración. Antes de una publicación real habrá que incorporar persistencia segura, política de privacidad, gestión de permisos y pruebas en dispositivos.
+No introduzcas información médica sensible. Antes de una publicación real habrá que completar la política de privacidad, validar el comportamiento en dispositivos y definir una estrategia de exportación o recuperación de datos, ya que actualmente no hay sincronización ni copia de seguridad.
 
 ## Próximas mejoras
 
