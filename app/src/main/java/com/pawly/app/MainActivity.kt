@@ -3,6 +3,9 @@ package com.pawly.app
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.File
 import android.Manifest
 import android.content.pm.PackageManager
 import android.location.LocationManager
@@ -29,11 +32,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Image
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
@@ -57,6 +64,22 @@ private fun PawlyApp() {
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
     var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
+    var dogPhotoPath by remember { mutableStateOf(preferences.getString("dog_photo_path", null)) }
+    val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) runCatching {
+            val destination = File(context.filesDir, "dog-profile-${System.currentTimeMillis()}.jpg")
+            context.contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use { output -> input.copyTo(output) } }
+            dogPhotoPath = destination.absolutePath
+        }
+    }
+    val cameraCapture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) runCatching {
+            val destination = File(context.filesDir, "dog-profile-${System.currentTimeMillis()}.jpg")
+            destination.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+            dogPhotoPath = destination.absolutePath
+        }
+    }
+    val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
     var walkDone by remember { mutableStateOf(preferences.getBoolean("walk_done", false)) }
     var medicineDone by remember { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
     var savedPlaceNames by remember {
@@ -71,6 +94,7 @@ private fun PawlyApp() {
     var diaryEntries by remember { mutableStateOf(storedEntries) }
 
     LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).apply() }
+    LaunchedEffect(dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
     LaunchedEffect(walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
     LaunchedEffect(medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
     LaunchedEffect(savedPlaceNames) {
@@ -129,7 +153,8 @@ private fun PawlyApp() {
                     onExplore = { selected = Tab.EXPLORE },
                     onAbout = { showAbout = true },
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
-                    diaryCount = diaryEntries.size
+                    diaryCount = diaryEntries.size,
+                    dogPhoto = dogPhoto
                 )
                 Tab.EXPLORE -> ExploreScreen(
                     savedPlaces = savedPlaceNames,
@@ -162,7 +187,10 @@ private fun PawlyApp() {
                 val cleaned = profileDraft.trim()
                 if (cleaned.isNotEmpty()) dogName = cleaned
                 showProfileEditor = false
-            }
+            },
+            onGallery = { galleryPicker.launch("image/*") },
+            onCamera = { cameraCapture.launch(null) },
+            hasPhoto = dogPhoto != null
         )
     }
 }
@@ -177,7 +205,8 @@ private fun HomeScreen(
     onExplore: () -> Unit,
     onAbout: () -> Unit,
     onEditProfile: () -> Unit,
-    diaryCount: Int
+    diaryCount: Int,
+    dogPhoto: Bitmap?
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -203,7 +232,7 @@ private fun HomeScreen(
             }
         }
         item {
-            DogHeroCard(dogName, onEditProfile)
+            DogHeroCard(dogName, dogPhoto, onEditProfile)
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -271,7 +300,7 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun DogHeroCard(name: String, onEdit: () -> Unit) {
+private fun DogHeroCard(name: String, photo: Bitmap?, onEdit: () -> Unit) {
     Box(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
@@ -291,7 +320,8 @@ private fun DogHeroCard(name: String, onEdit: () -> Unit) {
                     Modifier.size(82.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.13f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("🐕", fontSize = 47.sp)
+                    if (photo != null) Image(photo.asImageBitmap(), contentDescription = "Foto de $name", modifier = Modifier.fillMaxSize().clip(CircleShape))
+                    else Text("🐕", fontSize = 47.sp)
                 }
             }
             Spacer(Modifier.height(18.dp))
@@ -425,8 +455,9 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
             currentCoordinates?.let { (latitude, longitude) ->
                 TextButton(onClick = {
                     val mapUri = Uri.parse("geo:$latitude,$longitude?q=parques+para+perros")
-                    val mapIntent = Intent(Intent.ACTION_VIEW, mapUri)
-                    if (mapIntent.resolveActivity(context.packageManager) != null) context.startActivity(mapIntent)
+                    val googleMaps = Intent(Intent.ACTION_VIEW, mapUri).setPackage("com.google.android.apps.maps")
+                    if (googleMaps.resolveActivity(context.packageManager) != null) context.startActivity(googleMaps)
+                    else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/parques+para+perros/@$latitude,$longitude,14z")))
                 }) { Text("Ver mapa alrededor de ${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}") }
             }
         }
@@ -661,19 +692,23 @@ private fun ProfileDialog(
     name: String,
     onNameChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onGallery: () -> Unit,
+    onCamera: () -> Unit,
+    hasPhoto: Boolean
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Perfil de tu compañero", color = Forest) },
         text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = onNameChange,
-                label = { Text("Nombre") },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp)
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = name, onValueChange = onNameChange, label = { Text("Nombre") }, singleLine = true, shape = RoundedCornerShape(14.dp))
+                Text(if (hasPhoto) "Foto de perfil guardada en este dispositivo" else "Añade una foto para reconocer a tu compañero", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onGallery) { Icon(Icons.Filled.PhotoLibrary, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Galería") }
+                    OutlinedButton(onClick = onCamera) { Icon(Icons.Filled.PhotoCamera, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Cámara") }
+                }
+            }
         },
         confirmButton = {
             TextButton(onClick = onSave, enabled = name.isNotBlank()) { Text("Guardar", color = Forest) }
