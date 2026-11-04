@@ -11,6 +11,10 @@ import java.util.Calendar
 import android.Manifest
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.location.Location
+import android.location.LocationListener
+import android.os.Build
+import android.os.Looper
 import android.location.Geocoder
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -448,16 +452,51 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
             }.getOrNull()
         }
     }
-    val locationPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
-            @Suppress("MissingPermission")
-            val location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                ?: manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-            currentCoordinates = location?.let { it.latitude to it.longitude }
+    fun requestFreshLocation() {
+        val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+        val provider = when {
+            manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+            manager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+            else -> null
         }
+        if (provider == null) {
+            currentAddress = "Activa la ubicación del teléfono para buscar cerca."
+            return
+        }
+        currentAddress = "Buscando tu ubicación…"
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                manager.getCurrentLocation(provider, null, context.mainExecutor) { location ->
+                    currentCoordinates = location?.let { it.latitude to it.longitude }
+                    if (location == null) currentAddress = "No se pudo obtener la ubicación. Comprueba el GPS e inténtalo de nuevo."
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(location: Location) {
+                        currentCoordinates = location.latitude to location.longitude
+                        manager.removeUpdates(this)
+                    }
+                    @Deprecated("Deprecated in Android")
+                    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit
+                    override fun onProviderEnabled(provider: String) = Unit
+                    override fun onProviderDisabled(provider: String) { currentAddress = "El proveedor de ubicación está desactivado." }
+                }
+                @Suppress("DEPRECATION")
+                manager.requestSingleUpdate(provider, listener, Looper.getMainLooper())
+            }
+        } catch (_: SecurityException) {
+            currentAddress = "Permiso de ubicación denegado."
+        } catch (_: IllegalArgumentException) {
+            currentAddress = "No hay proveedor de ubicación disponible."
+        }
+    }
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true) requestFreshLocation()
+        else currentAddress = "Activa el permiso de ubicación para buscar cerca."
     }
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
@@ -484,15 +523,8 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
                 onClick = {
                     val hasLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
                         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                    if (!hasLocation) {
-                        locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                    } else {
-                        val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
-                        @Suppress("MissingPermission")
-                        val location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-                            ?: manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                        currentCoordinates = location?.let { it.latitude to it.longitude }
-                    }
+                    if (!hasLocation) locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    else requestFreshLocation()
                 },
                 shape = RoundedCornerShape(14.dp)
             ) {
@@ -500,13 +532,24 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
                 Spacer(Modifier.width(8.dp))
                 Text(if (currentCoordinates == null) "Usar mi ubicación" else "Abrir lugares cercanos")
             }
+            currentAddress?.let { address ->
+                Text(address, color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
             currentCoordinates?.let { (latitude, longitude) ->
-                TextButton(onClick = {
-                    val mapUri = Uri.parse("geo:$latitude,$longitude?q=parques+para+perros")
-                    val googleMaps = Intent(Intent.ACTION_VIEW, mapUri).setPackage("com.google.android.apps.maps")
-                    if (googleMaps.resolveActivity(context.packageManager) != null) context.startActivity(googleMaps)
-                    else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/parques+para+perros/@$latitude,$longitude,14z")))
-                }) { Text(currentAddress ?: "Ver mapa alrededor de ${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}") }
+                val point = "$latitude,$longitude"
+                val searches = listOf("Parques para perros" to "parques para perros", "Rutas para perros" to "rutas de senderismo aptas para perros", "Playas caninas" to "playas para perros")
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Cerca de la ubicación obtenida", color = ForestLight, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    searches.forEach { (label, term) ->
+                        TextButton(onClick = {
+                            val encoded = Uri.encode(term)
+                            val geo = Uri.parse("geo:$point?q=$encoded")
+                            val mapsApp = Intent(Intent.ACTION_VIEW, geo).setPackage("com.google.android.apps.maps")
+                            if (mapsApp.resolveActivity(context.packageManager) != null) context.startActivity(mapsApp)
+                            else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/$encoded/@$point,14z")))
+                        }) { Text(label) }
+                    }
+                }
             }
         }
         item {
