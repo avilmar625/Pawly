@@ -81,6 +81,8 @@ private fun PawlyApp() {
     val preferences = remember(context) { context.getSharedPreferences("pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var showAbout by remember { mutableStateOf(false) }
+    var showProfileEditor by remember { mutableStateOf(false) }
+    var profileDraft by remember { mutableStateOf("") }
     var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
     var walkDone by remember { mutableStateOf(preferences.getBoolean("walk_done", false)) }
     var medicineDone by remember { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
@@ -152,7 +154,9 @@ private fun PawlyApp() {
                     onWalkToggle = { walkDone = it },
                     onMedicineToggle = { medicineDone = it },
                     onExplore = { selected = Tab.EXPLORE },
-                    onAbout = { showAbout = true }
+                    onAbout = { showAbout = true },
+                    onEditProfile = { profileDraft = dogName; showProfileEditor = true },
+                    diaryCount = diaryEntries.size
                 )
                 Tab.EXPLORE -> ExploreScreen(
                     savedPlaces = savedPlaceNames,
@@ -176,6 +180,18 @@ private fun PawlyApp() {
     if (showAbout) {
         AboutDialog(onDismiss = { showAbout = false })
     }
+    if (showProfileEditor) {
+        ProfileDialog(
+            name = profileDraft,
+            onNameChange = { profileDraft = it },
+            onDismiss = { showProfileEditor = false },
+            onSave = {
+                val cleaned = profileDraft.trim()
+                if (cleaned.isNotEmpty()) dogName = cleaned
+                showProfileEditor = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -186,7 +202,9 @@ private fun HomeScreen(
     onWalkToggle: (Boolean) -> Unit,
     onMedicineToggle: (Boolean) -> Unit,
     onExplore: () -> Unit,
-    onAbout: () -> Unit
+    onAbout: () -> Unit,
+    onEditProfile: () -> Unit,
+    diaryCount: Int
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -212,7 +230,7 @@ private fun HomeScreen(
             }
         }
         item {
-            DogHeroCard(dogName)
+            DogHeroCard(dogName, onEditProfile)
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -225,8 +243,8 @@ private fun HomeScreen(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricCard("2", "planes pendientes", Icons.Filled.Explore, Modifier.weight(1f))
-                MetricCard("5", "recuerdos guardados", Icons.Filled.PhotoLibrary, Modifier.weight(1f))
+                MetricCard(if (walkDone) "0" else "1", "planes pendientes", Icons.Filled.Explore, Modifier.weight(1f))
+                MetricCard(diaryCount.toString(), "recuerdos guardados", Icons.Filled.PhotoLibrary, Modifier.weight(1f))
             }
         }
         item {
@@ -280,10 +298,11 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun DogHeroCard(name: String) {
+private fun DogHeroCard(name: String, onEdit: () -> Unit) {
     Box(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
+            .clickable(onClick = onEdit)
             .background(Brush.linearGradient(listOf(Forest, Color(0xFF285D4D), Color(0xFF497A62))))
             .padding(21.dp)
     ) {
@@ -293,7 +312,7 @@ private fun DogHeroCard(name: String) {
                     Text("VUESTRO COMPAÑERO", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                     Spacer(Modifier.height(5.dp))
                     Text(name, color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-                    Text("Perfil guardado en este dispositivo", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
+                    Text("Toca para editar su perfil", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
                 }
                 Box(
                     Modifier.size(82.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.13f)),
@@ -621,6 +640,35 @@ private fun DiaryScreen(
             Text("Tus recuerdos se guardan localmente en este dispositivo. No se sincronizan con otros teléfonos ni se incluyen fotografías.", color = Muted, fontSize = 11.sp)
         }
     }
+}
+
+@Composable
+private fun ProfileDialog(
+    name: String,
+    onNameChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Perfil de tu compañero", color = Forest) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = onNameChange,
+                label = { Text("Nombre") },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp)
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onSave, enabled = name.isNotBlank()) { Text("Guardar", color = Forest) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = Muted) }
+        },
+        containerColor = Paper
+    )
 }
 
 @Composable
