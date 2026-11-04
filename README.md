@@ -13,9 +13,9 @@ Pawly es una aplicación Android para organizar la vida cotidiana con perros: ru
 
 ## Funcionalidades actuales
 
-- **Inicio:** perfil editable del perro, tareas cotidianas y resumen actualizado.
+- **Inicio:** selector para varios perros, perfil editable con foto de cámara o galería, tareas cotidianas y resumen actualizado.
 - **Explorar:** búsqueda y filtros por categorías, con ideas genéricas y favoritos guardados en el dispositivo.
-- **Salud:** panel organizativo para vacunas, desparasitación y revisiones; no ofrece pautas veterinarias.
+- **Salud:** fechas locales para vacunas, desparasitación y revisiones, editables y separadas por perfil; no ofrece pautas veterinarias ni notificaciones automáticas.
 - **Diario:** recuerdos de texto persistentes, con recuento actualizado.
 - **Persistencia local:** perfil, tareas, favoritos y diario se conservan entre sesiones en el dispositivo; no hay sincronización ni cuenta.
 
@@ -61,7 +61,7 @@ El APK de depuración se genera en `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Transparencia y privacidad
 
-Los elementos de Explorar son ideas genéricas y no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. La agenda de cuidados todavía no permite registrar fechas y no envía notificaciones. Los datos de perfil, tareas, favoritos y diario se guardan localmente en el almacenamiento privado de la app; no se sincronizan y se excluyen de copias automáticas del sistema.
+Los elementos de Explorar son ideas genéricas y no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. La agenda de cuidados todavía no permite registrar fechas y no envía notificaciones. Los datos de perfiles, tareas, favoritos, agenda de salud y diario se guardan localmente en el almacenamiento privado de la app; no se sincronizan y se excluyen de copias automáticas del sistema.
 
 No introduzcas información médica sensible. Antes de una publicación real habrá que completar la política de privacidad, validar el comportamiento en dispositivos y definir una estrategia de exportación o recuperación de datos, ya que actualmente no hay sincronización ni copia de seguridad.
 
