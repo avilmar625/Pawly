@@ -80,7 +80,7 @@ private fun PawlyApp() {
     var dogName by remember { mutableStateOf("Nala") }
     var walkDone by remember { mutableStateOf(false) }
     var medicineDone by remember { mutableStateOf(false) }
-    var savedPlaces by remember { mutableIntStateOf(2) }
+    var savedPlaceNames by remember { mutableStateOf(setOf<String>()) }
 
     Scaffold(
         containerColor = Cream,
@@ -130,8 +130,10 @@ private fun PawlyApp() {
                     onAbout = { showAbout = true }
                 )
                 Tab.EXPLORE -> ExploreScreen(
-                    savedPlaces = savedPlaces,
-                    onSave = { savedPlaces += 1 }
+                    savedPlaces = savedPlaceNames,
+                    onToggleSave = { name ->
+                        savedPlaceNames = if (name in savedPlaceNames) savedPlaceNames - name else savedPlaceNames + name
+                    }
                 )
                 Tab.HEALTH -> HealthScreen(
                     medicineDone = medicineDone,
@@ -344,7 +346,7 @@ private data class Place(
 )
 
 @Composable
-private fun ExploreScreen(savedPlaces: Int, onSave: () -> Unit) {
+private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit) {
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
@@ -404,7 +406,7 @@ private fun ExploreScreen(savedPlaces: Int, onSave: () -> Unit) {
                 Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("VUESTROS FAVORITOS", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                        Text("$savedPlaces lugares guardados", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("${savedPlaces.size} lugares guardados", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Text("Guarda ideas para otro día.", color = Color.White.copy(alpha = .72f), fontSize = 11.sp)
                     }
                     Icon(Icons.Filled.Bookmark, contentDescription = null, tint = Lime, modifier = Modifier.size(32.dp))
@@ -416,7 +418,7 @@ private fun ExploreScreen(savedPlaces: Int, onSave: () -> Unit) {
             item { Text("No hay resultados. Prueba con otra búsqueda.", color = Muted, modifier = Modifier.padding(12.dp)) }
         }
         items(visible) { place ->
-            PlaceCard(place = place, onSave = onSave)
+            PlaceCard(place = place, saved = place.name in savedPlaces, onSave = { onToggleSave(place.name) })
         }
         item {
             Text("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar.", color = Muted, fontSize = 11.sp)
@@ -425,8 +427,7 @@ private fun ExploreScreen(savedPlaces: Int, onSave: () -> Unit) {
 }
 
 @Composable
-private fun PlaceCard(place: Place, onSave: () -> Unit) {
-    var saved by remember { mutableStateOf(false) }
+private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
     Surface(shape = RoundedCornerShape(22.dp), color = Paper, shadowElevation = 1.dp) {
         Column {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -439,10 +440,7 @@ private fun PlaceCard(place: Place, onSave: () -> Unit) {
                     Text(place.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                     Text(place.detail, color = Muted, fontSize = 11.sp)
                 }
-                IconButton(onClick = {
-                    saved = !saved
-                    if (saved) onSave()
-                }) {
+                IconButton(onClick = onSave) {
                     Icon(if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "Guardar", tint = Forest)
                 }
             }
