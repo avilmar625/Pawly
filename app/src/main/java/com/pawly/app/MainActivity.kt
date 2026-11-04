@@ -29,46 +29,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import org.json.JSONArray
 
-private val Forest = Color(0xFF173F35)
-private val ForestLight = Color(0xFF2D6655)
-private val Cream = Color(0xFFF8F7F2)
-private val Paper = Color(0xFFFFFFFF)
-private val Ink = Color(0xFF202923)
-private val Muted = Color(0xFF7C887F)
-private val Lime = Color(0xFFD8E8A8)
-private val Peach = Color(0xFFF4D7C5)
-private val Line = Color(0xFFE9EAE3)
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent { PawlyTheme { PawlyApp() } }
     }
-}
-
-@Composable
-private fun PawlyTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Forest,
-            onPrimary = Color.White,
-            secondary = ForestLight,
-            background = Cream,
-            surface = Paper,
-            onSurface = Ink,
-            onBackground = Ink
-        ),
-        typography = Typography(
-            headlineLarge = androidx.compose.ui.text.TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Bold, lineHeight = 35.sp),
-            headlineMedium = androidx.compose.ui.text.TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold),
-            titleLarge = androidx.compose.ui.text.TextStyle(fontSize = 19.sp, fontWeight = FontWeight.Bold),
-            titleMedium = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
-            bodyLarge = androidx.compose.ui.text.TextStyle(fontSize = 15.sp, lineHeight = 22.sp),
-            bodyMedium = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, lineHeight = 19.sp),
-            labelMedium = androidx.compose.ui.text.TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-        ),
-        content = content
-    )
 }
 
 private enum class Tab(val label: String) {
