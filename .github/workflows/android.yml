@@ -2,16 +2,21 @@ name: Android build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main", "cambios1"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   assemble:
+    name: Build and test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,20 +31,22 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.9"
+          gradle-version: "9.6.0"
 
-      - name: Set up Android SDK tools
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          # "tools" is a retired SDK package; installing it makes sdkmanager fail.
           packages: platform-tools
           accept-android-sdk-licenses: false
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
 
-      - name: Install Android platform and build tools
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install Android SDK 37
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+
+      - name: Run unit tests
+        run: gradle --no-daemon testDebugUnitTest
 
       - name: Assemble debug APK
         run: gradle --no-daemon assembleDebug
