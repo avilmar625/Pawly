@@ -28,14 +28,21 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Set up Android SDK
+      - name: Set up Android SDK tools
         uses: android-actions/setup-android@v3
+        with:
+          # "tools" is a retired SDK package; installing it makes sdkmanager fail.
+          packages: platform-tools
+          accept-android-sdk-licenses: false
 
-      - name: Install Android platform
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install Android platform and build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Assemble debug APK
-        run: gradle assembleDebug
+        run: gradle --no-daemon assembleDebug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
