@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 10055)
+Total output lines: 822
+
 package com.pawly.app
 
 import android.os.Bundle
@@ -11,6 +14,10 @@ import java.util.Calendar
 import android.Manifest
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.location.Geocoder
+import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -180,7 +187,7 @@ private fun PawlyApp() {
                 Tab.HEALTH -> HealthScreen(
                     medicineDone = medicineDone,
                     onMedicineToggle = { medicineDone = it },
-                    dates = healthDates.filterKeys { it.startsWith("$dogName|") },
+                    dates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { (key, _) -> key.removePrefix("$dogName|") },
                     onDateChange = { key, value ->
                         val fullKey = "$dogName|$key"
                         healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
@@ -435,11 +442,15 @@ private data class Place(
 private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit) {
     val context = LocalContext.current
     var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-    val locationPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+    var currentAddress by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentCoordinates) {
+        val point = currentCoordinates ?: return@LaunchedEffect
+        currentAddress = withContext(Dispatchers.IO) {
+            runCatching {
+                @Suppress("DEPRECATION")
+                Geocoder(context, Locale.getDefault()).getFromLocation(point.first, point.second, 1)
+                    ?.firstOrNull()?.getAddressLine(0)
+         …55 tokens truncated…ntext.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
             @Suppress("MissingPermission")
             val location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 ?: manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
@@ -493,7 +504,7 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
                     val googleMaps = Intent(Intent.ACTION_VIEW, mapUri).setPackage("com.google.android.apps.maps")
                     if (googleMaps.resolveActivity(context.packageManager) != null) context.startActivity(googleMaps)
                     else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/parques+para+perros/@$latitude,$longitude,14z")))
-                }) { Text("Ver mapa alrededor de ${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}") }
+                }) { Text(currentAddress ?: "Ver mapa alrededor de ${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}") }
             }
         }
         item {
