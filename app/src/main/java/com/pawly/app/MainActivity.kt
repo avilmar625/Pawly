@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import org.json.JSONArray
 
 private val Forest = Color(0xFF173F35)
 private val ForestLight = Color(0xFF2D6655)
@@ -75,12 +77,35 @@ private enum class Tab(val label: String) {
 
 @Composable
 private fun PawlyApp() {
+    val context = LocalContext.current
+    val preferences = remember(context) { context.getSharedPreferences("pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var showAbout by remember { mutableStateOf(false) }
-    var dogName by remember { mutableStateOf("Nala") }
-    var walkDone by remember { mutableStateOf(false) }
-    var medicineDone by remember { mutableStateOf(false) }
-    var savedPlaceNames by remember { mutableStateOf(setOf<String>()) }
+    var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
+    var walkDone by remember { mutableStateOf(preferences.getBoolean("walk_done", false)) }
+    var medicineDone by remember { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
+    var savedPlaceNames by remember {
+        mutableStateOf(preferences.getStringSet("saved_places", emptySet())?.toSet() ?: emptySet())
+    }
+    val storedEntries = remember(preferences) {
+        runCatching {
+            val json = JSONArray(preferences.getString("diary_entries", "[]") ?: "[]")
+            List(json.length()) { index -> json.getString(index) }
+        }.getOrDefault(emptyList())
+    }
+    var diaryEntries by remember { mutableStateOf(storedEntries) }
+
+    LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).apply() }
+    LaunchedEffect(walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
+    LaunchedEffect(medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
+    LaunchedEffect(savedPlaceNames) {
+        preferences.edit().putStringSet("saved_places", savedPlaceNames.toSet()).apply()
+    }
+    LaunchedEffect(diaryEntries) {
+        val json = JSONArray()
+        diaryEntries.forEach(json::put)
+        preferences.edit().putString("diary_entries", json.toString()).apply()
+    }
 
     Scaffold(
         containerColor = Cream,
@@ -139,7 +164,11 @@ private fun PawlyApp() {
                     medicineDone = medicineDone,
                     onMedicineToggle = { medicineDone = it }
                 )
-                Tab.DIARY -> DiaryScreen(dogName = dogName)
+                Tab.DIARY -> DiaryScreen(
+                    dogName = dogName,
+                    entries = diaryEntries,
+                    onEntriesChange = { diaryEntries = it }
+                )
             }
         }
     }
@@ -264,7 +293,7 @@ private fun DogHeroCard(name: String) {
                     Text("VUESTRO COMPAÑERO", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                     Spacer(Modifier.height(5.dp))
                     Text(name, color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-                    Text("Perfil de demostración", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
+                    Text("Perfil guardado en este dispositivo", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
                 }
                 Box(
                     Modifier.size(82.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.13f)),
@@ -518,9 +547,12 @@ private fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, ti
 }
 
 @Composable
-private fun DiaryScreen(dogName: String) {
+private fun DiaryScreen(
+    dogName: String,
+    entries: List<String>,
+    onEntriesChange: (List<String>) -> Unit
+) {
     var note by remember { mutableStateOf("") }
-    var entries by remember { mutableStateOf(listOf("Primer paseo de la semana", "Una tarde de juegos")) }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(22.dp),
@@ -554,7 +586,7 @@ private fun DiaryScreen(dogName: String) {
                     Button(
                         onClick = {
                             if (note.isNotBlank()) {
-                                entries = listOf(note.trim()) + entries
+                                onEntriesChange(listOf(note.trim()) + entries)
                                 note = ""
                             }
                         },
@@ -569,7 +601,7 @@ private fun DiaryScreen(dogName: String) {
                 }
             }
         }
-        item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · contenido de ejemplo") }
+        item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · ${entries.size} recuerdos guardados") }
         items(entries) { entry ->
             Surface(shape = RoundedCornerShape(20.dp), color = Paper, shadowElevation = 1.dp) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -579,14 +611,14 @@ private fun DiaryScreen(dogName: String) {
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(entry, fontWeight = FontWeight.SemiBold)
-                        Text("Recuerdo guardado en esta sesión", color = Muted, fontSize = 11.sp)
+                        Text("Guardado en este dispositivo", color = Muted, fontSize = 11.sp)
                     }
                     Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Peach)
                 }
             }
         }
         item {
-            Text("En esta versión las notas se mantienen en memoria mientras la app está abierta. La galería y el almacenamiento permanente llegarán en una siguiente fase.", color = Muted, fontSize = 11.sp)
+            Text("Tus recuerdos se guardan localmente en este dispositivo. No se sincronizan con otros teléfonos ni se incluyen fotografías.", color = Muted, fontSize = 11.sp)
         }
     }
 }
