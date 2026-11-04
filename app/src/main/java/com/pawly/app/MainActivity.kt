@@ -3,6 +3,11 @@ package com.pawly.app
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -29,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 class MainActivity : ComponentActivity() {
@@ -363,6 +369,18 @@ private data class Place(
 @Composable
 private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit) {
     val context = LocalContext.current
+    var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    val locationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+            @Suppress("MissingPermission")
+            val location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                ?: manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+            currentCoordinates = location?.let { it.latitude to it.longitude }
+        }
+    }
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
@@ -386,14 +404,30 @@ private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Un
             Spacer(Modifier.height(8.dp))
             FilledTonalButton(
                 onClick = {
-                    val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q=parques+para+perros"))
-                    if (mapIntent.resolveActivity(context.packageManager) != null) context.startActivity(mapIntent)
+                    val hasLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                    if (!hasLocation) {
+                        locationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                    } else {
+                        val manager = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
+                        @Suppress("MissingPermission")
+                        val location = manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                            ?: manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                        currentCoordinates = location?.let { it.latitude to it.longitude }
+                    }
                 },
                 shape = RoundedCornerShape(14.dp)
             ) {
                 Icon(Icons.Filled.MyLocation, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Buscar cerca en el mapa")
+                Text(if (currentCoordinates == null) "Usar mi ubicación" else "Abrir lugares cercanos")
+            }
+            currentCoordinates?.let { (latitude, longitude) ->
+                TextButton(onClick = {
+                    val mapUri = Uri.parse("geo:$latitude,$longitude?q=parques+para+perros")
+                    val mapIntent = Intent(Intent.ACTION_VIEW, mapUri)
+                    if (mapIntent.resolveActivity(context.packageManager) != null) context.startActivity(mapIntent)
+                }) { Text("Ver mapa alrededor de ${"%.4f".format(latitude)}, ${"%.4f".format(longitude)}") }
             }
         }
         item {
