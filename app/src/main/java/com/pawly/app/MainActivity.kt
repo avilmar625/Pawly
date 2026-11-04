@@ -5,7 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.app.DatePickerDialog
 import java.io.File
+import java.util.Calendar
 import android.Manifest
 import android.content.pm.PackageManager
 import android.location.LocationManager
@@ -64,6 +66,7 @@ private fun PawlyApp() {
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
     var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
+    var dogProfiles by remember { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var dogPhotoPath by remember { mutableStateOf(preferences.getString("dog_photo_path", null)) }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) runCatching {
@@ -82,6 +85,12 @@ private fun PawlyApp() {
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
     var walkDone by remember { mutableStateOf(preferences.getBoolean("walk_done", false)) }
     var medicineDone by remember { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
+    var healthDates by remember {
+        mutableStateOf(runCatching {
+            val json = JSONArray(preferences.getString("health_dates", "[]") ?: "[]")
+            buildMap { for (i in 0 until json.length()) { val row = json.getJSONArray(i); put(row.getString(0), row.getString(1)) } }
+        }.getOrDefault(emptyMap()))
+    }
     var savedPlaceNames by remember {
         mutableStateOf(preferences.getStringSet("saved_places", emptySet())?.toSet() ?: emptySet())
     }
@@ -94,9 +103,15 @@ private fun PawlyApp() {
     var diaryEntries by remember { mutableStateOf(storedEntries) }
 
     LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).apply() }
+    LaunchedEffect(dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
     LaunchedEffect(dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
     LaunchedEffect(walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
     LaunchedEffect(medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
+    LaunchedEffect(healthDates) {
+        val json = JSONArray()
+        healthDates.forEach { (key, value) -> json.put(org.json.JSONArray().put(key).put(value)) }
+        preferences.edit().putString("health_dates", json.toString()).apply()
+    }
     LaunchedEffect(savedPlaceNames) {
         preferences.edit().putStringSet("saved_places", savedPlaceNames.toSet()).apply()
     }
@@ -164,7 +179,12 @@ private fun PawlyApp() {
                 )
                 Tab.HEALTH -> HealthScreen(
                     medicineDone = medicineDone,
-                    onMedicineToggle = { medicineDone = it }
+                    onMedicineToggle = { medicineDone = it },
+                    dates = healthDates.filterKeys { it.startsWith("$dogName|") },
+                    onDateChange = { key, value ->
+                        val fullKey = "$dogName|$key"
+                        healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
+                    }
                 )
                 Tab.DIARY -> DiaryScreen(
                     dogName = dogName,
@@ -185,12 +205,27 @@ private fun PawlyApp() {
             onDismiss = { showProfileEditor = false },
             onSave = {
                 val cleaned = profileDraft.trim()
-                if (cleaned.isNotEmpty()) dogName = cleaned
+                if (cleaned.isNotEmpty()) {
+                    dogProfiles = (dogProfiles - dogName) + cleaned
+                    dogName = cleaned
+                }
                 showProfileEditor = false
             },
             onGallery = { galleryPicker.launch("image/*") },
             onCamera = { cameraCapture.launch(null) },
-            hasPhoto = dogPhoto != null
+            hasPhoto = dogPhoto != null,
+            profiles = dogProfiles,
+            onSelectProfile = { dogName = it; showProfileEditor = false },
+            onAddProfile = {
+                val cleaned = profileDraft.trim()
+                if (cleaned.isNotEmpty()) { dogProfiles = dogProfiles + cleaned; dogName = cleaned; showProfileEditor = false }
+            },
+            onDeleteProfile = { name ->
+                if (dogProfiles.size > 1) {
+                    dogProfiles = dogProfiles - name
+                    if (dogName == name) dogName = dogProfiles.firstOrNull() ?: "Nala"
+                }
+            }
         )
     }
 }
@@ -544,7 +579,19 @@ private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
 }
 
 @Composable
-private fun HealthScreen(medicineDone: Boolean, onMedicineToggle: (Boolean) -> Unit) {
+private fun HealthScreen(
+    medicineDone: Boolean,
+    onMedicineToggle: (Boolean) -> Unit,
+    dates: Map<String, String>,
+    onDateChange: (String, String?) -> Unit
+) {
+    val context = LocalContext.current
+    fun selectDate(key: String) {
+        val today = Calendar.getInstance()
+        DatePickerDialog(context, { _, year, month, day ->
+            onDateChange(key, "%04d-%02d-%02d".format(year, month + 1, day))
+        }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
+    }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(22.dp),
@@ -569,13 +616,13 @@ private fun HealthScreen(medicineDone: Boolean, onMedicineToggle: (Boolean) -> U
         }
         item { SectionHeading("Próximos cuidados", "Ejemplos de recordatorios · no son pautas veterinarias") }
         item {
-            HealthItem(Icons.Filled.Vaccines, "Vacunación", "Añade aquí la próxima fecha", "Sin fecha")
+            HealthItem(Icons.Filled.Vaccines, "Vacunación", "Fecha orientativa de tu próxima cita", dates["Vacunación"] ?: "Añadir fecha", { selectDate("Vacunación") }, { onDateChange("Vacunación", null) })
         }
         item {
-            HealthItem(Icons.Filled.BugReport, "Desparasitación", "Registra el producto y la pauta indicada", "Sin fecha")
+            HealthItem(Icons.Filled.BugReport, "Desparasitación", "Sigue la pauta indicada por tu veterinario", dates["Desparasitación"] ?: "Añadir fecha", { selectDate("Desparasitación") }, { onDateChange("Desparasitación", null) })
         }
         item {
-            HealthItem(Icons.Filled.MedicalServices, "Próxima revisión", "Guarda las citas de vuestro veterinario", "Sin fecha")
+            HealthItem(Icons.Filled.MedicalServices, "Próxima revisión", "Organiza una cita con vuestro veterinario", dates["Próxima revisión"] ?: "Añadir fecha", { selectDate("Próxima revisión") }, { onDateChange("Próxima revisión", null) })
         }
         item {
             TaskRow(
@@ -594,9 +641,9 @@ private fun HealthScreen(medicineDone: Boolean, onMedicineToggle: (Boolean) -> U
 }
 
 @Composable
-private fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, date: String) {
+private fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, date: String, onClick: () -> Unit, onClear: () -> Unit) {
     Surface(shape = RoundedCornerShape(18.dp), color = Paper, shadowElevation = 1.dp) {
-        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(43.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = Forest)
             }
@@ -605,7 +652,10 @@ private fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, ti
                 Text(title, fontWeight = FontWeight.SemiBold)
                 Text(subtitle, color = Muted, fontSize = 11.sp)
             }
-            Text(date, color = ForestLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Column(horizontalAlignment = Alignment.End) {
+                Text(date, color = ForestLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                if (date != "Añadir fecha") TextButton(onClick = onClear, contentPadding = PaddingValues(0.dp)) { Text("Quitar", fontSize = 10.sp) }
+            }
         }
     }
 }
@@ -695,7 +745,11 @@ private fun ProfileDialog(
     onSave: () -> Unit,
     onGallery: () -> Unit,
     onCamera: () -> Unit,
-    hasPhoto: Boolean
+    hasPhoto: Boolean,
+    profiles: Set<String>,
+    onSelectProfile: (String) -> Unit,
+    onAddProfile: () -> Unit,
+    onDeleteProfile: (String) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -708,6 +762,14 @@ private fun ProfileDialog(
                     OutlinedButton(onClick = onGallery) { Icon(Icons.Filled.PhotoLibrary, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Galería") }
                     OutlinedButton(onClick = onCamera) { Icon(Icons.Filled.PhotoCamera, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Cámara") }
                 }
+                Text("Perfiles de perros", color = Forest, fontWeight = FontWeight.SemiBold)
+                profiles.sorted().forEach { profile ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(onClick = { onSelectProfile(profile) }, modifier = Modifier.weight(1f)) { Text(profile) }
+                        if (profiles.size > 1) IconButton(onClick = { onDeleteProfile(profile) }) { Icon(Icons.Filled.DeleteOutline, contentDescription = "Eliminar perfil $profile") }
+                    }
+                }
+                OutlinedButton(onClick = onAddProfile) { Icon(Icons.Filled.Add, contentDescription = null); Text("Añadir con el nombre escrito") }
             }
         },
         confirmButton = {
