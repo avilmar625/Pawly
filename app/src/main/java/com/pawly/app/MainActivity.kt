@@ -363,8 +363,7 @@ private fun ExploreScreen(savedPlaces: Int, onSave: () -> Unit) {
     ) {
         item {
             Text("EXPLORA", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
-            Text("El mundo es mejor
-cuando vais juntos.", style = MaterialTheme.typography.headlineLarge)
+            Text("El mundo es mejor\ncuando vais juntos.", style = MaterialTheme.typography.headlineLarge)
             Text("Ideas para vuestra próxima aventura.", color = Muted, style = MaterialTheme.typography.bodyMedium)
         }
         item {
@@ -462,8 +461,7 @@ private fun HealthScreen(medicineDone: Boolean, onMedicineToggle: (Boolean) -> U
     ) {
         item {
             Text("BIENESTAR", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
-            Text("Cuidar también
-es querer.", style = MaterialTheme.typography.headlineLarge)
+            Text("Cuidar también\nes querer.", style = MaterialTheme.typography.headlineLarge)
             Text("Organiza su día a día con tranquilidad.", color = Muted, style = MaterialTheme.typography.bodyMedium)
         }
         item {
@@ -532,8 +530,7 @@ private fun DiaryScreen(dogName: String) {
     ) {
         item {
             Text("VUESTROS RECUERDOS", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
-            Text("Una vida llena
-de historias.", style = MaterialTheme.typography.headlineLarge)
+            Text("Una vida llena\nde historias.", style = MaterialTheme.typography.headlineLarge)
             Text("Guarda esos momentos que merecen quedarse.", color = Muted, style = MaterialTheme.typography.bodyMedium)
         }
         item {
