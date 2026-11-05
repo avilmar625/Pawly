@@ -2,7 +2,7 @@ name: Android build
 
 on:
   push:
-    branches: ["main", "cambios1", "cambios9", "cambios10", "cambios11", "cambios12", "cambios13", "cambios14", "cambios15", "cambios16", "cambios17"]
+    branches: ["main", "cambios1", "cambios9", "cambios10", "cambios11", "cambios12", "cambios13", "cambios14", "cambios15", "cambios16", "cambios17", "cambios18"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
@@ -41,8 +41,8 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
 
-      - name: Install stable Android 16 SDK
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Install Android 17 SDK
+        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
