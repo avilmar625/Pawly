@@ -50,7 +50,7 @@ La rama `cambios10` incorpora una comunidad conectable a Firebase: registro/inic
 
 - Android Studio compatible con Android Gradle Plugin 9.4.0.
 - JDK 17.
-- Android SDK Platform 37 y Build Tools 37.0.0.
+- Android SDK Platform 36 y Build Tools 36.0.0.
 - Android 8.0 (API 26) o superior para ejecutar la aplicación.
 
 ## Abrir y compilar
