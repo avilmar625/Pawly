@@ -49,7 +49,7 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (category == "LOST") "Aviso de perro perdido" else if (category == "FOUND") "Aviso de perro encontrado" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (category == "LOST") "Aviso de mascota perdida" else if (category == "FOUND") "Aviso de mascota encontrada" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") }, text = {
         Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Tipo de publicación", color = Forest, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -57,8 +57,8 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
                     FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label) })
                 }
             }
-            OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado del perro"; "ADOPTION" -> "Edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-            OutlinedTextField(dog, { dog = it }, label = { Text("Nombre del perro (opcional)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado de la mascota"; "ADOPTION" -> "Especie, edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+            OutlinedTextField(dog, { dog = it }, label = { Text("Nombre de la mascota (opcional)") }, modifier = Modifier.fillMaxWidth())
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.AddAPhoto, null); Text(if (uri == null) "Añadir fotografía" else "Foto seleccionada") }
             if (category != "STORY") Text("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado.", color = Muted, style = MaterialTheme.typography.bodySmall)
             if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
