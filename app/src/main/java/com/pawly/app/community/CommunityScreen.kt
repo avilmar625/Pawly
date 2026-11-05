@@ -348,6 +348,7 @@ private fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () 
     val scope = rememberCoroutineScope()
     var profile by remember { mutableStateOf<PawlyUser?>(null) }
     var dogs by remember { mutableStateOf(emptyList<PawlyDog>()) }
+    var blockedUsers by remember { mutableStateOf(emptyList<PawlyBlockedUser>()) }
     var name by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
     var isPublic by remember { mutableStateOf(true) }
@@ -361,6 +362,10 @@ private fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () 
     LaunchedEffect(Unit) {
         runCatching { profile = repo.getMyProfile(); dogs = repo.getMyDogs(); name = profile?.displayName.orEmpty(); bio = profile?.bio.orEmpty(); isPublic = profile?.isPublic ?: true }
             .onFailure { error = it.localizedMessage }
+    }
+    DisposableEffect(repo) {
+        val listener = repo.listenBlockedUsers({ blockedUsers = it }, { error = it })
+        onDispose { listener.remove() }
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -408,6 +413,21 @@ private fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () 
             }
         }
         items(dogs, key = { it.id }) { dog -> DogProfileCard(dog) { editDog = dog; showDogEditor = true } }
+        item { Text("Cuentas bloqueadas", color = Forest, style = MaterialTheme.typography.titleMedium) }
+        if (blockedUsers.isEmpty()) item { Text("No has bloqueado a nadie.", color = Muted, style = MaterialTheme.typography.bodySmall) }
+        items(blockedUsers, key = { it.uid }) { blocked ->
+            Surface(color = Paper, shape = RoundedCornerShape(14.dp)) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(blocked.displayName, color = Ink, fontWeight = FontWeight.SemiBold)
+                        if (blocked.username.isNotBlank()) Text("@" + blocked.username, color = Muted, style = MaterialTheme.typography.labelSmall)
+                    }
+                    TextButton(onClick = {
+                        scope.launch { runCatching { repo.unblock(blocked.uid); status = "Cuenta desbloqueada." }.onFailure { error = it.localizedMessage } }
+                    }) { Text("Desbloquear") }
+                }
+            }
+        }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
         if (status != null) item { Text(status!!, color = ForestLight) }
         item { OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Logout, null); Text("Cerrar sesión") } }
@@ -614,7 +634,7 @@ private fun BlockConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Bloquear esta cuenta") },
-        text = { Text("Dejarás de ver sus publicaciones en tu muro y no podréis iniciar ni continuar conversaciones. Puedes gestionar el bloqueo desde Firebase si necesitas desbloquearla.") },
+        text = { Text("Dejarás de ver sus publicaciones en tu muro y no podréis iniciar ni continuar conversaciones. Puedes desbloquearla más adelante desde la sección «Cuentas bloqueadas» de tu perfil.") },
         confirmButton = { TextButton(onClick = onConfirm) { Text("Bloquear") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
     )
