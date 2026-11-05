@@ -10,6 +10,13 @@ class PawlyLearningLibraryTest {
         assertTrue(PawlyLearningLibrary.guides.all { it.points.isNotEmpty() && it.note.isNotBlank() })
     }
 
+    @Test fun communitySafetyGuidesAreAvailable() {
+        val ids = PawlyLearningLibrary.guides.map { it.id }.toSet()
+        assertTrue("lost-dog" in ids)
+        assertTrue("found-dog" in ids)
+        assertTrue("responsible-adoption" in ids)
+    }
+
     @Test fun externalResourcesUseSecureLinks() {
         assertTrue(PawlyLearningLibrary.organisations.isNotEmpty())
         assertTrue(PawlyLearningLibrary.organisations.all { it.url.startsWith("https://") })
