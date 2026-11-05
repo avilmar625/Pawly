@@ -11,3 +11,6 @@ local.properties
 
 # Firebase project configuration (do not commit)
 /app/google-services.json
+
+# Firebase project config in the repository root (keep local)
+/google-services.json
