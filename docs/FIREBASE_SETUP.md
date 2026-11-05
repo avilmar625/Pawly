@@ -68,7 +68,7 @@ La rama cambios19 incorpora `FirebasePetCareRepository` y reglas de propietario 
 - Pasaporte veterinario: `users/{uid}/petCare/{petId}/passport/{entryId}`.
 - Rutinas: `users/{uid}/petCare/{petId}/tasks/{taskId}`.
 
-Solo la cuenta propietaria puede leer o modificar esos registros. La nueva capa de repositorio es la base de sincronización; **todavía no está conectada a las pantallas Salud ni a la migración automática de datos locales**. No borres los datos locales: primero iniciaremos sesión, verificaremos las mascotas y después implementaremos una importación segura.
+Solo la cuenta propietaria puede leer o modificar esos registros. En cambios20, las secciones Pasaporte sanitario y Cuidados ya utilizan este repositorio cuando el usuario ha iniciado sesión. Al entrar, descargan los registros remotos y, si Firestore está vacío para esa mascota, importan en una operación por lotes los registros locales de esa cuenta. Las altas, cambios y eliminaciones se guardan localmente y se envían a Firestore. Si falla la red, la copia local se conserva y la pantalla indica que la sincronización está pendiente. El modo local sin cuenta sigue guardando solo en el dispositivo.
 
 Los perfiles de mascota de Comunidad continúan guardándose en el documento privado `users/{uid}` como `dogProfiles`. La siguiente fase debe vincular el ID estable de cada mascota con su espacio `petCare`.
 
