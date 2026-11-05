@@ -103,7 +103,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Mis perros", color = Forest, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text("Mis mascotas", color = Forest, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 Button(onClick = { editDog = null; showDogEditor = true }) { Icon(Icons.Default.Add, null); Text("Añadir") }
             }
         }
@@ -140,11 +140,11 @@ internal fun DogProfileCard(dog: PawlyDog, onClick: (() -> Unit)? = null) {
     Surface(color = Paper, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (dog.photoUrl.isNotBlank()) AsyncImage(dog.photoUrl, "Foto de " + dog.name, Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)))
-            else Box(Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)).background(Lime), contentAlignment = Alignment.Center) { Text("🐕", fontSize = 30.sp) }
+            else Box(Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)).background(Lime), contentAlignment = Alignment.Center) { Text(petEmoji(dog.species), fontSize = 30.sp) }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(dog.name, color = Forest, fontWeight = FontWeight.Bold)
-                Text(listOf(dog.breed, dog.age).filter { it.isNotBlank() }.joinToString(" · "), color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text(listOf(dog.species, dog.breed, dog.age).filter { it.isNotBlank() }.joinToString(" · "), color = Muted, style = MaterialTheme.typography.bodySmall)
                 if (dog.description.isNotBlank()) Text(dog.description, color = Ink, style = MaterialTheme.typography.bodySmall, maxLines = 2)
                 if (dog.traits.isNotEmpty()) Text(dog.traits.joinToString(" · "), color = ForestLight, style = MaterialTheme.typography.labelSmall)
             }
@@ -157,6 +157,7 @@ internal fun DogProfileCard(dog: PawlyDog, onClick: (() -> Unit)? = null) {
 internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyDog?, onDismiss: () -> Unit, onSaved: () -> Unit) {
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf(existing?.name.orEmpty()) }
+    var species by remember { mutableStateOf(existing?.species ?: "Perro") }
     var breed by remember { mutableStateOf(existing?.breed.orEmpty()) }
     var age by remember { mutableStateOf(existing?.age.orEmpty()) }
     var description by remember { mutableStateOf(existing?.description.orEmpty()) }
@@ -170,6 +171,12 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Añadir perro" else "Editar perro") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Photo, null); Text(if (uri != null || photoUrl.isNotBlank()) "Cambiar foto" else "Añadir foto") }
+            Text("Tipo de mascota", color = Forest, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                listOf("Perro", "Gato", "Conejo", "Ave", "Roedor", "Reptil", "Otro").forEach { option ->
+                    FilterChip(selected = species == option, onClick = { species = option }, label = { Text(option) })
+                }
+            }
             OutlinedTextField(name, { name = it }, label = { Text("Nombre") })
             OutlinedTextField(breed, { breed = it }, label = { Text("Raza") })
             OutlinedTextField(age, { age = it }, label = { Text("Edad") })
@@ -183,7 +190,7 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
             scope.launch {
                 try {
                     if (uri != null) photoUrl = repo.uploadImage(uri!!, "dog-photos")
-                    repo.saveDog(PawlyDog(existing?.id ?: "", name, breed, age, description, traits.split(",").map { it.trim() }.filter { it.isNotBlank() }, photoUrl))
+                    repo.saveDog(PawlyDog(id = existing?.id ?: "", name = name, breed = breed, age = age, description = description, traits = traits.split(",").map { it.trim() }.filter { it.isNotBlank() }, photoUrl = photoUrl, species = species))
                     onSaved()
                 } catch (e: Exception) { error = e.localizedMessage ?: "No se pudo guardar." }
                 finally { busy = false }
@@ -220,3 +227,14 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
     }
 }
 
+
+
+private fun petEmoji(species: String): String = when (species.lowercase()) {
+    "gato" -> "🐈"
+    "conejo" -> "🐇"
+    "ave" -> "🦜"
+    "roedor" -> "🐹"
+    "reptil" -> "🦎"
+    "perro" -> "🐕"
+    else -> "🐾"
+}
