@@ -283,6 +283,7 @@ private fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (S
 private fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, onBack: () -> Unit, onMessage: (String) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
     var user by remember(uid) { mutableStateOf<PawlyUser?>(null) }
     var dogs by remember(uid) { mutableStateOf(emptyList<PawlyDog>()) }
+    var userPosts by remember(uid) { mutableStateOf(emptyList<PawlyPost>()) }
     var following by remember(uid) { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -290,6 +291,10 @@ private fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, onB
     LaunchedEffect(uid) {
         try { user = repo.getUser(uid); dogs = repo.getUserDogs(uid); following = repo.isFollowing(uid) }
         catch (e: Exception) { error = e.localizedMessage }
+    }
+    DisposableEffect(uid) {
+        val listener = repo.listenUserPosts(uid, { userPosts = it }, { error = it })
+        onDispose { listener.remove() }
     }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         TextButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null); Text("Volver") }
@@ -321,7 +326,20 @@ private fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, onB
         }
         Spacer(Modifier.height(12.dp))
         Text("Sus compañeros", color = Forest, fontWeight = FontWeight.Bold)
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) { items(dogs, key = { it.id }) { DogProfileCard(it) } }
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(dogs, key = { it.id }) { DogProfileCard(it) }
+            item { Text("Publicaciones", color = Forest, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp)) }
+            if (userPosts.isEmpty()) item { Text("Todavía no ha compartido publicaciones.", color = Muted) }
+            items(userPosts, key = { "post-" + it.id }) { post ->
+                Surface(color = Paper, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        if (post.text.isNotBlank()) Text(post.text, color = Ink)
+                        if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación", Modifier.fillMaxWidth().heightIn(max = 260.dp))
+                        Text(post.likeCount.toString() + " me gusta · " + post.commentCount + " comentarios", color = Muted, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+            }
+        }
     }
 }
 
