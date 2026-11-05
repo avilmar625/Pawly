@@ -41,7 +41,9 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error: String?, onCreate: () -> Unit, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
     var followingOnly by remember { mutableStateOf(false) }
-    val visiblePosts = if (followingOnly) posts.filter { it.authorId in followingIds } else posts
+    var categoryFilter by remember { mutableStateOf("ALL") }
+    val categoryOptions = listOf("ALL" to "Todo", "ADOPTION" to "Adopción", "LOST" to "Perdidos", "FOUND" to "Encontrados", "FOSTER" to "Acogida")
+    val visiblePosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item {
             Surface(onClick = onCreate, color = Forest, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
@@ -60,6 +62,9 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text("Todos") })
                 FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text("Siguiendo") })
+            }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                categoryOptions.forEach { (value, label) -> FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) }) }
             }
         }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
@@ -83,7 +88,7 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f).clickable { onOpenUser(post.authorId) }) {
                     Text(post.authorName, color = Ink, fontWeight = FontWeight.Bold)
-                    Text(if (post.dogName.isBlank()) "Una historia Pawly" else "Con " + post.dogName, color = Muted, style = MaterialTheme.typography.labelSmall)
+                    Text((if (post.dogName.isBlank()) "Una historia Pawly" else "Con " + post.dogName) + " · " + when (post.category) { "ADOPTION" -> "Adopción"; "LOST" -> "Perdido"; "FOUND" -> "Encontrado"; "FOSTER" -> "Acogida"; else -> "Comunidad" }, color = if (post.category == "LOST") Color(0xFFB44E43) else ForestLight, style = MaterialTheme.typography.labelSmall)
                 }
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Más opciones", tint = Muted) }
