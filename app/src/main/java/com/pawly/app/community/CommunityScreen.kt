@@ -5,6 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -143,7 +145,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
             }
             IconButton(onClick = { repo.signOut(); onSignOut() }) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Forest) }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
                 FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) })
             }
