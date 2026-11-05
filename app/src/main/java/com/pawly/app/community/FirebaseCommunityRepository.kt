@@ -340,17 +340,29 @@ class FirebaseCommunityRepository private constructor(
 
     fun listenConversations(onData: (List<PawlyConversation>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
         val uid = requireUid()
-        return db.collection("conversations").whereArrayContains("participants", uid)
+        var latest = emptyList<PawlyConversation>()
+        var blockedIds = emptySet<String>()
+        fun emit() { onData(latest.filterNot { it.otherUserId in blockedIds }) }
+        val conversationsListener = db.collection("conversations").whereArrayContains("participants", uid)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) { onError(error.localizedMessage ?: "No se pudieron cargar los chats."); return@addSnapshotListener }
-                val items = snapshot?.documents.orEmpty().map { doc ->
+                latest = snapshot?.documents.orEmpty().map { doc ->
                     val participants = doc.get("participants") as? List<String> ?: emptyList()
                     val other = participants.firstOrNull { it != uid } ?: ""
                     val names = doc.get("participantNames") as? Map<*, *> ?: emptyMap<Any, Any>()
                     PawlyConversation(doc.id, participants, other, names[other] as? String ?: "Usuario", doc.getString("lastMessage") ?: "", doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0)
                 }.sortedByDescending { it.updatedAt }
-                onData(items)
+                emit()
             }
+        val blockedListener = db.collection("users").document(uid).collection("blocked")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudo cargar la lista de bloqueos."); return@addSnapshotListener }
+                blockedIds = snapshot?.documents.orEmpty().map { it.id }.toSet()
+                emit()
+            }
+        return object : ListenerRegistration {
+            override fun remove() { conversationsListener.remove(); blockedListener.remove() }
+        }
     }
 
     fun listenMessages(conversationId: String, onData: (List<PawlyMessage>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
