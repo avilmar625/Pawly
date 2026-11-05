@@ -233,8 +233,16 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
                 Button(onClick = {
                     val cleanTitle = title.trim()
                     if (cleanTitle.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) {
-                        entries = entries + PassportEntry(UUID.randomUUID().toString(), selectedType, cleanTitle.take(80), detail.trim().take(500), date.trim())
+                        val newEntry = PassportEntry(UUID.randomUUID().toString(), selectedType, cleanTitle.take(80), detail.trim().take(500), date.trim())
+                        entries = entries + newEntry
                         PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
+                        cloudRepository?.let { repo ->
+                            coroutineScope.launch {
+                                runCatching { repo.savePassportEntry(petId, newEntry) }
+                                    .onSuccess { syncMessage = "Registro guardado y sincronizado" }
+                                    .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
+                            }
+                        }
                         title = ""; detail = ""; date = LocalDate.now().toString(); selectedType = "Vacuna"; showAdd = false
                     }
                 }, enabled = title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text("Guardar") }
