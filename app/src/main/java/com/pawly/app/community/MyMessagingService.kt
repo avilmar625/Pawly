@@ -26,7 +26,7 @@ internal object FcmTokenStore {
     private fun documentId(token: String): String =
         MessageDigest.getInstance("SHA-256")
             .digest(token.toByteArray(Charsets.UTF_8))
-            .joinToString("") { byte -> "%02x".format(byte) }
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
     fun save(uid: String, token: String): Task<Void> =
         FirebaseFirestore.getInstance()
