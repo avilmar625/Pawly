@@ -60,18 +60,7 @@ internal fun LearningHubScreen() {
     }
 
     LaunchedEffect(savedArticles) {
-        val json = JSONArray()
-        savedArticles.values.forEach { article ->
-            json.put(JSONObject()
-                .put("title", article.title)
-                .put("url", article.url)
-                .put("source", article.source)
-                .put("summary", article.summary)
-                .put("publishedAt", article.publishedAt)
-                .put("publishedAtMillis", article.publishedAtMillis)
-                .put("section", article.section.name))
-        }
-        preferences.edit().putString("saved_articles_json", json.toString()).apply()
+        writeSavedArticles(preferences, savedArticles)
     }
 
     val visibleArticles = remember(articles, search) {
