@@ -1,16 +1,17 @@
 # Lista de preparación para publicar Pawly
 
-Estado inicial de cambios15: **desarrollo / no lista para producción**. Esta lista distingue lo que ya existe de lo que sigue siendo requisito.
+Estado de cambios17: **desarrollo / no lista para producción**. La rama añade comprobaciones de CI y documentación de configuración; no sustituye las pruebas en dispositivos ni los requisitos legales/operativos. Esta lista distingue lo que ya existe de lo que sigue siendo requisito.
 
 ## A. Build y distribución Android
 
 - [x] `applicationId` estable: `com.pawly.app`.
 - [x] `targetSdk = 36` (Android 16), alineado con el requisito de nuevas apps de Google Play desde el 31 de agosto de 2026.
-- [x] CI configurado para compilar y ejecutar tests en cambios15.
+- [x] CI configurado para cambios17: tests unitarios, Android Lint, APK debug y bundle release sin firmar.
 - [x] CI usa SDK estable Android 16, no plataforma preview.
-- [ ] Confirmar CI verde en el commit final de cambios15.
+- [ ] Confirmar CI verde en el último commit de cambios17 (no marcar como completado hasta que GitHub Actions termine correctamente).
 - [ ] Probar en móviles reales de distintos tamaños y versiones Android.
 - [ ] Corregir crashes, ANR, errores de permisos, navegación y estados sin conexión.
+- [x] CI construye un AAB release sin firmar como comprobación de compilación.
 - [ ] Generar Android App Bundle (.aab) firmado para release; no distribuir el APK debug como publicación.
 - [ ] Configurar Play App Signing y guardar de forma segura la clave de subida.
 - [ ] Configurar versionCode/versionName y política de actualización.
@@ -79,3 +80,11 @@ Estado inicial de cambios15: **desarrollo / no lista para producción**. Esta li
 - Prueba cerrada: para cuentas personales creadas después del 13-11-2023, Google exige 12 testers inscritos de forma continua durante 14 días antes de solicitar acceso a producción.
 
 Consulta siempre la documentación oficial enlazada desde Google Play Console, ya que los formularios y políticas pueden cambiar.
+
+
+## Notas de cambios17
+
+- La separación de modelos y persistencia del pasaporte es parcial; todavía no se ha migrado a Room ni a ViewModels.
+- `local.properties.example` es solo una plantilla. Los valores reales deben permanecer en el archivo local ignorado por Git.
+- Firebase/Cloudinary siguen siendo opcionales para compilar la app base, pero obligatorios para probar las funciones remotas y la subida de imágenes.
+- Las funciones de backend y eliminación completa de cuenta continúan siendo bloqueantes para producción.
