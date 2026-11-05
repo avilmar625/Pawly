@@ -45,9 +45,10 @@ No se incluyen claves API ni secretos. Para mapas, autenticación o servicios ex
 - `community/CommunityModels.kt`: modelos de usuario, perro, publicación, comentario, conversación y mensaje.
 - `community/FirebaseCommunityRepository.kt`: Firebase Authentication y Cloud Firestore.
 - `community/CloudinaryImageUploader.kt`: compresión JPEG y carga unsigned de imágenes a Cloudinary.
-- `community/CommunityScreen.kt`: autenticación por correo y Google Credential Manager, muro, búsqueda, perfiles, chat, comentarios y denuncias.
+- `community/CommunityScreen.kt`: autenticación por correo y Google Credential Manager, muro, búsqueda, perfiles, chat, comentarios, denuncias y permiso opcional de notificaciones.
+- `community/MyMessagingService.kt`: recepción FCM, notificaciones en primer plano y almacenamiento privado del token por usuario.
 - `firestore.rules` y `firestore.indexes.json`: reglas e índices de Firestore.
 - `firebase.json`: despliegue solo de Firestore; Firebase Storage no se utiliza.
 
-La app necesita `app/google-services.json` local y valores de Cloudinary en `local.properties`. Las denuncias quedan en una cola Firestore reservada a administradores con custom claim. La app incorpora un panel de moderación para revisar avisos, eliminar publicaciones y restringir perfiles. Los administradores deben asignarse mediante un entorno de confianza.
+La app necesita `app/google-services.json` local y valores de Cloudinary en `local.properties`. El token FCM se guarda en `users/{uid}/fcmTokens`; las reglas de Firestore permiten el acceso solo al propietario. El envío automático de avisos requiere un backend de confianza y no se realiza desde el cliente. Las denuncias quedan en una cola Firestore reservada a administradores con custom claim. La app incorpora un panel de moderación para revisar avisos, eliminar publicaciones y restringir perfiles. Los administradores deben asignarse mediante un entorno de confianza.
 
