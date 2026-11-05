@@ -316,7 +316,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
                     Text("Rutinas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text("${tasks.count { it.completed }} de ${tasks.size} marcadas como hechas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Button(onClick = { showAdd = true }) { Icon(Icons.Default.Add, null); Text("Añadir") }
+                Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Text("Añadir") }
             }
         }
         if (tasks.isEmpty()) {
