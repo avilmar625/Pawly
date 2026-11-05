@@ -137,6 +137,7 @@ internal fun LearningHubScreen() {
             }
             PawlyContentSection.ADOPTION -> {
                 NewsSectionHeader("Adopción y protección animal", "Noticias de adopción y entidades que trabajan por el bienestar animal.")
+                NearbyShelterCard { runCatching { uriHandler.openUri("https://www.google.com/maps/search/?api=1&query=protectoras+de+animales+cerca+de+mi") } }
                 NewsSearch(search, { search = it })
                 NewsResults(visibleArticles, loading, error, savedArticles.keys, onToggleSave = { id ->
                     val article = articles.firstOrNull { it.id == id }
@@ -391,4 +392,18 @@ private fun readSavedArticles(preferences: android.content.SharedPreferences): M
             }
         }
     }.getOrDefault(emptyMap())
+}
+
+@Composable
+private fun NearbyShelterCard(onClick: () -> Unit) {
+    Surface(onClick = onClick, color = Lime.copy(alpha = .48f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("📍", fontSize = 27.sp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Buscar protectoras cerca de ti", color = Forest, fontWeight = FontWeight.Bold)
+                Text("Abre el mapa y consulta centros y asociaciones de tu zona.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            }
+            Icon(Icons.Default.OpenInNew, contentDescription = "Abrir mapa", tint = Forest)
+        }
+    }
 }
