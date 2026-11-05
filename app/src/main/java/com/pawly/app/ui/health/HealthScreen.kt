@@ -53,7 +53,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 @Composable
-private fun HealthScreen(
+internal fun HealthScreen(
     medicineDone: Boolean,
     onMedicineToggle: (Boolean) -> Unit,
     dates: Map<String, String>,
@@ -115,7 +115,7 @@ private fun HealthScreen(
 }
 
 @Composable
-private fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, date: String, onClick: () -> Unit, onClear: () -> Unit) {
+internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, date: String, onClick: () -> Unit, onClear: () -> Unit) {
     Surface(shape = RoundedCornerShape(18.dp), color = Paper, shadowElevation = 1.dp) {
         Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(43.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) {
