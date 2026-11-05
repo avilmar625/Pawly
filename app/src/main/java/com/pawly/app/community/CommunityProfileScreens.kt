@@ -165,6 +165,7 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
     var photoUrl by remember { mutableStateOf(existing?.photoUrl.orEmpty()) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Añadir perro" else "Editar perro") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -188,6 +189,34 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
                 finally { busy = false }
             }
         }) { Text(if (busy) "Guardando…" else "Guardar") }
-    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+    }, dismissButton = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (existing != null) {
+                TextButton(onClick = { confirmDelete = true }, enabled = !busy) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            }
+            TextButton(onClick = onDismiss, enabled = !busy) { Text("Cancelar") }
+        }
+    })
+    if (confirmDelete && existing != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Eliminar perfil de ${existing.name}?") },
+            text = { Text("Se eliminarán sus datos y su fotografía dejará de aparecer en Pawly. Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = {
+                    busy = true
+                    scope.launch {
+                        runCatching { repo.deleteDog(existing.id); onSaved() }
+                            .onFailure { error = it.toPawlyMessage("No se pudo eliminar el perfil.") }
+                        busy = false
+                        confirmDelete = false
+                    }
+                }) { Text("Eliminar", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Conservar") } }
+        )
+    }
 }
 
