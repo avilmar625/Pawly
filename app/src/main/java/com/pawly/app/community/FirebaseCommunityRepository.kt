@@ -270,12 +270,16 @@ class FirebaseCommunityRepository private constructor(
         require(clean.isNotBlank()) { "Escribe un comentario." }
         val user = getMyProfile()
         val post = db.collection("posts").document(postId)
+        val comment = post.collection("comments").document()
         db.runTransaction { tx ->
-            tx.set(post.collection("comments").document(), mapOf(
+            tx.set(comment, mapOf(
                 "authorId" to uid, "authorName" to (user?.displayName ?: "Usuario Pawly"),
                 "text" to clean, "createdAt" to FieldValue.serverTimestamp()
             ))
-            tx.update(post, "commentCount", FieldValue.increment(1))
+            tx.update(post, mapOf(
+                "commentCount" to FieldValue.increment(1),
+                "lastCommentId" to comment.id
+            ))
         }.await()
     }
 
