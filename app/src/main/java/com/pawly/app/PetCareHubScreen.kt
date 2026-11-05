@@ -348,6 +348,13 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
                     TextButton(onClick = {
                         tasks = tasks.filterNot { it.id == task.id }
                         PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
+                        cloudRepository?.let { repo ->
+                            coroutineScope.launch {
+                                runCatching { repo.deleteCareTask(petId, task.id) }
+                                    .onSuccess { syncMessage = "Cambios sincronizados" }
+                                    .onFailure { syncMessage = "No se pudo sincronizar la eliminación; conserva la copia local" }
+                            }
+                        }
                     }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar rutina") }
                 }
             }
