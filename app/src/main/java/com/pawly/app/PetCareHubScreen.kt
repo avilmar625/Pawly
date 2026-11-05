@@ -305,7 +305,8 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
                         Text("Organización de cuidados", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                     Text("Anota las rutinas y quién suele encargarse para que la familia tenga un plan claro.", style = MaterialTheme.typography.bodyMedium)
-                    Text("Por ahora se guarda solo en este dispositivo. La invitación y sincronización entre cuidadores requieren una fase de backend.", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                    Text(if (storageScope == null) "Guardado en este dispositivo. La sincronización entre cuidadores llegará en una fase posterior." else syncMessage, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                    if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
             }
         }
