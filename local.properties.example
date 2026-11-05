@@ -1,0 +1,4 @@
+# Copia estas líneas a local.properties y sustituye los valores.
+# No añadas este archivo con valores reales a Git.
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
+CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned
