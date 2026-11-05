@@ -35,7 +35,7 @@ Esta separación es un primer paso de refactorización; la lógica de estado y p
 
 ## Comunidad (rama cambios11)
 
-La rama `cambios11` incorpora una comunidad con Firebase Authentication y Firestore, inicio de sesión con correo y Google, perfiles de personas y perros, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las fotografías se alojan en Cloudinary mediante un preset unsigned. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
+La rama `cambios11` incorpora una comunidad con Firebase Authentication y Firestore, inicio de sesión con correo y Google, perfiles de personas y perros, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las fotografías se alojan en Cloudinary mediante un preset unsigned. Firebase Cloud Messaging registra los dispositivos y permite recibir avisos; el envío automático de notificaciones cuando llega un mensaje requiere todavía un backend de confianza. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
 ## Tecnología
 
@@ -79,17 +79,17 @@ El APK de depuración se genera en `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Transparencia y privacidad
 
-Los elementos de Explorar son ideas genéricas y no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. La agenda de cuidados todavía no permite registrar fechas y no envía notificaciones. Los datos de perfiles, tareas, favoritos, agenda de salud y diario se guardan localmente en el almacenamiento privado de la app; no se sincronizan y se excluyen de copias automáticas del sistema.
+Los elementos de Explorar son ideas genéricas y no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. La agenda de cuidados permite registrar fechas por perro, pero todavía no programa notificaciones automáticas. Los datos de perfiles, tareas, favoritos, agenda de salud y diario se guardan localmente en el almacenamiento privado de la app; no se sincronizan entre dispositivos y se excluyen de copias automáticas del sistema. Los datos de la Comunidad sí se sincronizan mediante Firebase.
 
 No introduzcas información médica sensible. Antes de una publicación real habrá que completar la política de privacidad, validar el comportamiento en dispositivos y definir una estrategia de exportación o recuperación de datos, ya que actualmente no hay sincronización ni copia de seguridad.
 
 ## Próximas mejoras
 
-1. Persistencia local y perfiles editables para varios perros.
-2. Fotografías, galería y diario permanente.
-3. Agenda con recordatorios y notificaciones configurables.
-4. Mapas y lugares reales con fuentes y fecha de verificación.
-5. Pruebas automatizadas, accesibilidad, traducciones y preparación de publicación.
+1. Migrar la persistencia local a Room y extraer la lógica a ViewModels.
+2. Guardar fotos y datos independientes para cada perro.
+3. Añadir recordatorios locales configurables para los cuidados.
+4. Incorporar mapas y lugares reales con fuentes y fecha de verificación.
+5. Añadir un backend de confianza para avisos push de mensajes, además de pruebas automatizadas, accesibilidad y preparación de publicación.
 
 ## Principios de producto
 
