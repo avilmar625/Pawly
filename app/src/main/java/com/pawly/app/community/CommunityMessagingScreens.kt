@@ -43,13 +43,20 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
     val scope = rememberCoroutineScope()
     var text by remember { mutableStateOf("") }
     var dog by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("STORY") }
     var uri by remember { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Compartir una aventura") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (category == "LOST") "Aviso de perro perdido" else if (category == "FOUND") "Aviso de perro encontrado" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(text, { text = it }, label = { Text("¿Qué queréis contar?") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+            Text("Tipo de publicación", color = Forest, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("STORY" to "Historia", "ADOPTION" to "Adopción", "LOST" to "Perdido", "FOUND" to "Encontrado", "FOSTER" to "Acogida").forEach { (value, label) ->
+                    FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label) })
+                }
+            }
+            OutlinedTextField(text, { text = it }, label = { Text(if (category == "LOST" || category == "FOUND") "Dónde y cuándo ocurrió, señas y contacto seguro" else "¿Qué queréis contar?") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
             OutlinedTextField(dog, { dog = it }, label = { Text("Nombre del perro (opcional)") }, modifier = Modifier.fillMaxWidth())
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.AddAPhoto, null); Text(if (uri == null) "Añadir fotografía" else "Foto seleccionada") }
             if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
@@ -60,7 +67,7 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
             scope.launch {
                 try {
                     val image = uri?.let { repo.uploadImage(it, "post-photos") }.orEmpty()
-                    repo.publishPost(text, image, dog)
+                    repo.publishPost(text, image, dog, category)
                     onDone()
                 } catch (e: Exception) { error = e.localizedMessage ?: "No se pudo publicar." }
                 finally { busy = false }
