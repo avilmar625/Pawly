@@ -99,6 +99,7 @@ Pawly sigue siendo un proyecto en desarrollo y **no está lista para producción
 - `docs/PRODUCT_STRATEGY.md`: posicionamiento, diferenciación y hoja de ruta.
 - `docs/PRIVACY_POLICY_DRAFT.md` y `docs/TERMS_OF_SERVICE_DRAFT.md`: borradores que requieren completar datos del responsable, proveedores y revisión legal.
 - `docs/RELEASE_CHECKLIST.md`: requisitos técnicos, de Play Console, privacidad, moderación y operación.
+- `docs/COMMUNITY_GUIDELINES.md`: normas de uso y procedimiento de moderación que debe ponerse en marcha.
 - `docs/ACCOUNT_DELETION_OPERATIONS.md`: alcance real y trabajo pendiente para eliminación completa.
 
 La pantalla de perfil permite registrar una solicitud de eliminación en Firestore, pero **no borra automáticamente** la cuenta ni todos los datos. Sigue siendo bloqueante implementar la cascada de borrado en un backend seguro y publicar el recurso web externo exigido por Google Play. No anunciar esta función como eliminación completada.
