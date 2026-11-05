@@ -1,42 +1,17 @@
 package com.pawly.app
 
-import android.os.Bundle
-import android.content.Intent
-import android.net.Uri
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.app.DatePickerDialog
-import java.io.File
-import java.util.Calendar
-import android.Manifest
-import android.content.pm.PackageManager
-import android.location.LocationManager
-import android.location.Location
-import android.location.LocationListener
-import android.os.Build
-import android.os.Looper
-import android.location.Geocoder
-import java.util.Locale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,10 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.foundation.Image
-import androidx.core.content.ContextCompat
-import org.json.JSONArray
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 internal fun HomeScreen(
@@ -66,162 +40,271 @@ internal fun HomeScreen(
     diaryCount: Int,
     dogPhoto: Bitmap?
 ) {
+    val completed = listOf(walkDone, medicineDone).count { it }
+    val dateLabel = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("es", "ES"))
+        .format(Date()).replaceFirstChar { it.uppercase(Locale("es", "ES")) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 30.dp),
+        verticalArrangement = Arrangement.spacedBy(22.dp)
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("PAWLY", color = Forest, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.sp)
-                    Text("Tu vida, a su lado.", style = MaterialTheme.typography.headlineLarge, color = Ink)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("PAWLY", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.2.sp)
+                    Text(dateLabel, color = Muted, style = MaterialTheme.typography.bodySmall)
                 }
-                Surface(
-                    onClick = onAbout,
-                    shape = CircleShape,
-                    color = Paper,
-                    shadowElevation = 1.dp
-                ) {
+                Surface(onClick = onAbout, shape = CircleShape, color = Color.White, shadowElevation = 2.dp) {
                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Filled.Person, contentDescription = "Acerca de Pawly", tint = Forest)
                     }
                 }
             }
         }
+        item { HomePetHero(dogName, dogPhoto, onEditProfile) }
         item {
-            DogHeroCard(dogName, dogPhoto, onEditProfile)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Tu día con ${dogName.ifBlank { "tu compañero" }}", style = MaterialTheme.typography.headlineMedium, color = Ink)
+                Text("Todo lo importante para disfrutar juntos, en un mismo lugar.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                HomeStatCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Filled.CheckCircle,
+                    value = "$completed/2",
+                    label = "rutinas hechas",
+                    accent = Color(0xFFE5EEDC)
+                )
+                HomeStatCard(
+                    modifier = Modifier.weight(1f),
+                    icon = Icons.Filled.AutoStories,
+                    value = diaryCount.toString(),
+                    label = "recuerdos",
+                    accent = Color(0xFFF5E7DD)
+                )
+            }
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Un día bonito empieza aquí", style = MaterialTheme.typography.titleLarge)
-                    Text("Pequeños planes, grandes recuerdos.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("La rutina de hoy", style = MaterialTheme.typography.titleLarge, color = Ink)
+                    Text(if (completed == 2) "¡Todo al día! Qué bien lo hacéis." else "Pequeños cuidados que suman.", color = Muted, style = MaterialTheme.typography.bodySmall)
                 }
-                Text("HOY", color = ForestLight, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp)
+                Text("$completed de 2", color = Forest, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
+            LinearProgressIndicator(
+                progress = { completed / 2f },
+                modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
+                color = ForestLight,
+                trackColor = Line
+            )
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MetricCard(listOf(walkDone, medicineDone).count { !it }.toString(), "tareas pendientes", Icons.Filled.Explore, Modifier.weight(1f))
-                MetricCard(diaryCount.toString(), "recuerdos guardados", Icons.Filled.PhotoLibrary, Modifier.weight(1f))
-            }
-        }
-        item {
-            SectionHeading("La rutina de hoy", "Un poquito cada día")
-        }
-        item {
-            TaskRow(
+            HomeRoutineCard(
                 icon = Icons.Filled.DirectionsWalk,
                 title = "Paseo y olfateo",
                 subtitle = "Un rato para explorar sin prisa",
+                helper = "MOVIMIENTO",
                 checked = walkDone,
                 onChecked = onWalkToggle,
-                tint = Color(0xFFE9F0DB)
+                iconColor = Color(0xFF456C50),
+                iconBackground = Color(0xFFE6EFDF)
             )
         }
         item {
-            TaskRow(
+            HomeRoutineCard(
                 icon = Icons.Filled.Medication,
                 title = "Revisar cuidados",
-                subtitle = "Marca la rutina cuando la completes",
+                subtitle = "Comprueba lo que toca hoy",
+                helper = "BIENESTAR",
                 checked = medicineDone,
                 onChecked = onMedicineToggle,
-                tint = Color(0xFFF8E9DF)
+                iconColor = Color(0xFF986747),
+                iconBackground = Color(0xFFF6E9DF)
             )
         }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("¿Salimos a descubrir?", style = MaterialTheme.typography.titleLarge)
-                    Text("Encuentra ideas para vuestra próxima aventura.", color = Muted, style = MaterialTheme.typography.bodyMedium)
-                }
-                IconButton(onClick = onExplore) {
-                    Icon(Icons.Filled.ArrowForward, contentDescription = "Explorar", tint = Forest)
-                }
-            }
-            Button(
-                onClick = onExplore,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(17.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Forest)
-            ) {
-                Icon(Icons.Filled.Explore, contentDescription = null)
-                Spacer(Modifier.width(9.dp))
-                Text("Explorar lugares", fontWeight = FontWeight.SemiBold)
-            }
-        }
-        item {
-            Surface(color = Paper, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("📚", fontSize = 30.sp)
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("Un minuto para aprender", color = Forest, fontWeight = FontWeight.Bold)
-                        Text("Noticias, vídeos y consejos para cuidar mejor.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Vuestra próxima aventura", style = MaterialTheme.typography.titleLarge, color = Ink)
+                        Text("Planes para salir de la rutina.", color = Muted, style = MaterialTheme.typography.bodySmall)
                     }
-                    TextButton(onClick = onLearn) { Text("Descubrir") }
+                    TextButton(onClick = onExplore) { Text("Ver todo") }
                 }
+                HomeFeatureCard(
+                    title = "Hay mucho por descubrir",
+                    subtitle = "Encuentra rutas, rincones y planes para compartir.",
+                    action = "EXPLORAR LUGARES",
+                    icon = Icons.Filled.Explore,
+                    onClick = onExplore
+                )
             }
         }
         item {
-            Text("Pawly · Hecho para compartir más vida juntos.", color = Muted, fontSize = 11.sp, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            HomeLearnCard(onClick = onLearn)
+        }
+        item {
+            Text(
+                "HECHO PARA COMPARTIR MÁS VIDA JUNTOS",
+                color = Muted,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 1.2.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }
 
 @Composable
-internal fun DogHeroCard(name: String, photo: Bitmap?, onEdit: () -> Unit) {
+private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
     Box(
         Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(30.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF123D32), Color(0xFF285E4C), Color(0xFF6C8D68))))
             .clickable(onClick = onEdit)
-            .background(Brush.linearGradient(listOf(Forest, Color(0xFF285D4D), Color(0xFF497A62))))
             .padding(21.dp)
     ) {
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("VUESTRO COMPAÑERO", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                    Spacer(Modifier.height(5.dp))
-                    Text(name, color = Color.White, fontSize = 29.sp, fontWeight = FontWeight.Bold)
-                    Text("Toca para editar su perfil", color = Color.White.copy(alpha = 0.72f), fontSize = 12.sp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("VUESTRO COMPAÑERO", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.7.sp)
+                    Text(name, color = Color.White, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("El protagonista de cada aventura.", color = Color.White.copy(alpha = .78f), fontSize = 12.sp)
                 }
                 Box(
-                    Modifier.size(82.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.13f)),
+                    Modifier.size(104.dp).clip(CircleShape)
+                        .background(Color.White.copy(alpha = .16f))
+                        .padding(5.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = .12f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (photo != null) Image(photo.asImageBitmap(), contentDescription = "Foto de $name", modifier = Modifier.fillMaxSize().clip(CircleShape))
-                    else Text("🐕", fontSize = 47.sp)
+                    if (photo != null) {
+                        Image(photo.asImageBitmap(), contentDescription = "Foto de $name", modifier = Modifier.fillMaxSize().clip(CircleShape))
+                    } else {
+                        Text("🐾", fontSize = 48.sp)
+                    }
                 }
             }
-            Spacer(Modifier.height(18.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HeroPill("🐾  Aventurera")
-                HeroPill("♡  Muy querida")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = Color.White.copy(alpha = .15f), shape = RoundedCornerShape(50)) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Editar perfil", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Filled.Pets, contentDescription = null, tint = Color.White.copy(alpha = .35f), modifier = Modifier.size(22.dp))
             }
         }
     }
 }
 
 @Composable
-internal fun HeroPill(text: String) {
-    Surface(color = Color.White.copy(alpha = 0.13f), shape = RoundedCornerShape(50)) {
-        Text(text, color = Color.White, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp))
-    }
-}
-
-@Composable
-internal fun MetricCard(value: String, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
-    Surface(modifier, shape = RoundedCornerShape(20.dp), color = Paper, shadowElevation = 1.dp) {
-        Column(Modifier.padding(16.dp)) {
-            Icon(icon, contentDescription = null, tint = ForestLight, modifier = Modifier.size(21.dp))
-            Spacer(Modifier.height(12.dp))
-            Text(value, fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Ink)
-            Text(label, color = Muted, fontSize = 11.sp)
+private fun HomeStatCard(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String,
+    accent: Color
+) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 1.dp) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Forest, modifier = Modifier.size(21.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(value, color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
 
+@Composable
+private fun HomeRoutineCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    helper: String,
+    checked: Boolean,
+    onChecked: (Boolean) -> Unit,
+    iconColor: Color,
+    iconBackground: Color
+) {
+    Surface(shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 1.dp) {
+        Row(
+            Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(horizontal = 15.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(iconBackground), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(24.dp))
+            }
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(helper, color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
+                Text(title, color = if (checked) Muted else Ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(subtitle, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
+        }
+    }
+}
+
+@Composable
+private fun HomeFeatureCard(
+    title: String,
+    subtitle: String,
+    action: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(25.dp),
+        color = Forest
+    ) {
+        Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = Color.White.copy(alpha = .76f), fontSize = 12.sp, lineHeight = 17.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(action, color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp)
+                    Spacer(Modifier.width(5.dp))
+                    Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = Lime, modifier = Modifier.size(14.dp))
+                }
+            }
+            Box(Modifier.size(64.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeLearnCard(onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 1.dp) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF1EBD9)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.MenuBook, contentDescription = null, tint = Color(0xFF8B7443), modifier = Modifier.size(24.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Un minuto para aprender", color = Ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Consejos, artículos e ideas para cuidar mejor.", color = Muted, fontSize = 11.sp)
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Forest)
+        }
+    }
+}
+
+/* Shared components used by the health and care areas. */
 @Composable
 internal fun SectionHeading(title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -239,7 +322,7 @@ internal fun TaskRow(
     onChecked: (Boolean) -> Unit,
     tint: Color
 ) {
-    Surface(shape = RoundedCornerShape(18.dp), color = Paper, shadowElevation = 1.dp) {
+    Surface(shape = RoundedCornerShape(18.dp), color = Color.White, shadowElevation = 1.dp) {
         Row(
             Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(horizontal = 15.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically
