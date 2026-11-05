@@ -31,8 +31,8 @@ import com.pawly.app.content.LearningGuide
 import com.pawly.app.content.PawlyContentSection
 import com.pawly.app.content.PawlyLearningLibrary
 import com.pawly.app.content.VideoCollection
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 
 @Composable
 internal fun LearningHubScreen() {
@@ -47,8 +47,8 @@ internal fun LearningHubScreen() {
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var refreshKey by remember { mutableIntStateOf(0) }
-    var savedIds by remember {
-        mutableStateOf(preferences.getStringSet("saved_articles", emptySet())?.toSet() ?: emptySet())
+    var savedArticles by remember(preferences) {
+        mutableStateOf(readSavedArticles(preferences))
     }
 
     LaunchedEffect(selectedSection, refreshKey) {
@@ -64,8 +64,19 @@ internal fun LearningHubScreen() {
         loading = false
     }
 
-    LaunchedEffect(savedIds) {
-        preferences.edit().putStringSet("saved_articles", savedIds.toSet()).apply()
+    LaunchedEffect(savedArticles) {
+        val json = JSONArray()
+        savedArticles.values.forEach { article ->
+            json.put(JSONObject()
+                .put("title", article.title)
+                .put("url", article.url)
+                .put("source", article.source)
+                .put("summary", article.summary)
+                .put("publishedAt", article.publishedAt)
+                .put("publishedAtMillis", article.publishedAtMillis)
+                .put("section", article.section.name))
+        }
+        preferences.edit().putString("saved_articles_json", json.toString()).apply()
     }
 
     val visibleArticles = remember(articles, search) {
@@ -119,15 +130,17 @@ internal fun LearningHubScreen() {
             PawlyContentSection.NEWS -> {
                 NewsSectionHeader("Noticias del mundo canino", "Actualidad de medios y organizaciones; abre cada noticia en su fuente original.")
                 NewsSearch(search, { search = it })
-                NewsResults(visibleArticles, loading, error, savedIds, onToggleSave = { id ->
-                    savedIds = if (id in savedIds) savedIds - id else savedIds + id
+                NewsResults(visibleArticles, loading, error, savedArticles.keys, onToggleSave = { id ->
+                    val article = articles.firstOrNull { it.id == id }
+                    if (article != null) savedArticles = if (id in savedArticles) savedArticles - id else savedArticles + (id to article)
                 }, onRefresh = { refreshKey++ }, onOpen = { url -> runCatching { uriHandler.openUri(url) } })
             }
             PawlyContentSection.ADOPTION -> {
                 NewsSectionHeader("Adopción y protección animal", "Noticias de adopción y entidades que trabajan por el bienestar animal.")
                 NewsSearch(search, { search = it })
-                NewsResults(visibleArticles, loading, error, savedIds, onToggleSave = { id ->
-                    savedIds = if (id in savedIds) savedIds - id else savedIds + id
+                NewsResults(visibleArticles, loading, error, savedArticles.keys, onToggleSave = { id ->
+                    val article = articles.firstOrNull { it.id == id }
+                    if (article != null) savedArticles = if (id in savedArticles) savedArticles - id else savedArticles + (id to article)
                 }, onRefresh = { refreshKey++ }, onOpen = { url -> runCatching { uriHandler.openUri(url) } })
                 SectionLabel("Entidades y directorios")
                 Text("Consulta sus canales oficiales para conocer animales disponibles, requisitos y formas de colaborar.", color = Muted, style = MaterialTheme.typography.bodySmall)
@@ -138,8 +151,9 @@ internal fun LearningHubScreen() {
             PawlyContentSection.TRAINING -> {
                 NewsSectionHeader("Educación y comportamiento", "Artículos y recursos para comprender mejor a tu perro.")
                 NewsSearch(search, { search = it })
-                NewsResults(visibleArticles, loading, error, savedIds, onToggleSave = { id ->
-                    savedIds = if (id in savedIds) savedIds - id else savedIds + id
+                NewsResults(visibleArticles, loading, error, savedArticles.keys, onToggleSave = { id ->
+                    val article = articles.firstOrNull { it.id == id }
+                    if (article != null) savedArticles = if (id in savedArticles) savedArticles - id else savedArticles + (id to article)
                 }, onRefresh = { refreshKey++ }, onOpen = { url -> runCatching { uriHandler.openUri(url) } })
                 SectionLabel("Fuentes para seguir aprendiendo")
                 PawlyLearningLibrary.organisations.filter { it.tag in setOf("Educación", "Bienestar") }.forEach {
@@ -158,6 +172,22 @@ internal fun LearningHubScreen() {
                     Text(
                         "Consejo Pawly: prioriza vídeos que expliquen el porqué de los ejercicios, respeten el ritmo del perro y no utilicen miedo, dolor ni intimidación.",
                         Modifier.padding(14.dp), color = Forest, style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            PawlyContentSection.SAVED -> {
+                NewsSectionHeader("Tus noticias guardadas", "Artículos que has marcado para leer más tarde. Se conservan en este dispositivo.")
+                if (savedArticles.isEmpty()) {
+                    Text("Todavía no has guardado ninguna noticia. Usa el icono de marcador en cualquier artículo.", color = Muted)
+                } else {
+                    NewsResults(
+                        articles = savedArticles.values.sortedByDescending { it.publishedAtMillis },
+                        loading = false,
+                        error = null,
+                        savedIds = savedArticles.keys,
+                        onToggleSave = { id -> savedArticles = savedArticles - id },
+                        onRefresh = {},
+                        onOpen = { url -> runCatching { uriHandler.openUri(url) } }
                     )
                 }
             }
@@ -333,4 +363,28 @@ private fun GuideCard(guide: LearningGuide) {
             }
         }
     }
+}
+
+private fun readSavedArticles(preferences: android.content.SharedPreferences): Map<String, DogNewsArticle> {
+    return runCatching {
+        val json = JSONArray(preferences.getString("saved_articles_json", "[]") ?: "[]")
+        buildMap {
+            for (index in 0 until json.length()) {
+                val row = json.getJSONObject(index)
+                val section = runCatching {
+                    PawlyContentSection.valueOf(row.optString("section", PawlyContentSection.NEWS.name))
+                }.getOrDefault(PawlyContentSection.NEWS)
+                val article = DogNewsArticle(
+                    title = row.optString("title"),
+                    url = row.optString("url"),
+                    source = row.optString("source"),
+                    summary = row.optString("summary"),
+                    publishedAt = row.optString("publishedAt"),
+                    publishedAtMillis = row.optLong("publishedAtMillis"),
+                    section = section
+                )
+                if (article.url.startsWith("https://")) put(article.id, article)
+            }
+        }
+    }.getOrDefault(emptyMap())
 }
