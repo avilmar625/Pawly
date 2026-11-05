@@ -60,10 +60,10 @@ Para CI, no es necesario subir el archivo al repositorio: el workflow compila el
 
 ## Moderación y puesta en producción
 
-Las denuncias se almacenan en Firestore y solo pueden leerse/gestionarse desde clientes con el custom claim `admin: true`. La app todavía no incorpora un panel de moderación para el equipo. Debes asignar administradores desde un entorno de confianza usando Firebase Admin SDK; nunca desde el cliente Android.
+Las denuncias se almacenan en Firestore y solo pueden leerse/gestionarse desde clientes con el custom claim `admin: true`. La app incluye una pestaña **Moderar** visible únicamente para administradores: permite revisar avisos, retirar publicaciones denunciadas y restringir perfiles. La asignación del custom claim debe hacerse desde un entorno de confianza usando Firebase Admin SDK; nunca desde el cliente Android.
 
 Antes de abrir el registro al público:
-- Configura verificación de correo y recuperación de contraseña.
+- La app envía verificación de correo al registrarse y ofrece recuperación de contraseña. Antes de producción, comprueba plantillas, entregabilidad y límites de correo.
 - Añade App Check y protección contra abuso/rate limiting.
 - Prepara un proceso humano de revisión de denuncias y respuesta a incidentes.
 - Define términos de uso, política de privacidad, edad mínima y proceso de eliminación/exportación de cuenta.
@@ -73,6 +73,6 @@ Antes de abrir el registro al público:
 
 ## Alcance de privacidad actual
 
-El ajuste de perfil público controla la aparición en búsquedas y el acceso al perfil público. El muro y los comentarios son visibles para usuarios autenticados de Pawly. Las publicaciones no deben incluir direcciones, datos de contacto privados ni información veterinaria sensible. El bloqueo filtra el contenido del usuario bloqueado en el muro propio y evita iniciar/continuar relaciones y conversaciones entre ambas cuentas.
+El ajuste de perfil público controla la aparición en búsquedas y el acceso al perfil público. Las cuentas no verificadas pueden explorar, pero no publicar, seguir, comentar, enviar mensajes ni subir fotografías. El muro y los comentarios son visibles para usuarios autenticados de Pawly. Las publicaciones no deben incluir direcciones, datos de contacto privados ni información veterinaria sensible. El bloqueo filtra el contenido del usuario bloqueado en el muro propio y evita iniciar/continuar relaciones y conversaciones entre ambas cuentas.
 
 El cliente Android no es una frontera de seguridad: las reglas de Firestore y Storage son la autoridad. Revísalas y pruébalas antes de producción.
