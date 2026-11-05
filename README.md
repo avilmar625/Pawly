@@ -33,9 +33,9 @@ La aplicación se está reorganizando por responsabilidades para facilitar su ma
 
 Esta separación es un primer paso de refactorización; la lógica de estado y persistencia todavía está en la capa de presentación y será extraída a ViewModels y repositorios en una fase posterior.
 
-## Comunidad (rama cambios11)
+## Comunidad (ramas cambios11 y cambios12)
 
-La rama `cambios11` incorpora una comunidad con Firebase Authentication y Firestore, inicio de sesión con correo y Google, perfiles de personas y perros, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las fotografías se alojan en Cloudinary mediante un preset unsigned. Firebase Cloud Messaging registra los dispositivos y permite recibir avisos; el envío automático de notificaciones cuando llega un mensaje requiere todavía un backend de confianza. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
+La rama `cambios11` incorpora la comunidad y `cambios12` continúa su estabilización. Incluye Firebase Authentication (correo/contraseña y Google), perfiles de personas y perros, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las pantallas están separadas por áreas (`CommunityFeedScreens`, `CommunityPeopleScreens`, `CommunityProfileScreens`, `CommunityMessagingScreens` y `CommunityModerationScreens`); modelos, validaciones, mensajes de error y carga de imágenes también tienen ficheros propios. Las fotografías se alojan en Cloudinary mediante un preset unsigned. Firebase Cloud Messaging registra los dispositivos, pero el envío automático de notificaciones requiere un backend de confianza. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
 ## Tecnología
 
@@ -82,6 +82,12 @@ El APK de depuración se genera en `app/build/outputs/apk/debug/app-debug.apk`.
 Los elementos de Explorar son ideas genéricas y no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. La agenda de cuidados permite registrar fechas por perro, pero todavía no programa notificaciones automáticas. Los datos de perfiles, tareas, favoritos, agenda de salud y diario se guardan localmente en el almacenamiento privado de la app; no se sincronizan entre dispositivos y se excluyen de copias automáticas del sistema. Los datos de la Comunidad sí se sincronizan mediante Firebase.
 
 No introduzcas información médica sensible. Antes de una publicación real habrá que completar la política de privacidad, validar el comportamiento en dispositivos y definir una estrategia de exportación o recuperación de datos, ya que actualmente no hay sincronización ni copia de seguridad.
+
+## Configuración necesaria para usar la Comunidad
+
+La pantalla de acceso se muestra aunque falte Firebase, pero el inicio de sesión real no puede funcionar hasta configurar el proyecto. Sigue [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md): añade `app/google-services.json` solo en tu copia local, activa Email/Password (y Google si lo quieres usar) en Firebase Authentication, despliega las reglas e índices de Firestore y configura el SHA-1 de la firma debug. Para subir fotos, añade `CLOUDINARY_CLOUD_NAME` y `CLOUDINARY_UPLOAD_PRESET` a `local.properties`. No publiques esos ficheros ni secretos.
+
+Las cuentas creadas con correo reciben un enlace de verificación. Hasta verificarlo se permite entrar y completar el perfil, pero las operaciones sociales que modifican contenido (publicar, seguir, comentar, bloquear y enviar mensajes) permanecen protegidas.
 
 ## Próximas mejoras
 
