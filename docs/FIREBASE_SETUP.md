@@ -60,7 +60,14 @@ Para CI, no es necesario subir el archivo al repositorio: el workflow compila el
 
 ## Moderación y puesta en producción
 
-Las denuncias se almacenan en Firestore y solo pueden leerse/gestionarse desde clientes con el custom claim `admin: true`. La app incluye una pestaña **Moderar** visible únicamente para administradores: permite revisar avisos, retirar publicaciones denunciadas y restringir perfiles. La asignación del custom claim debe hacerse desde un entorno de confianza usando Firebase Admin SDK; nunca desde el cliente Android.
+Las denuncias se almacenan en Firestore y solo pueden leerse/gestionarse desde clientes con el custom claim `admin: true`. La app incluye una pestaña **Moderar** visible únicamente para administradores: permite revisar avisos, retirar publicaciones denunciadas y restringir perfiles. La asignación del custom claim debe hacerse desde un entorno de confianza usando Firebase Admin SDK; nunca desde el cliente Android. Ejemplo Node.js (ejecutado en un servidor o máquina segura, no en la app):
+
+```javascript
+const { getAuth } = require('firebase-admin/auth');
+await getAuth().setCustomUserClaims('FIREBASE_UID_DEL_MODERADOR', { admin: true });
+```
+
+Después, el administrador debe cerrar y volver a iniciar sesión para renovar el token. El panel permite revisar denuncias, retirar publicaciones y restringir perfiles; la gestión de suspensiones de cuentas y apelaciones debe formar parte del proceso operativo.
 
 Antes de abrir el registro al público:
 - La app envía verificación de correo al registrarse y ofrece recuperación de contraseña. Antes de producción, comprueba plantillas, entregabilidad y límites de correo.
