@@ -126,7 +126,7 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
         try {
             val remoteEntries = repo.loadPassportEntries(petId)
             if (remoteEntries.isEmpty() && entries.isNotEmpty()) {
-                entries.forEach { repo.savePassportEntry(petId, it) }
+                repo.savePassportEntries(petId, entries)
                 syncMessage = "Historial local sincronizado con tu cuenta"
             } else {
                 entries = remoteEntries
@@ -274,7 +274,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
         try {
             val remoteTasks = repo.loadCareTasks(petId)
             if (remoteTasks.isEmpty() && tasks.isNotEmpty()) {
-                tasks.forEach { repo.saveCareTask(petId, it) }
+                repo.saveCareTasks(petId, tasks)
                 syncMessage = "Rutinas locales sincronizadas con tu cuenta"
             } else {
                 tasks = remoteTasks
