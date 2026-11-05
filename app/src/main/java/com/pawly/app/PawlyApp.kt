@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-import android.os.Bundle
+import com.google.firebase.auth.FirebaseAuth\nimport android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import android.graphics.Bitmap
@@ -58,6 +58,42 @@ internal enum class Tab(val label: String) {
 
 @Composable
 internal fun PawlyApp() {
+    val context = LocalContext.current
+    val repository = remember(context) { FirebaseCommunityRepository.create(context) }
+    var localMode by remember { mutableStateOf(false) }
+    var signedIn by remember(repository) { mutableStateOf(repository?.currentUid != null) }
+
+    if (localMode) {
+        PawlyMainApp()
+        return
+    }
+
+    if (repository == null) {
+        FirebaseSetupPanel(onContinueOffline = { localMode = true })
+        return
+    }
+
+    DisposableEffect(repository) {
+        val auth = FirebaseAuth.getInstance()
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            signedIn = firebaseAuth.currentUser != null
+        }
+        auth.addAuthStateListener(listener)
+        onDispose { auth.removeAuthStateListener(listener) }
+    }
+
+    if (signedIn) {
+        PawlyMainApp()
+    } else {
+        CommunityAuthPanel(
+            repo = repository,
+            onAuthenticated = { signedIn = repository.currentUid != null },
+            onContinueOffline = { localMode = true }
+        )
+    }
+}
+
+private fun PawlyMainApp() {
     val context = LocalContext.current
     val preferences = remember(context) { context.getSharedPreferences("pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
