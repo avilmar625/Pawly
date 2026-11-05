@@ -179,7 +179,7 @@ internal fun PawlyApp() {
                         savedPlaceNames = if (name in savedPlaceNames) savedPlaceNames - name else savedPlaceNames + name
                     }
                 )
-                Tab.LEARN -> LearningHubScreen()
+                Tab.LEARN -> LearningHubScreen(dogName = dogName)
                 Tab.HEALTH -> HealthScreen(
                     dogName = dogName,
                     medicineDone = medicineDone,
