@@ -74,6 +74,7 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticate
     var username by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var status by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().background(Cream).padding(24.dp), verticalArrangement = Arrangement.Center) {
         Text("PAWLY · COMUNIDAD", color = ForestLight, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
@@ -97,7 +98,15 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticate
             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             else Text(if (register) "Crear cuenta" else "Iniciar sesión")
         }
-        TextButton(onClick = { register = !register; error = null }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        if (status != null) Text(status!!, color = ForestLight, style = MaterialTheme.typography.bodySmall)
+        if (!register) TextButton(onClick = {
+            error = null; status = null
+            scope.launch {
+                runCatching { repo.sendPasswordReset(email); status = "Te hemos enviado un enlace para restablecer la contraseña." }
+                    .onFailure { error = it.localizedMessage }
+            }
+        }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("He olvidado mi contraseña", color = Forest) }
+        TextButton(onClick = { register = !register; error = null; status = null }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text(if (register) "Ya tengo una cuenta · Iniciar sesión" else "¿Primera vez en Pawly? Crear cuenta", color = Forest)
         }
         Text("Respeta la privacidad de otras personas y no compartas datos personales sensibles.", color = Muted, style = MaterialTheme.typography.labelSmall)
@@ -114,6 +123,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
     var createPost by remember { mutableStateOf(false) }
     var commentsPost by remember { mutableStateOf<PawlyPost?>(null) }
     var reportTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var blockTarget by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     DisposableEffect(repo, uid) {
@@ -143,9 +153,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
             chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
             page == CommunityPage.FEED -> FeedScreen(posts, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
                 scope.launch { runCatching { repo.toggleLike(post.id) }.onFailure { notice = it.localizedMessage } }
-            }, onReport = { reportTarget = it }, onBlock = { id ->
-                scope.launch { runCatching { repo.block(id); notice = "Usuario bloqueado." }.onFailure { notice = it.localizedMessage } }
-            })
+            }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo, onSignOut)
@@ -156,6 +164,14 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
     if (reportTarget != null) ReportDialog(repo, reportTarget!!.first, reportTarget!!.second, { reportTarget = null }) {
         notice = "Gracias. Hemos recibido tu aviso."
         reportTarget = null
+    }
+    if (blockTarget != null) BlockConfirmDialog(onDismiss = { blockTarget = null }) {
+        val target = blockTarget!!
+        scope.launch {
+            runCatching { repo.block(target); notice = "Usuario bloqueado y ocultado de tu muro." }
+                .onFailure { notice = it.localizedMessage }
+            blockTarget = null
+        }
     }
 }
 
@@ -563,6 +579,17 @@ private fun ReportDialog(repo: FirebaseCommunityRepository, targetId: String, ty
             scope.launch { runCatching { repo.report(targetId, type, reason); onDone() }.onFailure { busy = false } }
         }) { Text(if (busy) "Enviando…" else "Enviar denuncia") }
     }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+}
+
+@Composable
+private fun BlockConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Bloquear esta cuenta") },
+        text = { Text("Dejarás de ver sus publicaciones en tu muro y no podréis iniciar ni continuar conversaciones. Puedes gestionar el bloqueo desde Firebase si necesitas desbloquearla.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Bloquear") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
 }
 
 @Composable
