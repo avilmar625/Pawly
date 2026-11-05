@@ -124,7 +124,7 @@ internal fun HomeScreen(
             TaskRow(
                 icon = Icons.Filled.Medication,
                 title = "Revisar cuidados",
-                subtitle = "Recordatorio de ejemplo · datos demo",
+                subtitle = "Marca la rutina cuando la completes",
                 checked = medicineDone,
                 onChecked = onMedicineToggle,
                 tint = Color(0xFFF8E9DF)
