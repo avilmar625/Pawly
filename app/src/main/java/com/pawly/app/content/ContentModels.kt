@@ -42,5 +42,5 @@ internal data class VideoCollection(
     val title: String,
     val description: String,
     val searchQuery: String,
-    val emoji: String
+    val emoji: String = "▶️"
 )
