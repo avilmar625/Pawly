@@ -86,6 +86,16 @@ service cloud.firestore {
         allow delete: if owner(uid);
         allow update: if false;
       }
+
+      match /fcmTokens/{tokenId} {
+        allow read: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt'])
+          && request.resource.data.token is string
+          && request.resource.data.token.size() <= 4096
+          && request.resource.data.platform == 'android';
+        allow delete: if owner(uid);
+      }
     }
 
     match /posts/{postId} {
