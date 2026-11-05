@@ -42,7 +42,7 @@ import kotlinx.coroutines.launch
 internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error: String?, onCreate: () -> Unit, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
     var followingOnly by remember { mutableStateOf(false) }
     var categoryFilter by remember { mutableStateOf("ALL") }
-    val categoryOptions = listOf("ALL" to "Todo", "ADOPTION" to "Adopción", "LOST" to "Perdidos", "FOUND" to "Encontrados", "FOSTER" to "Acogida")
+    val categoryOptions = listOf("ALL" to "Todo", "STORY" to "Historias", "ADOPTION" to "Adopción", "LOST" to "Perdidos", "FOUND" to "Encontrados", "FOSTER" to "Acogida")
     val visiblePosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item {
@@ -69,7 +69,7 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
         }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
         if (visiblePosts.isEmpty() && error == null) item {
-            EmptyCommunityCard(if (followingOnly) "Aún no hay novedades" else "Todavía no hay publicaciones", if (followingOnly) "Sigue a otras personas para ver aquí sus aventuras." else "Sé de las primeras personas en compartir una aventura.")
+            EmptyCommunityCard(if (followingOnly) "Aún no hay novedades" else if (categoryFilter != "ALL") "Todavía no hay publicaciones de esta categoría" else "Todavía no hay publicaciones", if (followingOnly) "Sigue a otras personas para ver aquí sus aventuras." else if (categoryFilter != "ALL") "Prueba otra categoría o publica el primer aviso." else "Sé de las primeras personas en compartir una aventura.")
         }
         items(visiblePosts, key = { it.id }) { post ->
             PostCard(post, onComments, onOpenUser, onLike, onReport, onBlock)
