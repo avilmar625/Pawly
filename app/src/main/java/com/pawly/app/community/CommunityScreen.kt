@@ -662,6 +662,11 @@ private fun ModerationScreen(repo: FirebaseCommunityRepository) {
                                 scope.launch { runCatching { repo.removeReportedPost(report.targetId); repo.markReportReviewed(report.id); status = "Publicación eliminada y aviso revisado." }.onFailure { error = it.localizedMessage } }
                             }) { Icon(Icons.Default.DeleteOutline, null); Text("Eliminar publicación") }
                         }
+                        if (report.targetType == "user") {
+                            OutlinedButton(onClick = {
+                                scope.launch { runCatching { repo.hideReportedUser(report.targetId); repo.markReportReviewed(report.id); status = "Perfil restringido y aviso revisado." }.onFailure { error = it.localizedMessage } }
+                            }) { Icon(Icons.Default.VisibilityOff, null); Text("Restringir perfil") }
+                        }
                         TextButton(onClick = {
                             scope.launch { runCatching { repo.markReportReviewed(report.id); status = "Aviso marcado como revisado." }.onFailure { error = it.localizedMessage } }
                         }) { Text("Marcar revisado") }
