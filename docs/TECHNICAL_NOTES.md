@@ -33,20 +33,21 @@ Los archivos comparten temporalmente el paquete Kotlin `com.pawly.app` para evit
 
 ## Comunidad: decisión de producto
 
-La comunidad (cuentas, seguimiento, publicaciones, comentarios y mensajería) debe construirse después de estabilizar las capas de dominio y datos. Es una función multiusuario real: requiere autenticación, base de datos remota, reglas de autorización por usuario, sincronización, almacenamiento de imágenes, moderación, bloqueo y denuncia, protección de datos y políticas de retención. No debe simularse con datos locales ni presentarse como chat real sin backend.
+La comunidad es una función multiusuario real: requiere autenticación, base de datos remota, reglas de autorización por usuario, sincronización, alojamiento externo de imágenes, moderación, bloqueo y denuncia, protección de datos y políticas de retención.
 
 ## Configuración externa pendiente
 
 No se incluyen claves API ni secretos. Para mapas, autenticación o servicios externos habrá que configurar credenciales de forma segura y documentar su uso. Nunca subir claves privadas al repositorio.
 
 
-## Comunidad Firebase (cambios10)
+## Comunidad Firebase + Cloudinary (cambios11)
 
 - `community/CommunityModels.kt`: modelos de usuario, perro, publicación, comentario, conversación y mensaje.
-- `community/FirebaseCommunityRepository.kt`: acceso a Firebase Authentication, Firestore y Storage.
-- `community/CommunityScreen.kt`: autenticación, muro, búsqueda, perfiles, chat, comentarios y denuncias.
-- `firestore.rules` y `storage.rules`: reglas de acceso; `firestore.indexes.json` declara el índice de búsqueda.
-- `firebase.json`: configuración de despliegue con Firebase CLI.
+- `community/FirebaseCommunityRepository.kt`: Firebase Authentication y Cloud Firestore.
+- `community/CloudinaryImageUploader.kt`: compresión JPEG y carga unsigned de imágenes a Cloudinary.
+- `community/CommunityScreen.kt`: autenticación por correo y Google Credential Manager, muro, búsqueda, perfiles, chat, comentarios y denuncias.
+- `firestore.rules` y `firestore.indexes.json`: reglas e índices de Firestore.
+- `firebase.json`: despliegue solo de Firestore; Firebase Storage no se utiliza.
 
-La app no incluye credenciales Firebase. La comunidad se habilita al añadir `app/google-services.json` localmente. Las denuncias quedan en una cola Firestore reservada a administradores con custom claim. La app incorpora un panel de moderación para revisar avisos, eliminar publicaciones y restringir perfiles. Los administradores deben asignarse mediante un entorno de confianza.
+La app necesita `app/google-services.json` local y valores de Cloudinary en `local.properties`. Las denuncias quedan en una cola Firestore reservada a administradores con custom claim. La app incorpora un panel de moderación para revisar avisos, eliminar publicaciones y restringir perfiles. Los administradores deben asignarse mediante un entorno de confianza.
 
