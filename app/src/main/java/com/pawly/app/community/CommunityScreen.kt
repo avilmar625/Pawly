@@ -147,9 +147,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
         when {
             selectedUser != null -> PublicUserScreen(repo, selectedUser!!, onBack = { selectedUser = null }, onMessage = { id ->
                 scope.launch { runCatching { chat = PawlyConversation(id = repo.startConversation(id), otherUserId = id); page = CommunityPage.MESSAGES; selectedUser = null }.onFailure { notice = it.localizedMessage } }
-            }, onReport = { reportTarget = it }, onBlock = { id ->
-                scope.launch { runCatching { repo.block(id); notice = "Usuario bloqueado."; selectedUser = null }.onFailure { notice = it.localizedMessage } }
-            })
+            }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
             page == CommunityPage.FEED -> FeedScreen(posts, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
                 scope.launch { runCatching { repo.toggleLike(post.id) }.onFailure { notice = it.localizedMessage } }
