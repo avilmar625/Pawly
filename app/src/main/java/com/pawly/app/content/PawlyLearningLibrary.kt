@@ -62,6 +62,48 @@ internal object PawlyLearningLibrary {
             note = "Coordina con la protectora y el veterinario la documentación, identificación, revisiones y necesidades particulares."
         ),
         LearningGuide(
+            id = "lost-dog",
+            emoji = "🧭",
+            title = "Si tu perro se pierde",
+            subtitle = "Actúa rápido, con información clara y coordinada",
+            points = listOf(
+                "Avisa cuanto antes a la policía local o al servicio municipal correspondiente y comunica la pérdida al registro del microchip.",
+                "Contacta con clínicas veterinarias y protectoras de la zona; comparte una foto reciente y una descripción reconocible.",
+                "Incluye fecha y zona aproximada, rasgos distintivos y un medio de contacto seguro en los avisos.",
+                "Si alguien lo ve, pide que no lo persiga ni lo acorrale; una persona asustada puede salir corriendo.",
+                "Actualiza o retira los avisos cuando aparezca para evitar búsquedas innecesarias."
+            ),
+            note = "Los trámites y servicios disponibles cambian según municipio y comunidad autónoma. No publiques tu domicilio ni datos personales."
+        ),
+        LearningGuide(
+            id = "found-dog",
+            emoji = "🆘",
+            title = "Si encuentras un perro",
+            subtitle = "Prioriza su seguridad y la identificación",
+            points = listOf(
+                "Valora primero el tráfico y el entorno. No te pongas en peligro ni fuerces el acercamiento si muestra miedo.",
+                "Si puedes hacerlo sin riesgo, evita que entre en una carretera y pide ayuda a los servicios locales.",
+                "Comprueba si lleva placa identificativa y solicita a una clínica veterinaria o autoridad competente que lea el microchip.",
+                "Comunica el hallazgo a la policía local o al servicio municipal de recogida; sigue sus indicaciones.",
+                "Publica solo una zona aproximada y una descripción. No difundas todos los detalles para poder verificar posibles reclamaciones."
+            ),
+            note = "No des por hecho que un perro está abandonado. La gestión y custodia de animales encontrados depende de los servicios competentes de cada localidad."
+        ),
+        LearningGuide(
+            id = "responsible-adoption",
+            emoji = "💚",
+            title = "Adoptar con responsabilidad",
+            subtitle = "Una decisión para muchos años",
+            points = listOf(
+                "Valora tiempo, presupuesto, vivienda, actividad diaria y apoyos disponibles antes de decidir.",
+                "Pregunta a la protectora por salud conocida, comportamiento, miedos, convivencia y necesidades especiales.",
+                "Asegúrate de entender el contrato, la identificación, la documentación y el acompañamiento posterior.",
+                "Prepara un espacio tranquilo y un plan de adaptación gradual, sin exigir que todo funcione desde el primer día.",
+                "Pide ayuda profesional si aparecen dificultades de salud, miedo o convivencia."
+            ),
+            note = "Una adopción responsable busca compatibilidad y bienestar, no una raza, edad o aspecto concretos."
+        ),
+        LearningGuide(
             id = "choose-professional",
             emoji = "🤝",
             title = "Cómo elegir un buen educador",
