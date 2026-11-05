@@ -379,8 +379,16 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
             confirmButton = {
                 Button(onClick = {
                     if (title.isNotBlank()) {
-                        tasks = tasks + CareTask(UUID.randomUUID().toString(), title.trim().take(80), responsible.trim().take(60), frequency, false)
+                        val newTask = CareTask(UUID.randomUUID().toString(), title.trim().take(80), responsible.trim().take(60), frequency, false)
+                        tasks = tasks + newTask
                         PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
+                        cloudRepository?.let { repo ->
+                            coroutineScope.launch {
+                                runCatching { repo.saveCareTask(petId, newTask) }
+                                    .onSuccess { syncMessage = "Rutina guardada y sincronizada" }
+                                    .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
+                            }
+                        }
                         title = ""; responsible = ""; frequency = "Diario"; showAdd = false
                     }
                 }, enabled = title.isNotBlank()) { Text("Guardar") }
