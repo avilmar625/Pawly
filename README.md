@@ -2,7 +2,7 @@
 
 **Más aventuras. Más recuerdos. Más vida juntos.**
 
-Pawly es una aplicación Android para organizar la vida cotidiana con perros: rutinas, cuidados, ideas para salir y recuerdos compartidos.
+Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana con animales de compañía: perfiles multi-especie, cuidados, aprendizaje, lugares, recuerdos y comunidad.
 
 > Estado: proyecto en desarrollo. La interfaz principal está implementada en Jetpack Compose. Parte del contenido sigue siendo demostrativo y las funciones que no estén conectadas a almacenamiento o servicios externos se indican expresamente en la aplicación.
 
@@ -15,7 +15,7 @@ Pawly es una aplicación Android para organizar la vida cotidiana con perros: ru
 
 - **Inicio:** selector para varios perros, perfil editable con foto de cámara o galería, tareas cotidianas y resumen actualizado.
 - **Explorar:** búsqueda y filtros por categorías, con ideas genéricas y favoritos guardados en el dispositivo.
-- **Salud:** fechas locales para vacunas, desparasitación y revisiones, editables y separadas por perfil; no ofrece pautas veterinarias ni notificaciones automáticas.
+- **Salud:** fechas por mascota y recordatorios locales con fecha y hora para vacunas, desparasitación y revisiones. Android puede retrasar avisos por ahorro de batería; no ofrece pautas veterinarias.
 - **Diario:** recuerdos de texto persistentes, con recuento actualizado.
 - **Persistencia local:** perfil, tareas, favoritos y diario se conservan entre sesiones en el dispositivo; no hay sincronización ni cuenta.
 
@@ -34,13 +34,13 @@ La aplicación se organiza por áreas funcionales y responsabilidades para facil
 
 Esta separación es un primer paso de refactorización; la lógica de estado y persistencia todavía está en la capa de presentación y será extraída a ViewModels y repositorios en una fase posterior.
 
-## Comunidad (ramas cambios11, cambios12 y cambios13)
+## Comunidad (ramas cambios11 a cambios15)
 
 La rama `cambios11` incorpora la comunidad y `cambios12` continúa su estabilización. Incluye Firebase Authentication (correo/contraseña y Google), perfiles de personas y perros, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las pantallas están separadas por áreas (`CommunityFeedScreens`, `CommunityPeopleScreens`, `CommunityProfileScreens`, `CommunityMessagingScreens` y `CommunityModerationScreens`); modelos, validaciones, mensajes de error y carga de imágenes también tienen ficheros propios. Las fotografías se alojan en Cloudinary mediante un preset unsigned. Firebase Cloud Messaging registra los dispositivos, pero el envío automático de notificaciones requiere un backend de confianza. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
 ## Aprender y descubrir (cambios13)
 
-La nueva pestaña **Aprender** reúne cinco áreas: noticias caninas, adopción y protección animal, educación y comportamiento, búsquedas temáticas de vídeos y guías prácticas de Pawly. Las noticias se consultan bajo demanda mediante el feed RSS público de Google News y enlazan a la publicación original; se requiere conexión a Internet. Los artículos guardados se conservan localmente. El directorio enlaza con entidades externas (por ejemplo, Fundación Affinity, FAADA, El Refugio, De Vuelta a Casa, Fundació Gossos, Doogweb y RSCE). Los vídeos abren búsquedas temáticas de YouTube, no son vídeos alojados ni verificados por Pawly. Las guías son material introductorio y no sustituyen asesoramiento veterinario o profesional.
+La pestaña **Aprender** reúne cinco áreas: noticias caninas, adopción y protección animal, educación y comportamiento, búsquedas temáticas de vídeos y guías prácticas de Pawly. Las noticias se consultan bajo demanda mediante el feed RSS público de Google News y enlazan a la publicación original; se requiere conexión a Internet. Los artículos guardados se conservan localmente. El directorio enlaza con entidades externas (por ejemplo, Fundación Affinity, FAADA, El Refugio, De Vuelta a Casa, Fundació Gossos, Doogweb y RSCE). Los vídeos abren búsquedas temáticas de YouTube, no son vídeos alojados ni verificados por Pawly. Las guías son material introductorio y no sustituyen asesoramiento veterinario o profesional.
 
 ## Comunidad de ayuda y cuidados (cambios14)
 
@@ -65,7 +65,7 @@ Las reglas de Firestore han cambiado para validar las nuevas categorías. Despli
 
 - Android Studio compatible con Android Gradle Plugin 9.4.0.
 - JDK 17.
-- Android SDK Platform 37 Preview y Build Tools 37.0.0.
+- Android SDK Platform 36 (Android 16) y Build Tools 36.0.0.
 - Android 8.0 (API 26) o superior para ejecutar la aplicación.
 
 ## Abrir y compilar
@@ -92,11 +92,20 @@ gradlew.bat assembleDebug
 
 El APK de depuración se genera en `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Transparencia y privacidad
+## Estado de preparación para publicación (cambios15)
 
-Los elementos de Explorar son ideas genéricas y no representan establecimientos verificados: no se consultan ubicaciones, horarios ni restricciones de acceso. Los recordatorios de Salud son ejemplos de organización, no recomendaciones veterinarias. La agenda de cuidados permite registrar fechas por perro, pero todavía no programa notificaciones automáticas. Los datos de perfiles, tareas, favoritos, agenda de salud y diario se guardan localmente en el almacenamiento privado de la app; no se sincronizan entre dispositivos y se excluyen de copias automáticas del sistema. Los datos de la Comunidad sí se sincronizan mediante Firebase.
+Pawly sigue siendo un proyecto en desarrollo y **no está lista para producción**. Esta rama añade perfiles de varias especies en la Comunidad, solicitudes registradas de eliminación de cuenta, una estrategia de producto, borradores legales y una lista de verificación de lanzamiento.
 
-No introduzcas información médica sensible. Antes de una publicación real habrá que completar la política de privacidad, validar el comportamiento en dispositivos y definir una estrategia de exportación o recuperación de datos, ya que actualmente no hay sincronización ni copia de seguridad.
+- `docs/PRODUCT_STRATEGY.md`: posicionamiento, diferenciación y hoja de ruta.
+- `docs/PRIVACY_POLICY_DRAFT.md` y `docs/TERMS_OF_SERVICE_DRAFT.md`: borradores que requieren completar datos del responsable, proveedores y revisión legal.
+- `docs/RELEASE_CHECKLIST.md`: requisitos técnicos, de Play Console, privacidad, moderación y operación.
+- `docs/ACCOUNT_DELETION_OPERATIONS.md`: alcance real y trabajo pendiente para eliminación completa.
+
+La pantalla de perfil permite registrar una solicitud de eliminación en Firestore, pero **no borra automáticamente** la cuenta ni todos los datos. Sigue siendo bloqueante implementar la cascada de borrado en un backend seguro y publicar el recurso web externo exigido por Google Play. No anunciar esta función como eliminación completada.
+
+Los perfiles multi-especie ya se guardan en la Comunidad; otras pantallas y contenidos todavía tienen elementos diseñados principalmente para perros. Revisar la coherencia de todas las especies antes de una campaña generalista.
+
+Los datos de perfiles locales, tareas, favoritos y diario se guardan en el almacenamiento privado del dispositivo; no se sincronizan entre dispositivos. Los datos sociales se sincronizan mediante Firebase. Los recordatorios de Salud son locales y no equivalen a un servicio de notificación garantizada.
 
 ## Configuración necesaria para usar la Comunidad
 
@@ -106,11 +115,12 @@ Las cuentas creadas con correo reciben un enlace de verificación. Hasta verific
 
 ## Próximas mejoras
 
-1. Migrar la persistencia local a Room y extraer la lógica a ViewModels.
-2. Guardar fotos y datos independientes para cada perro.
-3. Añadir recordatorios locales configurables para los cuidados.
-4. Incorporar mapas y lugares reales con fuentes y fecha de verificación.
-5. Añadir un backend de confianza para avisos push de mensajes, además de pruebas automatizadas, accesibilidad y preparación de publicación.
+1. Completar la preparación legal y el borrado completo de cuentas y datos.
+2. Añadir pasaporte sanitario privado, documentos y exportación para veterinarios.
+3. Compartir el cuidado de mascotas con familiares y cuidadores.
+4. Construir un directorio local con verificación y fecha de actualización.
+5. Añadir backend de confianza para push y alertas de proximidad.
+6. Migrar persistencia local a Room y extraer lógica a ViewModels.
 
 ## Principios de producto
 
