@@ -33,7 +33,8 @@ data class PawlyPost(
     val likeCount: Long = 0,
     val commentCount: Long = 0,
     val likedByMe: Boolean = false,
-    val createdAt: Long = 0
+    val createdAt: Long = 0,
+    val category: String = "STORY"
 )
 
 data class PawlyComment(
