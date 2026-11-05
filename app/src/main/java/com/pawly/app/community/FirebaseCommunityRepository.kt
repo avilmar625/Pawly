@@ -96,7 +96,7 @@ class FirebaseCommunityRepository private constructor(
                         "uid" to user.uid,
                         "username" to username,
                         "usernameLower" to username.lowercase(),
-                        "displayName" to (user.displayName?.take(50)?.ifBlank { null } ?: username),
+                        "displayName" to (user.displayName?.take(50)?.takeIf { it.isNotBlank() } ?: username),
                         "bio" to "",
                         "photoUrl" to (user.photoUrl?.toString() ?: ""),
                         "isPublic" to true,
