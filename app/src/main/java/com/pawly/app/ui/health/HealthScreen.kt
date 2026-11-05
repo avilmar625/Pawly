@@ -18,19 +18,13 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.io.File
 import java.util.Calendar
-import android.Manifest
-import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.location.Location
 import android.location.LocationListener
-import android.os.Build
 import android.os.Looper
 import android.location.Geocoder
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
@@ -59,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
-import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 @Composable
