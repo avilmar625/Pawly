@@ -1,6 +1,5 @@
 package com.pawly.app
 
-import android.content.Context
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,84 +29,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.json.JSONArray
-import org.json.JSONObject
 import java.time.LocalDate
 import java.util.UUID
-
-private data class PassportEntry(
-    val id: String,
-    val type: String,
-    val title: String,
-    val detail: String,
-    val date: String
-)
-
-private data class CareTask(
-    val id: String,
-    val title: String,
-    val responsible: String,
-    val frequency: String,
-    val completed: Boolean
-)
-
-private object PetCareLocalStore {
-    private fun key(prefix: String, petName: String) =
-        "v16_${prefix}_${petName.trim().lowercase().replace(Regex("[^a-z0-9]"), "_")}"
-
-    fun loadEntries(context: Context, petName: String): List<PassportEntry> = runCatching {
-        val raw = context.getSharedPreferences("pawly_local", Context.MODE_PRIVATE)
-            .getString(key("passport", petName), "[]") ?: "[]"
-        val json = JSONArray(raw)
-        List(json.length()) { i ->
-            val row = json.getJSONObject(i)
-            PassportEntry(
-                id = row.optString("id"),
-                type = row.optString("type"),
-                title = row.optString("title"),
-                detail = row.optString("detail"),
-                date = row.optString("date")
-            )
-        }
-    }.getOrDefault(emptyList())
-
-    fun saveEntries(context: Context, petName: String, entries: List<PassportEntry>) {
-        val json = JSONArray()
-        entries.forEach { entry ->
-            json.put(JSONObject().put("id", entry.id).put("type", entry.type)
-                .put("title", entry.title).put("detail", entry.detail).put("date", entry.date))
-        }
-        context.getSharedPreferences("pawly_local", Context.MODE_PRIVATE).edit()
-            .putString(key("passport", petName), json.toString()).apply()
-    }
-
-    fun loadTasks(context: Context, petName: String): List<CareTask> = runCatching {
-        val raw = context.getSharedPreferences("pawly_local", Context.MODE_PRIVATE)
-            .getString(key("care", petName), "[]") ?: "[]"
-        val json = JSONArray(raw)
-        List(json.length()) { i ->
-            val row = json.getJSONObject(i)
-            CareTask(
-                id = row.optString("id"),
-                title = row.optString("title"),
-                responsible = row.optString("responsible"),
-                frequency = row.optString("frequency"),
-                completed = row.optBoolean("completed")
-            )
-        }
-    }.getOrDefault(emptyList())
-
-    fun saveTasks(context: Context, petName: String, tasks: List<CareTask>) {
-        val json = JSONArray()
-        tasks.forEach { task ->
-            json.put(JSONObject().put("id", task.id).put("title", task.title)
-                .put("responsible", task.responsible).put("frequency", task.frequency)
-                .put("completed", task.completed))
-        }
-        context.getSharedPreferences("pawly_local", Context.MODE_PRIVATE).edit()
-            .putString(key("care", petName), json.toString()).apply()
-    }
-}
+import com.pawly.app.care.data.PetCareLocalStore
+import com.pawly.app.care.model.CareTask
+import com.pawly.app.care.model.PassportEntry
 
 @Composable
 internal fun PetCareHubScreen(
