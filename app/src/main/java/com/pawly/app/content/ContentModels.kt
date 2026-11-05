@@ -5,7 +5,8 @@ internal enum class PawlyContentSection(val label: String) {
     ADOPTION("Adopción"),
     TRAINING("Educación"),
     VIDEOS("Vídeos"),
-    GUIDES("Guías")
+    GUIDES("Guías"),
+    SAVED("Guardados")
 }
 
 internal data class DogNewsArticle(
