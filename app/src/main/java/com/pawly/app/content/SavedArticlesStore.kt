@@ -2,6 +2,7 @@ package com.pawly.app
 
 import android.content.SharedPreferences
 import org.json.JSONArray
+import org.json.JSONObject
 import com.pawly.app.content.DogNewsArticle
 import com.pawly.app.content.PawlyContentSection
 
