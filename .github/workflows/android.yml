@@ -2,7 +2,7 @@ name: Android build
 
 on:
   push:
-    branches: ["main", "cambios1", "cambios9", "cambios10"]
+    branches: ["main", "cambios1", "cambios9", "cambios10", "cambios11"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
 
-      - name: Install Android SDK 36
+      - name: Install Android SDK 37 Preview
         run: sdkmanager --channel=3 "platforms;android-37" "build-tools;37.0.0"
 
       - name: Make Gradle wrapper executable
