@@ -386,6 +386,11 @@ class FirebaseCommunityRepository private constructor(
             }
     }
 
+    suspend fun hideReportedUser(uid: String) {
+        check(isAdmin()) { "No tienes permisos de moderación." }
+        db.collection("users").document(uid).update(mapOf("isPublic" to false, "moderationStatus" to "restricted")).await()
+    }
+
     suspend fun markReportReviewed(reportId: String) {
         check(isAdmin()) { "No tienes permisos de moderación." }
         db.collection("reports").document(reportId).update(mapOf("status" to "reviewed", "reviewedAt" to FieldValue.serverTimestamp())).await()
