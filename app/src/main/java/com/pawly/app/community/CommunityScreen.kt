@@ -50,9 +50,7 @@ internal fun CommunityScreen() {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
-        CommunityAuthPanel(null) {
-            // Firebase is not configured on this installation yet.
-        }
+        FirebaseSetupPanel(onContinueOffline = {})
         return
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
@@ -62,7 +60,7 @@ internal fun CommunityScreen() {
 
 
 @Composable
-private fun FirebaseSetupPanel() {
+internal fun FirebaseSetupPanel(onContinueOffline: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Cream).padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("🐾", fontSize = 54.sp)
         Text("La comunidad Pawly", style = MaterialTheme.typography.headlineMedium, color = Forest)
@@ -79,12 +77,16 @@ private fun FirebaseSetupPanel() {
                 Text("Añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md.", color = Muted, style = MaterialTheme.typography.bodySmall)
             }
         }
+        Spacer(Modifier.height(14.dp))
+        OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth()) {
+            Text("Continuar en modo local")
+        }
     }
 }
 
 
 @Composable
-private fun CommunityAuthPanel(repo: FirebaseCommunityRepository?, onAuthenticated: () -> Unit) {
+internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticated: () -> Unit, onContinueOffline: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val credentialManager = remember(context) { CredentialManager.create(context) }
@@ -217,6 +219,9 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository?, onAuthenticat
         }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("He olvidado mi contraseña", color = Forest) }
         TextButton(onClick = { register = !register; error = null; status = null }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text(if (register) "Ya tengo una cuenta · Iniciar sesión" else "¿Primera vez en Pawly? Crear cuenta", color = Forest)
+        }
+        OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
+            Text("Continuar sin cuenta (modo local)")
         }
         Text("Respeta la privacidad de otras personas y no compartas datos personales sensibles.", color = Muted, style = MaterialTheme.typography.labelSmall)
     }
