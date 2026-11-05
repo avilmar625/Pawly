@@ -12,7 +12,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-import com.google.firebase.auth.FirebaseAuth\nimport android.os.Bundle
+import com.google.firebase.auth.FirebaseAuth
+import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
 import android.graphics.Bitmap
@@ -236,7 +237,8 @@ private fun PawlyMainApp(storageScope: String? = null) {
                 )
                 Tab.LEARN -> LearningHubScreen(dogName = dogName)
                 Tab.HEALTH -> PetCareHubScreen(
-                    petName = dogName,\n                    storageScope = storageScope,
+                    petName = dogName,
+                    storageScope = storageScope,
                     medicineDone = medicineDone,
                     onMedicineToggle = { medicineDone = it },
                     dates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { (key, _) -> key.removePrefix("$dogName|") },
