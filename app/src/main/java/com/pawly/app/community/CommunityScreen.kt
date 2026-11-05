@@ -15,6 +15,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,6 +31,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
@@ -96,15 +99,43 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository?, onAuthenticat
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().background(Cream).padding(24.dp), verticalArrangement = Arrangement.Center) {
+    Column(
+        Modifier.fillMaxSize().background(Cream).verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(color = Lime.copy(alpha = .45f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("🐾", fontSize = 28.sp)
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text("Una comunidad para quienes viven con perros", color = Forest, fontWeight = FontWeight.Bold)
+                    Text(
+                        if (repo == null) "Para activar el acceso necesitas vincular Firebase en esta instalación."
+                        else "Tus aventuras, tus perros y nuevas amistades, en un mismo lugar.",
+                        color = Muted,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(18.dp))
         Text("PAWLY · COMUNIDAD", color = ForestLight, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
         Spacer(Modifier.height(8.dp))
         Text(if (register) "Crea tu cuenta" else "Qué alegría verte", style = MaterialTheme.typography.headlineLarge, color = Forest)
         Text("Comparte aventuras, descubre perros y conoce a sus personas.", color = Muted)
         Spacer(Modifier.height(20.dp))
         if (register) OutlinedTextField(username, { username = it }, label = { Text("Nombre de usuario") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(email, { email = it }, label = { Text("Correo electrónico") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(password, { password = it }, label = { Text("Contraseña (mín. 6 caracteres)") }, visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(
+            email, { email = it }, label = { Text("Correo electrónico") }, singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            password, { password = it }, label = { Text("Contraseña (mín. 6 caracteres)") },
+            visualTransformation = PasswordVisualTransformation(), singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            modifier = Modifier.fillMaxWidth()
+        )
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         Button(onClick = {
             busy = true; error = null
@@ -117,7 +148,7 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository?, onAuthenticat
                         if (register) configuredRepo.register(email, password, username) else configuredRepo.signIn(email, password)
                         onAuthenticated()
                     }
-                } catch (e: Exception) { error = e.localizedMessage ?: "No se pudo completar la operación." }
+                } catch (e: Exception) { error = e.toPawlyMessage("No se pudo completar la operación.") }
                 finally { busy = false }
             }
         }, enabled = !busy && email.contains("@") && password.length >= 6 && (!register || username.length >= 3), modifier = Modifier.fillMaxWidth().height(52.dp)) {
@@ -157,7 +188,7 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository?, onAuthenticat
                                     }
                                 }
                             } catch (e: Exception) {
-                                error = e.localizedMessage ?: "No se pudo iniciar sesión con Google."
+                                error = e.toPawlyMessage("No se pudo iniciar sesión con Google.")
                             } finally {
                                 busy = false
                             }
@@ -181,7 +212,7 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository?, onAuthenticat
                     configuredRepo.sendPasswordReset(email)
                     status = "Te hemos enviado un enlace para restablecer la contraseña."
                 }
-                    .onFailure { error = it.localizedMessage }
+                    .onFailure { error = it.toPawlyMessage("No se pudo enviar el enlace de recuperación.") }
             }
         }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("He olvidado mi contraseña", color = Forest) }
         TextButton(onClick = { register = !register; error = null; status = null }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
