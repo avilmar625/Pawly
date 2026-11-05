@@ -289,7 +289,8 @@ class FirebaseCommunityRepository private constructor(
                         likeCount = doc.getLong("likeCount") ?: 0,
                         commentCount = doc.getLong("commentCount") ?: 0,
                         likedByMe = currentUid in likedBy,
-                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0
+                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0,
+                        category = doc.getString("category") ?: "STORY"
                     )
                 })
             }
