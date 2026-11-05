@@ -126,6 +126,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
     var reportTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
     var blockTarget by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
+    var emailVerified by remember { mutableStateOf(repo.isEmailVerified) }
     val scope = rememberCoroutineScope()
     DisposableEffect(repo, uid) {
         val feedListener = repo.listenFeed({ posts = it; error = null }, { error = it })
@@ -143,6 +144,21 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
         Row(Modifier.fillMaxWidth().padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             CommunityPage.entries.forEach { item ->
                 FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) })
+            }
+        }
+        if (!emailVerified) {
+            Surface(color = Lime.copy(alpha = .45f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
+                Column(Modifier.padding(10.dp)) {
+                    Text("Verifica tu correo para proteger tu cuenta.", color = Forest, style = MaterialTheme.typography.bodySmall)
+                    Row {
+                        TextButton(onClick = {
+                            scope.launch { runCatching { repo.resendVerificationEmail(); notice = "Correo de verificación enviado." }.onFailure { notice = it.localizedMessage } }
+                        }) { Text("Reenviar correo") }
+                        TextButton(onClick = {
+                            scope.launch { runCatching { repo.refreshAuthentication(); emailVerified = repo.isEmailVerified }.onFailure { notice = it.localizedMessage } }
+                        }) { Text("Ya lo he verificado") }
+                    }
+                }
             }
         }
         if (notice != null) Text(notice!!, color = ForestLight, modifier = Modifier.padding(horizontal = 16.dp))
