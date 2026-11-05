@@ -53,7 +53,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 internal enum class Tab(val label: String) {
-    HOME("Inicio"), EXPLORE("Explorar"), HEALTH("Salud"), DIARY("Diario")
+    HOME("Inicio"), EXPLORE("Explorar"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad")
 }
 
 @Composable
@@ -139,6 +139,7 @@ internal fun PawlyApp() {
                                     Tab.EXPLORE -> Icons.Filled.Explore
                                     Tab.HEALTH -> Icons.Filled.FavoriteBorder
                                     Tab.DIARY -> Icons.Filled.AutoStories
+                                    Tab.COMMUNITY -> Icons.Filled.Groups
                                 },
                                 contentDescription = tab.label
                             )
@@ -190,6 +191,7 @@ internal fun PawlyApp() {
                     entries = diaryEntries,
                     onEntriesChange = { diaryEntries = it }
                 )
+                Tab.COMMUNITY -> CommunityScreen()
             }
         }
     }
