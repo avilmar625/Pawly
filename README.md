@@ -42,6 +42,16 @@ La rama `cambios11` incorpora la comunidad y `cambios12` continúa su estabiliza
 
 La nueva pestaña **Aprender** reúne cinco áreas: noticias caninas, adopción y protección animal, educación y comportamiento, búsquedas temáticas de vídeos y guías prácticas de Pawly. Las noticias se consultan bajo demanda mediante el feed RSS público de Google News y enlazan a la publicación original; se requiere conexión a Internet. Los artículos guardados se conservan localmente. El directorio enlaza con entidades externas (por ejemplo, Fundación Affinity, FAADA, El Refugio, De Vuelta a Casa, Fundació Gossos, Doogweb y RSCE). Los vídeos abren búsquedas temáticas de YouTube, no son vídeos alojados ni verificados por Pawly. Las guías son material introductorio y no sustituyen asesoramiento veterinario o profesional.
 
+## Comunidad de ayuda y cuidados (cambios14)
+
+La comunidad permite clasificar publicaciones como historia, adopción, perro perdido, perro encontrado o casa de acogida. El muro incorpora filtros por categoría y las publicaciones mantienen likes, comentarios, perfiles y moderación. Los avisos son publicaciones comunitarias: no equivalen a un servicio oficial de emergencias ni garantizan una respuesta inmediata. Se recomienda compartir solo zonas aproximadas y continuar la coordinación por mensaje privado.
+
+Explorar añade búsquedas directas en Google Maps para parques caninos, protectoras, veterinarios y urgencias veterinarias, playas, restaurantes, alojamientos y rutas. La ubicación solo se solicita cuando la persona pulsa el botón correspondiente; se usa para centrar la búsqueda en el mapa y no se guarda como historial. Los resultados, horarios y condiciones pertenecen a los proveedores externos y deben confirmarse antes de desplazarse.
+
+Salud permite programar avisos locales con fecha y hora para vacunación, desparasitación y revisiones. Android puede retrasarlos por ahorro de batería; los avisos se vuelven a programar al abrir Pawly. Tras reinstalar la app o borrar sus datos habrá que configurarlos de nuevo. Las fechas y pautas sanitarias deben proceder del veterinario.
+
+Las reglas de Firestore han cambiado para validar las nuevas categorías. Despliega la versión actualizada antes de probar las publicaciones: `firebase deploy --only firestore:rules`. El envío automático de push entre usuarios sigue necesitando un backend de confianza; no se simula desde el cliente ni se expone una clave de servidor.
+
 ## Tecnología
 
 - Kotlin y Android nativo.
