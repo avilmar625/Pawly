@@ -189,6 +189,30 @@ class FirebaseCommunityRepository private constructor(
         }
     }
 
+    fun listenUserPosts(uid: String, onData: (List<PawlyPost>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
+        return db.collection("posts").whereEqualTo("authorId", uid)
+            .orderBy("createdAt", Query.Direction.DESCENDING).limit(30)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudieron cargar las publicaciones."); return@addSnapshotListener }
+                onData(snapshot?.documents.orEmpty().map { doc ->
+                    val likedBy = doc.get("likedBy") as? List<*> ?: emptyList<Any>()
+                    PawlyPost(
+                        id = doc.id,
+                        authorId = doc.getString("authorId") ?: "",
+                        authorName = doc.getString("authorName") ?: "Usuario Pawly",
+                        authorPhoto = doc.getString("authorPhoto") ?: "",
+                        dogName = doc.getString("dogName") ?: "",
+                        text = doc.getString("text") ?: "",
+                        imageUrl = doc.getString("imageUrl") ?: "",
+                        likeCount = doc.getLong("likeCount") ?: 0,
+                        commentCount = doc.getLong("commentCount") ?: 0,
+                        likedByMe = currentUid in likedBy,
+                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0
+                    )
+                })
+            }
+    }
+
     suspend fun publishPost(text: String, imageUrl: String, dogName: String) {
         val uid = requireUid()
         val user = getMyProfile() ?: error("Completa primero tu perfil.")
