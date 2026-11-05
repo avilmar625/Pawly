@@ -23,7 +23,7 @@ import com.pawly.app.content.LearningGuide
 import com.pawly.app.content.VideoCollection
 
 @Composable
-private fun NewsSectionHeader(title: String, subtitle: String) {
+internal fun NewsSectionHeader(title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge, color = Ink)
         Text(subtitle, color = Muted, style = MaterialTheme.typography.bodySmall)
@@ -31,12 +31,12 @@ private fun NewsSectionHeader(title: String, subtitle: String) {
 }
 
 @Composable
-private fun SectionLabel(value: String) {
+internal fun SectionLabel(value: String) {
     Text(value, color = Forest, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
 }
 
 @Composable
-private fun NewsSearch(value: String, onValueChange: (String) -> Unit) {
+internal fun NewsSearch(value: String, onValueChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -49,7 +49,7 @@ private fun NewsSearch(value: String, onValueChange: (String) -> Unit) {
 }
 
 @Composable
-private fun NewsResults(
+internal fun NewsResults(
     articles: List<DogNewsArticle>,
     loading: Boolean,
     error: String?,
@@ -90,7 +90,7 @@ private fun NewsResults(
 }
 
 @Composable
-private fun NewsArticleCard(article: DogNewsArticle, saved: Boolean, onToggleSave: () -> Unit, onOpen: () -> Unit) {
+internal fun NewsArticleCard(article: DogNewsArticle, saved: Boolean, onToggleSave: () -> Unit, onOpen: () -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = Paper), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -117,7 +117,7 @@ private fun NewsArticleCard(article: DogNewsArticle, saved: Boolean, onToggleSav
 }
 
 @Composable
-private fun ContentLinkCard(link: ContentLink, onClick: () -> Unit) {
+internal fun ContentLinkCard(link: ContentLink, onClick: () -> Unit) {
     Surface(onClick = onClick, color = Paper, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(link.emoji, fontSize = 26.sp)
@@ -134,7 +134,7 @@ private fun ContentLinkCard(link: ContentLink, onClick: () -> Unit) {
 }
 
 @Composable
-private fun VideoCard(video: VideoCollection, onClick: () -> Unit) {
+internal fun VideoCard(video: VideoCollection, onClick: () -> Unit) {
     Surface(onClick = onClick, color = Paper, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
             Text(video.emoji, fontSize = 30.sp)
@@ -148,7 +148,7 @@ private fun VideoCard(video: VideoCollection, onClick: () -> Unit) {
 }
 
 @Composable
-private fun GuideCard(guide: LearningGuide) {
+internal fun GuideCard(guide: LearningGuide) {
     var expanded by remember(guide.id) { mutableStateOf(false) }
     Surface(
         onClick = { expanded = !expanded },
@@ -182,7 +182,7 @@ private fun GuideCard(guide: LearningGuide) {
 }
 
 @Composable
-private fun NearbyShelterCard(onClick: () -> Unit) {
+internal fun NearbyShelterCard(onClick: () -> Unit) {
     Surface(onClick = onClick, color = Lime.copy(alpha = .48f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("📍", fontSize = 27.sp)
