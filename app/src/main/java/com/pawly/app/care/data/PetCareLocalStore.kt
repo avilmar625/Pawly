@@ -43,12 +43,12 @@ internal object PetCareLocalStore {
                     .put("title", entry.title).put("detail", entry.detail).put("date", entry.date)
             )
         }
-        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+        preferences(context, storageScope).edit()
             .putString(key("passport", petName), json.toString()).apply()
     }
 
     fun loadTasks(context: Context, petName: String, storageScope: String? = null): List<CareTask> = runCatching {
-        val raw = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+        val raw = preferences(context, storageScope)
             .getString(key("care", petName), "[]") ?: "[]"
         val json = JSONArray(raw)
         List(json.length()) { index ->
@@ -72,7 +72,7 @@ internal object PetCareLocalStore {
                     .put("completed", task.completed)
             )
         }
-        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
+        preferences(context, storageScope).edit()
             .putString(key("care", petName), json.toString()).apply()
     }
 }
