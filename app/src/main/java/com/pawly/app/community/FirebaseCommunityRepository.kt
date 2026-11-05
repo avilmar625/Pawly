@@ -63,6 +63,7 @@ class FirebaseCommunityRepository private constructor(
                 )
             ).await()
         } catch (error: Exception) {
+            runCatching { usernameRef.delete().await() }
             runCatching { result.user?.delete()?.await() }
             throw error
         }
@@ -79,6 +80,13 @@ class FirebaseCommunityRepository private constructor(
         db.collection("users").document(uid).update(
             mapOf("displayName" to displayName.trim().take(50), "bio" to bio.trim().take(240), "isPublic" to isPublic)
         ).await()
+    }
+
+    suspend fun updateProfilePhoto(uri: Uri): String {
+        val uid = requireUid()
+        val url = uploadImage(uri, "profile-photos")
+        db.collection("users").document(uid).update("photoUrl", url).await()
+        return url
     }
 
     suspend fun uploadImage(uri: Uri, folder: String): String {
@@ -132,10 +140,13 @@ class FirebaseCommunityRepository private constructor(
 
     fun listenFeed(onData: (List<PawlyPost>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
         val uid = requireUid()
-        return db.collection("posts").orderBy("createdAt", Query.Direction.DESCENDING).limit(50)
+        var latestPosts = emptyList<PawlyPost>()
+        var blockedIds = emptySet<String>()
+        fun emit() { onData(latestPosts.filterNot { it.authorId in blockedIds }) }
+        val postsListener = db.collection("posts").orderBy("createdAt", Query.Direction.DESCENDING).limit(50)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) { onError(error.localizedMessage ?: "No se pudo cargar el muro."); return@addSnapshotListener }
-                val posts = snapshot?.documents.orEmpty().map { doc ->
+                latestPosts = snapshot?.documents.orEmpty().map { doc ->
                     val likedBy = doc.get("likedBy") as? List<*> ?: emptyList<Any>()
                     PawlyPost(
                         id = doc.id,
@@ -151,8 +162,17 @@ class FirebaseCommunityRepository private constructor(
                         createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0
                     )
                 }
-                onData(posts)
+                emit()
             }
+        val blockedListener = db.collection("users").document(uid).collection("blocked")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudo cargar la lista de bloqueos."); return@addSnapshotListener }
+                blockedIds = snapshot?.documents.orEmpty().map { it.id }.toSet()
+                emit()
+            }
+        return object : ListenerRegistration {
+            override fun remove() { postsListener.remove(); blockedListener.remove() }
+        }
     }
 
     suspend fun publishPost(text: String, imageUrl: String, dogName: String) {
