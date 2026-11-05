@@ -1,0 +1,39 @@
+name: iOS build
+
+on:
+  push:
+    branches: [ios-iphone]
+    paths:
+      - "iosApp/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    branches: [ios-iphone]
+    paths:
+      - "iosApp/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          xcode-select -p
+          xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: iosApp
+        run: xcodegen generate
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild \
+            -project iosApp/Pawly.xcodeproj \
+            -scheme Pawly \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            build
