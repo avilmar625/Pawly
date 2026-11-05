@@ -165,6 +165,19 @@ service cloud.firestore {
       }
     }
 
+    match /accountDeletionRequests/{requestId} {
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'requestedAt', 'status', 'source'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.requestedAt == request.time
+        && request.resource.data.status == 'pending'
+        && request.resource.data.source == 'android';
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || admin());
+      allow update, delete: if admin();
+    }
+
     match /reports/{reportId} {
       allow create: if verified()
         && request.resource.data.reporterId == request.auth.uid
