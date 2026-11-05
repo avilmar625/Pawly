@@ -1,7 +1,11 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
-    if (file("google-services.json").exists()) id("com.google.gms.google-services")
+}
+
+// Only apply Google Services after the developer adds the local Firebase config.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
