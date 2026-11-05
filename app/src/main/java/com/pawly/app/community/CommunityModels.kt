@@ -59,3 +59,5 @@ data class PawlyMessage(
     val text: String = "",
     val createdAt: Long = 0
 )
+
+data class PawlyBlockedUser(val uid: String, val displayName: String, val username: String)
