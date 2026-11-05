@@ -38,6 +38,7 @@ import com.pawly.app.care.model.PassportEntry
 @Composable
 internal fun PetCareHubScreen(
     petName: String,
+    storageScope: String? = null,
     medicineDone: Boolean,
     onMedicineToggle: (Boolean) -> Unit,
     dates: Map<String, String>,
@@ -193,7 +194,7 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
                     val cleanTitle = title.trim()
                     if (cleanTitle.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) {
                         entries = entries + PassportEntry(UUID.randomUUID().toString(), selectedType, cleanTitle.take(80), detail.trim().take(500), date.trim())
-                        PetCareLocalStore.saveEntries(context, petName, entries)
+                        PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
                         title = ""; detail = ""; date = LocalDate.now().toString(); selectedType = "Vacuna"; showAdd = false
                     }
                 }, enabled = title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text("Guardar") }
@@ -258,7 +259,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
                     }
                     TextButton(onClick = {
                         tasks = tasks.filterNot { it.id == task.id }
-                        PetCareLocalStore.saveTasks(context, petName, tasks)
+                        PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
                     }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar rutina") }
                 }
             }
