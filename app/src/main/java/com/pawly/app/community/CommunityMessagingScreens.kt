@@ -56,9 +56,10 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
                     FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label) })
                 }
             }
-            OutlinedTextField(text, { text = it }, label = { Text(if (category == "LOST" || category == "FOUND") "Dónde y cuándo ocurrió, señas y contacto seguro" else "¿Qué queréis contar?") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+            OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado del perro"; "ADOPTION" -> "Edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
             OutlinedTextField(dog, { dog = it }, label = { Text("Nombre del perro (opcional)") }, modifier = Modifier.fillMaxWidth())
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.AddAPhoto, null); Text(if (uri == null) "Añadir fotografía" else "Foto seleccionada") }
+            if (category != "STORY") Text("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado.", color = Muted, style = MaterialTheme.typography.bodySmall)
             if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         }
     }, confirmButton = {
