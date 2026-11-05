@@ -19,6 +19,20 @@ Pawly es una aplicación Android para organizar la vida cotidiana con perros: ru
 - **Diario:** recuerdos de texto persistentes, con recuento actualizado.
 - **Persistencia local:** perfil, tareas, favoritos y diario se conservan entre sesiones en el dispositivo; no hay sincronización ni cuenta.
 
+## Organización del código
+
+La aplicación se está reorganizando por responsabilidades para facilitar su mantenimiento y la incorporación futura de funciones sociales:
+
+- `MainActivity.kt`: punto de entrada Android.
+- `PawlyApp.kt`: estado de aplicación y navegación principal.
+- `ui/home`: pantalla de inicio y componentes visuales compartidos.
+- `ui/explore`: exploración, favoritos y ubicación.
+- `ui/health`: agenda de cuidados.
+- `ui/diary`: diario.
+- `ui/profile`: diálogos y edición de perfiles.
+
+Esta separación es un primer paso de refactorización; la lógica de estado y persistencia todavía está en la capa de presentación y será extraída a ViewModels y repositorios en una fase posterior.
+
 ## Tecnología
 
 - Kotlin y Android nativo.
