@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.util.UUID
 import com.pawly.app.care.data.PetCareLocalStore
+import com.pawly.app.care.data.FirebasePetCareRepository
+import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.model.PassportEntry
 
@@ -106,6 +108,36 @@ internal fun PetCareHubScreen(
 private fun PetPassportSection(petName: String, storageScope: String?) {
     val context = LocalContext.current
     var entries by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
+    val cloudRepository = remember(storageScope) {
+        if (storageScope != null) runCatching { FirebasePetCareRepository() }.getOrNull() else null
+    }
+    val coroutineScope = rememberCoroutineScope()
+    val petId = remember(petName) {
+        UUID.nameUUIDFromBytes("pawly-pet:${petName.trim().lowercase()}".toByteArray()).toString()
+    }
+    var syncMessage by remember(storageScope) {
+        mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
+    }
+    var cloudLoading by remember(storageScope) { mutableStateOf(storageScope != null) }
+    LaunchedEffect(cloudRepository, petId) {
+        val repo = cloudRepository ?: return@LaunchedEffect
+        cloudLoading = true
+        try {
+            val remoteEntries = repo.loadPassportEntries(petId)
+            if (remoteEntries.isEmpty() && entries.isNotEmpty()) {
+                entries.forEach { repo.savePassportEntry(petId, it) }
+                syncMessage = "Historial local sincronizado con tu cuenta"
+            } else {
+                entries = remoteEntries
+                PetCareLocalStore.saveEntries(context, petName, remoteEntries, storageScope)
+                syncMessage = "Sincronizado con tu cuenta"
+            }
+        } catch (error: Exception) {
+            syncMessage = "Sin conexión: se conserva la copia local"
+        } finally {
+            cloudLoading = false
+        }
+    }
     var showAdd by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("Vacuna") }
     var title by remember { mutableStateOf("") }
