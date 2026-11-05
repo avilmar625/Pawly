@@ -16,6 +16,22 @@ val localProperties = Properties().apply {
     if (propertiesFile.exists()) propertiesFile.inputStream().use { load(it) }
 }
 
+val releaseSigning = mapOf(
+    "storeFile" to localProperties.getProperty("RELEASE_STORE_FILE"),
+    "storePassword" to localProperties.getProperty("RELEASE_STORE_PASSWORD"),
+    "keyAlias" to localProperties.getProperty("RELEASE_KEY_ALIAS"),
+    "keyPassword" to localProperties.getProperty("RELEASE_KEY_PASSWORD")
+)
+val hasAnyReleaseSigningValue = releaseSigning.values.any { !it.isNullOrBlank() }
+val hasCompleteReleaseSigning = releaseSigning.values.all { !it.isNullOrBlank() }
+require(!hasAnyReleaseSigningValue || hasCompleteReleaseSigning) {
+    "La firma release está incompleta. Configura RELEASE_STORE_FILE, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS y RELEASE_KEY_PASSWORD en local.properties, o elimina los cuatro."
+}
+val releaseKeystore = releaseSigning["storeFile"]?.let { rootProject.file(it) }
+if (hasCompleteReleaseSigning) {
+    require(releaseKeystore?.isFile == true) { "No se encuentra el keystore release indicado en local.properties." }
+}
+
 fun buildConfigString(name: String): String {
     val value = localProperties.getProperty(name, "")
         .replace("\\", "\\\\")
@@ -40,6 +56,27 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasCompleteReleaseSigning) {
+                storeFile = releaseKeystore
+                storePassword = releaseSigning["storePassword"]
+                keyAlias = releaseSigning["keyAlias"]
+                keyPassword = releaseSigning["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            // CI remains unsigned. Local builds become signed when all four
+            // RELEASE_* values are supplied in the developer's local.properties.
+            if (hasCompleteReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
     }
 
     compileOptions {
