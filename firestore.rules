@@ -114,6 +114,7 @@ service cloud.firestore {
         && !blockedEitherWay(resource.data.participants[0] == request.auth.uid ? resource.data.participants[1] : resource.data.participants[0]);
       allow update: if signedIn()
         && request.auth.uid in resource.data.participants
+        && !blockedEitherWay(resource.data.participants[0] == request.auth.uid ? resource.data.participants[1] : resource.data.participants[0])
         && request.resource.data.participants == resource.data.participants
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'updatedAt']);
       allow delete: if false;
@@ -127,7 +128,8 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 2000
-          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+          && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
+          && !blockedEitherWay(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0] == request.auth.uid ? get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[1] : get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0]);
         allow update, delete: if false;
       }
     }
