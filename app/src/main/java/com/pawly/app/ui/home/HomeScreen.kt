@@ -53,7 +53,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 @Composable
-private fun HomeScreen(
+internal fun HomeScreen(
     dogName: String,
     walkDone: Boolean,
     medicineDone: Boolean,
@@ -157,7 +157,7 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun DogHeroCard(name: String, photo: Bitmap?, onEdit: () -> Unit) {
+internal fun DogHeroCard(name: String, photo: Bitmap?, onEdit: () -> Unit) {
     Box(
         Modifier.fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
@@ -191,14 +191,14 @@ private fun DogHeroCard(name: String, photo: Bitmap?, onEdit: () -> Unit) {
 }
 
 @Composable
-private fun HeroPill(text: String) {
+internal fun HeroPill(text: String) {
     Surface(color = Color.White.copy(alpha = 0.13f), shape = RoundedCornerShape(50)) {
         Text(text, color = Color.White, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp))
     }
 }
 
 @Composable
-private fun MetricCard(value: String, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
+internal fun MetricCard(value: String, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     Surface(modifier, shape = RoundedCornerShape(20.dp), color = Paper, shadowElevation = 1.dp) {
         Column(Modifier.padding(16.dp)) {
             Icon(icon, contentDescription = null, tint = ForestLight, modifier = Modifier.size(21.dp))
@@ -210,7 +210,7 @@ private fun MetricCard(value: String, label: String, icon: androidx.compose.ui.g
 }
 
 @Composable
-private fun SectionHeading(title: String, subtitle: String) {
+internal fun SectionHeading(title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge)
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Muted)
@@ -218,7 +218,7 @@ private fun SectionHeading(title: String, subtitle: String) {
 }
 
 @Composable
-private fun TaskRow(
+internal fun TaskRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
