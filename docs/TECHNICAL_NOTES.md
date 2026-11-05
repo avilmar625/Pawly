@@ -38,3 +38,15 @@ La comunidad (cuentas, seguimiento, publicaciones, comentarios y mensajería) de
 ## Configuración externa pendiente
 
 No se incluyen claves API ni secretos. Para mapas, autenticación o servicios externos habrá que configurar credenciales de forma segura y documentar su uso. Nunca subir claves privadas al repositorio.
+
+
+## Comunidad Firebase (cambios10)
+
+- `community/CommunityModels.kt`: modelos de usuario, perro, publicación, comentario, conversación y mensaje.
+- `community/FirebaseCommunityRepository.kt`: acceso a Firebase Authentication, Firestore y Storage.
+- `community/CommunityScreen.kt`: autenticación, muro, búsqueda, perfiles, chat, comentarios y denuncias.
+- `firestore.rules` y `storage.rules`: reglas de acceso; `firestore.indexes.json` declara el índice de búsqueda.
+- `firebase.json`: configuración de despliegue con Firebase CLI.
+
+La app no incluye credenciales Firebase. La comunidad se habilita al añadir `app/google-services.json` localmente. Las denuncias quedan en una cola Firestore reservada a administradores con custom claim; falta construir un panel de moderación y asignar administradores mediante un entorno de confianza.
+
