@@ -6,6 +6,16 @@ import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.pawly.app.care.CareReminderScheduler
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.io.File
 import java.util.Calendar
 import android.Manifest
@@ -57,13 +67,57 @@ internal fun HealthScreen(
     medicineDone: Boolean,
     onMedicineToggle: (Boolean) -> Unit,
     dates: Map<String, String>,
+    dogName: String,
     onDateChange: (String, String?) -> Unit
 ) {
     val context = LocalContext.current
+    var reminderFeedback by remember { mutableStateOf<String?>(null) }
+    var pendingReminder by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val pending = pendingReminder
+        pendingReminder = null
+        if (pending != null) {
+            val (careName, value) = pending
+            if (granted && CareReminderScheduler.schedule(context, dogName, careName, value)) {
+                onDateChange(careName, value)
+                reminderFeedback = "Aviso programado para ${formatCareDate(value)}."
+            } else {
+                onDateChange(careName, value)
+                reminderFeedback = "Fecha guardada. Activa las notificaciones de Pawly para recibir el aviso."
+            }
+        }
+    }
+
+    LaunchedEffect(dates, dogName) {
+        dates.forEach { (careName, value) ->
+            if (value.contains("|") &&
+                (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
+            ) CareReminderScheduler.schedule(context, dogName, careName, value)
+        }
+    }
+
     fun selectDate(key: String) {
         val today = Calendar.getInstance()
         DatePickerDialog(context, { _, year, month, day ->
-            onDateChange(key, "%04d-%02d-%02d".format(year, month + 1, day))
+            TimePickerDialog(context, { _, hour, minute ->
+                val value = "%04d-%02d-%02d|%02d:%02d".format(year, month + 1, day, hour, minute)
+                val trigger = runCatching {
+                    SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ROOT).parse(value.replace("|", " "))?.time
+                }.getOrNull()
+                if (trigger == null || trigger <= System.currentTimeMillis()) {
+                    reminderFeedback = "Elige una fecha y hora futuras."
+                } else if (Build.VERSION.SDK_INT >= 33 &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    pendingReminder = key to value
+                    notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else if (CareReminderScheduler.schedule(context, dogName, key, value)) {
+                    onDateChange(key, value)
+                    reminderFeedback = "Aviso programado para ${formatCareDate(value)}."
+                } else {
+                    reminderFeedback = "No se pudo programar el aviso. Inténtalo de nuevo."
+                }
+            }, 9, 0, true).show()
         }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
     }
     LazyColumn(
@@ -88,28 +142,33 @@ internal fun HealthScreen(
                 }
             }
         }
-        item { SectionHeading("Próximos cuidados", "Ejemplos de recordatorios · no son pautas veterinarias") }
-        item {
-            HealthItem(Icons.Filled.Vaccines, "Vacunación", "Fecha orientativa de tu próxima cita", dates["Vacunación"] ?: "Añadir fecha", { selectDate("Vacunación") }, { onDateChange("Vacunación", null) })
+        item { SectionHeading("Próximos cuidados", "Programa avisos locales para no olvidarte") }
+        if (reminderFeedback != null) item {
+            Surface(color = Color(0xFFE8EFE2), shape = RoundedCornerShape(14.dp)) {
+                Text(reminderFeedback!!, color = Forest, modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodySmall)
+            }
         }
         item {
-            HealthItem(Icons.Filled.BugReport, "Desparasitación", "Sigue la pauta indicada por tu veterinario", dates["Desparasitación"] ?: "Añadir fecha", { selectDate("Desparasitación") }, { onDateChange("Desparasitación", null) })
+            HealthItem(Icons.Filled.Vaccines, "Vacunación", "Fecha orientativa de tu próxima cita", dates["Vacunación"]?.let(::formatCareDate) ?: "Añadir aviso", { selectDate("Vacunación") }, { CareReminderScheduler.cancel(context, dogName, "Vacunación"); onDateChange("Vacunación", null); reminderFeedback = "Aviso de vacunación eliminado." })
         }
         item {
-            HealthItem(Icons.Filled.MedicalServices, "Próxima revisión", "Organiza una cita con vuestro veterinario", dates["Próxima revisión"] ?: "Añadir fecha", { selectDate("Próxima revisión") }, { onDateChange("Próxima revisión", null) })
+            HealthItem(Icons.Filled.BugReport, "Desparasitación", "Sigue la pauta indicada por tu veterinario", dates["Desparasitación"]?.let(::formatCareDate) ?: "Añadir aviso", { selectDate("Desparasitación") }, { CareReminderScheduler.cancel(context, dogName, "Desparasitación"); onDateChange("Desparasitación", null); reminderFeedback = "Aviso de desparasitación eliminado." })
+        }
+        item {
+            HealthItem(Icons.Filled.MedicalServices, "Próxima revisión", "Organiza una cita con vuestro veterinario", dates["Próxima revisión"]?.let(::formatCareDate) ?: "Añadir aviso", { selectDate("Próxima revisión") }, { CareReminderScheduler.cancel(context, dogName, "Próxima revisión"); onDateChange("Próxima revisión", null); reminderFeedback = "Aviso de revisión eliminado." })
         }
         item {
             TaskRow(
                 icon = Icons.Filled.Medication,
                 title = "Recordatorio diario",
-                subtitle = "Ejemplo interactivo · márcalo al completarlo",
+                subtitle = "Marca el cuidado cuando lo hayas completado",
                 checked = medicineDone,
                 onChecked = onMedicineToggle,
                 tint = Peach
             )
         }
         item {
-            Text("Importante: Pawly no sustituye al veterinario. Consulta siempre con un profesional para vacunas, medicación, dosis y tratamientos.", color = Muted, fontSize = 11.sp)
+            Text("Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional.", color = Muted, fontSize = 11.sp)
         }
     }
 }
@@ -132,4 +191,14 @@ internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, t
             }
         }
     }
+}
+
+
+private fun formatCareDate(value: String): String {
+    val parts = value.split("|")
+    val date = runCatching {
+        val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).parse(parts.first())
+        SimpleDateFormat("dd MMM yyyy", Locale("es", "ES")).format(parsed!!)
+    }.getOrDefault(parts.first())
+    return if (parts.size > 1) "$date · ${parts[1]}" else date
 }
