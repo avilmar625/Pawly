@@ -10,12 +10,12 @@ if (file("google-services.json").exists()) {
 
 android {
     namespace = "com.pawly.app"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.pawly.app"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
     }
