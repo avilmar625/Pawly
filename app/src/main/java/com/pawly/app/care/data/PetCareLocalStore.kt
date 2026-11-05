@@ -13,13 +13,13 @@ import org.json.JSONObject
  * records after updating. Room migration is a later step; keep this API stable.
  */
 internal object PetCareLocalStore {
-    private const val PREFERENCES = "pawly_local"
+    private fun preferences(context: Context, storageScope: String?) =\n        context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", Context.MODE_PRIVATE)
 
     private fun key(prefix: String, petName: String): String =
         "v16_${prefix}_${petName.trim().lowercase().replace(Regex("[^a-z0-9]"), "_")}"
 
-    fun loadEntries(context: Context, petName: String): List<PassportEntry> = runCatching {
-        val raw = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    fun loadEntries(context: Context, petName: String, storageScope: String? = null): List<PassportEntry> = runCatching {
+        val raw = preferences(context, storageScope)
             .getString(key("passport", petName), "[]") ?: "[]"
         val json = JSONArray(raw)
         List(json.length()) { index ->
@@ -34,7 +34,7 @@ internal object PetCareLocalStore {
         }
     }.getOrDefault(emptyList())
 
-    fun saveEntries(context: Context, petName: String, entries: List<PassportEntry>) {
+    fun saveEntries(context: Context, petName: String, entries: List<PassportEntry>, storageScope: String? = null) {
         val json = JSONArray()
         entries.forEach { entry ->
             json.put(
@@ -46,7 +46,7 @@ internal object PetCareLocalStore {
             .putString(key("passport", petName), json.toString()).apply()
     }
 
-    fun loadTasks(context: Context, petName: String): List<CareTask> = runCatching {
+    fun loadTasks(context: Context, petName: String, storageScope: String? = null): List<CareTask> = runCatching {
         val raw = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
             .getString(key("care", petName), "[]") ?: "[]"
         val json = JSONArray(raw)
@@ -62,7 +62,7 @@ internal object PetCareLocalStore {
         }
     }.getOrDefault(emptyList())
 
-    fun saveTasks(context: Context, petName: String, tasks: List<CareTask>) {
+    fun saveTasks(context: Context, petName: String, tasks: List<CareTask>, storageScope: String? = null) {
         val json = JSONArray()
         tasks.forEach { task ->
             json.put(
