@@ -10,9 +10,9 @@ import kotlinx.coroutines.tasks.await
  * Cloud persistence for private pet-care records.
  *
  * Records are isolated below users/{uid}; Firestore rules enforce ownership.
- * This repository deliberately does not migrate local SharedPreferences data
- * automatically. Migration must happen after the account owner is known and
- * after the UI can present/confirm the import to avoid cross-account leakage.
+ * The signed-in UI controls migration from account-scoped local preferences.
+ * Local data is imported only when the authenticated pet-care collection is
+ * empty, using a batch write to avoid partial imports.
  */
 class FirebasePetCareRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
