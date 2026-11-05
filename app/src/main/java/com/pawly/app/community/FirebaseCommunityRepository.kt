@@ -105,7 +105,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun uploadImage(uri: Uri, folder: String): String {
-        val uid = requireUid()
+        val uid = requireVerifiedUid()
         val ref = storage.reference.child("$folder/$uid/${System.currentTimeMillis()}.jpg")
         ref.putFile(uri).await()
         return ref.downloadUrl.await().toString()
@@ -224,7 +224,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun publishPost(text: String, imageUrl: String, dogName: String) {
-        val uid = requireUid()
+        val uid = requireVerifiedUid()
         val user = getMyProfile() ?: error("Completa primero tu perfil.")
         require(text.isNotBlank() || imageUrl.isNotBlank()) { "Añade un texto o una fotografía." }
         db.collection("posts").add(
@@ -244,7 +244,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun toggleLike(postId: String) {
-        val uid = requireUid()
+        val uid = requireVerifiedUid()
         val ref = db.collection("posts").document(postId)
         db.runTransaction { tx ->
             val doc = tx.get(ref)
@@ -265,7 +265,7 @@ class FirebaseCommunityRepository private constructor(
             }
 
     suspend fun addComment(postId: String, text: String) {
-        val uid = requireUid()
+        val uid = requireVerifiedUid()
         val clean = text.trim().take(1000)
         require(clean.isNotBlank()) { "Escribe un comentario." }
         val user = getMyProfile()
@@ -303,7 +303,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun follow(uid: String, follow: Boolean) {
-        val me = requireUid()
+        val me = requireVerifiedUid()
         require(uid != me) { "No puedes seguirte a ti mismo." }
         val following = db.collection("users").document(me).collection("following").document(uid)
         val followers = db.collection("users").document(uid).collection("followers").document(me)
@@ -368,7 +368,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun report(targetId: String, targetType: String, reason: String) {
-        val uid = requireUid()
+        val uid = requireVerifiedUid()
         db.collection("reports").add(mapOf(
             "reporterId" to uid, "targetId" to targetId, "targetType" to targetType,
             "reason" to reason.take(500), "status" to "open", "createdAt" to FieldValue.serverTimestamp()
@@ -376,7 +376,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun startConversation(otherUid: String): String {
-        val me = requireUid()
+        val me = requireVerifiedUid()
         require(otherUid != me) { "No puedes enviarte mensajes a ti mismo." }
         val ids = listOf(me, otherUid).sorted()
         val id = ids.joinToString("_")
@@ -437,7 +437,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun sendMessage(conversationId: String, text: String) {
-        val uid = requireUid()
+        val uid = requireVerifiedUid()
         val clean = text.trim().take(2000)
         require(clean.isNotBlank()) { "Escribe un mensaje." }
         val ref = db.collection("conversations").document(conversationId)
@@ -448,6 +448,12 @@ class FirebaseCommunityRepository private constructor(
     }
 
     private fun requireUid(): String = currentUid ?: error("Inicia sesión para utilizar la comunidad.")
+
+    private fun requireVerifiedUid(): String {
+        val user = auth.currentUser ?: error("Inicia sesión para utilizar la comunidad.")
+        check(user.isEmailVerified) { "Verifica tu correo electrónico para publicar, seguir, comentar y enviar mensajes." }
+        return user.uid
+    }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toPawlyUser(): PawlyUser? {
         if (!exists()) return null
