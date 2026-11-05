@@ -53,7 +53,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 @Composable
-private fun DiaryScreen(
+internal fun DiaryScreen(
     dogName: String,
     entries: List<String>,
     onEntriesChange: (List<String>) -> Unit
