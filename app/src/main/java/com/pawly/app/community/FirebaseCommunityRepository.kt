@@ -147,6 +147,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun updateProfile(displayName: String, bio: String, isPublic: Boolean) {
+        require(displayName.trim().isNotBlank()) { "El nombre público no puede estar vacío." }
         val uid = requireUid()
         db.collection("users").document(uid).update(
             mapOf("displayName" to displayName.trim().take(50), "bio" to bio.trim().take(240), "isPublic" to isPublic)
@@ -167,22 +168,38 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun saveDog(dog: PawlyDog) {
         val uid = requireUid()
+        val cleanName = dog.name.trim()
+        require(cleanName.isNotBlank()) { "El perro necesita un nombre." }
+        require(cleanName.length <= 40) { "El nombre no puede superar los 40 caracteres." }
         val ref = db.collection("users").document(uid)
-        val snapshot = ref.get().await()
-        val current = (snapshot.get("dogProfiles") as? List<Map<String, Any>>).orEmpty().toMutableList()
-        val map = mapOf(
-            "id" to dog.id.ifBlank { java.util.UUID.randomUUID().toString() },
-            "name" to dog.name.trim().take(40),
+        val id = dog.id.ifBlank { java.util.UUID.randomUUID().toString() }
+        val dogData = mapOf(
+            "id" to id,
+            "name" to cleanName,
             "breed" to dog.breed.trim().take(60),
             "age" to dog.age.trim().take(30),
             "description" to dog.description.trim().take(240),
-            "traits" to dog.traits.take(8),
+            "traits" to dog.traits.map { it.trim() }.filter { it.isNotBlank() }.distinct().take(8),
             "photoUrl" to dog.photoUrl
         )
-        val id = map["id"]
-        val index = current.indexOfFirst { it["id"] == id }
-        if (index >= 0) current[index] = map else current.add(map)
-        ref.update("dogProfiles", current).await()
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(ref)
+            val current = (snapshot.get("dogProfiles") as? List<Map<String, Any>>).orEmpty().toMutableList()
+            val index = current.indexOfFirst { it["id"] == id }
+            if (index >= 0) current[index] = dogData else current.add(dogData)
+            transaction.update(ref, "dogProfiles", current)
+        }.await()
+    }
+
+    suspend fun deleteDog(dogId: String) {
+        require(dogId.isNotBlank()) { "No se ha indicado qué perro eliminar." }
+        val ref = db.collection("users").document(requireUid())
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(ref)
+            val current = (snapshot.get("dogProfiles") as? List<Map<String, Any>>).orEmpty()
+            check(current.any { it["id"] == dogId }) { "No se ha encontrado ese perfil de perro." }
+            transaction.update(ref, "dogProfiles", current.filterNot { it["id"] == dogId })
+        }.await()
     }
 
     suspend fun getMyProfile(): PawlyUser? {
