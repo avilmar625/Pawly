@@ -14,3 +14,11 @@ local.properties
 
 # Firebase project config in the repository root (keep local)
 /google-services.json
+
+# iOS local Firebase configuration and Xcode-generated files
+iosApp/GoogleService-Info.plist
+iosApp/Pawly/GoogleService-Info.plist
+iosApp/*.xcodeproj/
+iosApp/DerivedData/
+*.xcuserstate
+xcuserdata/
