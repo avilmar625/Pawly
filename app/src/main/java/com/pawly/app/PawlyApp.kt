@@ -83,7 +83,7 @@ internal fun PawlyApp() {
     }
 
     if (signedIn) {
-        PawlyMainApp()
+        PawlyMainApp(storageScope = repository.currentUid)
     } else {
         CommunityAuthPanel(
             repo = repository,
