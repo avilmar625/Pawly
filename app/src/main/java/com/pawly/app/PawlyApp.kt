@@ -181,6 +181,7 @@ internal fun PawlyApp() {
                 )
                 Tab.LEARN -> LearningHubScreen()
                 Tab.HEALTH -> HealthScreen(
+                    dogName = dogName,
                     medicineDone = medicineDone,
                     onMedicineToggle = { medicineDone = it },
                     dates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { (key, _) -> key.removePrefix("$dogName|") },
