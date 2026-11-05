@@ -112,5 +112,5 @@ El plugin Google Services solo se aplica cuando existe app/google-services.json.
 - Las imágenes se cargan con un preset unsigned de Cloudinary. El preset no es un secreto fuerte; configura límites estrictos de formato/tamaño y controla el consumo.
 - No se almacena el API Secret de Cloudinary en el cliente.
 - El plan gratuito de Firestore tiene cuotas y límites; revisa el uso en Firebase Console.
-- Antes de producción, añade App Check, protección antiabuso, términos y política de privacidad, proceso de eliminación/exportación de cuenta y pruebas de reglas con Firebase Emulator Suite.
+- Antes de producción, añade App Check, protección antiabuso, términos y política de privacidad, proceso de eliminación/exportación de cuenta y pruebas de reglas con Firebase Emulator Suite. En cambios15 se registran solicitudes de eliminación en `accountDeletionRequests`, pero todavía no se ejecuta el borrado completo. Consulta `docs/ACCOUNT_DELETION_OPERATIONS.md`; no publiques hasta completar el proceso en un backend de confianza y el recurso web externo.
 - El panel de moderación requiere el custom claim admin: true, que solo debe asignarse desde un entorno de confianza mediante Firebase Admin SDK.
