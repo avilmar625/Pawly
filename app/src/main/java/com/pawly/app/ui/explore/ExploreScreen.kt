@@ -235,7 +235,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
 }
 
 @Composable
-internal fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
+private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
     Surface(shape = RoundedCornerShape(22.dp), color = Paper, shadowElevation = 1.dp) {
         Column {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
