@@ -52,7 +52,8 @@ import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
-internal fun DiaryScreen(
+@Composable
+private fun DiaryScreen(
     dogName: String,
     entries: List<String>,
     onEntriesChange: (List<String>) -> Unit
@@ -127,5 +128,3 @@ internal fun DiaryScreen(
         }
     }
 }
-
-@Composable
