@@ -256,6 +256,36 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
 private fun PetCarePlanSection(petName: String, storageScope: String?) {
     val context = LocalContext.current
     var tasks by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
+    val cloudRepository = remember(storageScope) {
+        if (storageScope != null) runCatching { FirebasePetCareRepository() }.getOrNull() else null
+    }
+    val coroutineScope = rememberCoroutineScope()
+    val petId = remember(petName) {
+        UUID.nameUUIDFromBytes("pawly-pet:${petName.trim().lowercase()}".toByteArray()).toString()
+    }
+    var syncMessage by remember(storageScope) {
+        mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
+    }
+    var cloudLoading by remember(storageScope) { mutableStateOf(storageScope != null) }
+    LaunchedEffect(cloudRepository, petId) {
+        val repo = cloudRepository ?: return@LaunchedEffect
+        cloudLoading = true
+        try {
+            val remoteTasks = repo.loadCareTasks(petId)
+            if (remoteTasks.isEmpty() && tasks.isNotEmpty()) {
+                tasks.forEach { repo.saveCareTask(petId, it) }
+                syncMessage = "Rutinas locales sincronizadas con tu cuenta"
+            } else {
+                tasks = remoteTasks
+                PetCareLocalStore.saveTasks(context, petName, remoteTasks, storageScope)
+                syncMessage = "Sincronizado con tu cuenta"
+            }
+        } catch (error: Exception) {
+            syncMessage = "Sin conexión: se conserva la copia local"
+        } finally {
+            cloudLoading = false
+        }
+    }
     var showAdd by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("") }
     var responsible by remember { mutableStateOf("") }
