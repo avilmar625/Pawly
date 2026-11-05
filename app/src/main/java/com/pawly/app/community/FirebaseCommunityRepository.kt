@@ -330,14 +330,31 @@ class FirebaseCommunityRepository private constructor(
         val myProfile = db.collection("users").document(me)
         val theirProfile = db.collection("users").document(uid)
         val blocked = db.collection("users").document(me).collection("blocked").document(uid)
+        val blockedProfile = runCatching { getUser(uid) }.getOrNull()
         db.runTransaction { tx ->
             val iFollow = tx.get(myFollowing).exists()
             val theyFollow = tx.get(theirFollowing).exists()
-            tx.set(blocked, mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp()))
+            tx.set(blocked, mapOf("uid" to uid, "username" to (blockedProfile?.username ?: ""), "displayName" to (blockedProfile?.displayName ?: "Usuario"), "createdAt" to FieldValue.serverTimestamp()))
             tx.delete(myFollowing); tx.delete(theirFollowing); tx.delete(myFollower); tx.delete(theirFollower)
             if (iFollow) { tx.update(myProfile, "followingCount", FieldValue.increment(-1)); tx.update(theirProfile, "followersCount", FieldValue.increment(-1)) }
             if (theyFollow) { tx.update(theirProfile, "followingCount", FieldValue.increment(-1)); tx.update(myProfile, "followersCount", FieldValue.increment(-1)) }
         }.await()
+    }
+
+    suspend fun unblock(uid: String) {
+        val me = requireUid()
+        db.collection("users").document(me).collection("blocked").document(uid).delete().await()
+    }
+
+    fun listenBlockedUsers(onData: (List<PawlyBlockedUser>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
+        val uid = requireUid()
+        return db.collection("users").document(uid).collection("blocked")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudo cargar la lista de bloqueos."); return@addSnapshotListener }
+                onData(snapshot?.documents.orEmpty().map { doc ->
+                    PawlyBlockedUser(doc.id, doc.getString("displayName") ?: "Usuario", doc.getString("username") ?: "")
+                })
+            }
     }
 
     suspend fun report(targetId: String, targetType: String, reason: String) {
