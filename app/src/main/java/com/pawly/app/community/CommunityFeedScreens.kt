@@ -1,0 +1,111 @@
+package com.pawly.app
+
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.net.Uri
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+@Composable
+internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error: String?, onCreate: () -> Unit, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
+    var followingOnly by remember { mutableStateOf(false) }
+    val visiblePosts = if (followingOnly) posts.filter { it.authorId in followingIds } else posts
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+        item {
+            Surface(onClick = onCreate, color = Forest, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AddAPhoto, null, tint = Lime)
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("¿Qué aventura habéis vivido?", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Comparte una foto o una historia", color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Icon(Icons.Default.ArrowForward, null, tint = Color.White)
+                }
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text("Todos") })
+                FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text("Siguiendo") })
+            }
+        }
+        if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
+        if (visiblePosts.isEmpty() && error == null) item {
+            EmptyCommunityCard(if (followingOnly) "Aún no hay novedades" else "Todavía no hay publicaciones", if (followingOnly) "Sigue a otras personas para ver aquí sus aventuras." else "Sé de las primeras personas en compartir una aventura.")
+        }
+        items(visiblePosts, key = { it.id }) { post ->
+            PostCard(post, onComments, onOpenUser, onLike, onReport, onBlock)
+        }
+    }
+}
+
+
+@Composable
+internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    Surface(color = Paper, shape = RoundedCornerShape(21.dp), shadowElevation = 1.dp) {
+        Column {
+            Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                Avatar(post.authorPhoto, post.authorName)
+                Spacer(Modifier.width(9.dp))
+                Column(Modifier.weight(1f).clickable { onOpenUser(post.authorId) }) {
+                    Text(post.authorName, color = Ink, fontWeight = FontWeight.Bold)
+                    Text(if (post.dogName.isBlank()) "Una historia Pawly" else "Con " + post.dogName, color = Muted, style = MaterialTheme.typography.labelSmall)
+                }
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Más opciones", tint = Muted) }
+                    DropdownMenu(menu, { menu = false }) {
+                        DropdownMenuItem(text = { Text("Denunciar publicación") }, onClick = { menu = false; onReport(post.id to "post") })
+                        DropdownMenuItem(text = { Text("Bloquear usuario") }, onClick = { menu = false; onBlock(post.authorId) })
+                    }
+                }
+            }
+            if (post.text.isNotBlank()) Text(post.text, color = Ink, modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp))
+            if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación", Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 340.dp))
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { onLike(post) }) {
+                    Icon(if (post.likedByMe) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null, tint = if (post.likedByMe) Color(0xFFC65B55) else Forest)
+                    Text(" " + post.likeCount, color = Ink)
+                }
+                TextButton(onClick = { onComments(post) }) {
+                    Icon(Icons.Default.ChatBubbleOutline, null, tint = Forest)
+                    Text(" " + post.commentCount + " comentarios", color = Ink)
+                }
+            }
+        }
+    }
+}
+
