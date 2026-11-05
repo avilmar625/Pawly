@@ -2,7 +2,7 @@ name: Android build
 
 on:
   push:
-    branches: ["main", "cambios1", "cambios9", "cambios10", "cambios11", "cambios12", "cambios13", "cambios14", "cambios15", "cambios16", "cambios17", "cambios18"]
+    branches: ["main", "cambios1", "cambios9", "cambios10", "cambios11", "cambios12", "cambios13", "cambios14", "cambios15", "cambios16", "cambios17", "cambios18", "cambios19"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
