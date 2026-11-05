@@ -1,85 +1,107 @@
-# Conectar Firebase a Pawly
+# Conectar Firebase y Cloudinary a Pawly
 
-La rama `cambios10` incorpora una comunidad real basada en Firebase. Sin la configuración de un proyecto Firebase, la aplicación conserva sus funciones locales y muestra una pantalla que explica que la comunidad aún no está conectada.
+La rama cambios11 utiliza **Firebase Authentication + Cloud Firestore** para las cuentas y los datos sociales, y **Cloudinary** para las fotografías. No utiliza Firebase Storage ni requiere activar el plan Blaze.
 
-## 1. Crear el proyecto
+## 1. Firebase Android
 
-1. Abre la [consola de Firebase](https://console.firebase.google.com/).
-2. Crea un proyecto nuevo (por ejemplo, `pawly-production`).
-3. Añade una aplicación Android con el identificador exacto: `com.pawly.app`.
-4. Descarga `google-services.json` y colócalo en `app/google-services.json`.
+La aplicación Android está registrada con el identificador exacto:
 
-El archivo está incluido en `.gitignore`: no lo subas al repositorio público. El identificador de aplicación que contiene no es una contraseña, pero mantener la configuración fuera de Git evita filtrar detalles de entornos y facilita separar desarrollo y producción.
+~~~
+com.pawly.app
+~~~
 
-## 2. Activar autenticación
+Descarga el archivo actualizado google-services.json desde la configuración de esa aplicación y guárdalo localmente en:
 
-En Firebase Console → Authentication → Sign-in method, activa **Email/Password**. No actives proveedores que la aplicación todavía no implementa.
+~~~
+Pawly/app/google-services.json
+~~~
 
-## 3. Crear Firestore
+No lo subas a GitHub. El repositorio ignora tanto google-services.json en la raíz como app/google-services.json.
 
-En Firestore Database, crea la base de datos en modo producción. Desde la raíz del repositorio, con Firebase CLI instalado y autenticado, despliega reglas e índices:
+## 2. Authentication: correo y Google
 
-```bash
+En Firebase Console → Authentication → Sign-in method:
+
+- Mantén activado **Email/Password**.
+- Activa **Google** y guarda los cambios.
+- Añade el correo de asistencia del proyecto si Firebase lo solicita.
+
+Después de activar Google:
+
+1. En Configuración del proyecto → General → Tus aplicaciones → aplicación Android, añade la huella **SHA-1** de la clave con la que ejecutas Pawly. Para obtener las huellas locales, ejecuta ./gradlew signingReport en la raíz del proyecto (en Windows: gradlew.bat signingReport).
+2. Descarga otra vez google-services.json. El archivo debe incluir la información OAuth de Google; si se descargó antes de activar el proveedor, puede no contener el cliente web que Credential Manager necesita.
+3. Sustituye el archivo local app/google-services.json por el nuevo y sincroniza Gradle.
+
+La app usa Android Credential Manager y el ID de cliente web generado por Google Services. No introduzcas manualmente un API secret ni un OAuth client secret en el código.
+
+## 3. Firestore (plan gratuito)
+
+Crea Firestore Database en modo producción. Elige una región europea y despliega únicamente reglas e índices:
+
+~~~bash
 firebase deploy --only firestore:rules,firestore:indexes
-```
+~~~
 
-Los ficheros de configuración son `firestore.rules` y `firestore.indexes.json`.
+No es necesario crear Firebase Storage ni desplegar reglas de Storage. La aplicación no incorpora el SDK de Firebase Storage.
 
-## 4. Activar Storage
+## 4. Cloudinary para fotografías (plan gratuito)
 
-En Firebase Console → Storage, crea el bucket y después despliega las reglas:
+Crea una cuenta en https://cloudinary.com/users/register/free y localiza el **Cloud name** en el Dashboard.
 
-```bash
-firebase deploy --only storage
-```
+En Cloudinary Console → Settings → Upload → Upload presets:
 
-Las imágenes están limitadas por las reglas a archivos de imagen de menos de 10 MB y a rutas asociadas al UID del usuario autenticado. Comprueba el plan y los precios vigentes de Firebase Storage en tu proyecto antes de distribuir la app; configura alertas de presupuesto y cuotas.
+1. Crea un preset nuevo.
+2. Selecciona **Unsigned** como signing mode.
+3. Restringe los formatos a JPG, PNG y WebP.
+4. Establece un tamaño máximo razonable (por ejemplo, 5 MB) y, si está disponible, limita transformaciones y carpetas.
+5. Guarda el nombre del preset.
+
+La app comprime las imágenes antes de enviarlas y hace una carga unsigned al endpoint de imágenes. **No añadas el API Secret de Cloudinary a Android**: solo se usan el Cloud name y el nombre del preset unsigned. Ten en cuenta que el preset unsigned puede ser usado por terceros que lo conozcan; limita el preset y revisa el consumo y los límites de tu plan.
+
+Añade estas dos líneas a tu archivo local local.properties (en la raíz del proyecto, junto a settings.gradle.kts):
+
+~~~properties
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
+CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned
+~~~
+
+No las pongas en gradle.properties ni subas local.properties a Git. Sin estos valores, el resto de la comunidad funciona, pero la subida de fotos mostrará un mensaje de configuración.
 
 ## 5. Compilar
 
-Con el archivo de configuración en `app/google-services.json`, abre el proyecto en Android Studio y sincroniza Gradle. El plugin Google Services se aplica automáticamente solo cuando ese archivo existe.
+Con app/google-services.json en su ubicación local y las propiedades Cloudinary configuradas:
 
-```bash
+~~~bash
 ./gradlew testDebugUnitTest
 ./gradlew assembleDebug
-```
+~~~
 
-Para CI, no es necesario subir el archivo al repositorio: el workflow compila el código con Firebase SDK incluido, y la pantalla de comunidad indica que falta conectar Firebase. Para probar funciones sociales en CI haría falta un entorno de pruebas Firebase y secretos gestionados en GitHub Actions.
+En Windows:
 
-## Funciones sociales incluidas
+~~~bat
+gradlew.bat testDebugUnitTest
+gradlew.bat assembleDebug
+~~~
+
+El plugin Google Services solo se aplica cuando existe app/google-services.json. El código puede compilar en CI sin ese archivo; el acceso con Google necesita el archivo actualizado y las huellas OAuth correctas en Firebase.
+
+## Funciones sociales
 
 - Registro e inicio de sesión con correo y contraseña.
-- Reserva transaccional de nombres de usuario únicos.
-- Perfil público con nombre, biografía, privacidad y foto.
-- Perfiles de perros con nombre, raza, edad, descripción, características y foto.
-- Búsqueda de usuarios, seguir y dejar de seguir.
-- Muro en tiempo real con publicaciones de texto/foto, likes y comentarios.
-- Bandeja de conversaciones y mensajería en tiempo real.
-- Bloqueo de cuentas y filtrado de sus publicaciones en el muro propio.
-- Denuncias de perfiles y publicaciones enviadas a la colección `reports`.
+- Inicio de sesión y registro con Google mediante Credential Manager.
+- Creación automática de perfil Pawly y nombre de usuario al entrar por primera vez con Google.
+- Perfiles públicos y perfiles de perros.
+- Seguir y dejar de seguir cuentas.
+- Publicaciones, likes y comentarios.
+- Mensajería en tiempo real.
+- Bloqueos, denuncias y herramientas de moderación.
+- Fotografías de perfil, perros y publicaciones alojadas en Cloudinary; sus URLs se guardan en Firestore.
 
-## Moderación y puesta en producción
+## Seguridad y límites
 
-Las denuncias se almacenan en Firestore y solo pueden leerse/gestionarse desde clientes con el custom claim `admin: true`. La app incluye una pestaña **Moderar** visible únicamente para administradores: permite revisar avisos, retirar publicaciones denunciadas y restringir perfiles. La asignación del custom claim debe hacerse desde un entorno de confianza usando Firebase Admin SDK; nunca desde el cliente Android. Ejemplo Node.js (ejecutado en un servidor o máquina segura, no en la app):
-
-```javascript
-const { getAuth } = require('firebase-admin/auth');
-await getAuth().setCustomUserClaims('FIREBASE_UID_DEL_MODERADOR', { admin: true });
-```
-
-Después, el administrador debe cerrar y volver a iniciar sesión para renovar el token. El panel permite revisar denuncias, retirar publicaciones y restringir perfiles; la gestión de suspensiones de cuentas y apelaciones debe formar parte del proceso operativo.
-
-Antes de abrir el registro al público:
-- La app envía verificación de correo al registrarse y ofrece recuperación de contraseña. Antes de producción, comprueba plantillas, entregabilidad y límites de correo.
-- Añade App Check y protección contra abuso/rate limiting.
-- Prepara un proceso humano de revisión de denuncias y respuesta a incidentes.
-- Define términos de uso, política de privacidad, edad mínima y proceso de eliminación/exportación de cuenta.
-- Prueba las reglas con Firebase Emulator Suite y casos de acceso cruzado entre usuarios.
-- Revisa el coste de Firestore/Storage, límites, cuotas y alertas.
-- No publiques el APK como producto final hasta completar estas tareas.
-
-## Alcance de privacidad actual
-
-El ajuste de perfil público controla la aparición en búsquedas y el acceso al perfil público. Las cuentas no verificadas pueden explorar, pero no publicar, seguir, comentar, enviar mensajes ni subir fotografías. El muro y los comentarios son visibles para usuarios autenticados de Pawly. Las publicaciones no deben incluir direcciones, datos de contacto privados ni información veterinaria sensible. El bloqueo filtra el contenido del usuario bloqueado en el muro propio y evita iniciar/continuar relaciones y conversaciones entre ambas cuentas.
-
-El cliente Android no es una frontera de seguridad: las reglas de Firestore y Storage son la autoridad. Revísalas y pruébalas antes de producción.
+- Firebase Authentication y las reglas de Firestore siguen siendo la autoridad para las operaciones sociales.
+- Las imágenes se cargan con un preset unsigned de Cloudinary. El preset no es un secreto fuerte; configura límites estrictos de formato/tamaño y controla el consumo.
+- No se almacena el API Secret de Cloudinary en el cliente.
+- El plan gratuito de Firestore tiene cuotas y límites; revisa el uso en Firebase Console.
+- Antes de producción, añade App Check, protección antiabuso, términos y política de privacidad, proceso de eliminación/exportación de cuenta y pruebas de reglas con Firebase Emulator Suite.
+- El panel de moderación requiere el custom claim admin: true, que solo debe asignarse desde un entorno de confianza mediante Firebase Admin SDK.
