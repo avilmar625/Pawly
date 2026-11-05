@@ -47,7 +47,9 @@ internal fun CommunityScreen() {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
-        FirebaseSetupPanel()
+        CommunityAuthPanel(null) {
+            // Firebase is not configured on this installation yet.
+        }
         return
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
@@ -77,7 +79,7 @@ private fun FirebaseSetupPanel() {
 }
 
 @Composable
-private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticated: () -> Unit) {
+private fun CommunityAuthPanel(repo: FirebaseCommunityRepository?, onAuthenticated: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val credentialManager = remember(context) { CredentialManager.create(context) }
@@ -106,8 +108,13 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticate
             busy = true; error = null
             scope.launch {
                 try {
-                    if (register) repo.register(email, password, username) else repo.signIn(email, password)
-                    onAuthenticated()
+                    val configuredRepo = repo
+                    if (configuredRepo == null) {
+                        error = "La pantalla está disponible, pero para iniciar sesión o crear una cuenta debes configurar Firebase en esta instalación. Añade app/google-services.json y activa Authentication y Firestore."
+                    } else {
+                        if (register) configuredRepo.register(email, password, username) else configuredRepo.signIn(email, password)
+                        onAuthenticated()
+                    }
                 } catch (e: Exception) { error = e.localizedMessage ?: "No se pudo completar la operación." }
                 finally { busy = false }
             }
@@ -139,8 +146,13 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticate
                                     error = "No se ha recibido una credencial de Google válida."
                                 } else {
                                     val googleToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
-                                    repo.signInWithGoogle(googleToken)
-                                    onAuthenticated()
+                                    val configuredRepo = repo
+                                    if (configuredRepo == null) {
+                                        error = "Configura Firebase en esta instalación para poder acceder con Google."
+                                    } else {
+                                        configuredRepo.signInWithGoogle(googleToken)
+                                        onAuthenticated()
+                                    }
                                 }
                             } catch (e: Exception) {
                                 error = e.localizedMessage ?: "No se pudo iniciar sesión con Google."
@@ -162,7 +174,11 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticate
         if (!register) TextButton(onClick = {
             error = null; status = null
             scope.launch {
-                runCatching { repo.sendPasswordReset(email); status = "Te hemos enviado un enlace para restablecer la contraseña." }
+                runCatching {
+                    val configuredRepo = repo ?: error("Configura Firebase en esta instalación para recuperar la contraseña.")
+                    configuredRepo.sendPasswordReset(email)
+                    status = "Te hemos enviado un enlace para restablecer la contraseña."
+                }
                     .onFailure { error = it.localizedMessage }
             }
         }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("He olvidado mi contraseña", color = Forest) }
