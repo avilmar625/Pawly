@@ -52,7 +52,8 @@ import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
-internal fun ProfileDialog(
+@Composable
+private fun ProfileDialog(
     name: String,
     onNameChange: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -97,7 +98,7 @@ internal fun ProfileDialog(
 }
 
 @Composable
-internal fun AboutDialog(onDismiss: () -> Unit) {
+private fun AboutDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Paper,
