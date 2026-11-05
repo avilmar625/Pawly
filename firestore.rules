@@ -34,7 +34,10 @@ service cloud.firestore {
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.username == resource.data.username
         && request.resource.data.usernameLower == resource.data.usernameLower
+        && (!('moderationStatus' in resource.data) || resource.data.moderationStatus != 'restricted' || request.resource.data.isPublic == false)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles']))
+        || admin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPublic', 'moderationStatus'])
         || verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount'])
         && (
