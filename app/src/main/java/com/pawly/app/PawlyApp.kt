@@ -52,12 +52,12 @@ import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
-internal enum class Tab(val label: String) {
+private enum class Tab(val label: String) {
     HOME("Inicio"), EXPLORE("Explorar"), HEALTH("Salud"), DIARY("Diario")
 }
 
 @Composable
-internal fun PawlyApp() {
+private fun PawlyApp() {
     val context = LocalContext.current
     val preferences = remember(context) { context.getSharedPreferences("pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
@@ -228,5 +228,3 @@ internal fun PawlyApp() {
         )
     }
 }
-
-@Composable
