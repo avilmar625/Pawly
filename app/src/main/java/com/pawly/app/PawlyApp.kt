@@ -167,6 +167,7 @@ internal fun PawlyApp() {
                     onWalkToggle = { walkDone = it },
                     onMedicineToggle = { medicineDone = it },
                     onExplore = { selected = Tab.EXPLORE },
+                    onLearn = { selected = Tab.LEARN },
                     onAbout = { showAbout = true },
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
                     diaryCount = diaryEntries.size,
