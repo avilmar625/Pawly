@@ -62,7 +62,7 @@ private data class Place(
 )
 
 @Composable
-internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit) {
+private fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit) {
     val context = LocalContext.current
     var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var currentAddress by remember { mutableStateOf<String?>(null) }
@@ -235,7 +235,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
 }
 
 @Composable
-internal fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
+private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
     Surface(shape = RoundedCornerShape(22.dp), color = Paper, shadowElevation = 1.dp) {
         Column {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -257,5 +257,3 @@ internal fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
         }
     }
 }
-
-@Composable
