@@ -30,10 +30,11 @@ service cloud.firestore {
         && request.resource.data.username is string
         && request.resource.data.usernameLower is string
         && get(/databases/$(database)/documents/usernames/$(request.resource.data.usernameLower)).data.uid == uid;
-      allow update: if owner(uid)
+      allow update: if (owner(uid)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.username == resource.data.username
         && request.resource.data.usernameLower == resource.data.usernameLower
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles']))
         || verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount'])
         && (
@@ -83,18 +84,19 @@ service cloud.firestore {
         && request.resource.data.imageUrl is string;
       allow update: if signedIn()
         && (
-          (resource.data.authorId == request.auth.uid)
-          ||
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'likeCount'])
             && verified()
             && !blockedEitherWay(resource.data.authorId)
             && request.resource.data.likedBy is list
             && request.resource.data.likeCount == request.resource.data.likedBy.size())
           ||
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'lastCommentId'])
             && verified()
             && !blockedEitherWay(resource.data.authorId)
-            && request.resource.data.commentCount == resource.data.commentCount + 1)
+            && request.resource.data.commentCount == resource.data.commentCount + 1
+            && request.resource.data.lastCommentId is string
+            && existsAfter(/databases/$(database)/documents/posts/$(postId)/comments/$(request.resource.data.lastCommentId))
+            && getAfter(/databases/$(database)/documents/posts/$(postId)/comments/$(request.resource.data.lastCommentId)).data.authorId == request.auth.uid)
         );
       allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
 
@@ -106,7 +108,7 @@ service cloud.firestore {
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 1000
           && !blockedEitherWay(get(/databases/$(database)/documents/posts/$(postId)).data.authorId);
-        allow update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
+        allow update, delete: if false;
       }
     }
 
