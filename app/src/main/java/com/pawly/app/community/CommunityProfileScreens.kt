@@ -230,7 +230,7 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
             busy = true
             scope.launch {
                 try {
-                    if (uri != null) photoUrl = repo.uploadImage(uri!!, "dog-photos")
+                    if (uri != null) photoUrl = repo.uploadImage(uri!!, "pet-photos")
                     repo.saveDog(PawlyDog(id = existing?.id ?: "", name = name, breed = breed, age = age, description = description, traits = traits.split(",").map { it.trim() }.filter { it.isNotBlank() }, photoUrl = photoUrl, species = species))
                     onSaved()
                 } catch (e: Exception) { error = e.localizedMessage ?: "No se pudo guardar." }
