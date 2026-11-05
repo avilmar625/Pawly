@@ -165,3 +165,9 @@ Las cuentas creadas con correo reciben un enlace de verificación. Hasta verific
 ## Rediseño visual (cambios18)
 
 La rama `cambios18` introduce un rediseño más marcado de Inicio y de la navegación inferior: mascota protagonista, resumen de rutinas y recuerdos, progreso diario, tarjetas de acciones y barra flotante de seis destinos. Mantiene los estados y funciones de cambios17. Consulta [docs/CHANGES18.md](docs/CHANGES18.md) para el alcance y las pruebas recomendadas. Las pantallas interiores se irán unificando visualmente en iteraciones posteriores.
+
+
+## Últimos cambios de desarrollo
+
+- [cambios20: sincronización del pasaporte sanitario y rutinas con Firestore](docs/CHANGES20.md).
+- [Configuración de Firebase](docs/FIREBASE_SETUP.md).
