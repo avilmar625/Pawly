@@ -137,6 +137,10 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun requestAccountDeletion() {
         val uid = requireUid()
+        val pendingRequests = db.collection("accountDeletionRequests")
+            .whereEqualTo("uid", uid)
+            .get().await().documents
+        if (pendingRequests.any { it.getString("status") == "pending" }) return
         db.collection("accountDeletionRequests").add(
             mapOf(
                 "uid" to uid,
