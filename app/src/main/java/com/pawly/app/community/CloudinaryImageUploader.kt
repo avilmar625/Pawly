@@ -62,8 +62,9 @@ internal class CloudinaryImageUploader(private val context: Context) {
     private fun compressJpeg(uri: Uri): ByteArray {
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        val boundsStream = resolver.openInputStream(uri)
             ?: error("No se ha podido leer la fotografía seleccionada.")
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
         require(bounds.outWidth > 0 && bounds.outHeight > 0) { "El archivo seleccionado no es una imagen válida." }
 
         var sampleSize = 1
