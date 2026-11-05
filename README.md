@@ -92,6 +92,20 @@ gradlew.bat assembleDebug
 
 El APK de depuración se genera en `app/build/outputs/apk/debug/app-debug.apk`.
 
+## Pasaporte y organización de cuidados (cambios16)
+
+La pestaña **Salud** se amplía con tres vistas:
+
+- **Agenda:** conserva la agenda de recordatorios y cuidados existente.
+- **Pasaporte:** permite registrar vacunas, desparasitaciones, medicación, visitas veterinarias, alergias, intervenciones, peso y otras notas con fecha. Los registros se guardan localmente por nombre de mascota en el dispositivo.
+- **Cuidados:** permite crear rutinas, indicar una persona responsable y marcar tareas como realizadas. También se guarda localmente.
+
+Esta es una primera versión funcional y privada, no todavía un historial clínico sincronizado. No adjunta archivos, no genera PDF y no comparte datos con una clínica ni con otros cuidadores. La pantalla lo indica expresamente. Los registros locales no se sincronizan con la Comunidad ni con otros dispositivos; al borrar los datos de la aplicación se perderán.
+
+La sincronización familiar requiere diseñar primero permisos por mascota, invitaciones seguras, revocación de accesos y reglas de Firestore. No se simula una invitación que todavía no existe. La selección de especie en la Comunidad ya está disponible desde la rama anterior, pero los perfiles locales de Inicio y varias guías siguen siendo principalmente caninos: la experiencia multi-especie completa continúa pendiente.
+
+Consulta [docs/CHANGES16.md](docs/CHANGES16.md) para el alcance, límites conocidos y siguientes pasos.
+
 ## Estado de preparación para publicación (cambios15)
 
 Pawly sigue siendo un proyecto en desarrollo y **no está lista para producción**. Esta rama añade perfiles de varias especies en la Comunidad, solicitudes registradas de eliminación de cuenta, una estrategia de producto, borradores legales y una lista de verificación de lanzamiento.
