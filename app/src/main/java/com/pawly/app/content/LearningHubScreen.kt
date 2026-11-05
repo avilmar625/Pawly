@@ -23,8 +23,30 @@ import com.pawly.app.content.PawlyLearningLibrary
 import kotlinx.coroutines.CancellationException
 
 @Composable
-internal fun LearningHubScreen() {
+internal fun LearningHubScreen(dogName: String) {
     val context = LocalContext.current
+    val communityRepository = remember(context) { FirebaseCommunityRepository.create(context) }
+    var dogProfile by remember(dogName) { mutableStateOf<PawlyDog?>(null) }
+    LaunchedEffect(dogName, communityRepository) {
+        dogProfile = if (communityRepository?.currentUid != null) {
+            runCatching { communityRepository.getMyDogs().firstOrNull { it.name.equals(dogName, ignoreCase = true) } }.getOrNull()
+        } else null
+    }
+    val recommendedGuides = remember(dogProfile) {
+        val profileSignals = (dogProfile?.traits.orEmpty().joinToString(" ") + " " + dogProfile?.age.orEmpty()).lowercase()
+        val ids = when {
+            listOf("cachorro", "puppy", "juvenil").any { it in profileSignals } ->
+                listOf("positive-training", "body-language", "adoption")
+            listOf("miedo", "insegur", "reactiv").any { it in profileSignals } ->
+                listOf("body-language", "positive-training", "adoption")
+            listOf("senior", "mayor", "anciano").any { it in profileSignals } ->
+                listOf("sniffing", "enrichment", "body-language")
+            listOf("activo", "energ", "deport").any { it in profileSignals } ->
+                listOf("sniffing", "enrichment", "positive-training")
+            else -> listOf("body-language", "positive-training", "sniffing")
+        }
+        PawlyLearningLibrary.guides.filter { it.id in ids }
+    }
     val uriHandler = LocalUriHandler.current
     val preferences = remember(context) {
         context.getSharedPreferences("pawly_content", android.content.Context.MODE_PRIVATE)
@@ -94,6 +116,16 @@ internal fun LearningHubScreen() {
                     Text("Fuentes externas y guías prácticas, reunidas en Pawly.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .75f), style = MaterialTheme.typography.bodySmall)
                 }
                 Text("🐾", fontSize = 42.sp)
+            }
+        }
+
+        if (dogProfile != null) {
+            Surface(color = Paper, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("Una selección para ${dogProfile!!.name}", color = Forest, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("Basada en la edad y las características que has guardado en su ficha.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    recommendedGuides.forEach { GuideCard(it) }
+                }
             }
         }
 
