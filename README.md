@@ -65,7 +65,7 @@ Las reglas de Firestore han cambiado para validar las nuevas categorías. Despli
 
 - Android Studio compatible con Android Gradle Plugin 9.4.0.
 - JDK 17.
-- Android SDK Platform 36 (Android 16) y Build Tools 36.0.0.
+- Android SDK Platform 37 y Build Tools 37.0.0.
 - Android 8.0 (API 26) o superior para ejecutar la aplicación.
 
 ## Abrir y compilar
@@ -160,3 +160,8 @@ Las cuentas creadas con correo reciben un enlace de verificación. Hasta verific
 ---
 
 © 2026 Alex Vilarrubla Martín y Maialen Cruz Tudanca. Todos los derechos reservados.
+
+
+## Rediseño visual (cambios18)
+
+La rama `cambios18` introduce un rediseño más marcado de Inicio y de la navegación inferior: mascota protagonista, resumen de rutinas y recuerdos, progreso diario, tarjetas de acciones y barra flotante de seis destinos. Mantiene los estados y funciones de cambios17. Consulta [docs/CHANGES18.md](docs/CHANGES18.md) para el alcance y las pruebas recomendadas. Las pantallas interiores se irán unificando visualmente en iteraciones posteriores.
