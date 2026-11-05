@@ -21,7 +21,7 @@ Pawly es una aplicación Android para organizar la vida cotidiana con perros: ru
 
 ## Organización del código
 
-La aplicación se está reorganizando por responsabilidades para facilitar su mantenimiento y la incorporación futura de funciones sociales:
+La aplicación se organiza por áreas funcionales y responsabilidades para facilitar su mantenimiento y crecimiento:
 
 - `MainActivity.kt`: punto de entrada Android.
 - `PawlyApp.kt`: estado de aplicación y navegación principal.
@@ -30,12 +30,17 @@ La aplicación se está reorganizando por responsabilidades para facilitar su ma
 - `ui/health`: agenda de cuidados.
 - `ui/diary`: diario.
 - `ui/profile`: diálogos y edición de perfiles.
+- `content`: modelos, lectura RSS, biblioteca educativa y pantalla de actualidad.
 
 Esta separación es un primer paso de refactorización; la lógica de estado y persistencia todavía está en la capa de presentación y será extraída a ViewModels y repositorios en una fase posterior.
 
-## Comunidad (ramas cambios11 y cambios12)
+## Comunidad (ramas cambios11, cambios12 y cambios13)
 
 La rama `cambios11` incorpora la comunidad y `cambios12` continúa su estabilización. Incluye Firebase Authentication (correo/contraseña y Google), perfiles de personas y perros, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las pantallas están separadas por áreas (`CommunityFeedScreens`, `CommunityPeopleScreens`, `CommunityProfileScreens`, `CommunityMessagingScreens` y `CommunityModerationScreens`); modelos, validaciones, mensajes de error y carga de imágenes también tienen ficheros propios. Las fotografías se alojan en Cloudinary mediante un preset unsigned. Firebase Cloud Messaging registra los dispositivos, pero el envío automático de notificaciones requiere un backend de confianza. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
+
+## Aprender y descubrir (cambios13)
+
+La nueva pestaña **Aprender** reúne cinco áreas: noticias caninas, adopción y protección animal, educación y comportamiento, búsquedas temáticas de vídeos y guías prácticas de Pawly. Las noticias se consultan bajo demanda mediante el feed RSS público de Google News y enlazan a la publicación original; se requiere conexión a Internet. Los artículos guardados se conservan localmente. El directorio enlaza con entidades externas (por ejemplo, Fundación Affinity, FAADA, El Refugio, De Vuelta a Casa, Fundació Gossos, Doogweb y RSCE). Los vídeos abren búsquedas temáticas de YouTube, no son vídeos alojados ni verificados por Pawly. Las guías son material introductorio y no sustituyen asesoramiento veterinario o profesional.
 
 ## Tecnología
 
