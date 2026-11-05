@@ -38,11 +38,11 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun register(email: String, password: String, username: String) {
-        val cleanName = username.trim()
-        require(cleanName.length in 3..24) { "El nombre de usuario debe tener entre 3 y 24 caracteres." }
-        require(cleanName.matches(Regex("[A-Za-z0-9_.]+"))) { "Usa solo letras, números, puntos y guiones bajos." }
+        val cleanName = CommunityInputRules.validateUsername(username)
+        val cleanEmail = CommunityInputRules.validateEmail(email)
+        CommunityInputRules.validatePassword(password)
         val normalized = cleanName.lowercase()
-        val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
+        val result = auth.createUserWithEmailAndPassword(cleanEmail, password).await()
         val uid = result.user?.uid ?: error("No se pudo crear la cuenta.")
         val usernameRef = db.collection("usernames").document(normalized)
         try {
@@ -74,7 +74,9 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun signIn(email: String, password: String) {
-        auth.signInWithEmailAndPassword(email.trim(), password).await()
+        val cleanEmail = CommunityInputRules.validateEmail(email)
+        require(password.isNotEmpty()) { "Escribe tu contraseña." }
+        auth.signInWithEmailAndPassword(cleanEmail, password).await()
     }
 
     /**
@@ -116,8 +118,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun sendPasswordReset(email: String) {
-        require(email.contains("@")) { "Escribe primero tu correo electrónico." }
-        auth.sendPasswordResetEmail(email.trim()).await()
+        auth.sendPasswordResetEmail(CommunityInputRules.validateEmail(email)).await()
     }
 
     suspend fun resendVerificationEmail() {
@@ -279,7 +280,7 @@ class FirebaseCommunityRepository private constructor(
     suspend fun publishPost(text: String, imageUrl: String, dogName: String) {
         val uid = requireVerifiedUid()
         val user = getMyProfile() ?: error("Completa primero tu perfil.")
-        require(text.isNotBlank() || imageUrl.isNotBlank()) { "Añade un texto o una fotografía." }
+        CommunityInputRules.validatePost(text, imageUrl)
         db.collection("posts").add(
             mapOf(
                 "authorId" to uid,
@@ -319,8 +320,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun addComment(postId: String, text: String) {
         val uid = requireVerifiedUid()
-        val clean = text.trim().take(1000)
-        require(clean.isNotBlank()) { "Escribe un comentario." }
+        val clean = CommunityInputRules.validateComment(text)
         val user = getMyProfile()
         val post = db.collection("posts").document(postId)
         val comment = post.collection("comments").document()
@@ -388,7 +388,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun block(uid: String) {
-        val me = requireUid()
+        val me = requireVerifiedUid()
         require(uid != me) { "No puedes bloquear tu propia cuenta." }
         val myFollowing = db.collection("users").document(me).collection("following").document(uid)
         val theirFollowing = db.collection("users").document(uid).collection("following").document(me)
@@ -524,8 +524,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun sendMessage(conversationId: String, text: String) {
         val uid = requireVerifiedUid()
-        val clean = text.trim().take(2000)
-        require(clean.isNotBlank()) { "Escribe un mensaje." }
+        val clean = CommunityInputRules.validateMessage(text)
         val ref = db.collection("conversations").document(conversationId)
         db.runTransaction { tx ->
             tx.set(ref.collection("messages").document(), mapOf("senderId" to uid, "text" to clean, "createdAt" to FieldValue.serverTimestamp()))
