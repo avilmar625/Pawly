@@ -25,7 +25,7 @@ fun buildConfigString(name: String): String {
 
 android {
     namespace = "com.pawly.app"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.pawly.app"
