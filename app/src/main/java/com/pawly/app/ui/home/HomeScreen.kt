@@ -60,6 +60,7 @@ internal fun HomeScreen(
     onWalkToggle: (Boolean) -> Unit,
     onMedicineToggle: (Boolean) -> Unit,
     onExplore: () -> Unit,
+    onLearn: () -> Unit,
     onAbout: () -> Unit,
     onEditProfile: () -> Unit,
     diaryCount: Int,
@@ -148,6 +149,18 @@ internal fun HomeScreen(
                 Icon(Icons.Filled.Explore, contentDescription = null)
                 Spacer(Modifier.width(9.dp))
                 Text("Explorar lugares", fontWeight = FontWeight.SemiBold)
+            }
+        }
+        item {
+            Surface(color = Paper, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("📚", fontSize = 30.sp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Un minuto para aprender", color = Forest, fontWeight = FontWeight.Bold)
+                        Text("Noticias, vídeos y consejos para cuidar mejor.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    }
+                    TextButton(onClick = onLearn) { Text("Descubrir") }
+                }
             }
         }
         item {
