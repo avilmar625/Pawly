@@ -117,6 +117,7 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticate
 private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignOut: () -> Unit) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
+    var followingIds by remember { mutableStateOf(emptySet<String>()) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedUser by remember { mutableStateOf<String?>(null) }
     var chat by remember { mutableStateOf<PawlyConversation?>(null) }
@@ -127,8 +128,9 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
     var notice by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     DisposableEffect(repo, uid) {
-        val listener = repo.listenFeed({ posts = it; error = null }, { error = it })
-        onDispose { listener.remove() }
+        val feedListener = repo.listenFeed({ posts = it; error = null }, { error = it })
+        val followingListener = repo.listenFollowingIds({ followingIds = it }, { error = it })
+        onDispose { feedListener.remove(); followingListener.remove() }
     }
     Column(Modifier.fillMaxSize().background(Cream)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -149,7 +151,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
                 scope.launch { runCatching { chat = PawlyConversation(id = repo.startConversation(id), otherUserId = id); page = CommunityPage.MESSAGES; selectedUser = null }.onFailure { notice = it.localizedMessage } }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
-            page == CommunityPage.FEED -> FeedScreen(posts, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
+            page == CommunityPage.FEED -> FeedScreen(posts, followingIds, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
                 scope.launch { runCatching { repo.toggleLike(post.id) }.onFailure { notice = it.localizedMessage } }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
@@ -174,7 +176,9 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
 }
 
 @Composable
-private fun FeedScreen(posts: List<PawlyPost>, error: String?, onCreate: () -> Unit, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
+private fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error: String?, onCreate: () -> Unit, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
+    var followingOnly by remember { mutableStateOf(false) }
+    val visiblePosts = if (followingOnly) posts.filter { it.authorId in followingIds } else posts
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item {
             Surface(onClick = onCreate, color = Forest, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
@@ -189,9 +193,17 @@ private fun FeedScreen(posts: List<PawlyPost>, error: String?, onCreate: () -> U
                 }
             }
         }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text("Todos") })
+                FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text("Siguiendo") })
+            }
+        }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
-        if (posts.isEmpty() && error == null) item { EmptyCommunityCard("Todavía no hay publicaciones", "Sé de las primeras personas en compartir una aventura.") }
-        items(posts, key = { it.id }) { post ->
+        if (visiblePosts.isEmpty() && error == null) item {
+            EmptyCommunityCard(if (followingOnly) "Aún no hay novedades" else "Todavía no hay publicaciones", if (followingOnly) "Sigue a otras personas para ver aquí sus aventuras." else "Sé de las primeras personas en compartir una aventura.")
+        }
+        items(visiblePosts, key = { it.id }) { post ->
             PostCard(post, onComments, onOpenUser, onLike, onReport, onBlock)
         }
     }
