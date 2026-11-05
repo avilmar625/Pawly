@@ -330,6 +330,15 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
                         onCheckedChange = { checked ->
                             tasks = tasks.map { if (it.id == task.id) it.copy(completed = checked) else it }
                             PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
+                            tasks.firstOrNull { it.id == task.id }?.let { updatedTask ->
+                                cloudRepository?.let { repo ->
+                                    coroutineScope.launch {
+                                        runCatching { repo.saveCareTask(petId, updatedTask) }
+                                            .onSuccess { syncMessage = "Cambios sincronizados" }
+                                            .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
+                                    }
+                                }
+                            }
                         }
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
