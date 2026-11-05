@@ -95,16 +95,16 @@ internal fun PetCareHubScreen(
                 dates = dates,
                 onDateChange = onDateChange
             )
-            "Pasaporte" -> PetPassportSection(petName)
-            else -> PetCarePlanSection(petName)
+            "Pasaporte" -> PetPassportSection(petName, storageScope)
+            else -> PetCarePlanSection(petName, storageScope)
         }
     }
 }
 
 @Composable
-private fun PetPassportSection(petName: String) {
+private fun PetPassportSection(petName: String, storageScope: String?) {
     val context = LocalContext.current
-    var entries by remember(petName) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName)) }
+    var entries by remember(petName) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
     var showAdd by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("Vacuna") }
     var title by remember { mutableStateOf("") }
@@ -162,7 +162,7 @@ private fun PetPassportSection(petName: String) {
                     }
                     TextButton(onClick = {
                         entries = entries.filterNot { it.id == entry.id }
-                        PetCareLocalStore.saveEntries(context, petName, entries)
+                        PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
                     }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar registro") }
                 }
             }
@@ -204,9 +204,9 @@ private fun PetPassportSection(petName: String) {
 }
 
 @Composable
-private fun PetCarePlanSection(petName: String) {
+private fun PetCarePlanSection(petName: String, storageScope: String?) {
     val context = LocalContext.current
-    var tasks by remember(petName) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName)) }
+    var tasks by remember(petName) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
     var showAdd by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("") }
     var responsible by remember { mutableStateOf("") }
@@ -249,7 +249,7 @@ private fun PetCarePlanSection(petName: String) {
                         checked = task.completed,
                         onCheckedChange = { checked ->
                             tasks = tasks.map { if (it.id == task.id) it.copy(completed = checked) else it }
-                            PetCareLocalStore.saveTasks(context, petName, tasks)
+                            PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
                         }
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
