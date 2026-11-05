@@ -54,7 +54,7 @@ service cloud.firestore {
       allow delete: if owner(uid);
 
       match /following/{otherUid} {
-        allow read: if owner(uid);
+        allow read: if owner(uid) || (signedIn() && request.auth.uid == otherUid);
         allow create: if owner(uid) && request.resource.data.uid == otherUid && !blockedEitherWay(otherUid);
         allow delete: if owner(uid) || (signedIn() && request.auth.uid == otherUid);
         allow update: if false;
@@ -66,7 +66,7 @@ service cloud.firestore {
         allow update: if false;
       }
       match /blocked/{otherUid} {
-        allow read: if owner(uid);
+        allow read: if owner(uid) || (signedIn() && request.auth.uid == otherUid);
         allow create: if owner(uid) && request.resource.data.uid == otherUid;
         allow delete: if owner(uid);
         allow update: if false;
