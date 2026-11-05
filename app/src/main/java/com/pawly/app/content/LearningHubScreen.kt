@@ -33,6 +33,7 @@ import com.pawly.app.content.PawlyLearningLibrary
 import com.pawly.app.content.VideoCollection
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.CancellationException
 
 @Composable
 internal fun LearningHubScreen() {
@@ -54,14 +55,21 @@ internal fun LearningHubScreen() {
     LaunchedEffect(selectedSection, refreshKey) {
         if (selectedSection !in setOf(PawlyContentSection.NEWS, PawlyContentSection.ADOPTION, PawlyContentSection.TRAINING)) {
             articles = emptyList()
+            error = null
+            loading = false
             return@LaunchedEffect
         }
         loading = true
         error = null
-        val result = runCatching { DogNewsRepository.load(selectedSection) }
-        result.onSuccess { articles = it }
-            .onFailure { error = "No se han podido cargar las noticias. Comprueba tu conexión e inténtalo de nuevo." }
-        loading = false
+        try {
+            articles = DogNewsRepository.load(selectedSection)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            error = "No se han podido cargar las noticias. Comprueba tu conexión e inténtalo de nuevo."
+        } finally {
+            loading = false
+        }
     }
 
     LaunchedEffect(savedArticles) {
