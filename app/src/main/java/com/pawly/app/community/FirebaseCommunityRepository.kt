@@ -473,9 +473,13 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun report(targetId: String, targetType: String, reason: String) {
         val uid = requireVerifiedUid()
+        require(targetId.isNotBlank()) { "No se ha seleccionado el elemento que quieres denunciar." }
+        require(targetType in setOf("post", "user")) { "El tipo de denuncia no es válido." }
+        val cleanReason = reason.trim()
+        require(cleanReason.isNotBlank()) { "Selecciona un motivo para la denuncia." }
         db.collection("reports").add(mapOf(
             "reporterId" to uid, "targetId" to targetId, "targetType" to targetType,
-            "reason" to reason.take(500), "status" to "open", "createdAt" to FieldValue.serverTimestamp()
+            "reason" to cleanReason.take(500), "status" to "open", "createdAt" to FieldValue.serverTimestamp()
         )).await()
     }
 
