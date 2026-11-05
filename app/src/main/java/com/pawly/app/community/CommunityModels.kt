@@ -19,7 +19,8 @@ data class PawlyDog(
     val age: String = "",
     val description: String = "",
     val traits: List<String> = emptyList(),
-    val photoUrl: String = ""
+    val photoUrl: String = "",
+    val species: String = "Perro"
 )
 
 data class PawlyPost(
