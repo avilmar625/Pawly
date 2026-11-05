@@ -105,7 +105,7 @@ internal fun PetCareHubScreen(
 @Composable
 private fun PetPassportSection(petName: String, storageScope: String?) {
     val context = LocalContext.current
-    var entries by remember(petName) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
+    var entries by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
     var showAdd by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("Vacuna") }
     var title by remember { mutableStateOf("") }
@@ -207,7 +207,7 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
 @Composable
 private fun PetCarePlanSection(petName: String, storageScope: String?) {
     val context = LocalContext.current
-    var tasks by remember(petName) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
+    var tasks by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
     var showAdd by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("") }
     var responsible by remember { mutableStateOf("") }
@@ -285,7 +285,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?) {
                 Button(onClick = {
                     if (title.isNotBlank()) {
                         tasks = tasks + CareTask(UUID.randomUUID().toString(), title.trim().take(80), responsible.trim().take(60), frequency, false)
-                        PetCareLocalStore.saveTasks(context, petName, tasks)
+                        PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
                         title = ""; responsible = ""; frequency = "Diario"; showAdd = false
                     }
                 }, enabled = title.isNotBlank()) { Text("Guardar") }
