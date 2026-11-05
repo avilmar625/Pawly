@@ -2,7 +2,7 @@ name: Android build
 
 on:
   push:
-    branches: ["main", "cambios1", "cambios9", "cambios10", "cambios11", "cambios12", "cambios13", "cambios14", "cambios15", "cambios16"]
+    branches: ["main", "cambios1", "cambios9", "cambios10", "cambios11", "cambios12", "cambios13", "cambios14", "cambios15", "cambios16", "cambios17"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:
@@ -16,8 +16,9 @@ concurrency:
 
 jobs:
   assemble:
-    name: Build and test
+    name: Build, test and package
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -46,16 +47,24 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Run unit tests
+      - name: Validate Kotlin and run unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Run Android lint
+        run: ./gradlew --no-daemon lintDebug
 
       - name: Assemble debug APK
         run: ./gradlew --no-daemon assembleDebug
+
+      - name: Build release bundle (unsigned)
+        run: ./gradlew --no-daemon bundleRelease
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: pawly-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 14
