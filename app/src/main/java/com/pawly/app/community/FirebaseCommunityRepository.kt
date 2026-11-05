@@ -22,6 +22,7 @@ class FirebaseCommunityRepository private constructor(
 ) {
     val currentUid: String? get() = auth.currentUser?.uid
     val currentEmail: String? get() = auth.currentUser?.email
+    val isEmailVerified: Boolean get() = auth.currentUser?.isEmailVerified == true
 
     companion object {
         fun create(context: Context): FirebaseCommunityRepository? = runCatching {
@@ -62,6 +63,7 @@ class FirebaseCommunityRepository private constructor(
                     "createdAt" to FieldValue.serverTimestamp()
                 )
             ).await()
+            result.user?.sendEmailVerification()?.await()
         } catch (error: Exception) {
             runCatching { usernameRef.delete().await() }
             runCatching { result.user?.delete()?.await() }
@@ -76,6 +78,14 @@ class FirebaseCommunityRepository private constructor(
     suspend fun sendPasswordReset(email: String) {
         require(email.contains("@")) { "Escribe primero tu correo electrónico." }
         auth.sendPasswordResetEmail(email.trim()).await()
+    }
+
+    suspend fun resendVerificationEmail() {
+        auth.currentUser?.sendEmailVerification()?.await() ?: error("Inicia sesión para verificar tu correo.")
+    }
+
+    suspend fun refreshAuthentication() {
+        auth.currentUser?.reload()?.await()
     }
 
     fun signOut() = auth.signOut()
