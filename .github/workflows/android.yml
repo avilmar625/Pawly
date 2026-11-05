@@ -48,16 +48,16 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Validate Kotlin and run unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 testDebugUnitTest
 
       - name: Run Android lint
-        run: ./gradlew --no-daemon lintDebug
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 lintDebug
 
       - name: Assemble debug APK
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 assembleDebug
 
       - name: Build release bundle (unsigned)
-        run: ./gradlew --no-daemon bundleRelease
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 bundleRelease
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
