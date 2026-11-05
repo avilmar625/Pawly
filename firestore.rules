@@ -168,7 +168,11 @@ service cloud.firestore {
       allow create: if verified()
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.targetId is string
-        && request.resource.data.reason is string;
+        && request.resource.data.targetId.size() > 0
+        && request.resource.data.targetType in ['post', 'user']
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 500;
       allow read, update, delete: if admin();
     }
   }
