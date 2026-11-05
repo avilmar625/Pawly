@@ -4,11 +4,11 @@ import android.content.Context
 import android.net.Uri
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -18,7 +18,7 @@ import kotlinx.coroutines.tasks.await
 class FirebaseCommunityRepository private constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
-    private val storage: FirebaseStorage
+    private val appContext: Context
 ) {
     val currentUid: String? get() = auth.currentUser?.uid
     val currentEmail: String? get() = auth.currentUser?.email
@@ -30,7 +30,7 @@ class FirebaseCommunityRepository private constructor(
             FirebaseCommunityRepository(
                 FirebaseAuth.getInstance(app),
                 FirebaseFirestore.getInstance(app),
-                FirebaseStorage.getInstance(app)
+                context.applicationContext
             )
         }.getOrNull()
     }
@@ -75,6 +75,44 @@ class FirebaseCommunityRepository private constructor(
         auth.signInWithEmailAndPassword(email.trim(), password).await()
     }
 
+    /**
+     * Signs in with a Google ID token obtained through Android Credential Manager.
+     * A first-time Google user receives a Pawly profile and a generated username.
+     */
+    suspend fun signInWithGoogle(idToken: String) {
+        require(idToken.isNotBlank()) { "Google no ha devuelto un token de acceso válido." }
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        val result = auth.signInWithCredential(credential).await()
+        val user = result.user ?: error("Firebase no ha devuelto el usuario de Google.")
+        val userRef = db.collection("users").document(user.uid)
+
+        if (!userRef.get().await().exists()) {
+            val username = "pawly_${user.uid.takeLast(8)}"
+            val usernameRef = db.collection("usernames").document(username.lowercase())
+            usernameRef.set(mapOf("uid" to user.uid)).await()
+            try {
+                userRef.set(
+                    mapOf(
+                        "uid" to user.uid,
+                        "username" to username,
+                        "usernameLower" to username.lowercase(),
+                        "displayName" to (user.displayName?.take(50)?.ifBlank { null } ?: username),
+                        "bio" to "",
+                        "photoUrl" to (user.photoUrl?.toString() ?: ""),
+                        "isPublic" to true,
+                        "followersCount" to 0,
+                        "followingCount" to 0,
+                        "dogProfiles" to emptyList<Map<String, Any>>(),
+                        "createdAt" to FieldValue.serverTimestamp()
+                    )
+                ).await()
+            } catch (error: Exception) {
+                runCatching { usernameRef.delete().await() }
+                throw error
+            }
+        }
+    }
+
     suspend fun sendPasswordReset(email: String) {
         require(email.contains("@")) { "Escribe primero tu correo electrónico." }
         auth.sendPasswordResetEmail(email.trim()).await()
@@ -106,9 +144,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun uploadImage(uri: Uri, folder: String): String {
         val uid = requireVerifiedUid()
-        val ref = storage.reference.child("$folder/$uid/${System.currentTimeMillis()}.jpg")
-        ref.putFile(uri).await()
-        return ref.downloadUrl.await().toString()
+        return CloudinaryImageUploader(appContext).upload(uri, folder, uid)
     }
 
     suspend fun saveDog(dog: PawlyDog) {
