@@ -180,7 +180,8 @@ class FirebaseCommunityRepository private constructor(
             "age" to dog.age.trim().take(30),
             "description" to dog.description.trim().take(240),
             "traits" to dog.traits.map { it.trim() }.filter { it.isNotBlank() }.distinct().take(8),
-            "photoUrl" to dog.photoUrl
+            "photoUrl" to dog.photoUrl,
+            "species" to dog.species
         )
         db.runTransaction { transaction ->
             val snapshot = transaction.get(ref)
@@ -219,7 +220,8 @@ class FirebaseCommunityRepository private constructor(
                 age = map["age"] as? String ?: "",
                 description = map["description"] as? String ?: "",
                 traits = (map["traits"] as? List<*>)?.filterIsInstance<String>().orEmpty(),
-                photoUrl = map["photoUrl"] as? String ?: ""
+                photoUrl = map["photoUrl"] as? String ?: "",
+                species = map["species"] as? String ?: "Perro"
             )
         }
     }
