@@ -197,6 +197,13 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
                     TextButton(onClick = {
                         entries = entries.filterNot { it.id == entry.id }
                         PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
+                        cloudRepository?.let { repo ->
+                            coroutineScope.launch {
+                                runCatching { repo.deletePassportEntry(petId, entry.id) }
+                                    .onSuccess { syncMessage = "Cambios sincronizados" }
+                                    .onFailure { syncMessage = "No se pudo sincronizar la eliminación; conserva la copia local" }
+                            }
+                        }
                     }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar registro") }
                 }
             }
