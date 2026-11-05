@@ -373,7 +373,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun isAdmin(): Boolean {
         val user = auth.currentUser ?: return false
-        return user.getIdTokenResult(true).await().claims["admin"] == true
+        return user.getIdToken(true).await().claims["admin"] == true
     }
 
     fun listenReports(onData: (List<PawlyReport>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
