@@ -236,7 +236,8 @@ class FirebaseCommunityRepository private constructor(
         if (clean.length < 2) return emptyList()
         val docs = db.collection("users").whereEqualTo("isPublic", true).orderBy("usernameLower")
             .startAt(clean).endAt(clean + "\uf8ff").limit(25).get().await()
-        return docs.documents.mapNotNull { it.toPawlyUser() }.filter { it.uid != currentUid && it.isPublic }
+        val blocked = currentUid?.let { db.collection("users").document(it).collection("blocked").get().await().documents.map { doc -> doc.id }.toSet() }.orEmpty()
+        return docs.documents.mapNotNull { it.toPawlyUser() }.filter { it.uid != currentUid && it.isPublic && it.uid !in blocked }
     }
 
     suspend fun getUser(uid: String): PawlyUser? = db.collection("users").document(uid).get().await().toPawlyUser()
@@ -260,8 +261,13 @@ class FirebaseCommunityRepository private constructor(
         val followers = db.collection("users").document(uid).collection("followers").document(me)
         val myProfile = db.collection("users").document(me)
         val theirProfile = db.collection("users").document(uid)
+        val myBlocked = db.collection("users").document(me).collection("blocked").document(uid)
+        val theirBlocked = db.collection("users").document(uid).collection("blocked").document(me)
         db.runTransaction { tx ->
             val alreadyFollowing = tx.get(following).exists()
+            val blockedByMe = tx.get(myBlocked).exists()
+            val blockedByThem = tx.get(theirBlocked).exists()
+            check(!follow || (!blockedByMe && !blockedByThem)) { "No puedes seguir a una cuenta bloqueada." }
             if (follow && !alreadyFollowing) {
                 tx.set(following, mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp()))
                 tx.set(followers, mapOf("uid" to me, "createdAt" to FieldValue.serverTimestamp()))
@@ -310,12 +316,19 @@ class FirebaseCommunityRepository private constructor(
         val id = ids.joinToString("_")
         val myProfile = getMyProfile()
         val other = getUser(otherUid)
+        val myBlocked = db.collection("users").document(me).collection("blocked").document(otherUid).get().await().exists()
+        val blockedMe = db.collection("users").document(otherUid).collection("blocked").document(me).get().await().exists()
+        check(!myBlocked && !blockedMe) { "No puedes iniciar una conversación con esta cuenta." }
         val ref = db.collection("conversations").document(id)
-        ref.set(mapOf(
-            "participants" to ids,
-            "participantNames" to mapOf(me to (myProfile?.displayName ?: "Yo"), otherUid to (other?.displayName ?: "Usuario")),
-            "updatedAt" to FieldValue.serverTimestamp()
-        ), com.google.firebase.firestore.SetOptions.merge()).await()
+        db.runTransaction { tx ->
+            if (!tx.get(ref).exists()) {
+                tx.set(ref, mapOf(
+                    "participants" to ids,
+                    "participantNames" to mapOf(me to (myProfile?.displayName ?: "Yo"), otherUid to (other?.displayName ?: "Usuario")),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ))
+            }
+        }.await()
         return id
     }
 
