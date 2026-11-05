@@ -307,6 +307,8 @@ private fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () 
     var name by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
     var isPublic by remember { mutableStateOf(true) }
+    var avatarUri by remember { mutableStateOf<Uri?>(null) }
+    val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { avatarUri = it }
     var editDog by remember { mutableStateOf<PawlyDog?>(null) }
     var showDogEditor by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -329,6 +331,10 @@ private fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () 
                             Text((profile?.followersCount ?: 0).toString() + " seguidores · " + (profile?.followingCount ?: 0) + " siguiendo", color = Muted, style = MaterialTheme.typography.labelSmall)
                         }
                     }
+                    OutlinedButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.PhotoCamera, null)
+                        Text(if (avatarUri != null) "Fotografía seleccionada" else "Cambiar foto de perfil")
+                    }
                     OutlinedTextField(name, { name = it }, label = { Text("Nombre público") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(bio, { bio = it }, label = { Text("Presentación") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -337,7 +343,16 @@ private fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () 
                     }
                     Button(onClick = {
                         busy = true
-                        scope.launch { runCatching { repo.updateProfile(name, bio, isPublic); status = "Perfil actualizado." }.onFailure { error = it.localizedMessage }; busy = false }
+                        scope.launch { runCatching {
+                            repo.updateProfile(name, bio, isPublic)
+                            if (avatarUri != null) {
+                                val url = repo.updateProfilePhoto(avatarUri!!)
+                                profile = profile?.copy(photoUrl = url)
+                                avatarUri = null
+                            }
+                            profile = profile?.copy(displayName = name, bio = bio, isPublic = isPublic)
+                            status = "Perfil actualizado."
+                        }.onFailure { error = it.localizedMessage }; busy = false }
                     }, enabled = !busy && name.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Guardando…" else "Guardar perfil") }
                 }
             }
