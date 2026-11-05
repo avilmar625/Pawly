@@ -73,6 +73,11 @@ class FirebaseCommunityRepository private constructor(
         auth.signInWithEmailAndPassword(email.trim(), password).await()
     }
 
+    suspend fun sendPasswordReset(email: String) {
+        require(email.contains("@")) { "Escribe primero tu correo electrónico." }
+        auth.sendPasswordResetEmail(email.trim()).await()
+    }
+
     fun signOut() = auth.signOut()
 
     suspend fun updateProfile(displayName: String, bio: String, isPublic: Boolean) {
@@ -284,6 +289,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun block(uid: String) {
         val me = requireUid()
+        require(uid != me) { "No puedes bloquear tu propia cuenta." }
         val myFollowing = db.collection("users").document(me).collection("following").document(uid)
         val theirFollowing = db.collection("users").document(uid).collection("following").document(me)
         val myFollower = db.collection("users").document(me).collection("followers").document(uid)
