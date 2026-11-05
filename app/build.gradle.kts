@@ -41,7 +41,8 @@ fun buildConfigString(name: String): String {
 
 android {
     namespace = "com.pawly.app"
-    // CI can validate against the latest stable SDK when the local preview SDK is unavailable.\n    compileSdk = providers.gradleProperty("pawlyCompileSdk").orNull?.toInt() ?: 37
+    // CI can validate against the latest stable SDK when the local preview SDK is unavailable.
+    compileSdk = providers.gradleProperty("pawlyCompileSdk").orNull?.toInt() ?: 37
 
     defaultConfig {
         applicationId = "com.pawly.app"
