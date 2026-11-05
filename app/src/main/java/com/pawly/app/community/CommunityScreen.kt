@@ -1,6 +1,11 @@
 package com.pawly.app
 
 import android.net.Uri
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -60,7 +65,7 @@ private fun FirebaseSetupPanel() {
                 Text("• Perfiles públicos y perfiles de perros")
                 Text("• Muro, likes, comentarios y seguidores")
                 Text("• Mensajes privados en tiempo real")
-                Text("• Fotografías en almacenamiento seguro")
+                Text("• Fotografías optimizadas con Cloudinary")
                 Text("Añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md.", color = Muted, style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -70,6 +75,12 @@ private fun FirebaseSetupPanel() {
 @Composable
 private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticated: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val credentialManager = remember(context) { CredentialManager.create(context) }
+    val webClientId = remember(context) {
+        val resourceId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+        if (resourceId != 0) context.getString(resourceId) else ""
+    }
     var register by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -99,6 +110,49 @@ private fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticate
         }, enabled = !busy && email.contains("@") && password.length >= 6 && (!register || username.length >= 3), modifier = Modifier.fillMaxWidth().height(52.dp)) {
             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             else Text(if (register) "Crear cuenta" else "Iniciar sesión")
+        }
+        if (!register) {
+            OutlinedButton(
+                onClick = {
+                    error = null
+                    status = null
+                    if (webClientId.isBlank()) {
+                        error = "Falta la configuración OAuth de Google. Descarga de nuevo google-services.json después de activar Google en Firebase y colócalo en app/."
+                    } else {
+                        busy = true
+                        scope.launch {
+                            try {
+                                val googleOption = GetGoogleIdOption.Builder()
+                                    .setFilterByAuthorizedAccounts(false)
+                                    .setServerClientId(webClientId)
+                                    .build()
+                                val request = GetCredentialRequest.Builder()
+                                    .addCredentialOption(googleOption)
+                                    .build()
+                                val result = credentialManager.getCredential(context, request)
+                                val credential = result.credential as? CustomCredential
+                                if (credential == null || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                                    error = "No se ha recibido una credencial de Google válida."
+                                } else {
+                                    val googleToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
+                                    repo.signInWithGoogle(googleToken)
+                                    onAuthenticated()
+                                }
+                            } catch (e: Exception) {
+                                error = e.localizedMessage ?: "No se pudo iniciar sesión con Google."
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    }
+                },
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Icon(Icons.Default.AccountCircle, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Continuar con Google")
+            }
         }
         if (status != null) Text(status!!, color = ForestLight, style = MaterialTheme.typography.bodySmall)
         if (!register) TextButton(onClick = {
