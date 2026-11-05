@@ -5,6 +5,12 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class CommunityInputRulesTest {
+    @Test fun petProfilesSupportDifferentSpecies() {
+        assertEquals("Perro", PawlyDog().species)
+        assertEquals("Gato", PawlyDog(species = "Gato").species)
+        assertEquals("Conejo", PawlyDog(species = "Conejo").species)
+    }
+
     @Test fun emailIsTrimmedAndNormalized() {
         assertEquals("persona@example.com", CommunityInputRules.validateEmail(" Persona@Example.com "))
     }
