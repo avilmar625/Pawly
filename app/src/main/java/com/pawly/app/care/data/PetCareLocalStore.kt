@@ -13,7 +13,8 @@ import org.json.JSONObject
  * records after updating. Room migration is a later step; keep this API stable.
  */
 internal object PetCareLocalStore {
-    private fun preferences(context: Context, storageScope: String?) =\n        context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", Context.MODE_PRIVATE)
+    private fun preferences(context: Context, storageScope: String?) =
+        context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", Context.MODE_PRIVATE)
 
     private fun key(prefix: String, petName: String): String =
         "v16_${prefix}_${petName.trim().lowercase().replace(Regex("[^a-z0-9]"), "_")}"
