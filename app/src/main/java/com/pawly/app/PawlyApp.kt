@@ -1,4 +1,16 @@
 package com.pawly.app
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 import android.os.Bundle
 import android.content.Intent
@@ -123,37 +135,56 @@ internal fun PawlyApp() {
     Scaffold(
         containerColor = Cream,
         bottomBar = {
-            NavigationBar(
-                containerColor = Paper,
-                contentColor = Forest,
-                tonalElevation = 0.dp
+            Surface(
+                color = Color.White,
+                shadowElevation = 12.dp,
+                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
             ) {
-                Tab.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selected == tab,
-                        onClick = { selected = tab },
-                        icon = {
-                            Icon(
-                                when (tab) {
-                                    Tab.HOME -> Icons.Filled.Home
-                                    Tab.EXPLORE -> Icons.Filled.Explore
-                                    Tab.LEARN -> Icons.Filled.MenuBook
-                                    Tab.HEALTH -> Icons.Filled.FavoriteBorder
-                                    Tab.DIARY -> Icons.Filled.AutoStories
-                                    Tab.COMMUNITY -> Icons.Filled.Groups
-                                },
-                                contentDescription = tab.label
+                Row(
+                    Modifier.fillMaxWidth().navigationBarsPadding()
+                        .padding(horizontal = 5.dp, vertical = 7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Tab.entries.forEach { tab ->
+                        val active = selected == tab
+                        val tabIcon = when (tab) {
+                            Tab.HOME -> Icons.Filled.Home
+                            Tab.EXPLORE -> Icons.Filled.Explore
+                            Tab.LEARN -> Icons.Filled.MenuBook
+                            Tab.HEALTH -> Icons.Filled.FavoriteBorder
+                            Tab.DIARY -> Icons.Filled.AutoStories
+                            Tab.COMMUNITY -> Icons.Filled.Groups
+                        }
+                        Column(
+                            Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
+                                .clickable { selected = tab }
+                                .padding(vertical = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            Box(
+                                Modifier.width(42.dp).height(29.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (active) Lime.copy(alpha = .75f) else Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    tabIcon,
+                                    contentDescription = tab.label,
+                                    tint = if (active) Forest else Muted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Text(
+                                tab.label,
+                                color = if (active) Forest else Muted,
+                                fontSize = 9.sp,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1
                             )
-                        },
-                        label = { Text(tab.label) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Forest,
-                            selectedTextColor = Forest,
-                            indicatorColor = Lime.copy(alpha = 0.65f),
-                            unselectedIconColor = Muted,
-                            unselectedTextColor = Muted
-                        )
-                    )
+                        }
+                    }
                 }
             }
         }
