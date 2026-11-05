@@ -4,7 +4,7 @@
 
 - Application ID: `com.pawly.app`
 - Min SDK: 26 (Android 8.0)
-- Compile / Target SDK: 36
+- Compile SDK: 37 Preview · Target SDK: 36
 - JDK: 17
 - Android Gradle Plugin: 9.4.0
 - Kotlin Compose plugin: 2.4.21
