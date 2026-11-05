@@ -96,10 +96,10 @@ class FirebasePetCareRepository(
         ).await()
     }
 
-    suspend fun saveCareTasks(petId: String, tasks: List<CareTask>) {
-        require(petId.isNotBlank() && tasks.size <= 450)
+    suspend fun saveCareTasks(petId: String, careTasks: List<CareTask>) {
+        require(petId.isNotBlank() && careTasks.size <= 450)
         val batch = db.batch()
-        tasks.forEach { task ->
+        careTasks.forEach { task ->
             require(task.id.isNotBlank() && task.title.isNotBlank())
             require(task.title.length <= 120 && task.responsible.length <= 80 && task.frequency.length <= 80)
             batch.set(tasks(petId).document(task.id), mapOf(
@@ -110,7 +110,7 @@ class FirebasePetCareRepository(
                 "completed" to task.completed
             ))
         }
-        if (tasks.isNotEmpty()) batch.commit().await()
+        if (careTasks.isNotEmpty()) batch.commit().await()
     }
 
     suspend fun loadCareTasks(petId: String): List<CareTask> =
