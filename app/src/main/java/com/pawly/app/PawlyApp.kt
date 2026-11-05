@@ -96,7 +96,7 @@ internal fun PawlyApp() {
 
 private fun PawlyMainApp(storageScope: String? = null) {
     val context = LocalContext.current
-    val preferences = remember(context) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
+    val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var showAbout by remember { mutableStateOf(false) }
     var showProfileEditor by remember { mutableStateOf(false) }
