@@ -5,6 +5,8 @@ import android.net.Uri
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.messaging.FirebaseMessaging
+import com.pawly.app.community.FcmTokenStore
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -126,7 +128,22 @@ class FirebaseCommunityRepository private constructor(
         auth.currentUser?.reload()?.await()
     }
 
-    fun signOut() = auth.signOut()
+    suspend fun syncMessagingToken() {
+        val uid = currentUid ?: return
+        val token = FirebaseMessaging.getInstance().token.await()
+        FcmTokenStore.save(uid, token).await()
+    }
+
+    suspend fun signOut() {
+        val uid = currentUid
+        if (uid != null) {
+            runCatching {
+                val token = FirebaseMessaging.getInstance().token.await()
+                FcmTokenStore.delete(uid, token).await()
+            }
+        }
+        auth.signOut()
+    }
 
     suspend fun updateProfile(displayName: String, bio: String, isPublic: Boolean) {
         val uid = requireUid()
