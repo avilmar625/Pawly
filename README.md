@@ -92,7 +92,7 @@ gradlew.bat assembleDebug
 
 El APK de depuración se genera en `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Pasaporte y organización de cuidados (cambios16)
+## Pasaporte y organización de cuidados (cambios16–17)
 
 La pestaña **Salud** se amplía con tres vistas:
 
@@ -105,6 +105,18 @@ Esta es una primera versión funcional y privada, no todavía un historial clín
 La sincronización familiar requiere diseñar primero permisos por mascota, invitaciones seguras, revocación de accesos y reglas de Firestore. No se simula una invitación que todavía no existe. La selección de especie en la Comunidad ya está disponible desde la rama anterior, pero los perfiles locales de Inicio y varias guías siguen siendo principalmente caninos: la experiencia multi-especie completa continúa pendiente.
 
 Consulta [docs/CHANGES16.md](docs/CHANGES16.md) para el alcance, límites conocidos y siguientes pasos.
+
+## Preparación técnica (cambios17)
+
+La rama `cambios17` refuerza la separación del módulo de cuidados y prepara la configuración para que puedas conectar tus propios servicios:
+
+- `care/model/PetCareModels.kt` contiene los modelos del pasaporte y las rutinas.
+- `care/data/PetCareLocalStore.kt` contiene el adaptador local. Conserva las claves de SharedPreferences v16 para no perder los registros ya creados al actualizar.
+- `docs/FIREBASE_SETUP.md` explica desde cero cómo crear Firebase, activar Authentication, configurar SHA-1, desplegar Firestore y configurar Cloudinary.
+- `local.properties.example` sirve de plantilla para los dos valores públicos de configuración de Cloudinary; copia sus líneas a tu `local.properties` local.
+- El workflow de `cambios17` ejecuta tests, Android Lint, APK debug y bundle release sin firmar. El AAB de CI no se puede publicar en Play hasta que configures firma y datos de la ficha.
+
+La integración de cuidados continúa siendo local. La invitación real a cuidadores, sincronización, exportación PDF y adjuntos requieren trabajo adicional. Tampoco se ha añadido un backend que genere cargos. Consulta [docs/CHANGES17.md](docs/CHANGES17.md) y [docs/TECHNICAL_NOTES.md](docs/TECHNICAL_NOTES.md).
 
 ## Estado de preparación para publicación (cambios15)
 
