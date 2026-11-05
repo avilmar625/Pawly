@@ -2,3 +2,10 @@
 # No añadas este archivo con valores reales a Git.
 CLOUDINARY_CLOUD_NAME=tu_cloud_name
 CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned
+
+# Opcional: firma local de la versión release.
+# Guarda el keystore fuera del repositorio y no compartas estas contraseñas.
+# RELEASE_STORE_FILE=/ruta/segura/pawly-upload.jks
+# RELEASE_STORE_PASSWORD=tu_password
+# RELEASE_KEY_ALIAS=tu_alias
+# RELEASE_KEY_PASSWORD=tu_password
