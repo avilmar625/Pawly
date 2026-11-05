@@ -44,6 +44,8 @@ firebase deploy --only firestore:rules,firestore:indexes
 
 No es necesario crear Firebase Storage ni desplegar reglas de Storage. La aplicación no incorpora el SDK de Firebase Storage.
 
+Las reglas incluyen una subcolección privada `users/{uid}/fcmTokens` para registrar los dispositivos del usuario. Si ya habías desplegado reglas anteriormente, vuelve a ejecutar el comando anterior para aplicar esta ampliación.
+
 ## 4. Cloudinary para fotografías (plan gratuito)
 
 Crea una cuenta en https://cloudinary.com/users/register/free y localiza el **Cloud name** en el Dashboard.
@@ -96,6 +98,13 @@ El plugin Google Services solo se aplica cuando existe app/google-services.json.
 - Mensajería en tiempo real.
 - Bloqueos, denuncias y herramientas de moderación.
 - Fotografías de perfil, perros y publicaciones alojadas en Cloudinary; sus URLs se guardan en Firestore.
+
+## Notificaciones push (Firebase Cloud Messaging)
+
+- Al entrar en la comunidad, Pawly registra el token de este dispositivo en `users/{uid}/fcmTokens`. Al cerrar sesión, intenta retirar ese token.
+- En Android 13 o superior, la app solicita permiso de notificaciones solo cuando el usuario pulsa **Activar**.
+- El servicio muestra notificaciones recibidas mientras la app está abierta. Cuando está en segundo plano, Android gestiona los mensajes FCM que incluyan un bloque de notificación.
+- **Importante:** registrar el token y recibir mensajes no significa que Pawly ya envíe avisos automáticos al llegar un mensaje privado. Para enviar notificaciones a partir de nuevos mensajes hace falta un backend de confianza (por ejemplo, Cloud Functions, Cloud Run o un servidor propio). No se debe enviar desde Android usando credenciales privadas de Firebase. Cloud Functions puede requerir activar facturación Blaze; no la actives si quieres mantener el proyecto sin coste.
 
 ## Seguridad y límites
 
