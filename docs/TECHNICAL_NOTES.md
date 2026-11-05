@@ -48,5 +48,5 @@ No se incluyen claves API ni secretos. Para mapas, autenticación o servicios ex
 - `firestore.rules` y `storage.rules`: reglas de acceso; `firestore.indexes.json` declara el índice de búsqueda.
 - `firebase.json`: configuración de despliegue con Firebase CLI.
 
-La app no incluye credenciales Firebase. La comunidad se habilita al añadir `app/google-services.json` localmente. Las denuncias quedan en una cola Firestore reservada a administradores con custom claim; falta construir un panel de moderación y asignar administradores mediante un entorno de confianza.
+La app no incluye credenciales Firebase. La comunidad se habilita al añadir `app/google-services.json` localmente. Las denuncias quedan en una cola Firestore reservada a administradores con custom claim. La app incorpora un panel de moderación para revisar avisos, eliminar publicaciones y restringir perfiles. Los administradores deben asignarse mediante un entorno de confianza.
 
