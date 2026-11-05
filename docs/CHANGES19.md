@@ -7,7 +7,7 @@ Convertir Pawly en una aplicación con cuentas y datos privados sincronizados, s
 ## Trabajo incluido
 
 - Nueva rama basada en cambios18.
-- Nuevo `FirebasePetCareRepository` para leer, crear, actualizar y borrar entradas del pasaporte veterinario y rutinas bajo el UID autenticado.
+- Puerta de autenticación global: registro/inicio de sesión antes de entrar en Pawly, sesión persistente y retorno a la pantalla de acceso al cerrar sesión. Se conserva una opción explícita de modo local.\n- Almacenamiento local separado por UID para evitar que dos cuentas del mismo dispositivo compartan preferencias privadas; el modo local conserva el almacenamiento anterior.\n- Nuevo `FirebasePetCareRepository` para leer, crear, actualizar y borrar entradas del pasaporte veterinario y rutinas bajo el UID autenticado.
 - Reglas Firestore owner-only para las subcolecciones privadas de salud y rutinas.
 - CI Android ejecutado también en cambios19.
 - Guía de Firebase actualizada con descarga de `google-services.json`, activación de Email/Password, configuración de Firestore y despliegue de reglas.
