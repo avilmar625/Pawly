@@ -66,6 +66,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     val context = LocalContext.current
     var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var currentAddress by remember { mutableStateOf<String?>(null) }
+    var mapSearchQuery by remember { mutableStateOf("") }
     LaunchedEffect(currentCoordinates) {
         val point = currentCoordinates ?: return@LaunchedEffect
         currentAddress = withContext(Dispatchers.IO) {
@@ -159,9 +160,43 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             currentAddress?.let { address ->
                 Text(address, color = Muted, style = MaterialTheme.typography.bodySmall)
             }
+            Surface(color = Paper, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Busca un lugar real", color = Forest, fontWeight = FontWeight.Bold)
+                    Text("Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = mapSearchQuery,
+                        onValueChange = { mapSearchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("Ej. veterinario 24 horas, parque canino…") },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        shape = RoundedCornerShape(13.dp)
+                    )
+                    Button(
+                        onClick = {
+                            val clean = mapSearchQuery.trim()
+                            if (clean.isNotBlank()) {
+                                val point = currentCoordinates
+                                val url = if (point != null) {
+                                    "https://www.google.com/maps/search/${Uri.encode(clean)}/@${point.first},${point.second},14z"
+                                } else "https://www.google.com/maps/search/${Uri.encode(clean)}"
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            }
+                        },
+                        enabled = mapSearchQuery.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(13.dp)
+                    ) {
+                        Icon(Icons.Default.Map, null)
+                        Spacer(Modifier.width(7.dp))
+                        Text("Buscar en el mapa")
+                    }
+                }
+            }
             currentCoordinates?.let { (latitude, longitude) ->
                 val point = "$latitude,$longitude"
-                val searches = listOf("Parques para perros" to "parques para perros", "Rutas para perros" to "rutas de senderismo aptas para perros", "Playas caninas" to "playas para perros")
+                val searches = listOf("Parques caninos" to "parques para perros", "Protectoras" to "protectoras de animales", "Veterinarios" to "veterinarios", "Urgencias veterinarias" to "urgencias veterinarias 24 horas", "Playas caninas" to "playas para perros", "Restaurantes dog-friendly" to "restaurantes que admiten perros", "Alojamientos" to "alojamientos que admiten perros", "Rutas" to "rutas de senderismo aptas para perros")
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("Cerca de la ubicación obtenida", color = ForestLight, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                     searches.forEach { (label, term) ->
@@ -221,7 +256,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
             }
         }
-        item { SectionHeading("Inspiración para salir", "Contenido ilustrativo: aún no son lugares verificados") }
+        item { SectionHeading("Ideas para vuestra próxima salida", "Guarda categorías e inicia búsquedas reales cuando quieras") }
         if (visible.isEmpty()) {
             item { Text("No hay resultados. Prueba con otra búsqueda.", color = Muted, modifier = Modifier.padding(12.dp)) }
         }
