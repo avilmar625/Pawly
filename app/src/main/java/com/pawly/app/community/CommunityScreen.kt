@@ -54,7 +54,7 @@ internal fun CommunityScreen() {
         return
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
-    if (uid.isNullOrBlank()) CommunityAuthPanel(repository) { uid = repository.currentUid }
+    if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
     else CommunityHub(repository, uid!!) { uid = repository.currentUid }
 }
 
