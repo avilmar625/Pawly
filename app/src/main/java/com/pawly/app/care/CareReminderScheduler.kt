@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.pawly.app.MainActivity
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.pawly.app.R
@@ -76,7 +77,13 @@ internal class CareReminderReceiver : BroadcastReceiver() {
             )
         }
         val notification = NotificationCompat.Builder(context, "pawly_care_reminders")
-            .setSmallIcon(R.drawable.ic_pawly)
+            .setSmallIcon(R.drawable.ic_notification_paw)
+            .setContentIntent(PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            ))
             .setContentTitle("Un recordatorio para $dogName")
             .setContentText("Hoy toca: $careName")
             .setStyle(NotificationCompat.BigTextStyle().bigText("Habías programado este recordatorio para $dogName: $careName."))
