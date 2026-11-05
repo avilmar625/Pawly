@@ -85,10 +85,12 @@ service cloud.firestore {
           (resource.data.authorId == request.auth.uid)
           ||
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'likeCount'])
+            && !blockedEitherWay(resource.data.authorId)
             && request.resource.data.likedBy is list
             && request.resource.data.likeCount == request.resource.data.likedBy.size())
           ||
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+            && !blockedEitherWay(resource.data.authorId)
             && request.resource.data.commentCount == resource.data.commentCount + 1)
         );
       allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
@@ -99,7 +101,8 @@ service cloud.firestore {
           && request.resource.data.authorId == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 1000;
+          && request.resource.data.text.size() <= 1000
+          && !blockedEitherWay(get(/databases/$(database)/documents/posts/$(postId)).data.authorId);
         allow update, delete: if signedIn() && resource.data.authorId == request.auth.uid;
       }
     }
@@ -110,8 +113,7 @@ service cloud.firestore {
         && request.resource.data.participants.size() == 2
         && request.auth.uid in request.resource.data.participants
         && !blockedEitherWay(request.resource.data.participants[0] == request.auth.uid ? request.resource.data.participants[1] : request.resource.data.participants[0]);
-      allow read: if signedIn() && request.auth.uid in resource.data.participants
-        && !blockedEitherWay(resource.data.participants[0] == request.auth.uid ? resource.data.participants[1] : resource.data.participants[0]);
+      allow read: if signedIn() && request.auth.uid in resource.data.participants;
       allow update: if signedIn()
         && request.auth.uid in resource.data.participants
         && !blockedEitherWay(resource.data.participants[0] == request.auth.uid ? resource.data.participants[1] : resource.data.participants[0])
