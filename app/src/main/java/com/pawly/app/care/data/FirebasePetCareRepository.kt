@@ -46,6 +46,24 @@ class FirebasePetCareRepository(
         ).await()
     }
 
+    suspend fun savePassportEntries(petId: String, entries: List<PassportEntry>) {
+        require(petId.isNotBlank() && entries.size <= 450)
+        val batch = db.batch()
+        entries.forEach { entry ->
+            require(entry.id.isNotBlank() && entry.title.isNotBlank())
+            require(entry.title.length <= 120 && entry.detail.length <= 1200)
+            require(entry.date.length <= 40 && entry.type.length <= 40)
+            batch.set(passport(petId).document(entry.id), mapOf(
+                "id" to entry.id,
+                "type" to entry.type,
+                "title" to entry.title.trim(),
+                "detail" to entry.detail.trim(),
+                "date" to entry.date.trim()
+            ))
+        }
+        if (entries.isNotEmpty()) batch.commit().await()
+    }
+
     suspend fun loadPassportEntries(petId: String): List<PassportEntry> =
         passport(petId).get().await().documents.mapNotNull { doc ->
             val title = doc.getString("title") ?: return@mapNotNull null
@@ -76,6 +94,23 @@ class FirebasePetCareRepository(
                 "completed" to task.completed
             )
         ).await()
+    }
+
+    suspend fun saveCareTasks(petId: String, tasks: List<CareTask>) {
+        require(petId.isNotBlank() && tasks.size <= 450)
+        val batch = db.batch()
+        tasks.forEach { task ->
+            require(task.id.isNotBlank() && task.title.isNotBlank())
+            require(task.title.length <= 120 && task.responsible.length <= 80 && task.frequency.length <= 80)
+            batch.set(tasks(petId).document(task.id), mapOf(
+                "id" to task.id,
+                "title" to task.title.trim(),
+                "responsible" to task.responsible.trim(),
+                "frequency" to task.frequency.trim(),
+                "completed" to task.completed
+            ))
+        }
+        if (tasks.isNotEmpty()) batch.commit().await()
     }
 
     suspend fun loadCareTasks(petId: String): List<CareTask> =
