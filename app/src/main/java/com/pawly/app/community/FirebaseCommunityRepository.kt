@@ -39,14 +39,14 @@ class FirebaseCommunityRepository private constructor(
         require(cleanName.length in 3..24) { "El nombre de usuario debe tener entre 3 y 24 caracteres." }
         require(cleanName.matches(Regex("[A-Za-z0-9_.]+"))) { "Usa solo letras, números, puntos y guiones bajos." }
         val normalized = cleanName.lowercase()
+        val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
+        val uid = result.user?.uid ?: error("No se pudo crear la cuenta.")
         val usernameRef = db.collection("usernames").document(normalized)
-        db.runTransaction { transaction ->
-            check(!transaction.get(usernameRef).exists()) { "Ese nombre de usuario ya está ocupado." }
-            transaction.set(usernameRef, mapOf("reserved" to true))
-        }.await()
         try {
-            val result = auth.createUserWithEmailAndPassword(email.trim(), password).await()
-            val uid = result.user?.uid ?: error("No se pudo crear la cuenta.")
+            db.runTransaction { transaction ->
+                check(!transaction.get(usernameRef).exists()) { "Ese nombre de usuario ya está ocupado." }
+                transaction.set(usernameRef, mapOf("uid" to uid))
+            }.await()
             db.collection("users").document(uid).set(
                 mapOf(
                     "uid" to uid,
@@ -63,7 +63,7 @@ class FirebaseCommunityRepository private constructor(
                 )
             ).await()
         } catch (error: Exception) {
-            runCatching { usernameRef.delete().await() }
+            runCatching { result.user?.delete()?.await() }
             throw error
         }
     }
@@ -214,7 +214,7 @@ class FirebaseCommunityRepository private constructor(
     suspend fun searchUsers(query: String): List<PawlyUser> {
         val clean = query.trim().lowercase()
         if (clean.length < 2) return emptyList()
-        val docs = db.collection("users").orderBy("usernameLower")
+        val docs = db.collection("users").whereEqualTo("isPublic", true).orderBy("usernameLower")
             .startAt(clean).endAt(clean + "\uf8ff").limit(25).get().await()
         return docs.documents.mapNotNull { it.toPawlyUser() }.filter { it.uid != currentUid && it.isPublic }
     }
@@ -236,31 +236,43 @@ class FirebaseCommunityRepository private constructor(
     suspend fun follow(uid: String, follow: Boolean) {
         val me = requireUid()
         require(uid != me) { "No puedes seguirte a ti mismo." }
-        val batch = db.batch()
         val following = db.collection("users").document(me).collection("following").document(uid)
         val followers = db.collection("users").document(uid).collection("followers").document(me)
-        if (follow) {
-            val data = mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp())
-            batch.set(following, data)
-            batch.set(followers, mapOf("uid" to me, "createdAt" to FieldValue.serverTimestamp()))
-            batch.update(db.collection("users").document(me), "followingCount", FieldValue.increment(1))
-            batch.update(db.collection("users").document(uid), "followersCount", FieldValue.increment(1))
-        } else {
-            batch.delete(following)
-            batch.delete(followers)
-            batch.update(db.collection("users").document(me), "followingCount", FieldValue.increment(-1))
-            batch.update(db.collection("users").document(uid), "followersCount", FieldValue.increment(-1))
-        }
-        batch.commit().await()
+        val myProfile = db.collection("users").document(me)
+        val theirProfile = db.collection("users").document(uid)
+        db.runTransaction { tx ->
+            val alreadyFollowing = tx.get(following).exists()
+            if (follow && !alreadyFollowing) {
+                tx.set(following, mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp()))
+                tx.set(followers, mapOf("uid" to me, "createdAt" to FieldValue.serverTimestamp()))
+                tx.update(myProfile, "followingCount", FieldValue.increment(1))
+                tx.update(theirProfile, "followersCount", FieldValue.increment(1))
+            } else if (!follow && alreadyFollowing) {
+                tx.delete(following)
+                tx.delete(followers)
+                tx.update(myProfile, "followingCount", FieldValue.increment(-1))
+                tx.update(theirProfile, "followersCount", FieldValue.increment(-1))
+            }
+        }.await()
     }
 
     suspend fun block(uid: String) {
         val me = requireUid()
-        db.collection("users").document(me).collection("blocked").document(uid)
-            .set(mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp())).await()
-        follow(uid, false)
-        db.collection("users").document(uid).collection("following").document(me).delete().await()
-        db.collection("users").document(me).collection("followers").document(uid).delete().await()
+        val myFollowing = db.collection("users").document(me).collection("following").document(uid)
+        val theirFollowing = db.collection("users").document(uid).collection("following").document(me)
+        val myFollower = db.collection("users").document(me).collection("followers").document(uid)
+        val theirFollower = db.collection("users").document(uid).collection("followers").document(me)
+        val myProfile = db.collection("users").document(me)
+        val theirProfile = db.collection("users").document(uid)
+        val blocked = db.collection("users").document(me).collection("blocked").document(uid)
+        db.runTransaction { tx ->
+            val iFollow = tx.get(myFollowing).exists()
+            val theyFollow = tx.get(theirFollowing).exists()
+            tx.set(blocked, mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp()))
+            tx.delete(myFollowing); tx.delete(theirFollowing); tx.delete(myFollower); tx.delete(theirFollower)
+            if (iFollow) { tx.update(myProfile, "followingCount", FieldValue.increment(-1)); tx.update(theirProfile, "followersCount", FieldValue.increment(-1)) }
+            if (theyFollow) { tx.update(theirProfile, "followingCount", FieldValue.increment(-1)); tx.update(myProfile, "followersCount", FieldValue.increment(-1)) }
+        }.await()
     }
 
     suspend fun report(targetId: String, targetType: String, reason: String) {
