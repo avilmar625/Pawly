@@ -54,6 +54,8 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
     var error by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var confirmAccountDeletion by remember { mutableStateOf(false) }
+    var accountDeletionSubmitted by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         runCatching { profile = repo.getMyProfile(); dogs = repo.getMyDogs(); name = profile?.displayName.orEmpty(); bio = profile?.bio.orEmpty(); isPublic = profile?.isPublic ?: true }
             .onFailure { error = it.localizedMessage }
@@ -125,8 +127,47 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
         }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
         if (status != null) item { Text(status!!, color = ForestLight) }
+        item {
+            Surface(color = Paper, shape = RoundedCornerShape(18.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text("Privacidad y cuenta", color = Forest, fontWeight = FontWeight.Bold)
+                    Text("Puedes solicitar que eliminemos tu cuenta y los datos asociados. La solicitud queda registrada para su revisión; no se borra nada automáticamente en este paso.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(
+                        onClick = { confirmAccountDeletion = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !accountDeletionSubmitted
+                    ) {
+                        Icon(Icons.Default.DeleteForever, null)
+                        Text(if (accountDeletionSubmitted) "Solicitud enviada" else "Solicitar eliminación de cuenta")
+                    }
+                    if (accountDeletionSubmitted) Text("Solicitud registrada. El equipo deberá verificarla y completar la eliminación de datos.", color = ForestLight, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
         item { OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Logout, null); Text("Cerrar sesión") } }
         item { Text("Comparte solo la información que quieras hacer pública. Evita direcciones y datos sensibles.", color = Muted, style = MaterialTheme.typography.labelSmall) }
+    }
+    if (confirmAccountDeletion) {
+        AlertDialog(
+            onDismissRequest = { confirmAccountDeletion = false },
+            title = { Text("¿Solicitar la eliminación de tu cuenta?") },
+            text = { Text("Se enviará una solicitud al equipo de Pawly para revisar la eliminación de tu cuenta, perfil, publicaciones y demás datos asociados. La solicitud no elimina los datos inmediatamente. Puedes cerrar esta ventana si has cambiado de opinión.") },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = {
+                    busy = true
+                    scope.launch {
+                        runCatching {
+                            repo.requestAccountDeletion()
+                            accountDeletionSubmitted = true
+                            status = "Solicitud de eliminación registrada."
+                        }.onFailure { error = it.localizedMessage ?: "No se pudo enviar la solicitud." }
+                        busy = false
+                        confirmAccountDeletion = false
+                    }
+                }) { Text(if (busy) "Enviando…" else "Enviar solicitud", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmAccountDeletion = false }) { Text("Cancelar") } }
+        )
     }
     if (showDogEditor) DogEditorDialog(repo, editDog, { showDogEditor = false }) {
         showDogEditor = false
@@ -168,7 +209,7 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
     var error by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Añadir perro" else "Editar perro") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Añadir mascota" else "Editar mascota") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Photo, null); Text(if (uri != null || photoUrl.isNotBlank()) "Cambiar foto" else "Añadir foto") }
             Text("Tipo de mascota", color = Forest, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
