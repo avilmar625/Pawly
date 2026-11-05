@@ -46,7 +46,8 @@ Estado inicial de cambios15: **desarrollo / no lista para producción**. Esta li
 
 - [ ] Definir equipo/persona responsable de moderación y tiempos de respuesta.
 - [ ] Probar bloqueo, denuncia, retirada de contenido y apelación.
-- [ ] Crear normas de comunidad visibles.
+- [x] Preparar un borrador de normas en `COMMUNITY_GUIDELINES.md`.
+- [ ] Publicar las normas en la app y la web, y aprobar el procedimiento de moderación.
 - [ ] Establecer un proceso para avisos de adopción, acogida, pérdida y hallazgo.
 - [ ] No presentar publicaciones como protectoras verificadas ni alertas como servicio de emergencia.
 - [ ] Configurar backend seguro para push de mensajes y alertas de proximidad; no enviar FCM desde el cliente.
