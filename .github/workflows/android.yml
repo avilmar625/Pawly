@@ -42,22 +42,22 @@ jobs:
         run: yes | sdkmanager --licenses
 
       - name: Install stable Android SDK for CI
-        run: sdkmanager "platforms;android-37" "build-tools;37.0.0"
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
       - name: Validate Kotlin and run unit tests
-        run: ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 testDebugUnitTest
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 testDebugUnitTest
 
       - name: Run Android lint
-        run: ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 lintDebug
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 lintDebug
 
       - name: Assemble debug APK
-        run: ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 assembleDebug
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 assembleDebug
 
       - name: Build release bundle (unsigned)
-        run: ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 bundleRelease
+        run: ./gradlew --no-daemon -PpawlyCompileSdk=36 -PpawlyTargetSdk=36 bundleRelease
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
