@@ -25,7 +25,7 @@ La seguridad se basa en el UID de Firebase Authentication, no en el nombre visib
 
 El repositorio de salud ya está creado, pero todavía no se ha conectado a las pantallas Salud ni al almacenamiento local. No se importan ni eliminan datos locales automáticamente. La UI deberá resolver la identidad estable de cada mascota, detectar datos locales, mostrar una vista previa y pedir confirmación antes de subirlos.
 
-El resto de los datos de Inicio, Diario y Explorar también requiere integración gradual con la cuenta. La Comunidad ya dispone de su propio acceso Firebase, pero el inicio de sesión todavía no es una puerta global de toda la aplicación.
+El acceso a toda la aplicación ya queda protegido por la sesión Firebase. Los datos principales de Inicio, Diario y Explorar se guardan en preferencias separadas por UID, pero aún requieren sincronización con Firestore para aparecer en otros dispositivos.
 
 ## Tareas del propietario del proyecto
 
@@ -39,7 +39,7 @@ El resto de los datos de Inicio, Diario y Explorar también requiere integració
 
 ## Siguientes fases técnicas
 
-1. Puerta global de autenticación y sesión persistente.
+1. Sincronización cloud de Inicio, Diario y lugares guardados.
 2. ID estable de mascotas y repositorio cloud único para perfiles.
 3. Integración de Salud con migración local confirmada.
 4. Sincronización de Diario, tareas y lugares guardados.
