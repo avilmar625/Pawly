@@ -53,7 +53,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 @Composable
-private fun ProfileDialog(
+internal fun ProfileDialog(
     name: String,
     onNameChange: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -98,7 +98,7 @@ private fun ProfileDialog(
 }
 
 @Composable
-private fun AboutDialog(onDismiss: () -> Unit) {
+internal fun AboutDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Paper,
