@@ -1,5 +1,8 @@
 package com.pawly.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.net.Uri
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -30,6 +33,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -185,7 +189,31 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
     var emailVerified by remember { mutableStateOf(repo.isEmailVerified) }
     var admin by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(repo) { admin = runCatching { repo.isAdmin() }.getOrDefault(false) }
+    val context = LocalContext.current
+    var notificationsAllowed by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        notificationsAllowed = granted
+        notice = if (granted) "Notificaciones activadas." else "Puedes activarlas más adelante desde los ajustes de Android."
+    }
+    val signOut: () -> Unit = {
+        scope.launch {
+            runCatching { repo.signOut() }
+                .onFailure { notice = it.localizedMessage ?: "No se pudo cerrar la sesión correctamente." }
+            onSignOut()
+        }
+    }
+    LaunchedEffect(repo, uid) {
+        admin = runCatching { repo.isAdmin() }.getOrDefault(false)
+        runCatching { repo.syncMessagingToken() }
+            .onFailure { notice = it.localizedMessage ?: "No se pudo registrar este dispositivo para notificaciones." }
+    }
     DisposableEffect(repo, uid) {
         val feedListener = repo.listenFeed({ posts = it; error = null }, { error = it })
         val followingListener = repo.listenFollowingIds({ followingIds = it }, { error = it })
@@ -197,11 +225,24 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
                 Text("PAWLY", color = Forest, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp, fontSize = 12.sp)
                 Text("Comunidad", color = Ink, style = MaterialTheme.typography.headlineMedium)
             }
-            IconButton(onClick = { repo.signOut(); onSignOut() }) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Forest) }
+            IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Forest) }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
                 FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) })
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
+            Surface(color = Paper, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
+                Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("No te pierdas los avisos de Pawly", color = Forest, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        Text("Activa las notificaciones para recibir avisos cuando estén disponibles.", color = Muted, style = MaterialTheme.typography.labelSmall)
+                    }
+                    TextButton(onClick = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
+                        Text("Activar")
+                    }
+                }
             }
         }
         if (!emailVerified) {
@@ -230,7 +271,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
-            page == CommunityPage.PROFILE -> MyCommunityProfile(repo, onSignOut)
+            page == CommunityPage.PROFILE -> MyCommunityProfile(repo, signOut)
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
         }
     }
