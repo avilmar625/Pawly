@@ -28,7 +28,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class CommunityPage(val label: String) {
-    FEED("Muro"), SEARCH("Personas"), MESSAGES("Mensajes"), PROFILE("Mi perfil")
+    FEED("Muro"), SEARCH("Personas"), MESSAGES("Mensajes"), PROFILE("Mi perfil"), MODERATION("Moderar")
 }
 
 @Composable
@@ -127,7 +127,9 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
     var blockTarget by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
     var emailVerified by remember { mutableStateOf(repo.isEmailVerified) }
+    var admin by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    LaunchedEffect(repo) { admin = runCatching { repo.isAdmin() }.getOrDefault(false) }
     DisposableEffect(repo, uid) {
         val feedListener = repo.listenFeed({ posts = it; error = null }, { error = it })
         val followingListener = repo.listenFollowingIds({ followingIds = it }, { error = it })
@@ -142,7 +144,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
             IconButton(onClick = { repo.signOut(); onSignOut() }) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Forest) }
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            CommunityPage.entries.forEach { item ->
+            CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
                 FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) })
             }
         }
@@ -173,6 +175,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo, onSignOut)
+            page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
         }
     }
     if (createPost) CreatePostDialog(repo, { createPost = false }) { notice = "Publicación compartida."; createPost = false }
@@ -623,6 +626,49 @@ private fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCon
             IconButton(onClick = { val text = draft; scope.launch { runCatching { repo.sendMessage(conversation.id, text); draft = "" }.onFailure { error = it.localizedMessage } } }, enabled = draft.isNotBlank()) { Icon(Icons.Default.Send, "Enviar", tint = Forest) }
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun ModerationScreen(repo: FirebaseCommunityRepository) {
+    var reports by remember { mutableStateOf(emptyList<PawlyReport>()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var status by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    DisposableEffect(repo) {
+        val listener = repo.listenReports({ reports = it }, { error = it })
+        onDispose { listener.remove() }
+    }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item {
+            Text("Centro de moderación", color = Forest, style = MaterialTheme.typography.titleLarge)
+            Text("Los avisos quedan registrados para revisión del equipo.", color = Muted, style = MaterialTheme.typography.bodySmall)
+        }
+        if (status != null) item { Text(status!!, color = ForestLight) }
+        if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
+        if (reports.isEmpty()) item { EmptyCommunityCard("Sin denuncias pendientes", "Cuando alguien envíe un aviso, aparecerá aquí.") }
+        items(reports, key = { it.id }) { report ->
+            Surface(color = Paper, shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(report.targetType.uppercase(), color = Forest, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(report.status, color = Muted, style = MaterialTheme.typography.labelSmall)
+                    }
+                    Text("Motivo: " + report.reason, color = Ink)
+                    Text("Elemento: " + report.targetId, color = Muted, style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (report.targetType == "post") {
+                            OutlinedButton(onClick = {
+                                scope.launch { runCatching { repo.removeReportedPost(report.targetId); repo.markReportReviewed(report.id); status = "Publicación eliminada y aviso revisado." }.onFailure { error = it.localizedMessage } }
+                            }) { Icon(Icons.Default.DeleteOutline, null); Text("Eliminar publicación") }
+                        }
+                        TextButton(onClick = {
+                            scope.launch { runCatching { repo.markReportReviewed(report.id); status = "Aviso marcado como revisado." }.onFailure { error = it.localizedMessage } }
+                        }) { Text("Marcar revisado") }
+                    }
+                }
+            }
+        }
     }
 }
 
