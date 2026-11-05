@@ -127,24 +127,31 @@ private struct TaskToggle: View {
     }
 }
 
+private struct ExploreIdea: Identifiable {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    var id: String { title }
+}
+
 struct ExploreView: View {
     private let ideas = [
-        ("Rutas y senderos", "Descubre nuevos caminos para pasear.", "figure.hiking"),
-        ("Playas para perros", "Consulta opciones y normas locales.", "water.waves"),
-        ("Parques y zonas verdes", "Encuentra espacios para jugar.", "tree.fill"),
-        ("Terrazas y cafeterías", "Planes para compartir contigo.", "cup.and.saucer.fill")
+        ExploreIdea(title: "Rutas y senderos", subtitle: "Descubre nuevos caminos para pasear.", symbol: "figure.hiking"),
+        ExploreIdea(title: "Playas para perros", subtitle: "Consulta opciones y normas locales.", symbol: "water.waves"),
+        ExploreIdea(title: "Parques y zonas verdes", subtitle: "Encuentra espacios para jugar.", symbol: "tree.fill"),
+        ExploreIdea(title: "Terrazas y cafeterías", subtitle: "Planes para compartir contigo.", symbol: "cup.and.saucer.fill")
     ]
 
     var body: some View {
         NavigationStack {
-            List(ideas, id: \.0) { item in
+            List(ideas) { item in
                 Label {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(item.0).font(.headline)
-                        Text(item.1).font(.caption).foregroundStyle(PawlyStyle.muted)
+                        Text(item.title).font(.headline)
+                        Text(item.subtitle).font(.caption).foregroundStyle(PawlyStyle.muted)
                     }
                 } icon: {
-                    Image(systemName: item.2).foregroundStyle(PawlyStyle.forest)
+                    Image(systemName: item.symbol).foregroundStyle(PawlyStyle.forest)
                 }
                 .padding(.vertical, 6)
             }
