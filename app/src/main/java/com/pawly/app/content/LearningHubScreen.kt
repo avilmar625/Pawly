@@ -187,7 +187,8 @@ internal fun LearningHubScreen() {
                         savedIds = savedArticles.keys,
                         onToggleSave = { id -> savedArticles = savedArticles - id },
                         onRefresh = {},
-                        onOpen = { url -> runCatching { uriHandler.openUri(url) } }
+                        onOpen = { url -> runCatching { uriHandler.openUri(url) } },
+                        showRefresh = false
                     )
                 }
             }
@@ -243,12 +244,15 @@ private fun NewsResults(
     savedIds: Set<String>,
     onToggleSave: (String) -> Unit,
     onRefresh: () -> Unit,
-    onOpen: (String) -> Unit
+    onOpen: (String) -> Unit,
+    showRefresh: Boolean = true
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("Últimas publicaciones", modifier = Modifier.weight(1f), color = Forest, fontWeight = FontWeight.Bold)
-        IconButton(onClick = onRefresh, enabled = !loading) {
-            Icon(Icons.Default.Refresh, contentDescription = "Actualizar noticias", tint = Forest)
+    if (showRefresh) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Últimas publicaciones", modifier = Modifier.weight(1f), color = Forest, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onRefresh, enabled = !loading) {
+                Icon(Icons.Default.Refresh, contentDescription = "Actualizar noticias", tint = Forest)
+            }
         }
     }
     if (loading) {
