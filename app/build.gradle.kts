@@ -41,12 +41,12 @@ fun buildConfigString(name: String): String {
 
 android {
     namespace = "com.pawly.app"
-    compileSdk = 37
+    // CI can validate against the latest stable SDK when the local preview SDK is unavailable.\n    compileSdk = providers.gradleProperty("pawlyCompileSdk").orNull?.toInt() ?: 37
 
     defaultConfig {
         applicationId = "com.pawly.app"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = providers.gradleProperty("pawlyTargetSdk").orNull?.toInt() ?: 37
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", buildConfigString("CLOUDINARY_CLOUD_NAME"))
