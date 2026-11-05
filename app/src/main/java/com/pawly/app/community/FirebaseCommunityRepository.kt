@@ -254,7 +254,8 @@ class FirebaseCommunityRepository private constructor(
                         likeCount = doc.getLong("likeCount") ?: 0,
                         commentCount = doc.getLong("commentCount") ?: 0,
                         likedByMe = uid in likedBy,
-                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0
+                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0,
+                        category = doc.getString("category") ?: "STORY"
                     )
                 }
                 emit()
@@ -294,16 +295,18 @@ class FirebaseCommunityRepository private constructor(
             }
     }
 
-    suspend fun publishPost(text: String, imageUrl: String, dogName: String) {
+    suspend fun publishPost(text: String, imageUrl: String, dogName: String, category: String = "STORY") {
         val uid = requireVerifiedUid()
         val user = getMyProfile() ?: error("Completa primero tu perfil.")
         CommunityInputRules.validatePost(text, imageUrl)
+        require(category in setOf("STORY", "ADOPTION", "LOST", "FOUND", "FOSTER")) { "Selecciona una categoría válida." }
         db.collection("posts").add(
             mapOf(
                 "authorId" to uid,
                 "authorName" to user.displayName.ifBlank { user.username },
                 "authorPhoto" to user.photoUrl,
                 "dogName" to dogName.take(40),
+                "category" to category,
                 "text" to text.trim().take(2000),
                 "imageUrl" to imageUrl,
                 "likeCount" to 0,
