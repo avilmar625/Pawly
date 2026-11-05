@@ -330,7 +330,15 @@ private fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, onB
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(onClick = {
                         busy = true
-                        scope.launch { runCatching { repo.follow(uid, !following); following = !following }.onFailure { error = it.localizedMessage }; busy = false }
+                        scope.launch {
+                            runCatching {
+                                val next = !following
+                                repo.follow(uid, next)
+                                following = next
+                                user = user?.copy(followersCount = (user?.followersCount ?: 0) + if (next) 1 else -1)
+                            }.onFailure { error = it.localizedMessage }
+                            busy = false
+                        }
                     }, enabled = !busy) { Text(if (following) "Dejar de seguir" else "Seguir") }
                     Spacer(Modifier.width(6.dp))
                     OutlinedButton(onClick = { onMessage(uid) }) { Icon(Icons.Default.Chat, null); Text("Mensaje") }
