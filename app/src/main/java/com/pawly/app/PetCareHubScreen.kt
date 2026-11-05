@@ -170,7 +170,7 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
                     Text("Historial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text("${entries.size} registros", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Button(onClick = { showAdd = true }) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text("Añadir") }
+                Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text("Añadir") }
             }
         }
         if (entries.isEmpty()) {
