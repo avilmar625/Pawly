@@ -143,6 +143,15 @@ class FirebaseCommunityRepository private constructor(
         }
     }
 
+    fun listenFollowingIds(onData: (Set<String>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
+        val uid = requireUid()
+        return db.collection("users").document(uid).collection("following")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) onError(error.localizedMessage ?: "No se pudo cargar la lista de seguidos.")
+                else onData(snapshot?.documents.orEmpty().map { it.id }.toSet())
+            }
+    }
+
     fun listenFeed(onData: (List<PawlyPost>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
         val uid = requireUid()
         var latestPosts = emptyList<PawlyPost>()
