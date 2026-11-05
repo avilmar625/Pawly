@@ -1,116 +1,140 @@
-# Conectar Firebase y Cloudinary a Pawly
+# Configuración de Firebase y Cloudinary para Pawly (cambios17)
 
-La rama cambios11 utiliza **Firebase Authentication + Cloud Firestore** para las cuentas y los datos sociales, y **Cloudinary** para las fotografías. No utiliza Firebase Storage ni requiere activar el plan Blaze.
+Esta guía está pensada para dejar la aplicación conectada desde Android Studio. El código y las reglas están en el repositorio; los proyectos, credenciales y consentimientos deben crearse desde tus cuentas.
 
-## 1. Firebase Android
+## Qué servicios utiliza Pawly
 
-La aplicación Android está registrada con el identificador exacto:
+| Servicio | Uso | ¿Requiere Blaze? |
+|---|---|---|
+| Firebase Authentication | Registro e inicio de sesión por correo; Google opcional | No para las funciones incluidas |
+| Cloud Firestore | Perfiles, publicaciones, comentarios, conversaciones, bloqueos y denuncias | No para comenzar; sujeto a cuotas/región |
+| Firebase Cloud Messaging | Registro del token y recepción de mensajes push | No para recibir; enviar automáticamente requiere backend |
+| Cloudinary | Fotografías de perfiles, mascotas y publicaciones | Tiene plan gratuito sujeto a límites |
 
-~~~
-com.pawly.app
-~~~
+Pawly no utiliza Firebase Storage. No se ha incluido una Cloud Function que pueda activar facturación sin que lo decidas.
 
-Descarga el archivo actualizado google-services.json desde la configuración de esa aplicación y guárdalo localmente en:
+## 1. Crear el proyecto Firebase
 
-~~~
-Pawly/app/google-services.json
-~~~
+1. Entra en https://console.firebase.google.com/ y crea un proyecto, por ejemplo `pawly-prod`.
+2. Puedes desactivar Google Analytics para este proyecto: Pawly no lo necesita para las funciones actuales.
+3. En la configuración del proyecto, añade una aplicación Android.
+4. Usa exactamente este identificador de paquete: `com.pawly.app`.
+5. Descarga `google-services.json` y colócalo en `app/google-services.json` dentro de tu copia local del repositorio.
 
-No lo subas a GitHub. El repositorio ignora tanto google-services.json en la raíz como app/google-services.json.
+**No subas ese archivo a GitHub.** Ya está incluido en `.gitignore`. No compartas el archivo en capturas ni mensajes públicos.
 
-## 2. Authentication: correo y Google
+## 2. Activar Authentication
 
 En Firebase Console → Authentication → Sign-in method:
 
-- Mantén activado **Email/Password**.
-- Activa **Google** y guarda los cambios.
-- Añade el correo de asistencia del proyecto si Firebase lo solicita.
+- Activa **Email/Password**.
+- Activa **Google** solo si quieres ofrecer ese método.
+- Configura el correo/nombre de asistencia que solicite Google.
 
-Después de activar Google:
+Para Google Sign-In, añade la huella SHA-1 de la firma debug:
 
-1. En Configuración del proyecto → General → Tus aplicaciones → aplicación Android, añade la huella **SHA-1** de la clave con la que ejecutas Pawly. Para obtener las huellas locales, ejecuta ./gradlew signingReport en la raíz del proyecto (en Windows: gradlew.bat signingReport).
-2. Descarga otra vez google-services.json. El archivo debe incluir la información OAuth de Google; si se descargó antes de activar el proveedor, puede no contener el cliente web que Credential Manager necesita.
-3. Sustituye el archivo local app/google-services.json por el nuevo y sincroniza Gradle.
+```bash
+./gradlew signingReport
+```
 
-La app usa Android Credential Manager y el ID de cliente web generado por Google Services. No introduzcas manualmente un API secret ni un OAuth client secret en el código.
+Busca el bloque `Variant: debug` y copia SHA-1. Añádela en Configuración del proyecto → Tus aplicaciones → Android → Huellas digitales SHA. Descarga otra vez `google-services.json` y reemplaza el archivo local.
 
-## 3. Firestore (plan gratuito)
+El inicio de sesión con Google usa Credential Manager y el ID de cliente web que genera la configuración de Google Services. No pegues un OAuth client secret en el código.
 
-Crea Firestore Database en modo producción. Elige una región europea y despliega únicamente reglas e índices:
+## 3. Crear Firestore y desplegar las reglas
 
-~~~bash
+1. Firebase Console → Firestore Database → Crear base de datos.
+2. Selecciona modo producción.
+3. Escoge una región europea cercana a tus usuarios. La región no se puede cambiar después sin migrar datos.
+4. Instala Firebase CLI desde https://firebase.google.com/docs/cli si aún no la tienes.
+5. Desde la raíz del proyecto, inicia sesión y asocia el proyecto:
+
+```bash
+firebase login
+firebase projects:list
+firebase use --add
+```
+
+Selecciona el ID real de tu proyecto. El alias puede ser `default`.
+
+6. Despliega reglas e índices:
+
+```bash
 firebase deploy --only firestore:rules,firestore:indexes
-~~~
+```
 
-No es necesario crear Firebase Storage ni desplegar reglas de Storage. La aplicación no incorpora el SDK de Firebase Storage.
+Los ficheros `firestore.rules` y `firestore.indexes.json` del repositorio son la configuración inicial. Despliégalos antes de probar la Comunidad. Si Firestore muestra que un índice adicional es necesario, revisa la consulta y el enlace que facilita Firebase antes de crearlo.
 
-Las reglas incluyen una subcolección privada `users/{uid}/fcmTokens` para registrar los dispositivos del usuario. Si ya habías desplegado reglas anteriormente, vuelve a ejecutar el comando anterior para aplicar esta ampliación.
+**No publiques las reglas de prueba abiertas** (`allow read, write: if true`). Mantén las reglas del repositorio y prueba con dos cuentas distintas.
 
-## 4. Cloudinary para fotografías (plan gratuito)
+## 4. Cloudinary para fotografías
 
-Crea una cuenta en https://cloudinary.com/users/register/free y localiza el **Cloud name** en el Dashboard.
+1. Crea una cuenta en https://cloudinary.com/users/register/free.
+2. Copia el **Cloud name** del Dashboard.
+3. En Settings → Upload → Upload presets, crea un preset con modo **Unsigned**.
+4. Limita formatos a JPG, PNG y WebP y fija un máximo de tamaño razonable (por ejemplo 5 MB).
+5. Guarda el nombre exacto del preset.
 
-En Cloudinary Console → Settings → Upload → Upload presets:
+En el archivo local `local.properties` (junto a `settings.gradle.kts`) añade:
 
-1. Crea un preset nuevo.
-2. Selecciona **Unsigned** como signing mode.
-3. Restringe los formatos a JPG, PNG y WebP.
-4. Establece un tamaño máximo razonable (por ejemplo, 5 MB) y, si está disponible, limita transformaciones y carpetas.
-5. Guarda el nombre del preset.
-
-La app comprime las imágenes antes de enviarlas y hace una carga unsigned al endpoint de imágenes. **No añadas el API Secret de Cloudinary a Android**: solo se usan el Cloud name y el nombre del preset unsigned. Ten en cuenta que el preset unsigned puede ser usado por terceros que lo conozcan; limita el preset y revisa el consumo y los límites de tu plan.
-
-Añade estas dos líneas a tu archivo local local.properties (en la raíz del proyecto, junto a settings.gradle.kts):
-
-~~~properties
+```properties
 CLOUDINARY_CLOUD_NAME=tu_cloud_name
 CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned
-~~~
+```
 
-No las pongas en gradle.properties ni subas local.properties a Git. Sin estos valores, el resto de la comunidad funciona, pero la subida de fotos mostrará un mensaje de configuración.
+No añadas el API Secret de Cloudinary a Android. El preset unsigned no es un secreto: restringe formatos/tamaño y vigila el consumo. Para una app pública con tráfico relevante, cambia a cargas firmadas desde un backend de confianza.
 
-## 5. Compilar
+## 5. Abrir y compilar
 
-Con app/google-services.json en su ubicación local y las propiedades Cloudinary configuradas:
+1. Abre la carpeta raíz en Android Studio.
+2. Usa JDK 17 y Gradle Wrapper.
+3. Espera a que finalice la sincronización.
+4. Ejecuta:
 
-~~~bash
+```bash
 ./gradlew testDebugUnitTest
+./gradlew lintDebug
 ./gradlew assembleDebug
-~~~
+```
 
-En Windows:
+El APK de depuración aparece en `app/build/outputs/apk/debug/app-debug.apk`.
 
-~~~bat
-gradlew.bat testDebugUnitTest
-gradlew.bat assembleDebug
-~~~
+Si todavía no has descargado Firebase o no quieres configurar Cloudinary, la aplicación base debe poder compilar igualmente: Firebase Services se aplica solo cuando existe `app/google-services.json`, y las cargas de fotos informan de que faltan las propiedades.
 
-El plugin Google Services solo se aplica cuando existe app/google-services.json. El código puede compilar en CI sin ese archivo; el acceso con Google necesita el archivo actualizado y las huellas OAuth correctas en Firebase.
+## 6. Probar la Comunidad de forma segura
 
-## Funciones sociales
+Haz las primeras pruebas con dos cuentas tuyas:
 
-- Registro e inicio de sesión con correo y contraseña.
-- Inicio de sesión y registro con Google mediante Credential Manager.
-- Creación automática de perfil Pawly y nombre de usuario al entrar por primera vez con Google.
-- Perfiles públicos y perfiles de perros.
-- Seguir y dejar de seguir cuentas.
-- Publicaciones, likes y comentarios.
-- Mensajería en tiempo real.
-- Bloqueos, denuncias y herramientas de moderación.
-- Fotografías de perfil, perros y publicaciones alojadas en Cloudinary; sus URLs se guardan en Firestore.
+- Registro por correo y verificación del mensaje recibido.
+- Cerrar y volver a iniciar sesión.
+- Recuperar contraseña.
+- Completar perfil y añadir mascotas.
+- Seguir/dejar de seguir.
+- Publicar, dar like y comentar.
+- Abrir conversación y enviar mensajes.
+- Bloquear/desbloquear y enviar una denuncia.
+- Cerrar sesión y comprobar que el token FCM del dispositivo se elimina cuando sea posible.
 
-## Notificaciones push (Firebase Cloud Messaging)
+Las acciones de publicación, seguimiento, comentarios, bloqueo y mensajería requieren correo verificado. Las pruebas de moderación necesitan un usuario con custom claim `admin: true`, que debe asignarse desde un entorno de administración seguro; nunca desde Android.
 
-- Al entrar en la comunidad, Pawly registra el token de este dispositivo en `users/{uid}/fcmTokens`. Al cerrar sesión, intenta retirar ese token.
-- En Android 13 o superior, la app solicita permiso de notificaciones solo cuando el usuario pulsa **Activar**.
-- El servicio muestra notificaciones recibidas mientras la app está abierta. Cuando está en segundo plano, Android gestiona los mensajes FCM que incluyan un bloque de notificación.
-- **Importante:** registrar el token y recibir mensajes no significa que Pawly ya envíe avisos automáticos al llegar un mensaje privado. Para enviar notificaciones a partir de nuevos mensajes hace falta un backend de confianza (por ejemplo, Cloud Functions, Cloud Run o un servidor propio). No se debe enviar desde Android usando credenciales privadas de Firebase. Cloud Functions puede requerir activar facturación Blaze; no la actives si quieres mantener el proyecto sin coste.
+## 7. Lo que todavía necesita un backend
 
-## Seguridad y límites
+Estas funciones **no se activan simplemente pegando google-services.json**:
 
-- Firebase Authentication y las reglas de Firestore siguen siendo la autoridad para las operaciones sociales.
-- Las imágenes se cargan con un preset unsigned de Cloudinary. El preset no es un secreto fuerte; configura límites estrictos de formato/tamaño y controla el consumo.
-- No se almacena el API Secret de Cloudinary en el cliente.
-- El plan gratuito de Firestore tiene cuotas y límites; revisa el uso en Firebase Console.
-- Antes de producción, añade App Check, protección antiabuso, términos y política de privacidad, proceso de eliminación/exportación de cuenta y pruebas de reglas con Firebase Emulator Suite. En cambios15 se registran solicitudes de eliminación en `accountDeletionRequests`, pero todavía no se ejecuta el borrado completo. Consulta `docs/ACCOUNT_DELETION_OPERATIONS.md`; no publiques hasta completar el proceso en un backend de confianza y el recurso web externo.
-- El panel de moderación requiere el custom claim admin: true, que solo debe asignarse desde un entorno de confianza mediante Firebase Admin SDK.
+- Envío automático de push cuando llega un mensaje o se publica una alerta.
+- Eliminación completa de cuenta y datos relacionados (subcolecciones, posts, comentarios, mensajes, tokens, nombre reservado y archivos de Cloudinary).
+- Invitaciones y sincronización familiar de rutinas/pasaporte.
+- Cargas firmadas y controladas de Cloudinary para producción.
+
+Implementarlas requiere un servicio de servidor y credenciales privadas fuera de la app. Cloud Functions/Cloud Run pueden requerir el plan de facturación Blaze u otro proveedor con facturación. Como Pawly se había planteado evitando Blaze, no he activado ni desplegado nada que genere cargos. Mientras no se implemente el backend, la solicitud de eliminación solo se registra en `accountDeletionRequests`; no equivale al borrado real. Consulta `docs/ACCOUNT_DELETION_OPERATIONS.md`.
+
+## 8. Antes de producción
+
+- Activar y verificar App Check con Play Integrity y un proveedor debug solo para desarrollo.
+- Probar las reglas con Firebase Emulator Suite.
+- Completar y publicar la política de privacidad y los términos.
+- Publicar un recurso web HTTPS para eliminación de cuenta y conectarlo al proceso real.
+- Configurar moderación, soporte y un administrador seguro.
+- Revisar cuotas, región, retención, costes y transferencias de datos.
+- No incluir claves privadas, service account JSON ni secretos en Git o en el APK.
+
