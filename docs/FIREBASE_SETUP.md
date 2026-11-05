@@ -101,7 +101,25 @@ El APK de depuración aparece en `app/build/outputs/apk/debug/app-debug.apk`.
 
 Si todavía no has descargado Firebase o no quieres configurar Cloudinary, la aplicación base debe poder compilar igualmente: Firebase Services se aplica solo cuando existe `app/google-services.json`, y las cargas de fotos informan de que faltan las propiedades.
 
-## 6. Probar la Comunidad de forma segura
+## 6. Firma local para generar un AAB de publicación
+
+No necesitas configurar la firma para compilar ni instalar el APK debug. Cuando quieras preparar una versión release:
+
+1. Genera una clave de subida desde Android Studio (Build → Generate Signed Bundle / APK → Create new) o con `keytool`.
+2. Guarda el archivo keystore fuera del repositorio y conserva una copia de seguridad segura.
+3. Añade las cuatro propiedades a tu `local.properties` local:
+
+```properties
+RELEASE_STORE_FILE=/ruta/segura/pawly-upload.jks
+RELEASE_STORE_PASSWORD=tu_password
+RELEASE_KEY_ALIAS=tu_alias
+RELEASE_KEY_PASSWORD=tu_password
+```
+
+4. Ejecuta `./gradlew bundleRelease`. Si falta una propiedad, Gradle se detendrá con un mensaje claro; si no hay ninguna, la tarea de CI genera un AAB sin firmar para validar la compilación.
+5. No subas el keystore ni las contraseñas a GitHub. Configura Play App Signing y guarda la clave de subida y sus copias con seguridad.
+
+## 7. Probar la Comunidad de forma segura
 
 Haz las primeras pruebas con dos cuentas tuyas:
 
@@ -117,7 +135,7 @@ Haz las primeras pruebas con dos cuentas tuyas:
 
 Las acciones de publicación, seguimiento, comentarios, bloqueo y mensajería requieren correo verificado. Las pruebas de moderación necesitan un usuario con custom claim `admin: true`, que debe asignarse desde un entorno de administración seguro; nunca desde Android.
 
-## 7. Lo que todavía necesita un backend
+## 8. Lo que todavía necesita un backend
 
 Estas funciones **no se activan simplemente pegando google-services.json**:
 
@@ -128,7 +146,7 @@ Estas funciones **no se activan simplemente pegando google-services.json**:
 
 Implementarlas requiere un servicio de servidor y credenciales privadas fuera de la app. Cloud Functions/Cloud Run pueden requerir el plan de facturación Blaze u otro proveedor con facturación. Como Pawly se había planteado evitando Blaze, no he activado ni desplegado nada que genere cargos. Mientras no se implemente el backend, la solicitud de eliminación solo se registra en `accountDeletionRequests`; no equivale al borrado real. Consulta `docs/ACCOUNT_DELETION_OPERATIONS.md`.
 
-## 8. Antes de producción
+## 9. Antes de producción
 
 - Activar y verificar App Check con Play Integrity y un proveedor debug solo para desarrollo.
 - Probar las reglas con Firebase Emulator Suite.
