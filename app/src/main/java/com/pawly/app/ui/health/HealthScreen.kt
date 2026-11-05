@@ -180,7 +180,7 @@ internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, t
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(date, color = ForestLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                if (date != "Añadir fecha") TextButton(onClick = onClear, contentPadding = PaddingValues(0.dp)) { Text("Quitar", fontSize = 10.sp) }
+                if (date != "Añadir aviso") TextButton(onClick = onClear, contentPadding = PaddingValues(0.dp)) { Text("Quitar", fontSize = 10.sp) }
             }
         }
     }
