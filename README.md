@@ -33,9 +33,9 @@ La aplicación se está reorganizando por responsabilidades para facilitar su ma
 
 Esta separación es un primer paso de refactorización; la lógica de estado y persistencia todavía está en la capa de presentación y será extraída a ViewModels y repositorios en una fase posterior.
 
-## Comunidad (rama cambios10)
+## Comunidad (rama cambios11)
 
-La rama `cambios10` incorpora una comunidad conectable a Firebase: registro/inicio de sesión, perfiles de personas y perros, seguimiento, publicaciones con fotos, likes, comentarios, conversaciones en tiempo real, bloqueo y denuncias. Para activarla se necesita configurar un proyecto Firebase. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md). Sin `app/google-services.json`, la comunidad muestra instrucciones de configuración y las funciones locales siguen disponibles.
+La rama `cambios11` incorpora una comunidad con Firebase Authentication y Firestore, inicio de sesión con correo y Google, perfiles de personas y perros, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las fotografías se alojan en Cloudinary mediante un preset unsigned. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
 ## Tecnología
 
