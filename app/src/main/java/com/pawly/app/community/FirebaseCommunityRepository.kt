@@ -135,6 +135,19 @@ class FirebaseCommunityRepository private constructor(
         FcmTokenStore.save(uid, token).await()
     }
 
+    suspend fun requestAccountDeletion() {
+        val uid = requireUid()
+        db.collection("accountDeletionRequests").add(
+            mapOf(
+                "uid" to uid,
+                "email" to (currentEmail ?: ""),
+                "requestedAt" to FieldValue.serverTimestamp(),
+                "status" to "pending",
+                "source" to "android"
+            )
+        ).await()
+    }
+
     suspend fun signOut() {
         val uid = currentUid
         if (uid != null) {
@@ -171,6 +184,7 @@ class FirebaseCommunityRepository private constructor(
         val cleanName = dog.name.trim()
         require(cleanName.isNotBlank()) { "El perro necesita un nombre." }
         require(cleanName.length <= 40) { "El nombre no puede superar los 40 caracteres." }
+        require(dog.species in setOf("Perro", "Gato", "Conejo", "Ave", "Roedor", "Reptil", "Otro")) { "Selecciona un tipo de mascota válido." }
         val ref = db.collection("users").document(uid)
         val id = dog.id.ifBlank { java.util.UUID.randomUUID().toString() }
         val dogData = mapOf(
@@ -373,7 +387,7 @@ class FirebaseCommunityRepository private constructor(
     suspend fun getUserDogs(uid: String): List<PawlyDog> {
         val data = db.collection("users").document(uid).get().await().get("dogProfiles") as? List<Map<String, Any>>
         return data.orEmpty().map { m ->
-            PawlyDog(m["id"] as? String ?: "", m["name"] as? String ?: "", m["breed"] as? String ?: "", m["age"] as? String ?: "", m["description"] as? String ?: "", (m["traits"] as? List<*>)?.filterIsInstance<String>().orEmpty(), m["photoUrl"] as? String ?: "")
+            PawlyDog(id = m["id"] as? String ?: "", name = m["name"] as? String ?: "", breed = m["breed"] as? String ?: "", age = m["age"] as? String ?: "", description = m["description"] as? String ?: "", traits = (m["traits"] as? List<*>)?.filterIsInstance<String>().orEmpty(), photoUrl = m["photoUrl"] as? String ?: "", species = m["species"] as? String ?: "Perro")
         }
     }
 
