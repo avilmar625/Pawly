@@ -371,6 +371,31 @@ class FirebaseCommunityRepository private constructor(
             }
     }
 
+    suspend fun isAdmin(): Boolean {
+        val user = auth.currentUser ?: return false
+        return user.getIdTokenResult(true).await().claims["admin"] == true
+    }
+
+    fun listenReports(onData: (List<PawlyReport>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
+        return db.collection("reports").orderBy("createdAt", Query.Direction.DESCENDING).limit(100)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudo cargar la moderación."); return@addSnapshotListener }
+                onData(snapshot?.documents.orEmpty().map { doc ->
+                    PawlyReport(doc.id, doc.getString("reporterId") ?: "", doc.getString("targetId") ?: "", doc.getString("targetType") ?: "", doc.getString("reason") ?: "", doc.getString("status") ?: "open")
+                })
+            }
+    }
+
+    suspend fun markReportReviewed(reportId: String) {
+        check(isAdmin()) { "No tienes permisos de moderación." }
+        db.collection("reports").document(reportId).update(mapOf("status" to "reviewed", "reviewedAt" to FieldValue.serverTimestamp())).await()
+    }
+
+    suspend fun removeReportedPost(postId: String) {
+        check(isAdmin()) { "No tienes permisos de moderación." }
+        db.collection("posts").document(postId).delete().await()
+    }
+
     suspend fun report(targetId: String, targetType: String, reason: String) {
         val uid = requireVerifiedUid()
         db.collection("reports").add(mapOf(
