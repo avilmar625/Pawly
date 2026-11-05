@@ -96,6 +96,42 @@ service cloud.firestore {
           && request.resource.data.platform == 'android';
         allow delete: if owner(uid);
       }
+
+      // Private health passport and care routines. These records are never public.
+      match /petCare/{petId} {
+        allow read, write: if owner(uid);
+
+        match /passport/{entryId} {
+          allow read, delete: if owner(uid);
+          allow create, update: if owner(uid)
+            && request.resource.data.keys().hasOnly(['id', 'type', 'title', 'detail', 'date'])
+            && request.resource.data.id == entryId
+            && request.resource.data.type is string
+            && request.resource.data.type.size() <= 40
+            && request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 120
+            && request.resource.data.detail is string
+            && request.resource.data.detail.size() <= 1200
+            && request.resource.data.date is string
+            && request.resource.data.date.size() <= 40;
+        }
+
+        match /tasks/{taskId} {
+          allow read, delete: if owner(uid);
+          allow create, update: if owner(uid)
+            && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed'])
+            && request.resource.data.id == taskId
+            && request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 120
+            && request.resource.data.responsible is string
+            && request.resource.data.responsible.size() <= 80
+            && request.resource.data.frequency is string
+            && request.resource.data.frequency.size() <= 80
+            && request.resource.data.completed is bool;
+        }
+      }
     }
 
     match /posts/{postId} {
