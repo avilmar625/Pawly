@@ -159,7 +159,8 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
                         Text("Pasaporte sanitario", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                     Text("Un historial privado para tener a mano vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria.", style = MaterialTheme.typography.bodyMedium)
-                    Text("Guardado en este dispositivo", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    Text(syncMessage, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                    if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
             }
         }
