@@ -11,6 +11,7 @@ struct PawlyPet: Identifiable, Hashable {
     var description: String
     var photoURL: String
     var species: String
+    var ownerUID: String? = nil
 }
 struct PawlyPassportEntry: Identifiable {
     var id: String; var type: String; var title: String; var detail: String; var date: String
@@ -46,13 +47,29 @@ final class PawlyPetStore: ObservableObject {
         do {
             let snapshot = try await db.collection("users").document(uid).getDocument()
             let raw = snapshot.data()?["dogProfiles"] as? [[String: Any]] ?? []
-            pets = raw.compactMap { item in
+            let ownedPets = raw.compactMap { item -> PawlyPet? in
                 guard let id = item["id"] as? String, let name = item["name"] as? String else { return nil }
-                return PawlyPet(id: id, name: name, breed: item["breed"] as? String ?? "",
-                                age: item["age"] as? String ?? "", description: item["description"] as? String ?? "",
-                                photoURL: item["photoUrl"] as? String ?? "", species: item["species"] as? String ?? "Perro")
+                return PawlyPet(id:id,name:name,breed:item["breed"] as? String ?? "",
+                    age:item["age"] as? String ?? "",description:item["description"] as? String ?? "",
+                    photoURL:item["photoUrl"] as? String ?? "",species:item["species"] as? String ?? "Perro")
             }
-            if !pets.contains(where: { $0.id == selectedPetID }) { selectedPetID = pets.first?.id }
+            var sharedPets:[PawlyPet]=[]
+            let accepted=try await db.collection("petInvitations").whereField("inviteeUid",isEqualTo:uid)
+                .whereField("status",isEqualTo:"accepted").limit(to:30).getDocuments()
+            for invitation in accepted.documents {
+                guard let sharedID=invitation.get("sharedPetId") as? String else { continue }
+                let root=try await db.collection("sharedPets").document(sharedID).getDocument()
+                guard root.exists,let owner=root.get("ownerUid") as? String,let petID=root.get("petId") as? String else { continue }
+                let profile=try await root.reference.collection("profile").document("current").getDocument()
+                let name=profile.get("name") as? String ?? root.get("name") as? String ?? "Mascota compartida"
+                sharedPets.append(PawlyPet(id:petID,name:name,breed:"",age:"",description:"Perfil compartido",
+                    photoURL:profile.get("photoUrl") as? String ?? "",species:"Mascota",ownerUID:owner))
+            }
+            pets=ownedPets+sharedPets
+            if !pets.contains(where: { $0.id == selectedPetID && $0.ownerUID == nil }) &&
+               !pets.contains(where: { $0.id == selectedPetID && $0.ownerUID != nil }) {
+                selectedPetID=pets.first?.id
+            }
             errorMessage = nil
         } catch { errorMessage = error.localizedDescription }
     }
@@ -75,58 +92,66 @@ final class PawlyPetStore: ObservableObject {
     }
     func deletePet(_ pet: PawlyPet) async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
+        guard pet.ownerUID == nil else { throw PawlyStoreError.noSharedAccess }
         let updated = pets.filter { $0.id != pet.id }
         try await db.collection("users").document(uid).updateData(["dogProfiles": updated.map(encode)])
         pets = updated
         if selectedPetID == pet.id { selectedPetID = updated.first?.id }
     }
 
-    private func passportRoot(_ id: String) throws -> CollectionReference {
+    private func passportRoot(_ pet:PawlyPet) throws -> CollectionReference {
         guard let uid else { throw PawlyStoreError.notSignedIn }
-        return db.collection("users").document(uid).collection("petCare").document(id).collection("passport")
+        if let owner=pet.ownerUID { return db.collection("sharedPets").document("\(owner)_\(pet.id)").collection("passport") }
+        return db.collection("users").document(uid).collection("petCare").document(pet.id).collection("passport")
     }
-    private func tasksRoot(_ id: String) throws -> CollectionReference {
+    private func tasksRoot(_ pet:PawlyPet) throws -> CollectionReference {
         guard let uid else { throw PawlyStoreError.notSignedIn }
-        return db.collection("users").document(uid).collection("petCare").document(id).collection("tasks")
+        if let owner=pet.ownerUID { return db.collection("sharedPets").document("\(owner)_\(pet.id)").collection("tasks") }
+        return db.collection("users").document(uid).collection("petCare").document(pet.id).collection("tasks")
     }
-    func loadPassport(_ petID: String) async throws -> [PawlyPassportEntry] {
-        let snapshot = try await passportRoot(petID).getDocuments()
+    func loadPassport(_ pet:PawlyPet) async throws -> [PawlyPassportEntry] {
+        let snapshot = try await passportRoot(pet).getDocuments()
         return snapshot.documents.compactMap { d in
             guard let title = d.get("title") as? String else { return nil }
             return PawlyPassportEntry(id: d.documentID, type: d.get("type") as? String ?? "Otro",
                                       title: title, detail: d.get("detail") as? String ?? "", date: d.get("date") as? String ?? "")
         }.sorted { $0.date > $1.date }
     }
-    func savePassport(_ e: PawlyPassportEntry, petID: String) async throws {
+    func savePassport(_ e: PawlyPassportEntry, pet: PawlyPet) async throws {
         guard !e.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, e.title.count <= 120,
               e.detail.count <= 1200, e.type.count <= 40, e.date.count <= 40 else { throw PawlyStoreError.invalidEntry }
-        try await passportRoot(petID).document(e.id).setData(["id":e.id,"type":e.type,"title":e.title,"detail":e.detail,"date":e.date])
+        try await passportRoot(pet).document(e.id).setData(["id":e.id,"type":e.type,"title":e.title,"detail":e.detail,"date":e.date])
     }
-    func deletePassport(_ id: String, petID: String) async throws { try await passportRoot(petID).document(id).delete() }
+    func deletePassport(_ id: String, pet: PawlyPet) async throws { try await passportRoot(pet).document(id).delete() }
 
-    func loadTasks(_ petID: String) async throws -> [PawlyCareTask] {
-        let snapshot = try await tasksRoot(petID).getDocuments()
+    func loadTasks(_ pet: PawlyPet) async throws -> [PawlyCareTask] {
+        let snapshot = try await tasksRoot(pet).getDocuments()
         return snapshot.documents.compactMap { d in
             guard let title = d.get("title") as? String else { return nil }
             return PawlyCareTask(id: d.documentID, title: title, responsible: d.get("responsible") as? String ?? "",
                                  frequency: d.get("frequency") as? String ?? "", completed: d.get("completed") as? Bool ?? false)
         }
     }
-    func saveTask(_ t: PawlyCareTask, petID: String) async throws {
+    func saveTask(_ t: PawlyCareTask, pet: PawlyPet) async throws {
         guard !t.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, t.title.count <= 120,
               t.responsible.count <= 80, t.frequency.count <= 80 else { throw PawlyStoreError.invalidTask }
-        try await tasksRoot(petID).document(t.id).setData(["id":t.id,"title":t.title,"responsible":t.responsible,"frequency":t.frequency,"completed":t.completed])
+        try await tasksRoot(pet).document(t.id).setData(["id":t.id,"title":t.title,"responsible":t.responsible,"frequency":t.frequency,"completed":t.completed])
     }
-    func deleteTask(_ id: String, petID: String) async throws { try await tasksRoot(petID).document(id).delete() }
+    func deleteTask(_ id: String, pet: PawlyPet) async throws { try await tasksRoot(pet).document(id).delete() }
 
     private func sharedRoot(_ pet: PawlyPet) throws -> DocumentReference {
         guard let uid else { throw PawlyStoreError.notSignedIn }
-        return db.collection("sharedPets").document("\(uid)_\(pet.id)")
+        return db.collection("sharedPets").document("\(pet.ownerUID ?? uid)_\(pet.id)")
     }
     func ensureSharedPet(_ pet: PawlyPet) async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
         guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyStoreError.verifyEmail }
         let root = try sharedRoot(pet)
+        if pet.ownerUID != nil {
+            let member=try await root.collection("members").document(uid).getDocument()
+            guard member.exists else { throw PawlyStoreError.noSharedAccess }
+            return
+        }
         let existing = try await root.getDocument()
         if !existing.exists {
             let profile = try await db.collection("users").document(uid).getDocument()
@@ -145,6 +170,7 @@ final class PawlyPetStore: ObservableObject {
     }
     func invite(_ username:String,role:String,pet:PawlyPet) async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
+        guard pet.ownerUID == nil else { throw PawlyStoreError.noSharedAccess }
         guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyStoreError.verifyEmail }
         guard role == "editor" || role == "reader" else { throw PawlyStoreError.invalidTask }
         try await ensureSharedPet(pet)
