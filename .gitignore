@@ -1,3 +1,4 @@
+# Android / Gradle
 *.iml
 .gradle/
 .idea/
@@ -8,12 +9,23 @@ local.properties
 /captures/
 .externalNativeBuild/
 .cxx/
+.kotlin/
 
-# Firebase project configuration (do not commit)
+# Firebase local configuration (never commit project-specific credentials)
 /app/google-services.json
-
-# Firebase project config in the repository root (keep local)
 /google-services.json
-
-# Firebase CLI project selection (local to this checkout)
+/GoogleService-Info.plist
+/ios/Pawly/GoogleService-Info.plist
 /.firebaserc
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+/ios/Pawly.xcodeproj/xcuserdata/
