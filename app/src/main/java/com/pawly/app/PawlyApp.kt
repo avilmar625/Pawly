@@ -123,6 +123,8 @@ private fun PawlyMainApp(
     var showSettings by remember { mutableStateOf(false) }
     val settingsPreferences = remember(context) { context.getSharedPreferences("pawly_appearance", android.content.Context.MODE_PRIVATE) }
     var language by remember { mutableStateOf(settingsPreferences.getString("language", "es") ?: "es") }
+    var designStyle by remember { mutableStateOf(settingsPreferences.getString("design_style", "simple") ?: "simple") }
+    val elegantDesign = designStyle == "elegant"
     var showAbout by remember { mutableStateOf(false) }
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
@@ -281,13 +283,15 @@ private fun PawlyMainApp(
                     onAbout = { showAbout = true },
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
                     diaryCount = diaryEntries.size,
-                    dogPhoto = dogPhoto
+                    dogPhoto = dogPhoto,
+                    elegantDesign = elegantDesign
                 )
                 Tab.EXPLORE -> ExploreScreen(
                     savedPlaces = savedPlaceNames,
                     onToggleSave = { name ->
                         savedPlaceNames = if (name in savedPlaceNames) savedPlaceNames - name else savedPlaceNames + name
-                    }
+                    },
+                    elegantDesign = elegantDesign
                 )
                 Tab.LEARN -> LearningHubScreen(dogName = dogName)
                 Tab.HEALTH -> PetCareHubScreen(
@@ -305,13 +309,15 @@ private fun PawlyMainApp(
                 Tab.DIARY -> DiaryScreen(
                     dogName = dogName,
                     entries = diaryEntries,
-                    onEntriesChange = { diaryEntries = it }
+                    onEntriesChange = { diaryEntries = it },
+                    elegantDesign = elegantDesign
                 )
                 Tab.COMMUNITY -> CommunityScreen()
                 Tab.MORE -> MoreHubScreen(
                     onLearn = { selected = Tab.LEARN },
                     onDiary = { selected = Tab.DIARY },
-                    onHealth = { selected = Tab.HEALTH }
+                    onHealth = { selected = Tab.HEALTH },
+                    elegantDesign = elegantDesign
                 )
             }
         }
@@ -322,6 +328,8 @@ private fun PawlyMainApp(
             darkMode = darkMode,
             accent = accent,
             language = language,
+            designStyle = designStyle,
+            onDesignStyleChange = { designStyle = it; settingsPreferences.edit().putString("design_style", it).apply() },
             onDarkModeChange = onDarkModeChange,
             onAccentChange = onAccentChange,
             onLanguageChange = { language = it; settingsPreferences.edit().putString("language", it).apply() },
