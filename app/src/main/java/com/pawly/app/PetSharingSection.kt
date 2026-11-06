@@ -23,6 +23,7 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
     val repo = remember { runCatching { SharedPetRepository() }.getOrNull() }
     val scope = rememberCoroutineScope()
     var username by remember { mutableStateOf("") }
+    var inviteRole by remember { mutableStateOf("editor") }
     var members by remember { mutableStateOf(emptyList<PetShareMember>()) }
     var invitations by remember { mutableStateOf(emptyList<PetShareInvitation>()) }
     var acceptedShares by remember { mutableStateOf(emptyList<PetShareInvitation>()) }
@@ -62,12 +63,17 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
             Text("Invitar a un cuidador", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             OutlinedTextField(username, { username = it.take(24) }, modifier = Modifier.fillMaxWidth(),
                 singleLine = true, label = { Text("Nombre de usuario") }, placeholder = { Text("@usuario") })
+            Text("Permisos", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = inviteRole == "editor", onClick = { inviteRole = "editor" }, label = { Text("Puede editar") })
+                FilterChip(selected = inviteRole == "reader", onClick = { inviteRole = "reader" }, label = { Text("Solo lectura") })
+            }
             Button(onClick = {
                 val repository = repo ?: return@Button
                 busy = true; message = null
                 scope.launch {
-                    runCatching { repository.inviteByUsername(petId, username) }
-                        .onSuccess { message = "Invitación enviada a @${username.removePrefix("@")}"; username = ""; refresh() }
+                    runCatching { repository.inviteByUsername(petId, username, inviteRole) }
+                        .onSuccess { message = "Invitación enviada a @${username.removePrefix("@")}"; username = ""; inviteRole = "editor"; refresh() }
                         .onFailure { message = it.localizedMessage ?: "No se pudo enviar la invitación." }
                     busy = false
                 }
