@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import CoreLocation
 import FirebaseAuth
 import FirebaseFirestore
 import PhotosUI
@@ -150,6 +151,7 @@ struct PawlyExploreView:View{
  @State private var region=MKCoordinateRegion(center:CLLocationCoordinate2D(latitude:40.4168,longitude:-3.7038),span:MKCoordinateSpan(latitudeDelta:0.12,longitudeDelta:0.12))
  @State private var isSearching=false
  @State private var error:String?
+ @StateObject private var locationProvider=PawlyLocationProvider()
  private let categories=["Veterinarios","Urgencias veterinarias","Parques caninos","Protectoras","Playas para perros","Restaurantes pet-friendly","Alojamientos pet-friendly","Rutas y senderos","Tiendas de animales"]
  var body:some View{
   NavigationStack{
@@ -158,6 +160,7 @@ struct PawlyExploreView:View{
      Text("Encuentra lugares para compartir más aventuras.").font(.subheadline).foregroundStyle(.secondary)
      Picker("Categoría",selection:$category){ForEach(categories,id:\.self){Text($0)}}.pickerStyle(.menu)
      TextField("Ciudad o zona (ej. Málaga)",text:$area).textFieldStyle(.roundedBorder)
+     Button{locationProvider.request()}label:{Label("Usar mi ubicación actual",systemImage:"location.fill").font(.caption.weight(.semibold))}
      TextField("Búsqueda concreta (opcional)",text:$query).textFieldStyle(.roundedBorder)
      Button{Task{await search()}}label:{HStack{Spacer();if isSearching{ProgressView().tint(.white)};Label("Buscar lugares",systemImage:"magnifyingglass");Spacer()}}.buttonStyle(.borderedProminent).tint(PawlyColors.primary).disabled(isSearching)
     }.padding()
@@ -207,6 +210,25 @@ struct PawlySavedPlacesView:View{
   }.navigationTitle("Lugares favoritos")
  }
  private func persist(){if let data=try? JSONEncoder().encode(places){UserDefaults.standard.set(data,forKey:"pawly.savedPlaces.v2")}}
+}
+@MainActor final class PawlyLocationProvider:NSObject,ObservableObject,CLLocationManagerDelegate{
+ private let manager=CLLocationManager()
+ @Published var location:CLLocation?
+ @Published var message:String?
+ override init(){super.init();manager.delegate=self;manager.desiredAccuracy=kCLLocationAccuracyHundredMeters}
+ func request(){
+  switch manager.authorizationStatus{
+  case .notDetermined:manager.requestWhenInUseAuthorization()
+  case .authorizedAlways,.authorizedWhenInUse:manager.requestLocation()
+  case .denied,.restricted:message="Permite el acceso a la ubicación en Ajustes de iOS."
+  @unknown default:message="No se ha podido consultar la ubicación."
+  }
+ }
+ func locationManagerDidChangeAuthorization(_ manager:CLLocationManager){
+  if manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse{manager.requestLocation()}
+ }
+ func locationManager(_ manager:CLLocationManager,didUpdateLocations locations:[CLLocation]){location=locations.last;message=nil}
+ func locationManager(_ manager:CLLocationManager,didFailWithError error:Error){message=error.localizedDescription}
 }
 struct PawlyPlaceResult:Identifiable{let id:String;let name:String;let subtitle:String;let coordinate:CLLocationCoordinate2D;let phone:String?;let mapItem:MKMapItem}
 
