@@ -51,7 +51,8 @@ struct PawlySettingsView:View {
     Toggle("Modo oscuro",isOn:$darkMode)
     VStack(alignment:.leading,spacing:12) {
      Text("Color principal")
-     HStack(spacing:18){ForEach(accents,id:\.0){item in
+     HStack(spacing:18){ForEach(accents.indices,id:\.self){index in
+      let item=accents[index]
       Button{accent=item.0}label:{Circle().fill(item.2).frame(width:38,height:38)
        .overlay{if accent==item.0{Image(systemName:"checkmark").foregroundStyle(.white).font(.headline.bold())}}
        .overlay(Circle().stroke(accent==item.0 ? Color.primary:.clear,lineWidth:2).padding(-4))
@@ -251,7 +252,9 @@ struct PawlyLearningHubView:View{
    VStack(alignment:.leading,spacing:6){Text("Aprender también es cuidar").font(.title2.bold());Text("Guías prácticas y actualidad sobre bienestar animal.").font(.subheadline).foregroundStyle(.secondary)}
    ScrollView(.horizontal,showsIndicators:false){HStack{ForEach(topics,id:\.self){t in Button(t){topic=t;Task{await loadNews()}}.buttonStyle(.bordered).tint(topic==t ? PawlyColors.primary:.secondary)}}}
    Text("Guías de Pawly").font(.title3.bold())
-   ForEach(guides,id:\.0){g in NavigationLink{PawlyGuideDetailView(title:g.0,subtitle:g.1,icon:g.2,content:g.3)}label:{
+   ForEach(guides.indices,id:\.self){index in
+    let g=guides[index]
+    NavigationLink{PawlyGuideDetailView(title:g.0,subtitle:g.1,icon:g.2,content:g.3)}label:{
     HStack(spacing:12){Image(systemName:g.2).font(.title2).foregroundStyle(PawlyColors.primary).frame(width:45,height:45).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:14))
      VStack(alignment:.leading,spacing:3){Text(g.0).font(.headline).foregroundStyle(.primary);Text(g.1).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"chevron.right").font(.caption).foregroundStyle(.secondary)
     }.padding(12).background(PawlyColors.canvas,in:RoundedRectangle(cornerRadius:16))
