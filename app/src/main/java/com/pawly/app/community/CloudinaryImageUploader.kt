@@ -31,7 +31,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
             "Configura CLOUDINARY_CLOUD_NAME y CLOUDINARY_UPLOAD_PRESET en local.properties para subir fotografías."
         }
         require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
-        require(folder in setOf("profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos", "post-videos", "message-videos")) {
+        require(folder in setOf("profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos")) {
             "La carpeta de imágenes solicitada no está permitida."
         }
 
