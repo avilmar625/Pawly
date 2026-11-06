@@ -76,8 +76,12 @@ struct HomeView: View {
                         Button { pets.select(pet) } label:{
                             HStack(spacing:12) {
                                 if let url=URL(string:pet.photoURL),!pet.photoURL.isEmpty {
-                                    AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{Image(systemName:"pawprint.fill").foregroundStyle(PawlyColors.primary)}
-                                        .frame(width:46,height:46).clipShape(Circle())
+                                    AsyncImage(url: url) { image in
+                                        image.resizable().scaledToFill()
+                                    } placeholder: {
+                                        Image(systemName: "pawprint.fill").foregroundStyle(PawlyColors.primary)
+                                    }
+                                    .frame(width:46,height:46).clipShape(Circle())
                                 } else {
                                     Image(systemName:pet.species == "Gato" ? "cat.fill":"pawprint.fill")
                                         .foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())
@@ -164,7 +168,14 @@ struct PetFormSheet:View {
                 Section("Fotografía") {
                     PhotosPicker(selection:$photoItem,matching:.images){Label(photoURL.isEmpty && photoData == nil ? "Añadir fotografía":"Cambiar fotografía",systemImage:"photo")}
                     if let data=photoData,let image=UIImage(data:data){Image(uiImage:image).resizable().scaledToFill().frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))}
-                    else if let url=URL(string:photoURL),!photoURL.isEmpty{AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{ProgressView()}.frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))}
+                    else if let url=URL(string:photoURL),!photoURL.isEmpty{
+                        AsyncImage(url: url) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            ProgressView()
+                        }
+                        .frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))
+                    }
                 }
                 if let error {Text(error).foregroundStyle(.red)}
             }
