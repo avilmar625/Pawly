@@ -562,19 +562,53 @@ class FirebaseCommunityRepository private constructor(
             .addSnapshotListener { snapshot, error ->
                 if (error != null) { onError(error.localizedMessage ?: "No se pudieron cargar los mensajes."); return@addSnapshotListener }
                 onData(snapshot?.documents.orEmpty().map { d ->
-                    PawlyMessage(d.id, d.getString("senderId") ?: "", d.getString("text") ?: "", d.getTimestamp("createdAt")?.toDate()?.time ?: 0)
+                    PawlyMessage(
+                        id = d.id,
+                        senderId = d.getString("senderId") ?: "",
+                        text = d.getString("text") ?: "",
+                        createdAt = d.getTimestamp("createdAt")?.toDate()?.time ?: 0,
+                        imageUrl = d.getString("imageUrl") ?: "",
+                        readBy = (d.get("readBy") as? List<*>)?.filterIsInstance<String>().orEmpty()
+                    )
                 })
             }
     }
 
-    suspend fun sendMessage(conversationId: String, text: String) {
+    suspend fun sendMessage(conversationId: String, text: String, imageUrl: String = "") {
         val uid = requireVerifiedUid()
-        val clean = CommunityInputRules.validateMessage(text)
+        val clean = text.trim()
+        require(clean.length <= 2000) { "El mensaje no puede superar los 2000 caracteres." }
+        require(clean.isNotBlank() || imageUrl.isNotBlank()) { "Escribe un mensaje o adjunta una fotografía." }
+        require(imageUrl.length <= 2048) { "La dirección de la imagen no es válida." }
         val ref = db.collection("conversations").document(conversationId)
+        val messageRef = ref.collection("messages").document()
+        val preview = clean.ifBlank { "📷 Fotografía" }.take(120)
         db.runTransaction { tx ->
-            tx.set(ref.collection("messages").document(), mapOf("senderId" to uid, "text" to clean, "createdAt" to FieldValue.serverTimestamp()))
-            tx.update(ref, mapOf("lastMessage" to clean, "updatedAt" to FieldValue.serverTimestamp()))
+            val conversation = tx.get(ref)
+            check(uid in (conversation.get("participants") as? List<String>).orEmpty()) { "No formas parte de esta conversación." }
+            val participants = conversation.get("participants") as? List<String> ?: emptyList()
+            val otherUid = participants.firstOrNull { it != uid } ?: error("Conversación no válida.")
+            check(!db.collection("users").document(uid).collection("blocked").document(otherUid).get().await().exists()) {
+                "Has bloqueado a esta persona."
+            }
+            tx.set(messageRef, mapOf(
+                "senderId" to uid, "text" to clean.take(2000), "imageUrl" to imageUrl,
+                "readBy" to listOf(uid), "createdAt" to FieldValue.serverTimestamp()
+            ))
+            tx.update(ref, mapOf("lastMessage" to preview, "updatedAt" to FieldValue.serverTimestamp()))
         }.await()
+    }
+
+    suspend fun markConversationRead(conversationId: String) {
+        val uid = requireUid()
+        val messages = db.collection("conversations").document(conversationId)
+            .collection("messages").whereNotEqualTo("senderId", uid).limit(200).get().await()
+        val unread = messages.documents.filter { uid !in (it.get("readBy") as? List<*>)?.filterIsInstance<String>().orEmpty() }
+        unread.chunked(400).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { doc -> batch.update(doc.reference, "readBy", FieldValue.arrayUnion(uid)) }
+            batch.commit().await()
+        }
     }
 
     private fun requireUid(): String = currentUid ?: error("Inicia sesión para utilizar la comunidad.")
