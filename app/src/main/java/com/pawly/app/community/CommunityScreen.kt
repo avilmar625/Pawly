@@ -62,20 +62,20 @@ internal fun CommunityScreen() {
 
 @Composable
 internal fun FirebaseSetupPanel(onContinueOffline: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Cream).padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("🐾", fontSize = 54.sp)
-        Text("La comunidad Pawly", style = MaterialTheme.typography.headlineMedium, color = Forest)
-        Text("Conecta con personas que comparten su vida con perros. Para activar cuentas, sincronización y fotografías hay que vincular el proyecto Firebase.", color = Muted)
+        Text("La comunidad Pawly", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Text("Conecta con personas que comparten su vida con perros. Para activar cuentas, sincronización y fotografías hay que vincular el proyecto Firebase.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(18.dp))
-        Surface(color = Paper, shape = RoundedCornerShape(20.dp)) {
+        Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Servicios que se activarán", fontWeight = FontWeight.Bold, color = Forest)
+                Text("Servicios que se activarán", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text("• Cuentas con correo y contraseña")
                 Text("• Perfiles públicos y perfiles de perros")
                 Text("• Muro, likes, comentarios y seguidores")
                 Text("• Mensajes privados en tiempo real")
                 Text("• Fotografías optimizadas con Cloudinary")
-                Text("Añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text("Añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(14.dp))
@@ -103,7 +103,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
     var error by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     Column(
-        Modifier.fillMaxSize().background(Cream).verticalScroll(rememberScrollState()).padding(24.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
         Box(Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(28.dp))) {
@@ -204,7 +204,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                 Text("Continuar con Google")
             }
         }
-        if (status != null) Text(status!!, color = ForestLight, style = MaterialTheme.typography.bodySmall)
+        if (status != null) Text(status!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
         if (!register) TextButton(onClick = {
             error = null; status = null
             scope.launch {
@@ -222,7 +222,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
         OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
             Text("Continuar sin cuenta (modo local)")
         }
-        Text("Respeta la privacidad de otras personas y no compartas datos personales sensibles.", color = Muted, style = MaterialTheme.typography.labelSmall)
+        Text("Respeta la privacidad de otras personas y no compartas datos personales sensibles.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -273,11 +273,11 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
         val followingListener = repo.listenFollowingIds({ followingIds = it }, { error = it })
         onDispose { feedListener.remove(); followingListener.remove() }
     }
-    Column(Modifier.fillMaxSize().background(Cream)) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("PAWLY", color = Forest, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp, fontSize = 12.sp)
-                Text("Comunidad", color = Ink, style = MaterialTheme.typography.headlineMedium)
+                Text("PAWLY", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp, fontSize = 12.sp)
+                Text("Comunidad", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
             }
             IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Forest) }
         }
@@ -287,11 +287,11 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
-            Surface(color = Paper, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
                 Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("No te pierdas los avisos de Pawly", color = Forest, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                        Text("Activa las notificaciones para recibir avisos cuando estén disponibles.", color = Muted, style = MaterialTheme.typography.labelSmall)
+                        Text("No te pierdas los avisos de Pawly", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        Text("Activa las notificaciones para recibir avisos cuando estén disponibles.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     }
                     TextButton(onClick = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
                         Text("Activar")
@@ -302,7 +302,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
         if (!emailVerified) {
             Surface(color = Lime.copy(alpha = .45f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
                 Column(Modifier.padding(10.dp)) {
-                    Text("Verifica tu correo para proteger tu cuenta.", color = Forest, style = MaterialTheme.typography.bodySmall)
+                    Text("Verifica tu correo para proteger tu cuenta.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                     Row {
                         TextButton(onClick = {
                             scope.launch { runCatching { repo.resendVerificationEmail(); notice = "Correo de verificación enviado." }.onFailure { notice = it.localizedMessage } }
@@ -314,7 +314,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
                 }
             }
         }
-        if (notice != null) Text(notice!!, color = ForestLight, modifier = Modifier.padding(horizontal = 16.dp))
+        if (notice != null) Text(notice!!, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp))
         when {
             selectedUser != null -> PublicUserScreen(repo, selectedUser!!, onBack = { selectedUser = null }, onMessage = { id ->
                 scope.launch { runCatching { chat = PawlyConversation(id = repo.startConversation(id), otherUserId = id); page = CommunityPage.MESSAGES; selectedUser = null }.onFailure { notice = it.localizedMessage } }
