@@ -53,7 +53,7 @@ internal fun ModerationScreen(repo: FirebaseCommunityRepository) {
             Text("Centro de moderación", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
             Text("Los avisos quedan registrados para revisión del equipo.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
-        if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primaryLight) }
+        if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primary) }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
         if (reports.isEmpty()) item { EmptyCommunityCard("Sin denuncias pendientes", "Cuando alguien envíe un aviso, aparecerá aquí.") }
         items(reports, key = { it.id }) { report ->
