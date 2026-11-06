@@ -29,11 +29,11 @@ internal fun PawlySettingsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Personaliza Pawly", fontWeight = FontWeight.Bold) },
+        title = { Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { Text("Ajustes", fontWeight = FontWeight.ExtraBold); Text("Haz Pawly tuya", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) } },
         text = {
             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Apariencia", style = MaterialTheme.typography.titleMedium)
+                    Text("Apariencia", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
                             Text("Modo oscuro")
@@ -43,7 +43,7 @@ internal fun PawlySettingsDialog(
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Color de Pawly", style = MaterialTheme.typography.titleMedium)
+                    Text("Color de Pawly", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         listOf("forest" to Color(0xFF173F35), "ocean" to Color(0xFF176B87), "berry" to Color(0xFF805080), "sunset" to Color(0xFFB65D3C)).forEach { (key, color) ->
                             Box(Modifier.size(42.dp).background(color, CircleShape).clickable { onAccentChange(key) }, contentAlignment = Alignment.Center) {
@@ -53,7 +53,7 @@ internal fun PawlySettingsDialog(
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Idioma preferido", style = MaterialTheme.typography.titleMedium)
+                    Text("Idioma preferido", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("es" to "Español", "en" to "English", "ca" to "Català").forEach { (key, label) ->
                             FilterChip(selected = language == key, onClick = { onLanguageChange(key) }, label = { Text(label) })
