@@ -141,9 +141,15 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
     var messages by remember(conversation.id) { mutableStateOf(emptyList<PawlyMessage>()) }
     var draft by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var attachment by remember { mutableStateOf<Uri?>(null) }
+    var sending by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { attachment = it }
     DisposableEffect(conversation.id) {
-        val listener = repo.listenMessages(conversation.id, { messages = it }, { error = it })
+        val listener = repo.listenMessages(conversation.id, {
+            messages = it
+            scope.launch { runCatching { repo.markConversationRead(conversation.id) } }
+        }, { error = it })
         onDispose { listener.remove() }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
@@ -151,16 +157,52 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             items(messages, key = { it.id }) { item ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (item.senderId == uid) Arrangement.End else Arrangement.Start) {
-                    Surface(color = if (item.senderId == uid) Forest else Paper, shape = RoundedCornerShape(15.dp)) {
-                        Text(item.text, color = if (item.senderId == uid) Color.White else Ink, modifier = Modifier.padding(12.dp))
+                    Column(horizontalAlignment = if (item.senderId == uid) Alignment.End else Alignment.Start) {
+                        Surface(color = if (item.senderId == uid) Forest else Paper, shape = RoundedCornerShape(15.dp)) {
+                            Column(Modifier.widthIn(max = 280.dp).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (item.imageUrl.isNotBlank()) AsyncImage(
+                                    model = item.imageUrl, contentDescription = "Fotografía enviada",
+                                    modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp))
+                                )
+                                if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) Color.White else Ink)
+                            }
+                        }
+                        if (item.senderId == uid && item.readBy.any { it != uid }) {
+                            Text("Visto", style = MaterialTheme.typography.labelSmall, color = Muted)
+                        }
                     }
                 }
             }
         }
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
+        if (attachment != null) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Fotografía adjunta", modifier = Modifier.weight(1f), color = Forest, style = MaterialTheme.typography.labelMedium)
+                TextButton(onClick = { attachment = null }) { Text("Quitar") }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(draft, { draft = it }, modifier = Modifier.weight(1f), placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
-            IconButton(onClick = { val text = draft; scope.launch { runCatching { repo.sendMessage(conversation.id, text); draft = "" }.onFailure { error = it.localizedMessage } } }, enabled = draft.isNotBlank()) { Icon(Icons.Default.Send, "Enviar", tint = Forest) }
+            IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) {
+                Icon(Icons.Default.AddPhotoAlternate, "Adjuntar fotografía", tint = Forest)
+            }
+            OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f),
+                placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
+            IconButton(onClick = {
+                val text = draft
+                val uri = attachment
+                sending = true
+                scope.launch {
+                    runCatching {
+                        val imageUrl = uri?.let { repo.uploadImage(it, "message-photos") }.orEmpty()
+                        repo.sendMessage(conversation.id, text, imageUrl)
+                        draft = ""; attachment = null
+                    }.onFailure { error = it.localizedMessage ?: "No se pudo enviar el mensaje." }
+                    sending = false
+                }
+            }, enabled = !sending && (draft.isNotBlank() || attachment != null)) {
+                if (sending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Default.Send, "Enviar", tint = Forest)
+            }
         }
         Spacer(Modifier.height(8.dp))
     }
