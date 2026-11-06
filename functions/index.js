@@ -57,7 +57,11 @@ exports.processAccountDeletion=onDocumentCreated({document:"accountDeletionReque
   for(const d of [...sent.docs,...received.docs])await d.ref.delete();
   await deleteQuery(db.collection("posts").where("authorId","==",uid));
   const comments=await db.collectionGroup("comments").where("authorId","==",uid).get();for(const d of comments.docs)await d.ref.delete();
+  const liked=await db.collection("posts").where("likedBy","array-contains",uid).get();
+  for(const d of liked.docs){const count=d.get("likeCount")||1;await d.ref.update({likedBy:FieldValue.arrayRemove(uid),likeCount:Math.max(0,count-1)});}
   const chats=await db.collection("conversations").where("participants","array-contains",uid).get();for(const d of chats.docs)await db.recursiveDelete(d.ref);
+  const remainingShared=await db.collection("sharedPets").get();
+  for(const pet of remainingShared.docs)await pet.ref.collection("members").doc(uid).delete().catch(()=>{});
   const users=await db.collection("users").get();
   for(const person of users.docs){if(person.id===uid)continue;for(const sub of ["followers","following","blocked"])await person.ref.collection(sub).doc(uid).delete().catch(()=>{});}
   await deleteQuery(db.collection("reports").where("reporterId","==",uid));
