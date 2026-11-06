@@ -192,3 +192,19 @@ npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes
 ```
 
 La función requiere iniciar sesión y verificar el correo electrónico. La invitación no envía un push por sí sola: el backend de notificaciones sigue pendiente. No se han cambiado las reglas de acceso del pasaporte privado existente.
+
+
+## cambios24 · Mensajería enriquecida
+
+- Mensajes privados con fotografía adjunta mediante el cargador de imágenes ya existente (Cloudinary).
+- Confirmación de lectura por mensaje: el destinatario añade su UID a `readBy`; el emisor ve «Visto».
+- La pantalla marca como leídos los mensajes entrantes al recibir la actualización en tiempo real.
+- Validación de tamaño y contenido de mensajes, y reglas Firestore para impedir que un usuario marque como leído un mensaje propio.
+- Las fotografías se cargan con la cuenta verificada y se envían como URL, sin almacenar bytes en Firestore.
+
+Para activar los cambios de backend:
+```bash
+npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes --project pawly-83dca
+```
+
+La subida de imágenes en mensajes reutiliza Cloudinary. Las notificaciones push automáticas siguen necesitando una función backend de confianza; no se han añadido credenciales privadas ni se ha activado facturación.
