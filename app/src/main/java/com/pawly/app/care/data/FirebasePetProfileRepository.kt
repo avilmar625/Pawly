@@ -73,11 +73,11 @@ class FirebasePetProfileRepository(
         }
         val collection = diary(petId)
         val existing = collection.get().await()
-        require(existing.size() + entries.size <= 450) {
-            "Hay demasiados recuerdos para actualizar de una vez. Elimina algunos e inténtalo de nuevo."
+        require(existing.size() <= 450) {
+            "El diario remoto tiene demasiados registros para actualizarse de una vez."
         }
         val batch = db.batch()
-        existing.documents.forEach { batch.delete(it.reference) }
+        val retainedIds = entries.indices.map { index -> "entry_${index.toString().padStart(3, '0')}" }.toSet()
         entries.forEachIndexed { index, text ->
             val id = "entry_${index.toString().padStart(3, '0')}"
             batch.set(collection.document(id), mapOf(
@@ -87,6 +87,7 @@ class FirebasePetProfileRepository(
                 "updatedAt" to FieldValue.serverTimestamp()
             ))
         }
+        existing.documents.filterNot { it.id in retainedIds }.forEach { batch.delete(it.reference) }
         batch.commit().await()
     }
 }
