@@ -1,76 +1,56 @@
 # Pawly para iOS
 
-Port nativo para iPhone con SwiftUI. Android permanece intacto en `app/`. La app iOS utiliza el mismo proyecto Firebase para compartir cuentas y datos compatibles.
+Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. El trabajo se desarrolla en `ios-funciones`; no modifica `main` ni el código Android.
 
-## Funciones implementadas en esta rama
+## Funciones iOS incorporadas
+- Acceso, registro, verificación y recuperación de contraseña con Firebase; inicio de sesión Google.
+- Perfiles multi-mascota y selector persistente; invitaciones a compartir con roles editor/lector.
+- Pasaporte sanitario, rutinas, diario sincronizado y exportación PDF.
+- Comunidad con muro, categorías, multimedia, likes, comentarios, búsqueda de personas, seguimiento, bloqueo y denuncias.
+- Mensajería en tiempo real con fotos/vídeos y confirmación de lectura.
+- Perfil público editable: nombre, biografía, foto y privacidad.
+- Explorar: búsqueda local de veterinarios, urgencias, parques, protectoras, playas, rutas, restaurantes y alojamientos pet-friendly; mapa, llamadas, indicaciones y favoritos.
+- Aprender: guías y noticias RSS temáticas.
+- Agenda de recordatorios locales con fecha/hora, repetición y notificaciones del sistema.
+- Ajustes simple/elegante, modo oscuro, paletas, idioma preferido y notificaciones.
+- Registro de tokens APNs/FCM y backend Firebase opcional para notificaciones y eliminación integral.
 
-- Firebase Authentication: acceso con correo y contraseña, registro, verificación y recuperación.
-- Sesión persistente.
-- Perfiles de mascotas sincronizados con `users/{uid}.dogProfiles`, con selector persistente entre aperturas.
-- Pasaporte sanitario: alta, consulta y borrado de vacunas, revisiones y tratamientos.
-- Rutinas de cuidado: alta, consulta, marcar como completadas y borrar.
-- Diario compartido por mascota en `sharedPets/{ownerUid}_{petId}/diary`, con alta, consulta y borrado.
-- Comunidad: muro en tiempo real, publicaciones de texto por categoría, likes y comentarios.
-- Mensajería privada en tiempo real: iniciar chat por nombre de usuario, mensajes de texto/foto/vídeo y confirmación de lectura.
-- Publicaciones con texto, foto o vídeo; las imágenes se comprimen y los archivos se suben a Cloudinary mediante presets unsigned.
-- Cierre de sesión.
+## Firebase iOS
+1. Registra una app iOS con bundle ID `com.pawly.ios` en el proyecto Firebase actual.
+2. Coloca el plist de iOS en `ios/Pawly/GoogleService-Info.plist`. No reutilices el JSON de Android.
+3. Copia los valores `CLIENT_ID` y `REVERSED_CLIENT_ID` del plist a los build settings `GOOGLE_CLIENT_ID` y `GOOGLE_REVERSED_CLIENT_ID`.
+4. Activa Email/Password y Google en Firebase Authentication y configura los clientes OAuth.
+5. Para push: sube una APNs Auth Key (.p8) en Firebase Console → Project Settings → Cloud Messaging; activa Push Notifications y Background Modes → Remote notifications en Xcode.
 
-## Funciones aún pendientes
+## Cloudinary
+Configura `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_IMAGE_UPLOAD_PRESET` y `CLOUDINARY_VIDEO_UPLOAD_PRESET` en el target iOS. No incluyas el API Secret en la app. Los presets unsigned y las URLs son públicos para quien los conozca; para producción conviene un backend de firma.
 
-Esta rama amplía la primera base, pero todavía no es una paridad total con Android. Faltan:
-- Mejoras de edición de medios, reproducción en segundo plano y gestión/borrado de archivos remotos en Cloudinary.
-- Notificaciones push con backend/APNs y moderación operativa; eliminación integral automatizada de cuenta y medios.
-- Invitaciones y administración de perfiles de mascotas compartidos.
-- Notificaciones push entrantes: registrar APNs/FCM en iOS y disponer de un emisor confiable en backend.
-- Sincronización de preferencias y recordatorios locales, y ejecución automática del borrado completo de cuenta/datos y archivos remotos.
-- Pruebas de extremo a extremo con dos cuentas Firebase reales.
+## Backend opcional (notificaciones push y borrado integral)
+En `functions/` se incluye Firebase Functions v2 para avisar de mensajes/publicaciones y procesar solicitudes de eliminación (Auth, Firestore y medios Cloudinary).
+Requiere Node 20, Firebase CLI y plan Blaze. Configura secretos `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` y despliega:
+```bash
+cd functions && npm install && cd ..
+firebase functions:secrets:set CLOUDINARY_CLOUD_NAME
+firebase functions:secrets:set CLOUDINARY_API_KEY
+firebase functions:secrets:set CLOUDINARY_API_SECRET
+firebase deploy --only functions
+```
+No se ha desplegado ni activado facturación desde este repositorio. No actives Blaze sin revisar y aceptar los costes.
 
-## Requisitos
-
-- macOS y Xcode 16 o posterior.
-- Homebrew y XcodeGen (`brew install xcodegen`).
-- Proyecto Firebase actual de Pawly.
-
-## Configurar Firebase iOS
-
-1. En Firebase Console, dentro del proyecto que ya utiliza Android, registra una aplicación iOS.
-2. Identificador de paquete: `com.pawly.ios`.
-3. Descarga el archivo específico de iOS `GoogleService-Info.plist`.
-4. Colócalo en `ios/Pawly/GoogleService-Info.plist`. No reutilices el `google-services.json` de Android.
-5. Mantén Email/Password habilitado en Authentication. Las cuentas existentes de Firebase podrán iniciar sesión en iOS.
-
-El plist está excluido de Git para no publicar configuración privada del proyecto.
-
-## Generar y ejecutar
-
-Desde la raíz del repositorio:
-
+## Compilar
+Requisitos: macOS, Xcode 16+, Homebrew y XcodeGen.
 ```bash
 cd ios
 xcodegen generate
 open Pawly.xcodeproj
+xcodebuild -project Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
+CI compila el simulador; Firebase/Google/Cloudinary/APNs reales y las pruebas con dos cuentas deben validarse en dispositivo.
 
-En Xcode selecciona un simulador o conecta el iPhone, configura tu equipo en Signing & Capabilities y pulsa Run. Para compilar sin firma:
-
-```bash
-xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-```
-
-## Configurar Cloudinary para iOS
-
-La app usa el mismo Cloudinary que Android. En Xcode, selecciona el target Pawly y añade estos valores en Build Settings (User-Defined), o completa las claves vacías equivalentes en `ios/project.yml` y vuelve a ejecutar `xcodegen generate`:
-
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_IMAGE_UPLOAD_PRESET`
-- `CLOUDINARY_VIDEO_UPLOAD_PRESET`
-
-Utiliza los mismos unsigned presets que Android. No incluyas nunca el API Secret de Cloudinary en la app. Las fotos se limitan a 8 MB tras compresión y los vídeos a 40 MB.
-
-## Compatibilidad de datos
-
-- Los perfiles se leen/escriben en `users/{uid}.dogProfiles`.
-- El pasaporte y las rutinas privadas siguen las rutas Android `users/{uid}/petCare/{petId}/passport` y `tasks`.
-- El diario se sincroniza en el perfil compartido `sharedPets/{uid}_{petId}/diary`. Para crear ese espacio, el usuario debe haber verificado su correo. Si el perfil ya existe pero el usuario no figura como miembro, la app muestra un error y no intenta saltarse las reglas.
-- Comunidad y chat usan las colecciones Firestore existentes `posts`, `comments`, `conversations` y `messages`. Publicar, comentar, dar like e iniciar conversaciones exige correo verificado.
-- El contenido multimedia todavía no se sube desde iOS; esta versión no simula ni guarda URLs ficticias.
+## Límites que deben validarse
+- Los recordatorios son locales al dispositivo; no se sincronizan con Android ni con otros iPhones.
+- Las push requieren APNs, Firebase Messaging y Functions desplegadas.
+- La eliminación integral requiere Functions y secretos Cloudinary configurados.
+- Cloudinary unsigned no ofrece privacidad de archivos ni cifrado E2E.
+- Explorar usa MapKit; los resultados dependen de Apple Maps y de la zona.
+- El idioma preferido queda guardado, pero no se ha traducido todavía todo el contenido.
