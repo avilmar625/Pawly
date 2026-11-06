@@ -54,7 +54,7 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
                     Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text("Compartir el perfil de $petName", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text("Invita a tu pareja u otra persona de confianza mediante su nombre de usuario de Pawly. Podrá aceptar o rechazar la invitación.")
-                    Text("En esta versión se comparte el acceso al perfil; el historial sanitario y las rutinas siguen siendo privados de la cuenta propietaria.",
+                    Text("El perfil compartido incluye el pasaporte sanitario, las rutinas y el diario. Los permisos de solo lectura y edición se aplican en Firestore. La agenda y los marcadores rápidos del día siguen siendo locales.",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
