@@ -360,7 +360,7 @@ struct CommunityView:View {
                     if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
                     if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
                     ForEach(store.posts){post in
-                        FeedPostCard(post:post,onLike:{Task{do{try await store.toggleLike(post)}catch{store.statusMessage=$0.localizedDescription}}},onComment:{comments=post})
+                        FeedPostCard(post:post,onLike:{Task{do{try await store.toggleLike(post)}catch { store.statusMessage = error.localizedDescription }}},onComment:{comments=post})
                     }
                 }.padding(15)
             }.background(PawlyColors.canvas).navigationBarHidden(true)
