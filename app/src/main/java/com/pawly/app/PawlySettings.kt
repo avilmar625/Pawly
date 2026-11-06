@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +24,8 @@ internal fun PawlySettingsDialog(
     darkMode: Boolean,
     accent: String,
     language: String,
+    designStyle: String,
+    onDesignStyleChange: (String) -> Unit,
     onDarkModeChange: (Boolean) -> Unit,
     onAccentChange: (String) -> Unit,
     onLanguageChange: (String) -> Unit,
@@ -29,9 +33,37 @@ internal fun PawlySettingsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { Text("Ajustes", fontWeight = FontWeight.ExtraBold); Text("Haz Pawly tuya", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) } },
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Ajustes", fontWeight = FontWeight.ExtraBold)
+                Text("Haz Pawly tuya", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+        },
         text = {
-            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(19.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("Estilo de diseño", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                        DesignStyleCard(
+                            modifier = Modifier.weight(1f),
+                            selected = designStyle == "simple",
+                            title = "Simple",
+                            subtitle = "Limpio y directo",
+                            icon = Icons.Filled.Tune,
+                            onClick = { onDesignStyleChange("simple") }
+                        )
+                        DesignStyleCard(
+                            modifier = Modifier.weight(1f),
+                            selected = designStyle == "elegant",
+                            title = "Elegante",
+                            subtitle = "Fotos y color",
+                            icon = Icons.Filled.AutoAwesome,
+                            onClick = { onDesignStyleChange("elegant") }
+                        )
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Apariencia", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -59,12 +91,42 @@ internal fun PawlySettingsDialog(
                             FilterChip(selected = language == key, onClick = { onLanguageChange(key) }, label = { Text(label) })
                         }
                     }
-                    Text("La preferencia queda guardada. La traducción integral de las pantallas actuales se incorporará progresivamente; por ahora la interfaz principal sigue en español.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("La traducción integral de todas las pantallas se incorporará progresivamente; por ahora la interfaz principal sigue en español.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("Tus ajustes se guardan en este dispositivo.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Listo") } },
-        shape = RoundedCornerShape(24.dp)
+        shape = RoundedCornerShape(26.dp)
     )
+}
+
+@Composable
+private fun DesignStyleCard(
+    modifier: Modifier,
+    selected: Boolean,
+    title: String,
+    subtitle: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(
+            if (selected) 2.dp else 1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+        )
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.weight(1f))
+                if (selected) Icon(Icons.Default.Check, contentDescription = "Seleccionado", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+            }
+            Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
