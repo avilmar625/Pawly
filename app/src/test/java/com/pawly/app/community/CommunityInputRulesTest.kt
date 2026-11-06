@@ -46,4 +46,24 @@ class CommunityInputRulesTest {
             CommunityInputRules.validatePost("", "http://example.com/image.jpg")
         }
     }
+    @Test fun videoOnlyPostIsValid() {
+        CommunityInputRules.validatePost("", "", "https://res.cloudinary.com/demo/video/upload/sample.mp4")
+    }
+
+    @Test fun rejectsInsecureVideoUrl() {
+        assertThrows(IllegalArgumentException::class.java) {
+            CommunityInputRules.validatePost("", "", "http://example.com/video.mp4")
+        }
+    }
+
+    @Test fun rejectsPhotoAndVideoTogether() {
+        assertThrows(IllegalArgumentException::class.java) {
+            CommunityInputRules.validatePost(
+                "",
+                "https://res.cloudinary.com/demo/image/upload/photo.jpg",
+                "https://res.cloudinary.com/demo/video/upload/sample.mp4"
+            )
+        }
+    }
+
 }
