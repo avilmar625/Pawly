@@ -19,7 +19,7 @@ import com.pawly.app.care.data.PetShareInvitation
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?) {
+internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?, onOpenSharedPet: (PetShareInvitation) -> Unit = {}) {
     val repo = remember { runCatching { SharedPetRepository() }.getOrNull() }
     val scope = rememberCoroutineScope()
     var username by remember { mutableStateOf("") }
@@ -113,7 +113,12 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
             Card {
                 Column(Modifier.fillMaxWidth().padding(14.dp)) {
                     Text(shared.petName, fontWeight = FontWeight.SemiBold)
-                    Text("Compartido por ${shared.ownerName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Compartido por ${shared.ownerName} · ${if (shared.role == "reader") "Solo lectura" else "Puede editar"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(onClick = { onOpenSharedPet(shared) }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.Share, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Abrir perfil compartido")
+                    }
                 }
             }
         }
