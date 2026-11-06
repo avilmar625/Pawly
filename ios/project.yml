@@ -8,12 +8,18 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
     from: 12.0.0
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: 8.0.0
 targets:
   Pawly:
     type: application
     platform: iOS
     sources:
       - path: Pawly
+        excludes:
+          - Info.plist
+          - Pawly.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pawly.ios
@@ -21,11 +27,22 @@ targets:
         SWIFT_VERSION: 5.0
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Pawly/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Pawly/Pawly.entitlements
+        GOOGLE_CLIENT_ID: ""
+        GOOGLE_REVERSED_CLIENT_ID: ""
+        INFOPLIST_KEY_GIDClientID: "$(GOOGLE_CLIENT_ID)"
         INFOPLIST_KEY_CFBundleDisplayName: Pawly
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Pawly necesita acceso a tus fotos para añadir imágenes de tus mascotas.
         INFOPLIST_KEY_NSCameraUsageDescription: Pawly necesita la cámara para hacer fotos de tus mascotas.
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Pawly puede usar tu ubicación para mostrar lugares y servicios cercanos para mascotas.
+        CLOUDINARY_CLOUD_NAME: ""
+        CLOUDINARY_IMAGE_UPLOAD_PRESET: ""
+        CLOUDINARY_VIDEO_UPLOAD_PRESET: ""
+        INFOPLIST_KEY_CLOUDINARY_CLOUD_NAME: "$(CLOUDINARY_CLOUD_NAME)"
+        INFOPLIST_KEY_CLOUDINARY_IMAGE_UPLOAD_PRESET: "$(CLOUDINARY_IMAGE_UPLOAD_PRESET)"
+        INFOPLIST_KEY_CLOUDINARY_VIDEO_UPLOAD_PRESET: "$(CLOUDINARY_VIDEO_UPLOAD_PRESET)"
         CODE_SIGN_STYLE: Automatic
     dependencies:
       - package: Firebase
@@ -34,3 +51,7 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseMessaging
+      - package: GoogleSignIn
+        product: GoogleSignIn

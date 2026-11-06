@@ -10,6 +10,7 @@ struct AuthenticationView: View {
     @State private var message: String?
     @State private var isError = false
     @State private var isWorking = false
+    @State private var isGoogleWorking = false
 
     var body: some View {
         ZStack {
@@ -63,6 +64,22 @@ struct AuthenticationView: View {
                     .disabled(isWorking || email.isEmpty || password.count < 6 ||
                               (isRegistering && (name.trimmingCharacters(in: .whitespaces).isEmpty || username.isEmpty)))
                     .opacity(isWorking ? 0.7 : 1)
+                    if !isRegistering {
+                        Button {
+                            Task {
+                                isGoogleWorking = true
+                                do { try await PawlyGoogleSignIn.signIn(); message = nil }
+                                catch { message = error.localizedDescription; isError = true }
+                                isGoogleWorking = false
+                            }
+                        } label: {
+                            HStack { if isGoogleWorking { ProgressView() }; Image(systemName: "g.circle.fill"); Text("Continuar con Google") }
+                                .fontWeight(.semibold).frame(maxWidth: .infinity).padding(.vertical, 15)
+                                .background(.white, in: RoundedRectangle(cornerRadius: 15))
+                                .overlay(RoundedRectangle(cornerRadius: 15).stroke(PawlyColors.muted.opacity(0.25)))
+                                .foregroundStyle(PawlyColors.ink)
+                        }.disabled(isWorking || isGoogleWorking)
+                    }
                     if !isRegistering {
                         Button("He olvidado mi contraseña") {
                             Task { await resetPassword() }

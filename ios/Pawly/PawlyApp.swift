@@ -3,6 +3,8 @@ import FirebaseCore
 
 @main
 struct PawlyApp: App {
+    @UIApplicationDelegateAdaptor(PawlyAppDelegate.self) private var appDelegate
+    @AppStorage("pawly.darkMode") private var darkMode = false
     @StateObject private var session: PawlySession
 
     init() {
@@ -28,7 +30,7 @@ struct PawlyApp: App {
                         .environmentObject(session)
                 }
             }
-            .preferredColorScheme(.light)
+            .preferredColorScheme(darkMode ? .dark : .light)
         }
     }
 }
@@ -57,7 +59,7 @@ struct FirebaseSetupView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(PawlyColors.muted)
                 Label("Configuración pendiente", systemImage: "wrench.and.screwdriver")
-                    .font(.footnote.semibold()).foregroundStyle(PawlyColors.primary)
+                    .font(.footnote.weight(.semibold)).foregroundStyle(PawlyColors.primary)
             }
             .padding(28)
             .pawlyCard()

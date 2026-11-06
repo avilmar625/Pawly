@@ -93,7 +93,7 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt'])
           && request.resource.data.token is string
           && request.resource.data.token.size() <= 4096
-          && request.resource.data.platform == 'android';
+          && request.resource.data.platform in ['android', 'ios'];
         allow delete: if owner(uid);
       }
 
@@ -377,7 +377,7 @@ service cloud.firestore {
         && request.resource.data.email.size() <= 254
         && request.resource.data.requestedAt == request.time
         && request.resource.data.status == 'pending'
-        && request.resource.data.source == 'android';
+        && request.resource.data.source in ['android', 'ios'];
       allow read: if signedIn() && (resource.data.uid == request.auth.uid || admin());
       allow update, delete: if admin();
     }

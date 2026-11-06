@@ -1,63 +1,56 @@
 # Pawly para iOS
 
-Esta carpeta contiene el port nativo para iPhone. La aplicación Android original permanece en `app/` y no se modifica. iOS utiliza SwiftUI y el SDK oficial de Firebase para compartir el mismo proyecto de Authentication y Firestore.
+Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. El trabajo se desarrolla en `ios-funciones`; no modifica `main` ni el código Android.
 
-## Estado de esta primera entrega
+## Funciones iOS incorporadas
+- Acceso, registro, verificación y recuperación de contraseña con Firebase; inicio de sesión Google.
+- Perfiles multi-mascota y selector persistente; invitaciones a compartir con roles editor/lector.
+- Pasaporte sanitario, rutinas, diario sincronizado y exportación PDF.
+- Comunidad con muro, categorías, multimedia, likes, comentarios, búsqueda de personas, seguimiento, bloqueo y denuncias.
+- Mensajería en tiempo real con fotos/vídeos y confirmación de lectura.
+- Perfil público editable: nombre, biografía, foto y privacidad.
+- Explorar: búsqueda local de veterinarios, urgencias, parques, protectoras, playas, rutas, restaurantes y alojamientos pet-friendly; mapa, llamadas, indicaciones y favoritos.
+- Aprender: guías y noticias RSS temáticas.
+- Agenda de recordatorios locales con fecha/hora, repetición y notificaciones del sistema.
+- Ajustes simple/elegante, modo oscuro, paletas, idioma preferido y notificaciones.
+- Registro de tokens APNs/FCM y backend Firebase opcional para notificaciones y eliminación integral.
 
-- Proyecto iOS generado con XcodeGen.
-- Inicio de sesión con correo y contraseña.
-- Registro con verificación de correo.
-- Recuperación de contraseña.
-- Sesión persistente mediante Firebase Authentication.
-- Primer diseño SwiftUI con pestañas Inicio, Comunidad, Recuerdos y Cuenta.
-- Lectura inicial del perfil de mascota desde `sharedPets`.
-- Workflow de compilación para simulador iOS en GitHub Actions.
+## Firebase iOS
+1. Registra una app iOS con bundle ID `com.pawly.ios` en el proyecto Firebase actual.
+2. Coloca el plist de iOS en `ios/Pawly/GoogleService-Info.plist`. No reutilices el JSON de Android.
+3. Copia los valores `CLIENT_ID` y `REVERSED_CLIENT_ID` del plist a los build settings `GOOGLE_CLIENT_ID` y `GOOGLE_REVERSED_CLIENT_ID`.
+4. Activa Email/Password y Google en Firebase Authentication y configura los clientes OAuth.
+5. Para push: sube una APNs Auth Key (.p8) en Firebase Console → Project Settings → Cloud Messaging; activa Push Notifications y Background Modes → Remote notifications en Xcode.
 
-La comunidad, chat, multimedia, diario completo, salud, recordatorios y perfiles compartidos todavía deben portarse. No se presentan como terminados.
+## Cloudinary
+Configura `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_IMAGE_UPLOAD_PRESET` y `CLOUDINARY_VIDEO_UPLOAD_PRESET` en el target iOS. No incluyas el API Secret en la app. Los presets unsigned y las URLs son públicos para quien los conozca; para producción conviene un backend de firma.
 
-## Requisitos en el Mac
-
-- macOS compatible con la versión de Xcode instalada.
-- Xcode 16 o posterior.
-- Homebrew.
-- XcodeGen.
-
-Instala XcodeGen:
-
+## Backend opcional (notificaciones push y borrado integral)
+En `functions/` se incluye Firebase Functions v2 para avisar de mensajes/publicaciones y procesar solicitudes de eliminación (Auth, Firestore y medios Cloudinary).
+Requiere Node 20, Firebase CLI y plan Blaze. Configura secretos `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` y despliega:
 ```bash
-brew install xcodegen
+cd functions && npm install && cd ..
+firebase functions:secrets:set CLOUDINARY_CLOUD_NAME
+firebase functions:secrets:set CLOUDINARY_API_KEY
+firebase functions:secrets:set CLOUDINARY_API_SECRET
+firebase deploy --only functions
 ```
+No se ha desplegado ni activado facturación desde este repositorio. No actives Blaze sin revisar y aceptar los costes.
 
-## Configurar Firebase iOS
-
-1. Abre Firebase Console y entra en el mismo proyecto que utiliza Pawly Android.
-2. En Configuración del proyecto añade una aplicación iOS.
-3. Usa el identificador de paquete exacto: `com.pawly.ios`.
-4. Descarga `GoogleService-Info.plist`.
-5. Coloca el archivo en `ios/Pawly/GoogleService-Info.plist`.
-6. No lo subas a Git: está excluido por el `.gitignore` de la raíz.
-7. Activa Email/Password en Authentication. Las cuentas y usuarios de Firebase Authentication son comunes entre Android e iOS cuando ambas apps están registradas en el mismo proyecto.
-
-No reutilices el `google-services.json` de Android: iOS necesita su propio `GoogleService-Info.plist`.
-
-## Generar y abrir el proyecto
-
-Desde la raíz del repositorio:
-
+## Compilar
+Requisitos: macOS, Xcode 16+, Homebrew y XcodeGen.
 ```bash
 cd ios
 xcodegen generate
 open Pawly.xcodeproj
-```
-
-Selecciona el simulador o tu iPhone. Para instalar en un iPhone físico necesitarás seleccionar tu equipo de desarrollo en Signing & Capabilities y confiar en el certificado de desarrollo.
-
-También puedes compilar desde Terminal:
-
-```bash
 xcodebuild -project Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
+CI compila el simulador; Firebase/Google/Cloudinary/APNs reales y las pruebas con dos cuentas deben validarse en dispositivo.
 
-## Compartir datos con Android
-
-La app usa el mismo proyecto Firebase y conserva la colección `users` y la colección `sharedPets` para comenzar la integración. No migres ni borres datos para instalar la app iOS. Algunas funciones Android guardan información local y no aparecerán automáticamente en iOS hasta que se porte su sincronización.
+## Límites que deben validarse
+- Los recordatorios son locales al dispositivo; no se sincronizan con Android ni con otros iPhones.
+- Las push requieren APNs, Firebase Messaging y Functions desplegadas.
+- La eliminación integral requiere Functions y secretos Cloudinary configurados.
+- Cloudinary unsigned no ofrece privacidad de archivos ni cifrado E2E.
+- Explorar usa MapKit; los resultados dependen de Apple Maps y de la zona.
+- El idioma preferido queda guardado, pero no se ha traducido todavía todo el contenido.

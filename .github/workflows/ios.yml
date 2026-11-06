@@ -1,15 +1,25 @@
 name: iOS CI
 
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
-    branches: [ios]
+    branches: [ios, ios-funciones]
     paths:
       - "ios/**"
+      - "functions/**"
+      - "firestore.rules"
+      - "firebase.json"
       - ".github/workflows/ios.yml"
   pull_request:
-    branches: [main]
+    branches: [main, ios]
     paths:
       - "ios/**"
+      - "functions/**"
+      - "firestore.rules"
+      - "firebase.json"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
@@ -25,6 +35,17 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate Firebase Functions
+        working-directory: functions
+        run: |
+          npm install
+          node --check index.js
 
       - name: Generate Xcode project
         working-directory: ios
