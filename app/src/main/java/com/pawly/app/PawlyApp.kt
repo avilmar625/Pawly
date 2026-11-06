@@ -293,7 +293,7 @@ private fun PawlyMainApp(
                     },
                     elegantDesign = elegantDesign
                 )
-                Tab.LEARN -> LearningHubScreen(dogName = dogName)
+                Tab.LEARN -> LearningHubScreen(dogName = dogName, elegantDesign = elegantDesign)
                 Tab.HEALTH -> PetCareHubScreen(
                     petName = dogName,
                     petId = activePetId,
@@ -313,7 +313,7 @@ private fun PawlyMainApp(
                     onEntriesChange = { diaryEntries = it },
                     elegantDesign = elegantDesign
                 )
-                Tab.COMMUNITY -> CommunityScreen()
+                Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
                 Tab.MORE -> MoreHubScreen(
                     onLearn = { selected = Tab.LEARN },
                     onDiary = { selected = Tab.DIARY },
