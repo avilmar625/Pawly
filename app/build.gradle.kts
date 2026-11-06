@@ -32,8 +32,11 @@ if (hasCompleteReleaseSigning) {
     require(releaseKeystore?.isFile == true) { "No se encuentra el keystore release indicado en local.properties." }
 }
 
-fun buildConfigString(name: String): String {
-    val value = localProperties.getProperty(name, "")
+fun buildConfigString(name: String, fallbackName: String? = null): String {
+    val rawValue = localProperties.getProperty(name)?.takeIf { it.isNotBlank() }
+        ?: fallbackName?.let { localProperties.getProperty(it) }
+        ?: ""
+    val value = rawValue
         .replace("\\", "\\\\")
         .replace("\"", "\\\"")
     return "\"$value\""
@@ -51,7 +54,10 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", buildConfigString("CLOUDINARY_CLOUD_NAME"))
-        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", buildConfigString("CLOUDINARY_UPLOAD_PRESET"))
+        // Separate presets let Cloudinary enforce different allowed formats for images and videos.
+        // The legacy key remains a fallback so existing local.properties files keep working.
+        buildConfigField("String", "CLOUDINARY_IMAGE_UPLOAD_PRESET", buildConfigString("CLOUDINARY_IMAGE_UPLOAD_PRESET", "CLOUDINARY_UPLOAD_PRESET"))
+        buildConfigField("String", "CLOUDINARY_VIDEO_UPLOAD_PRESET", buildConfigString("CLOUDINARY_VIDEO_UPLOAD_PRESET", "CLOUDINARY_UPLOAD_PRESET"))
     }
 
     buildFeatures {
