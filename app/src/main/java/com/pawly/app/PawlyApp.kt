@@ -138,7 +138,7 @@ private fun PawlyMainApp(
     var showAbout by remember { mutableStateOf(false) }
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
-    var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
+    var dogName by remember { mutableStateOf(preferences.getString("selected_pet_name", null) ?: preferences.getString("dog_name", "Nala") ?: "Nala") }
     // Keep the legacy deterministic ID on first use so existing Firestore data remains addressable.
     val activePetId = remember(dogName, preferences) {
         val normalizedName = dogName.trim().lowercase()
@@ -228,7 +228,7 @@ private fun PawlyMainApp(
     }
     var diaryEntries by remember(activePetId) { mutableStateOf(storedEntries) }
 
-    LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).apply() }
+    LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).putString("selected_pet_name", dogName).commit() }
     LaunchedEffect(dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
     LaunchedEffect(dogPhotoPath, activePetId) { preferences.edit().putString("dog_photo_path_$activePetId", dogPhotoPath).apply() }
     LaunchedEffect(remoteDogPhotoUrl, activePetId) {
@@ -246,19 +246,9 @@ private fun PawlyMainApp(
                 if (cloudProfile == null) {
                     profileRepository.saveProfile(activePetId, dogName, remoteDogPhotoUrl)
                 } else {
-                    if (cloudProfile.name.isNotBlank() && cloudProfile.name != dogName) {
-                        val previousName = dogName
-                        PetCareLocalStore.renamePet(context, previousName, cloudProfile.name, storageScope)
-                        val oldHealthPrefix = "$previousName|"
-                        healthDates = healthDates.mapKeys { (key, _) ->
-                            if (key.startsWith(oldHealthPrefix)) "${cloudProfile.name}|${key.removePrefix(oldHealthPrefix)}" else key
-                        }
-                        val oldKey = "pet_id_${previousName.trim().lowercase()}"
-                        val newKey = "pet_id_${cloudProfile.name.trim().lowercase()}"
-                        preferences.edit().putString(newKey, activePetId).remove(oldKey).apply()
-                        dogProfiles = (dogProfiles - previousName) + cloudProfile.name
-                        dogName = cloudProfile.name
-                    }
+                    // The selected pet name is a local user choice. A stale cloud profile must
+                    // never switch the Home screen back to another pet; the save effect below
+                    // reconciles the cloud name with this selected profile.
                     if (!cloudProfile.photoUrl.isNullOrBlank()) {
                         remoteDogPhotoUrl = cloudProfile.photoUrl
                         preferences.edit().putString("dog_photo_url_$activePetId", cloudProfile.photoUrl).apply()
