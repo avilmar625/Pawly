@@ -1,6 +1,6 @@
 import SwiftUI
 import FirebaseFirestore
-import PhotosUI
+import PhotosUI\nimport UIKit
 import AVKit
 import FirebaseAuth
 
@@ -25,7 +25,7 @@ struct HomeView: View {
     @EnvironmentObject private var pets:PawlyPetStore
     @State private var showAdd=false
     @State private var showDelete=false
-    @State private var petToDelete:PawlyPet?
+    @State private var petToDelete:PawlyPet?\n    @State private var petToEdit:PawlyPet?
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -55,7 +55,12 @@ struct HomeView: View {
                         .padding(20).frame(maxWidth:.infinity,alignment:.leading)
                         .background(LinearGradient(colors:[PawlyColors.primary,Color(red:0.35,green:0.66,blue:0.53)],startPoint:.topLeading,endPoint:.bottomTrailing),
                                     in:RoundedRectangle(cornerRadius:24))
-                        .contextMenu { if pet.ownerUID == nil { Button(role:.destructive) { petToDelete=pet;showDelete=true } label:{Label("Eliminar perfil",systemImage:"trash")} } }
+                        .contextMenu {
+                        if pet.ownerUID == nil {
+                            Button { petToEdit=pet } label:{Label("Editar perfil",systemImage:"pencil")}
+                            Button(role:.destructive) { petToDelete=pet;showDelete=true } label:{Label("Eliminar perfil",systemImage:"trash")}
+                        }
+                    }
                     } else {
                         PawlyEmptyState(icon:"pawprint",title:"Tu historia empieza aquí",detail:"Añade el perfil de tu mascota para organizar sus cuidados y recuerdos.")
                     }
@@ -68,8 +73,13 @@ struct HomeView: View {
                     ForEach(pets.pets) { pet in
                         Button { pets.select(pet) } label:{
                             HStack(spacing:12) {
-                                Image(systemName:pet.species == "Gato" ? "cat.fill":"pawprint.fill")
-                                    .foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())
+                                if let url=URL(string:pet.photoURL),!pet.photoURL.isEmpty {
+                                    AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{Image(systemName:"pawprint.fill").foregroundStyle(PawlyColors.primary)}
+                                        .frame(width:46,height:46).clipShape(Circle())
+                                } else {
+                                    Image(systemName:pet.species == "Gato" ? "cat.fill":"pawprint.fill")
+                                        .foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())
+                                }
                                 VStack(alignment:.leading,spacing:3) {
                                     Text(pet.name).font(.headline).foregroundStyle(PawlyColors.ink)
                                     if pet.ownerUID != nil { Text("Perfil compartido").font(.caption2).foregroundStyle(PawlyColors.primary) }
@@ -88,6 +98,7 @@ struct HomeView: View {
             .navigationBarHidden(true)
             .toolbar { ToolbarItem(placement:.topBarTrailing) { Button { showAdd=true } label:{Image(systemName:"plus")} } }
             .sheet(isPresented:$showAdd) { PetFormSheet() }
+            .sheet(item:$petToEdit) { pet in PetFormSheet(pet:pet) }
             .confirmationDialog("¿Eliminar el perfil de \(petToDelete?.name ?? "esta mascota")?",isPresented:$showDelete,titleVisibility:.visible) {
                 Button("Eliminar perfil",role:.destructive) {
                     if let pet=petToDelete { Task { try? await pets.deletePet(pet) } }
@@ -118,13 +129,26 @@ struct PetPicker:View {
 struct PetFormSheet:View {
     @EnvironmentObject private var pets:PawlyPetStore
     @Environment(\.dismiss) private var dismiss
+    let pet:PawlyPet?
     @State private var name=""
     @State private var breed=""
     @State private var age=""
     @State private var species="Perro"
     @State private var description=""
+    @State private var photoURL=""
+    @State private var photoItem:PhotosPickerItem?
+    @State private var photoData:Data?
     @State private var error:String?
     @State private var saving=false
+    init(pet:PawlyPet?=nil){
+        self.pet=pet
+        _name=State(initialValue:pet?.name ?? "")
+        _breed=State(initialValue:pet?.breed ?? "")
+        _age=State(initialValue:pet?.age ?? "")
+        _species=State(initialValue:pet?.species ?? "Perro")
+        _description=State(initialValue:pet?.description ?? "")
+        _photoURL=State(initialValue:pet?.photoURL ?? "")
+    }
     var body:some View {
         NavigationStack {
             Form {
@@ -135,16 +159,40 @@ struct PetFormSheet:View {
                     Picker("Especie",selection:$species){ForEach(["Perro","Gato","Conejo","Ave","Roedor","Reptil","Otro"],id:\.self){Text($0)}}
                     TextField("Descripción",text:$description,axis:.vertical).lineLimit(2...4)
                 }
+                Section("Fotografía") {
+                    PhotosPicker(selection:$photoItem,matching:.images){Label(photoURL.isEmpty && photoData == nil ? "Añadir fotografía":"Cambiar fotografía",systemImage:"photo")}
+                    if let data=photoData,let image=UIImage(data:data){Image(uiImage:image).resizable().scaledToFill().frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))}
+                    else if let url=URL(string:photoURL),!photoURL.isEmpty{AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{ProgressView()}.frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))}
+                }
                 if let error {Text(error).foregroundStyle(.red)}
             }
-            .navigationTitle("Añadir mascota")
+            .navigationTitle(pet == nil ? "Añadir mascota":"Editar mascota")
             .toolbar {
                 ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}
                 ToolbarItem(placement:.confirmationAction){
                     Button(saving ? "Guardando…" : "Guardar"){
-                        Task {saving=true;do{try await pets.savePet(name:name,breed:breed,age:age,species:species,description:description);dismiss()}catch{self.error=error.localizedDescription};saving=false}
+                        Task {
+                            saving=true
+                            do {
+                                var finalURL=photoURL
+                                if let data=photoData,let uid=Auth.auth().currentUser?.uid {
+                                    finalURL=try await PawlyCloudinaryUploader().uploadImage(data,folder:"dog-photos",ownerUID:uid)
+                                }
+                                if let pet {
+                                    try await pets.updatePet(pet,name:name,breed:breed,age:age,species:species,description:description,photoURL:finalURL)
+                                } else {
+                                    try await pets.savePet(name:name,breed:breed,age:age,species:species,description:description,photoURL:finalURL)
+                                }
+                                dismiss()
+                            } catch {self.error=error.localizedDescription}
+                            saving=false
+                        }
                     }.disabled(saving || name.trimmingCharacters(in:.whitespaces).isEmpty)
                 }
+            }
+            .onChange(of:photoItem){item in
+                guard let item else{return}
+                Task {do{photoData=try await item.loadTransferable(type:Data.self)}catch{self.error=error.localizedDescription}}
             }
         }
     }
