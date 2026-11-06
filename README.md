@@ -19,6 +19,11 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 - **Diario:** recuerdos de texto persistentes, con recuento actualizado.
 - **Persistencia local:** perfil, tareas, favoritos y diario se conservan entre sesiones en el dispositivo; no hay sincronización ni cuenta.
 
+## Exportación y uso compartido
+
+- **Informes PDF:** el pasaporte sanitario y el plan de cuidados se pueden generar localmente y compartir mediante el selector del sistema Android. Los documentos incluyen una nota de uso responsable y no sustituyen a la documentación veterinaria oficial.
+- **Privacidad:** los PDF se generan en la caché privada de la aplicación y se comparten únicamente cuando el usuario elige una aplicación o destinatario.
+
 ## Organización del código
 
 La aplicación se organiza por áreas funcionales y responsabilidades para facilitar su mantenimiento y crecimiento:
