@@ -67,17 +67,23 @@ internal fun DiaryScreen(
     val sharedDiaryRepository = remember(sharedPetOwnerUid) {
         sharedPetOwnerUid?.let { runCatching { FirebasePetProfileRepository(ownerUid = it) }.getOrNull() }
     }
-    var visibleEntries by remember(sharedPetOwnerUid, petId, entries) { mutableStateOf(entries) }
-    var canEditSharedDiary by remember(sharedPetOwnerUid, petId) { mutableStateOf(true) }
+    var visibleEntries by remember(sharedPetOwnerUid, petId, entries) { mutableStateOf(if (sharedPetOwnerUid == null) entries else emptyList()) }
+    var canEditSharedDiary by remember(sharedPetOwnerUid, petId) { mutableStateOf(sharedPetOwnerUid == null) }
     var diarySyncMessage by remember(sharedPetOwnerUid) { mutableStateOf<String?>(null) }
     val diaryScope = rememberCoroutineScope()
     LaunchedEffect(sharedPetOwnerUid, petId, sharedDiaryRepository) {
-        if (sharedPetOwnerUid != null && petId != null && sharedDiaryRepository != null) {
-            runCatching {
-                visibleEntries = sharedDiaryRepository.loadDiary(petId)
-                canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId)
-                diarySyncMessage = if (canEditSharedDiary) "Diario compartido · puedes añadir recuerdos" else "Diario compartido · solo lectura"
-            }.onFailure { diarySyncMessage = "No se pudo cargar el diario compartido" }
+        if (sharedPetOwnerUid != null) {
+            visibleEntries = emptyList()
+            canEditSharedDiary = false
+            if (petId != null && sharedDiaryRepository != null) {
+                runCatching {
+                    visibleEntries = sharedDiaryRepository.loadDiary(petId)
+                    canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId)
+                    diarySyncMessage = if (canEditSharedDiary) "Diario compartido · puedes añadir recuerdos" else "Diario compartido · solo lectura"
+                }.onFailure { diarySyncMessage = "No se pudo cargar el diario compartido" }
+            } else {
+                diarySyncMessage = "No se puede conectar con el diario compartido"
+            }
         } else {
             visibleEntries = entries
             canEditSharedDiary = true
