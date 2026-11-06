@@ -142,7 +142,7 @@ struct PawlyExploreView:View{
  @State private var area=""
  @State private var category="Veterinarios"
  @State private var results:[PawlyPlaceResult]=[]
- @State private var saved=Set(UserDefaults.standard.stringArray(forKey:"pawly.savedPlaces") ?? [])
+ @State private var saved=PawlySavedPlace.load()
  @State private var region=MKCoordinateRegion(center:CLLocationCoordinate2D(latitude:40.4168,longitude:-3.7038),span:MKCoordinateSpan(latitudeDelta:0.12,longitudeDelta:0.12))
  @State private var isSearching=false
  @State private var error:String?
@@ -161,7 +161,7 @@ struct PawlyExploreView:View{
     if let error{Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal)}
     List(results){p in VStack(alignment:.leading,spacing:6){
      HStack{VStack(alignment:.leading,spacing:3){Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)}
-      Spacer();Button{toggleSaved(p)}label:{Image(systemName:saved.contains(p.id) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain)}
+      Spacer();Button{toggleSaved(p)}label:{Image(systemName:saved.contains(where:{$0.id==p.id}) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain)}
      HStack{if let phone=p.phone,!phone.isEmpty,let tel=URL(string:"tel:\(phone.filter{$0.isNumber || $0=="+"})"){Link("Llamar",destination:tel)}
       Spacer();Button("Cómo llegar"){p.mapItem.openInMaps(launchOptions:[MKLaunchOptionsDirectionsModeKey:MKLaunchOptionsDirectionsModeDriving])}
      }.font(.caption.weight(.semibold))
@@ -181,7 +181,28 @@ struct PawlyExploreView:View{
    if results.isEmpty{error="No se han encontrado resultados. Prueba con otra zona o término."}
   }catch{self.error=error.localizedDescription}
  }
- private func toggleSaved(_ p:PawlyPlaceResult){if saved.contains(p.id){saved.remove(p.id)}else{saved.insert(p.id)};UserDefaults.standard.set(Array(saved),forKey:"pawly.savedPlaces")}
+ private func toggleSaved(_ p:PawlyPlaceResult){
+  if let i=saved.firstIndex(where:{$0.id==p.id}){saved.remove(at:i)}
+  else{saved.append(PawlySavedPlace(id:p.id,name:p.name,subtitle:p.subtitle,latitude:p.coordinate.latitude,longitude:p.coordinate.longitude,phone:p.phone))}
+  if let data=try? JSONEncoder().encode(saved){UserDefaults.standard.set(data,forKey:"pawly.savedPlaces.v2")}
+ }
+}
+struct PawlySavedPlace:Identifiable,Codable{
+ let id:String;let name:String;let subtitle:String;let latitude:Double;let longitude:Double;let phone:String?
+ static func load()->[PawlySavedPlace]{guard let data=UserDefaults.standard.data(forKey:"pawly.savedPlaces.v2"),let values=try? JSONDecoder().decode([PawlySavedPlace].self,from:data)else{return []};return values}
+}
+struct PawlySavedPlacesView:View{
+ @State private var places=PawlySavedPlace.load()
+ var body:some View{
+  List{
+   if places.isEmpty{Text("Guarda lugares desde Explorar para tenerlos a mano.").foregroundStyle(.secondary)}
+   ForEach(places){p in VStack(alignment:.leading,spacing:6){
+    Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)
+    HStack{Button("Cómo llegar"){let item=MKMapItem(placemark:MKPlacemark(coordinate:CLLocationCoordinate2D(latitude:p.latitude,longitude:p.longitude)));item.name=p.name;item.openInMaps(launchOptions:[MKLaunchOptionsDirectionsModeKey:MKLaunchOptionsDirectionsModeDriving])};Spacer();if let phone=p.phone,!phone.isEmpty,let url=URL(string:"tel:\(phone.filter{$0.isNumber || $0=="+"})"){Link("Llamar",destination:url)}}
+   }.padding(.vertical,4).swipeActions{Button(role:.destructive){places.removeAll{$0.id==p.id};persist()}label:{Label("Eliminar",systemImage:"trash")}}}
+  }.navigationTitle("Lugares favoritos")
+ }
+ private func persist(){if let data=try? JSONEncoder().encode(places){UserDefaults.standard.set(data,forKey:"pawly.savedPlaces.v2")}}
 }
 struct PawlyPlaceResult:Identifiable{let id:String;let name:String;let subtitle:String;let coordinate:CLLocationCoordinate2D;let phone:String?;let mapItem:MKMapItem}
 
