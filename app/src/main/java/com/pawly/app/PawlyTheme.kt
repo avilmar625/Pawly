@@ -3,6 +3,7 @@ package com.pawly.app
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -19,12 +20,31 @@ internal val Peach = Color(0xFFF4D7C5)
 internal val Line = Color(0xFFE9EAE3)
 
 @Composable
-internal fun PawlyTheme(content: @Composable () -> Unit) {
+internal fun PawlyTheme(darkMode: Boolean = false, accent: String = "forest", content: @Composable () -> Unit) {
+    val primary = when (accent) {
+        "ocean" -> Color(0xFF176B87)
+        "berry" -> Color(0xFF805080)
+        "sunset" -> Color(0xFFB65D3C)
+        else -> Forest
+    }
+    val secondary = when (accent) {
+        "ocean" -> Color(0xFF398CA8)
+        "berry" -> Color(0xFFA678A6)
+        "sunset" -> Color(0xFFD68A61)
+        else -> ForestLight
+    }
     MaterialTheme(
-        colorScheme = lightColorScheme(
-            primary = Forest,
+        colorScheme = if (darkMode) darkColorScheme(
+            primary = primary,
+            secondary = secondary,
+            background = Color(0xFF111815),
+            surface = Color(0xFF1B2420),
+            onSurface = Color(0xFFE7EEE9),
+            onBackground = Color(0xFFE7EEE9)
+        ) else lightColorScheme(
+            primary = primary,
             onPrimary = Color.White,
-            secondary = ForestLight,
+            secondary = secondary,
             background = Cream,
             surface = Paper,
             onSurface = Ink,
