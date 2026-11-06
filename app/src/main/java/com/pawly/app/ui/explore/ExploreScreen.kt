@@ -66,7 +66,7 @@ private data class Place(
 )
 
 @Composable
-internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit) {
+internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit, elegantDesign: Boolean = false) {
     val context = LocalContext.current
     var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var currentAddress by remember { mutableStateOf<String?>(null) }
@@ -145,6 +145,22 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
+            if (elegantDesign) {
+                Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(27.dp))) {
+                    AsyncImage(
+                        model = "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1200&h=700&fit=crop",
+                        contentDescription = "Paisaje de montaña para descubrir con tu perro",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD910251F)))))
+                    Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("AVENTURAS POR COMPARTIR", color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
+                        Text("El mundo es mejor cuando vais juntos.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+            }
             Text("EXPLORA", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
             Text("El mundo es mejor\ncuando vais juntos.", style = MaterialTheme.typography.headlineLarge)
             Text("Ideas para vuestra próxima aventura.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
