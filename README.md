@@ -61,6 +61,10 @@ Las reglas de Firestore han cambiado para validar las nuevas categorías. Despli
 
 La rama `cambios26` introduce navegación Material 3, fotografías editoriales en Inicio/Explorar/Diario/Comunidad, estados vacíos más cuidados y adaptación inicial al tema. Las imágenes editoriales son remotas y requieren internet. La adaptación de las pantallas heredadas al modo oscuro sigue en progreso. Detalles en [docs/CHANGES26.md](docs/CHANGES26.md).
 
+## Acabado visual y accesibilidad (cambios27)
+
+La rama `cambios27` corrige los errores de compilación detectados en cambios26, consolida los esquemas de color claro/oscuro con roles semánticos Material 3, mejora la cabecera y compacta la navegación inferior para priorizar el contenido. También amplía la coherencia de color en ajustes y pantallas de Comunidad. El modo oscuro debe validarse visualmente en dispositivo real y todavía pueden quedar componentes heredados con colores literales. Las capturas reales se deben obtener en un dispositivo o emulador con la configuración local de Firebase; no se incluyen mockups como si fueran capturas de la app.
+
 ## Personalización y experiencia (cambios25)
 
 La rama `cambios25` inicia una capa de preferencias globales accesible desde el icono de ajustes de la barra superior:
