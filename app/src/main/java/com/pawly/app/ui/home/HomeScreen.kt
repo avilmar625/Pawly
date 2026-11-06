@@ -166,47 +166,65 @@ internal fun HomeScreen(
 private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
     Box(
         Modifier.fillMaxWidth()
+            .height(224.dp)
             .clip(RoundedCornerShape(30.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF123D32), Color(0xFF285E4C), Color(0xFF6C8D68))))
             .clickable(onClick = onEdit)
-            .padding(21.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(17.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("VUESTRO COMPAÑERO", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.7.sp)
-                    Text(name, color = Color.White, fontSize = 32.sp, lineHeight = 36.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("El protagonista de cada aventura.", color = Color.White.copy(alpha = .78f), fontSize = 12.sp)
-                }
-                Box(
-                    Modifier.size(104.dp).clip(CircleShape)
-                        .background(Color.White.copy(alpha = .16f))
-                        .padding(5.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = .12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (photo != null) {
-                        Image(photo.asImageBitmap(), contentDescription = "Foto de $name", modifier = Modifier.fillMaxSize().clip(CircleShape))
-                    } else {
-                        AsyncImage(
-                            model = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=420&h=420&fit=crop&crop=faces",
-                            contentDescription = "Perro al aire libre",
-                            modifier = Modifier.fillMaxSize().clip(CircleShape)
-                        )
-                    }
-                }
+        if (photo != null) {
+            Image(
+                photo.asImageBitmap(),
+                contentDescription = "Foto de $name",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+        } else {
+            AsyncImage(
+                model = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=1200&h=700&fit=crop&crop=faces",
+                contentDescription = "Perro disfrutando al aire libre",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+        }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to Color(0x18203328),
+                    0.42f to Color(0x40304436),
+                    1f to Color(0xE610281F)
+                )
+            )
+        )
+        Column(
+            Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Surface(color = Lime.copy(alpha = .95f), shape = RoundedCornerShape(50)) {
+                Text(
+                    "VUESTRO COMPAÑERO",
+                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                    color = Forest,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.2.sp
+                )
             }
+            Text(
+                name,
+                color = Color.White,
+                fontSize = 34.sp,
+                lineHeight = 38.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(color = Color.White.copy(alpha = .15f), shape = RoundedCornerShape(50)) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Editar perfil", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Text("El protagonista de cada aventura", color = Color.White.copy(alpha = .92f), fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                Surface(color = Color.White.copy(alpha = .2f), shape = RoundedCornerShape(50)) {
+                    Row(Modifier.padding(horizontal = 11.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text("Editar", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Spacer(Modifier.weight(1f))
-                Icon(Icons.Filled.Pets, contentDescription = null, tint = Color.White.copy(alpha = .35f), modifier = Modifier.size(22.dp))
             }
         }
     }
