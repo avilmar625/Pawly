@@ -44,13 +44,12 @@ fun buildConfigString(name: String, fallbackName: String? = null): String {
 
 android {
     namespace = "com.pawly.app"
-    // CI can validate against the latest stable SDK when the local preview SDK is unavailable.
-    compileSdk = providers.gradleProperty("pawlyCompileSdk").orNull?.toInt() ?: 37
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.pawly.app"
         minSdk = 26
-        targetSdk = providers.gradleProperty("pawlyTargetSdk").orNull?.toInt() ?: 37
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", buildConfigString("CLOUDINARY_CLOUD_NAME"))
@@ -99,19 +98,19 @@ kotlin {
 }
 
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2025.12.00"))
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.12.00"))
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.09.00"))
 
-    implementation("androidx.core:core-ktx:1.17.0")
-    implementation("androidx.activity:activity-compose:1.12.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+    implementation("androidx.core:core-ktx:1.19.1")
+    implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.navigation:navigation-compose:2.9.6")
+    implementation("androidx.navigation:navigation-compose:2.10.2")
 
 
     implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
