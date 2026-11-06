@@ -11,7 +11,7 @@
 - No requiere cambios en las reglas ni en los índices de Firestore.
 - No requiere volver a desplegar Firebase.
 - No mueve ni duplica documentos existentes.
-- Los datos locales de pantallas que todavía usan el nombre como clave (por ejemplo, diario y agenda) siguen pendientes de migración.
+- Los registros locales de Pasaporte y Cuidados se trasladan al nuevo nombre; también se actualizan las claves de Agenda. Otras áreas que aún usan el nombre como clave siguen pendientes de migración.
 - Si ya existía una asociación para el nombre de destino, se conserva para evitar sobrescribir su identidad.
 
 ## Prueba recomendada
