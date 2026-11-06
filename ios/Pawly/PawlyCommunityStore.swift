@@ -8,6 +8,9 @@ struct PawlyFeedPost: Identifiable {
     var text:String; var imageURL:String; var videoURL:String; var category:String
     var likeCount:Int; var commentCount:Int; var likedByMe:Bool; var createdAt:Date?
 }
+struct PawlyPublicUser:Identifiable {
+    var id:String;var username:String;var displayName:String;var bio:String;var photoURL:String;var followersCount:Int;var following:Bool
+}
 struct PawlyFeedComment: Identifiable {
     var id:String; var authorId:String; var authorName:String; var text:String; var createdAt:Date?
 }
@@ -86,6 +89,61 @@ final class PawlyCommunityStore: ObservableObject {
         batch.updateData(["commentCount":FieldValue.increment(Int64(1)),"lastCommentId":comment.documentID],forDocument:post)
         try await batch.commit()
     }
+    func searchUsers(_ query:String) async throws -> [PawlyPublicUser] {
+        guard let me=uid else{throw PawlyCommunityError.notSignedIn}
+        let clean=query.trimmingCharacters(in:.whitespacesAndNewlines).replacingOccurrences(of:"@",with:"").lowercased()
+        guard clean.count>=2 else{return []}
+        let docs=try await db.collection("users").whereField("isPublic",isEqualTo:true).order(by:"usernameLower")
+            .start(at:[clean]).end(at:[clean+"\\uf8ff"]).limit(to:20).getDocuments()
+        let blocked=try await db.collection("users").document(me).collection("blocked").getDocuments()
+        let blockedIDs=Set(blocked.documents.map{$0.documentID})
+        var results:[PawlyPublicUser]=[]
+        for d in docs.documents where d.documentID != me && !blockedIDs.contains(d.documentID) {
+            let x=d.data(), following=try await db.collection("users").document(me).collection("following").document(d.documentID).getDocument()
+            results.append(PawlyPublicUser(id:d.documentID,username:x["username"] as? String ?? "",
+                displayName:x["displayName"] as? String ?? x["username"] as? String ?? "Usuario",
+                bio:x["bio"] as? String ?? "",photoURL:x["photoUrl"] as? String ?? "",
+                followersCount:x["followersCount"] as? Int ?? 0,following:following.exists))
+        }
+        return results
+    }
+    func setFollowing(_ user:PawlyPublicUser,follow shouldFollow:Bool) async throws {
+        try requireVerified()
+        guard let me=uid,me != user.id else{throw PawlyCommunityError.notParticipant}
+        let myFollowing=db.collection("users").document(me).collection("following").document(user.id)
+        let theirFollower=db.collection("users").document(user.id).collection("followers").document(me)
+        let myProfile=db.collection("users").document(me),theirProfile=db.collection("users").document(user.id)
+        let existing=try await myFollowing.getDocument()
+        if existing.exists == shouldFollow{return}
+        let myBlock=try await db.collection("users").document(me).collection("blocked").document(user.id).getDocument()
+        let theirBlock=try await db.collection("users").document(user.id).collection("blocked").document(me).getDocument()
+        guard !myBlock.exists && !theirBlock.exists else{throw PawlyCommunityError.blocked}
+        let batch=db.batch()
+        if shouldFollow {
+            batch.setData(["uid":user.id,"createdAt":FieldValue.serverTimestamp()],forDocument:myFollowing)
+            batch.setData(["uid":me,"createdAt":FieldValue.serverTimestamp()],forDocument:theirFollower)
+            batch.updateData(["followingCount":FieldValue.increment(Int64(1))],forDocument:myProfile)
+            batch.updateData(["followersCount":FieldValue.increment(Int64(1))],forDocument:theirProfile)
+        } else {
+            batch.deleteDocument(myFollowing);batch.deleteDocument(theirFollower)
+            batch.updateData(["followingCount":FieldValue.increment(Int64(-1))],forDocument:myProfile)
+            batch.updateData(["followersCount":FieldValue.increment(Int64(-1))],forDocument:theirProfile)
+        }
+        try await batch.commit()
+    }
+    func blockUser(_ user:PawlyPublicUser) async throws {
+        guard let me=uid,me != user.id else{throw PawlyCommunityError.notParticipant}
+        try await db.collection("users").document(me).collection("blocked").document(user.id)
+            .setData(["uid":user.id,"createdAt":FieldValue.serverTimestamp()])
+    }
+    func reportUser(_ user:PawlyPublicUser,reason:String) async throws {
+        try requireVerified()
+        guard let me=uid else{throw PawlyCommunityError.notSignedIn}
+        let clean=reason.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !clean.isEmpty,clean.count<=500 else{throw PawlyCommunityError.invalidComment}
+        try await db.collection("reports").addDocument(data:["reporterId":me,"targetId":user.id,"targetType":"user","reason":clean,"createdAt":FieldValue.serverTimestamp()])
+    }
+
     func startConversation(username:String) async throws -> String {
         try requireVerified()
         guard let me=uid else{throw PawlyCommunityError.notSignedIn}
