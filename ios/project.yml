@@ -1,0 +1,36 @@
+name: Pawly
+options:
+  bundleIdPrefix: com.pawly
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 12.0.0
+targets:
+  Pawly:
+    type: application
+    platform: iOS
+    sources:
+      - path: Pawly
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pawly.ios
+        PRODUCT_NAME: Pawly
+        SWIFT_VERSION: 5.0
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Pawly
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Pawly necesita acceso a tus fotos para añadir imágenes de tus mascotas.
+        INFOPLIST_KEY_NSCameraUsageDescription: Pawly necesita la cámara para hacer fotos de tus mascotas.
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Pawly puede usar tu ubicación para mostrar lugares y servicios cercanos para mascotas.
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - package: Firebase
+        product: FirebaseCore
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
