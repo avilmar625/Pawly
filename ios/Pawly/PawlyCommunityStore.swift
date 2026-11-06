@@ -29,8 +29,14 @@ final class PawlyCommunityStore: ObservableObject {
     private let db=Firestore.firestore()
     private let auth=Auth.auth()
     private var feedListener:ListenerRegistration?
+    private var blockedFeedListener:ListenerRegistration?
     private var chatsListener:ListenerRegistration?
+    private var blockedChatsListener:ListenerRegistration?
     private var messageListener:ListenerRegistration?
+    private var cachedFeed:[PawlyFeedPost]=[]
+    private var blockedFeedIDs:Set<String>=[]
+    private var cachedChats:[PawlyChat]=[]
+    private var blockedChatIDs:Set<String>=[]
     var uid:String? { auth.currentUser?.uid }
     var isVerified:Bool { auth.currentUser?.isEmailVerified == true }
     func requireVerified() throws {
@@ -39,11 +45,11 @@ final class PawlyCommunityStore: ObservableObject {
     }
     func listenFeed() {
         guard let uid else { return }
-        feedListener?.remove()
+        feedListener?.remove();blockedFeedListener?.remove()
         feedListener=db.collection("posts").order(by:"createdAt",descending:true).limit(to:50).addSnapshotListener { [weak self] snap,error in
             guard let self else{return}
             if let error { self.statusMessage=error.localizedDescription; return }
-            self.posts=snap?.documents.compactMap { d in
+            self.cachedFeed=snap?.documents.compactMap { d in
                 let x=d.data(), likes=x["likedBy"] as? [String] ?? []
                 return PawlyFeedPost(id:d.documentID,authorId:x["authorId"] as? String ?? "",
                     authorName:x["authorName"] as? String ?? "Usuario Pawly",authorPhoto:x["authorPhoto"] as? String ?? "",
@@ -53,9 +59,16 @@ final class PawlyCommunityStore: ObservableObject {
                     commentCount:x["commentCount"] as? Int ?? 0,likedByMe:likes.contains(uid),
                     createdAt:(x["createdAt"] as? Timestamp)?.dateValue())
             } ?? []
+            self.posts=self.cachedFeed.filter{!self.blockedFeedIDs.contains($0.authorId)}
+        }
+        blockedFeedListener=db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
+            guard let self else{return}
+            if let error { self.statusMessage=error.localizedDescription;return }
+            self.blockedFeedIDs=Set(snap?.documents.map{$0.documentID} ?? [])
+            self.posts=self.cachedFeed.filter{!self.blockedFeedIDs.contains($0.authorId)}
         }
     }
-    func stopFeed(){feedListener?.remove();feedListener=nil}
+    func stopFeed(){feedListener?.remove();blockedFeedListener?.remove();feedListener=nil;blockedFeedListener=nil}
     func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "") async throws {
         try requireVerified()
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
@@ -164,15 +177,23 @@ final class PawlyCommunityStore: ObservableObject {
         return cid
     }
     func listenChats() {
-        guard let uid else{return}; chatsListener?.remove()
+        guard let uid else{return}
+        chatsListener?.remove();blockedChatsListener?.remove()
         chatsListener=db.collection("conversations").whereField("participants",arrayContains:uid).addSnapshotListener { [weak self] snap,error in
-            guard let self else{return}; if let error{self.statusMessage=error.localizedDescription;return}
-            self.chats=snap?.documents.compactMap { d in
-                let x=d.data(), p=x["participants"] as? [String] ?? []
+            guard let self else{return};if let error{self.statusMessage=error.localizedDescription;return}
+            self.cachedChats=snap?.documents.compactMap { d in
+                let x=d.data(),p=x["participants"] as? [String] ?? []
                 guard let other=p.first(where:{$0 != uid}) else{return nil}
                 let names=x["participantNames"] as? [String:String] ?? [:]
-                return PawlyChat(id:d.documentID,otherUserID:other,otherUserName:names[other] ?? "Usuario Pawly",lastMessage:x["lastMessage"] as? String ?? "",updatedAt:(x["updatedAt"] as? Timestamp)?.dateValue())
-            }.sorted{($0.updatedAt ?? .distantPast)>($1.updatedAt ?? .distantPast)} ?? []
+                return PawlyChat(id:d.documentID,otherUserID:other,otherUserName:names[other] ?? "Usuario Pawly",
+                    lastMessage:x["lastMessage"] as? String ?? "",updatedAt:(x["updatedAt"] as? Timestamp)?.dateValue())
+            }.sorted{($0.updatedAt ?? .distantPast)>($1.updatedAt ?? .distantPast)}
+            self.chats=self.cachedChats.filter{!self.blockedChatIDs.contains($0.otherUserID)}
+        }
+        blockedChatsListener=db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
+            guard let self else{return};if let error{self.statusMessage=error.localizedDescription;return}
+            self.blockedChatIDs=Set(snap?.documents.map{$0.documentID} ?? [])
+            self.chats=self.cachedChats.filter{!self.blockedChatIDs.contains($0.otherUserID)}
         }
     }
     func listenMessages(conversationID:String,onUpdate:@escaping([PawlyChatMessage])->Void) {
@@ -217,7 +238,7 @@ final class PawlyCommunityStore: ObservableObject {
             }
         } catch { statusMessage=error.localizedDescription }
     }
-    func stopChats(){chatsListener?.remove();chatsListener=nil}
+    func stopChats(){chatsListener?.remove();blockedChatsListener?.remove();chatsListener=nil;blockedChatsListener=nil}
     func stopMessages(){messageListener?.remove();messageListener=nil}
 }
 private extension String { var nilIfEmpty:String? { isEmpty ? nil : self } }
