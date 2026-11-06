@@ -67,7 +67,7 @@ struct AuthenticationView: View {
                         Button("He olvidado mi contraseña") {
                             Task { await resetPassword() }
                         }
-                        .font(.footnote.semibold).foregroundStyle(PawlyColors.primary)
+                        .font(.footnote.weight(.semibold)).foregroundStyle(PawlyColors.primary)
                         .frame(maxWidth: .infinity)
                     }
                     HStack {
