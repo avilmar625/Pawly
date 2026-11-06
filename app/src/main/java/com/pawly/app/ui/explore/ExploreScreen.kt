@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
+import coil3.compose.AsyncImage
 
 private data class Place(
     val emoji: String,
@@ -58,7 +59,8 @@ private data class Place(
     val name: String,
     val detail: String,
     val description: String,
-    val color: Color
+    val color: Color,
+    val imageUrl: String
 )
 
 @Composable
@@ -127,10 +129,10 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     var query by remember { mutableStateOf("") }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
     val places = listOf(
-        Place("🌿", "Naturaleza", "Rutas y senderos", "Ideas para caminar juntos", "Busca caminos, sombra y agua antes de salir.", Color(0xFFE6EEDB)),
-        Place("🌊", "Playas", "Playas caninas", "Consulta normas y temporada", "Las restricciones cambian según municipio y época del año.", Color(0xFFDDEBF0)),
-        Place("☕", "Comer", "Terrazas dog-friendly", "Cafés y restaurantes", "Comprueba siempre con el establecimiento antes de ir.", Color(0xFFF4E6D9)),
-        Place("🏡", "Alojarse", "Escapadas con perro", "Alojamientos pet-friendly", "Revisa tamaño permitido, suplementos y condiciones.", Color(0xFFEDE3F0))
+        Place("🌿", "Naturaleza", "Rutas y senderos", "Ideas para caminar juntos", "Busca caminos, sombra y agua antes de salir.", Color(0xFFE6EEDB), "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1000&h=500&fit=crop"),
+        Place("🌊", "Playas", "Playas caninas", "Consulta normas y temporada", "Las restricciones cambian según municipio y época del año.", Color(0xFFDDEBF0), "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1000&h=500&fit=crop"),
+        Place("☕", "Comer", "Terrazas dog-friendly", "Cafés y restaurantes", "Comprueba siempre con el establecimiento antes de ir.", Color(0xFFF4E6D9), "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1000&h=500&fit=crop"),
+        Place("🏡", "Alojarse", "Escapadas con perro", "Alojamientos pet-friendly", "Revisa tamaño permitido, suplementos y condiciones.", Color(0xFFEDE3F0), "https://images.unsplash.com/photo-1449158743715-0a90ebb6d2d8?w=1000&h=500&fit=crop")
     )
     val visible = places.filter { (filter == "Todo" || it.category == filter) && (query.isBlank() || it.name.contains(query, true) || it.description.contains(query, true)) }
 
@@ -140,7 +142,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Text("EXPLORA", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
+            Text("EXPLORA", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
             Text("El mundo es mejor\ncuando vais juntos.", style = MaterialTheme.typography.headlineLarge)
             Text("Ideas para vuestra próxima aventura.", color = Muted, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
@@ -158,11 +160,11 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 Text(if (currentCoordinates == null) "Usar mi ubicación" else "Abrir lugares cercanos")
             }
             currentAddress?.let { address ->
-                Text(address, color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text(address, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            Surface(color = Paper, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Busca un lugar real", color = Forest, fontWeight = FontWeight.Bold)
+                    Text("Busca un lugar real", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     Text("Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento.", color = Muted, style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = mapSearchQuery,
@@ -245,7 +247,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             }
         }
         item {
-            Surface(shape = RoundedCornerShape(22.dp), color = Forest) {
+            Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.primary) {
                 Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("VUESTROS FAVORITOS", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
@@ -271,24 +273,30 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
 
 @Composable
 private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
-    Surface(shape = RoundedCornerShape(22.dp), color = Paper, shadowElevation = 1.dp) {
+    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
         Column {
+            AsyncImage(
+                model = place.imageUrl,
+                contentDescription = place.name,
+                modifier = Modifier.fillMaxWidth().height(142.dp),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(58.dp).clip(RoundedCornerShape(17.dp)).background(place.color), contentAlignment = Alignment.Center) {
                     Text(place.emoji, fontSize = 29.sp)
                 }
                 Spacer(Modifier.width(13.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(place.category.uppercase(), color = ForestLight, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(place.category.uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text(place.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                     Text(place.detail, color = Muted, fontSize = 11.sp)
                 }
                 IconButton(onClick = onSave) {
-                    Icon(if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "Guardar", tint = Forest)
+                    Icon(if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "Guardar", tint = MaterialTheme.colorScheme.primary)
                 }
             }
             HorizontalDivider(color = Line)
-            Text(place.description, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+            Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
         }
     }
 }
