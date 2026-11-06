@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.model.PassportEntry
 import com.pawly.app.care.export.PetCarePdfExporter
+import com.google.firebase.firestore.FirebaseFirestoreException
 
 @Composable
 internal fun PetCareHubScreen(
@@ -155,8 +156,12 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
     val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
     var entries by remember(petName, localStorageScope, petId) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, localStorageScope)) }
     val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
-    val cloudRepository = remember(cloudOwnerUid) {
-        if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
+    // La mascota propia usa la ruta privada users/{uid}/petCare/{petId}.
+    // Solo las mascotas compartidas utilizan sharedPets/{ownerUid}_{petId}.
+    val cloudRepository = remember(storageScope, sharedPetOwnerUid) {
+        if (storageScope != null) runCatching {
+            FirebasePetCareRepository(sharedPetOwnerUid = sharedPetOwnerUid)
+        }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
     var syncMessage by remember(cloudOwnerUid) {
@@ -180,7 +185,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                 syncMessage = "Sincronizado con tu cuenta"
             }
         } catch (error: Exception) {
-            syncMessage = "Sin conexión: se conserva la copia local"
+            syncMessage = error.toCareSyncMessage()
         } finally {
             cloudLoading = false
         }
@@ -311,8 +316,12 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
     val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
     var tasks by remember(petName, localStorageScope, petId) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, localStorageScope)) }
     val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
-    val cloudRepository = remember(cloudOwnerUid) {
-        if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
+    // La mascota propia usa la ruta privada users/{uid}/petCare/{petId}.
+    // Solo las mascotas compartidas utilizan sharedPets/{ownerUid}_{petId}.
+    val cloudRepository = remember(storageScope, sharedPetOwnerUid) {
+        if (storageScope != null) runCatching {
+            FirebasePetCareRepository(sharedPetOwnerUid = sharedPetOwnerUid)
+        }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
     var syncMessage by remember(cloudOwnerUid) {
@@ -336,7 +345,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                 syncMessage = "Sincronizado con tu cuenta"
             }
         } catch (error: Exception) {
-            syncMessage = "Sin conexión: se conserva la copia local"
+            syncMessage = error.toCareSyncMessage()
         } finally {
             cloudLoading = false
         }
@@ -457,5 +466,23 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
             },
             dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancelar") } }
         )
+    }
+}
+
+
+private fun Throwable.toCareSyncMessage(): String {
+    val firestoreError = this as? FirebaseFirestoreException
+    return when (firestoreError?.code) {
+        FirebaseFirestoreException.Code.PERMISSION_DENIED ->
+            "Firebase ha rechazado el acceso. Comprueba las reglas de Firestore y los permisos de esta cuenta."
+        FirebaseFirestoreException.Code.UNAUTHENTICATED ->
+            "La sesión de Firebase no está activa. Vuelve a iniciar sesión para sincronizar."
+        FirebaseFirestoreException.Code.UNAVAILABLE,
+        FirebaseFirestoreException.Code.DEADLINE_EXCEEDED ->
+            "No se puede contactar ahora con Firebase. Se conserva la copia local; inténtalo de nuevo."
+        FirebaseFirestoreException.Code.FAILED_PRECONDITION ->
+            "Firestore necesita una configuración adicional (posiblemente un índice). Revisa la consola de Firebase."
+        else -> localizedMessage?.takeIf { it.isNotBlank() }?.let { "No se pudo sincronizar: $it" }
+            ?: "No se pudo sincronizar con Firebase. Se conserva la copia local."
     }
 }
