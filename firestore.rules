@@ -285,6 +285,7 @@ service cloud.firestore {
             ||
             ('readBy' in resource.data && resource.data.readBy is list
               && request.resource.data.readBy.size() == resource.data.readBy.size() + 1
+              && request.resource.data.readBy.hasAll(resource.data.readBy)
               && !(request.auth.uid in resource.data.readBy))
           );
         allow delete: if false;
