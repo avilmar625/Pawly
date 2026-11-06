@@ -42,18 +42,18 @@ import kotlinx.coroutines.launch
 internal fun Avatar(url: String, label: String, size: Int = 44) {
     if (url.isNotBlank()) AsyncImage(url, "Foto de " + label, Modifier.size(size.dp).clip(CircleShape))
     else Box(Modifier.size(size.dp).clip(CircleShape).background(Lime), contentAlignment = Alignment.Center) {
-        Text(label.trim().firstOrNull()?.uppercase() ?: "🐾", color = Forest, fontWeight = FontWeight.Bold, fontSize = (size / 2).sp)
+        Text(label.trim().firstOrNull()?.uppercase() ?: "🐾", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = (size / 2).sp)
     }
 }
 
 
 @Composable
 internal fun EmptyCommunityCard(title: String, subtitle: String) {
-    Surface(color = Paper, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text("🐾", fontSize = 32.sp)
-            Text(title, color = Forest, fontWeight = FontWeight.Bold)
-            Text(subtitle, color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text(title, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
