@@ -101,6 +101,7 @@ internal fun PawlyApp(
     }
 }
 
+@Composable
 private fun PawlyMainApp(
     darkMode: Boolean,
     accent: String,
@@ -186,7 +187,11 @@ private fun PawlyMainApp(
         topBar = {
             Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                 Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("🐾 PAWLY", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
+                        Spacer(Modifier.width(7.dp))
+                        Text("PAWLY", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.2.sp)
+                    }
                     IconButton(onClick = { showSettings = true }) { Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.primary) }
                 }
             }
@@ -218,7 +223,7 @@ private fun PawlyMainApp(
                             )
                         },
                         label = { Text(tab.label, maxLines = 1, fontSize = 10.sp) },
-                        alwaysShowLabel = true,
+                        alwaysShowLabel = false,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
                             selectedTextColor = MaterialTheme.colorScheme.primary,
