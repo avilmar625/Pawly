@@ -28,6 +28,9 @@ class SharedPetRepository(
         val uid = uid()
         val id = sharedPetId(petId)
         val ref = petRef(id)
+        val profile = db.collection("users").document(uid).get().await()
+        val displayName = profile.getString("displayName") ?: profile.getString("username") ?: "Propietario"
+        val username = profile.getString("username") ?: ""
         db.runTransaction { tx ->
             val snapshot = tx.get(ref)
             if (!snapshot.exists()) {
@@ -37,7 +40,8 @@ class SharedPetRepository(
                     "updatedAt" to FieldValue.serverTimestamp()
                 ))
                 tx.set(ref.collection("members").document(uid), mapOf(
-                    "uid" to uid, "role" to "owner", "joinedAt" to FieldValue.serverTimestamp()
+                    "uid" to uid, "role" to "owner", "displayName" to displayName,
+                    "username" to username, "joinedAt" to FieldValue.serverTimestamp()
                 ))
             } else {
                 check(snapshot.getString("ownerUid") == uid) { "Este perfil compartido no pertenece a tu cuenta." }
@@ -79,6 +83,17 @@ class SharedPetRepository(
                 doc.getString("displayName") ?: doc.getString("username") ?: "Cuidador",
                 doc.getString("role") ?: "editor")
         }
+    }
+
+    suspend fun getAcceptedShares(): List<PetShareInvitation> {
+        return db.collection("petInvitations").whereEqualTo("inviteeUid", uid())
+            .whereEqualTo("status", "accepted").limit(30).get().await().documents.map { doc ->
+                PetShareInvitation(
+                    doc.id, doc.getString("sharedPetId") ?: "", doc.getString("petName") ?: "Mascota",
+                    doc.getString("ownerName") ?: "Usuario Pawly", doc.getString("ownerUid") ?: "",
+                    doc.getString("role") ?: "editor", doc.getString("status") ?: "accepted"
+                )
+            }
     }
 
     suspend fun getMyInvitations(): List<PetShareInvitation> {
