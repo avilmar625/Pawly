@@ -10,6 +10,7 @@ struct AuthenticationView: View {
     @State private var message: String?
     @State private var isError = false
     @State private var isWorking = false
+    @State private var isGoogleWorking = false
 
     var body: some View {
         ZStack {
