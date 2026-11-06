@@ -119,18 +119,18 @@ internal fun HealthScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Text("BIENESTAR", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
+            Text("BIENESTAR", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
             Text("Cuidar también\nes querer.", style = MaterialTheme.typography.headlineLarge)
-            Text("Organiza su día a día con tranquilidad.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text("Organiza su día a día con tranquilidad.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         item {
-            Surface(shape = RoundedCornerShape(23.dp), color = Color(0xFFE8EFE2)) {
+            Surface(shape = RoundedCornerShape(23.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                 Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = Forest, modifier = Modifier.size(30.dp))
+                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
                     Spacer(Modifier.width(13.dp))
                     Column {
-                        Text("Su salud, siempre a mano", fontWeight = FontWeight.Bold, color = Forest)
-                        Text("Una agenda sencilla para no olvidar nada.", color = ForestLight, fontSize = 11.sp)
+                        Text("Su salud, siempre a mano", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("Una agenda sencilla para no olvidar nada.", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 11.sp)
                     }
                 }
             }
@@ -161,17 +161,17 @@ internal fun HealthScreen(
             )
         }
         item {
-            Text("Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional.", color = Muted, fontSize = 11.sp)
+            Text("Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
 
 @Composable
 internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, date: String, onClick: () -> Unit, onClear: () -> Unit) {
-    Surface(shape = RoundedCornerShape(18.dp), color = Paper, shadowElevation = 1.dp) {
+    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
         Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(43.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = Forest)
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -179,7 +179,7 @@ internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, t
                 Text(subtitle, color = Muted, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(date, color = ForestLight, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(date, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 if (date != "Añadir aviso") TextButton(onClick = onClear, contentPadding = PaddingValues(0.dp)) { Text("Quitar", fontSize = 10.sp) }
             }
         }
