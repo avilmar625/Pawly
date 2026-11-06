@@ -90,6 +90,14 @@ internal fun PawlyApp(
         onDispose { auth.removeAuthStateListener(listener) }
     }
 
+    // Keep the current FCM token associated with the signed-in account.
+    // This registers the device; it does not send push notifications.
+    LaunchedEffect(signedIn, repository) {
+        if (signedIn && repository != null) {
+            runCatching { repository.syncMessagingToken() }
+        }
+    }
+
     if (signedIn) {
         PawlyMainApp(darkMode, accent, onDarkModeChange, onAccentChange, storageScope = repository.currentUid)
     } else {
