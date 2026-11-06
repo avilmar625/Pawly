@@ -94,7 +94,7 @@ final class PawlyCommunityStore: ObservableObject {
         let clean=query.trimmingCharacters(in:.whitespacesAndNewlines).replacingOccurrences(of:"@",with:"").lowercased()
         guard clean.count>=2 else{return []}
         let docs=try await db.collection("users").whereField("isPublic",isEqualTo:true).order(by:"usernameLower")
-            .start(at:[clean]).end(at:[clean+"\\uf8ff"]).limit(to:20).getDocuments()
+            .start(at:[clean]).end(at:[clean+"\u{f8ff}"]).limit(to:20).getDocuments()
         let blocked=try await db.collection("users").document(me).collection("blocked").getDocuments()
         let blockedIDs=Set(blocked.documents.map{$0.documentID})
         var results:[PawlyPublicUser]=[]
