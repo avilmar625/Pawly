@@ -304,7 +304,8 @@ private fun PawlyMainApp(
                     onDateChange = { key, value ->
                         val fullKey = "$dogName|$key"
                         healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
-                    }
+                    },
+                    elegantDesign = elegantDesign
                 )
                 Tab.DIARY -> DiaryScreen(
                     dogName = dogName,
