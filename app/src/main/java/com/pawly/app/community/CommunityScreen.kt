@@ -105,26 +105,24 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
         Modifier.fillMaxSize().background(Cream).verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.Center
     ) {
-        Surface(color = Lime.copy(alpha = .45f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("🐾", fontSize = 28.sp)
-                Spacer(Modifier.width(10.dp))
-                Column {
-                    Text("Una comunidad para quienes viven con perros", color = Forest, fontWeight = FontWeight.Bold)
-                    Text(
-                        if (repo == null) "Para activar el acceso necesitas vincular Firebase en esta instalación."
-                        else "Tus aventuras, tus perros y nuevas amistades, en un mismo lugar.",
-                        color = Muted,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+        Box(Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(28.dp))) {
+            AsyncImage(
+                model = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=1200&h=700&fit=crop",
+                contentDescription = "Perro disfrutando al aire libre",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD910251F)))))
+            Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
+                Text("PAWLY COMMUNITY", color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                Text("Una comunidad para compartir más vida juntos.", color = Color.White, style = MaterialTheme.typography.titleLarge)
             }
         }
         Spacer(Modifier.height(18.dp))
-        Text("PAWLY · COMUNIDAD", color = ForestLight, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+        Text("TU COMUNIDAD PERRUNA", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(8.dp))
-        Text(if (register) "Crea tu cuenta" else "Qué alegría verte", style = MaterialTheme.typography.headlineLarge, color = Forest)
-        Text("Comparte aventuras, descubre perros y conoce a sus personas.", color = Muted)
+        Text(if (register) "Crea tu cuenta" else "Qué alegría verte", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text("Comparte aventuras, descubre perros y conoce a sus personas.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(20.dp))
         if (register) OutlinedTextField(username, { username = it }, label = { Text("Nombre de usuario") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
@@ -153,7 +151,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                 } catch (e: Exception) { error = e.toPawlyMessage("No se pudo completar la operación.") }
                 finally { busy = false }
             }
-        }, enabled = !busy && email.contains("@") && password.length >= 6 && (!register || username.length >= 3), modifier = Modifier.fillMaxWidth().height(52.dp)) {
+        }, enabled = !busy && email.contains("@") && password.length >= 6 && (!register || username.length >= 3), modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             else Text(if (register) "Crear cuenta" else "Iniciar sesión")
         }
@@ -198,7 +196,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                     }
                 },
                 enabled = !busy,
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+                modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)
             ) {
                 Icon(Icons.Default.AccountCircle, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
@@ -216,9 +214,9 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                 }
                     .onFailure { error = it.toPawlyMessage("No se pudo enviar el enlace de recuperación.") }
             }
-        }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("He olvidado mi contraseña", color = Forest) }
+        }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("He olvidado mi contraseña", color = MaterialTheme.colorScheme.primary) }
         TextButton(onClick = { register = !register; error = null; status = null }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(if (register) "Ya tengo una cuenta · Iniciar sesión" else "¿Primera vez en Pawly? Crear cuenta", color = Forest)
+            Text(if (register) "Ya tengo una cuenta · Iniciar sesión" else "¿Primera vez en Pawly? Crear cuenta", color = MaterialTheme.colorScheme.primary)
         }
         OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
             Text("Continuar sin cuenta (modo local)")
