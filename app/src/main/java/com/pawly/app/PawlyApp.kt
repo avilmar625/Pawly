@@ -225,7 +225,7 @@ private fun PawlyMainApp(
             List(json.length()) { index -> json.getString(index) }
         }.getOrDefault(emptyList())
     }
-    var diaryEntries by remember { mutableStateOf(storedEntries) }
+    var diaryEntries by remember(activePetId) { mutableStateOf(storedEntries) }
 
     LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).apply() }
     LaunchedEffect(dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
