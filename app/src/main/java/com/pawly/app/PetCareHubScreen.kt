@@ -41,6 +41,7 @@ import java.util.UUID
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.data.FirebasePetCareRepository
 import com.pawly.app.care.data.PetShareInvitation
+import com.pawly.app.care.data.FirebasePetProfileRepository
 import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.model.PassportEntry
@@ -61,7 +62,13 @@ internal fun PetCareHubScreen(
     onCloseSharedPet: () -> Unit = {}
 ) {
     var section by remember { mutableStateOf("Agenda") }
-    LaunchedEffect(sharedPetOwnerUid) { section = if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte" }
+    var sharedPhotoUrl by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(sharedPetOwnerUid, petId) {
+        section = if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte"
+        sharedPhotoUrl = if (sharedPetOwnerUid == null) null else runCatching {
+            FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).loadProfile(petId)?.photoUrl
+        }.getOrNull()
+    }
     Column(Modifier.fillMaxSize()) {
         if (sharedPetOwnerUid != null) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -76,7 +83,7 @@ internal fun PetCareHubScreen(
             if (elegantDesign) {
                 Box(Modifier.fillMaxWidth().height(190.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(25.dp))) {
                     AsyncImage(
-                        model = "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=1200&h=700&fit=crop",
+                        model = sharedPhotoUrl ?: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=1200&h=700&fit=crop",
                         contentDescription = "Perro en un entorno natural",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
