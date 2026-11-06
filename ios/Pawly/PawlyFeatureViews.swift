@@ -207,8 +207,8 @@ struct CareView:View {
         guard let pet=pets.selectedPet else{return}
         Task {
             do {
-                let entries=try await pets.loadPassport(pet.id)
-                let routines=try await pets.loadTasks(pet.id)
+                let entries=try await pets.loadPassport(pet)
+                let routines=try await pets.loadTasks(pet)
                 exportURL=try PawlyPDFExporter.create(pet:pet,passport:entries,tasks:routines)
                 error=nil
             } catch { self.error=error.localizedDescription }
@@ -219,11 +219,11 @@ struct CareView:View {
         do{async let p=pets.loadPassport(pet.id);async let t=pets.loadTasks(pet.id);passport=try await p;tasks=try await t;error=nil}
         catch{self.error=error.localizedDescription}
     }
-    private func save(_ entry:PawlyPassportEntry) async {guard let pet=pets.selectedPet else{return};do{try await pets.savePassport(entry,petID:pet.id);await load()}catch{self.error=error.localizedDescription}}
-    private func save(_ task:PawlyCareTask) async {guard let pet=pets.selectedPet else{return};do{try await pets.saveTask(task,petID:pet.id);await load()}catch{self.error=error.localizedDescription}}
-    private func removeEntry(_ e:PawlyPassportEntry){guard let p=pets.selectedPet else{return};Task{do{try await pets.deletePassport(e.id,petID:p.id);await load()}catch { self.error = error.localizedDescription }}}
-    private func removeTask(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{do{try await pets.deleteTask(t.id,petID:p.id);await load()}catch { self.error = error.localizedDescription }}}
-    private func toggle(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{var x=t;x.completed.toggle();do{try await pets.saveTask(x,petID:p.id);await load()}catch { self.error = error.localizedDescription }}}
+    private func save(_ entry:PawlyPassportEntry) async {guard let pet=pets.selectedPet else{return};do{try await pets.savePassport(entry,pet:pet);await load()}catch{self.error=error.localizedDescription}}
+    private func save(_ task:PawlyCareTask) async {guard let pet=pets.selectedPet else{return};do{try await pets.saveTask(task,pet:pet);await load()}catch{self.error=error.localizedDescription}}
+    private func removeEntry(_ e:PawlyPassportEntry){guard let p=pets.selectedPet else{return};Task{do{try await pets.deletePassport(e.id,pet:p);await load()}catch { self.error = error.localizedDescription }}}
+    private func removeTask(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{do{try await pets.deleteTask(t.id,pet:p);await load()}catch { self.error = error.localizedDescription }}}
+    private func toggle(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{var x=t;x.completed.toggle();do{try await pets.saveTask(x,pet:p);await load()}catch { self.error = error.localizedDescription }}}
 }
 
 struct PassportEntrySheet:View {
@@ -320,7 +320,7 @@ struct PetSharingSheet:View {
     }
     private func respond(_ invitation:PawlyPetInvitation,_ accept:Bool) {
         Task {
-            do{try await pets.respondToInvitation(invitation,accept:accept);pending.removeAll{$0.id==invitation.id};status=accept ? "Perfil compartido añadido a tu cuenta.":"Invitación rechazada."}
+            do{try await pets.respondToInvitation(invitation,accept:accept);await pets.loadPets();pending.removeAll{$0.id==invitation.id};status=accept ? "Perfil compartido añadido a tu cuenta.":"Invitación rechazada."}
             catch{status=error.localizedDescription}
         }
     }
