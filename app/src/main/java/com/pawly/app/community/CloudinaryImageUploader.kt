@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.OpenableColumns
 import com.pawly.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,6 +16,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
 /**
@@ -22,7 +24,11 @@ import kotlin.math.max
  * No Cloudinary API secret is ever stored in the Android application.
  */
 internal class CloudinaryImageUploader(private val context: Context) {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(5, TimeUnit.MINUTES)
+        .callTimeout(6, TimeUnit.MINUTES)
+        .build()
 
     suspend fun upload(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
         val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
@@ -70,13 +76,27 @@ internal class CloudinaryImageUploader(private val context: Context) {
         }
         require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
         require(folder in setOf("post-videos", "message-videos")) { "La carpeta de vídeos solicitada no está permitida." }
-        val mime = context.contentResolver.getType(uri)?.lowercase()
-        require(mime in setOf("video/mp4", "video/quicktime", "video/webm", "video/3gpp")) {
-            "Formato de vídeo no admitido. Utiliza MP4, MOV, WebM o 3GP."
+        // Some Android document providers return a null or generic MIME type.
+        // Resolve the display name as a safe fallback instead of rejecting valid videos.
+        val resolver = context.contentResolver
+        val declaredMime = resolver.getType(uri)?.lowercase()
+        val displayName = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+        val extension = displayName?.substringAfterLast('.', "")?.lowercase().orEmpty()
+        val mime = declaredMime?.takeIf { it in setOf("video/mp4", "video/quicktime", "video/webm", "video/3gpp") }
+            ?: when (extension) {
+                "mp4", "m4v" -> "video/mp4"
+                "mov" -> "video/quicktime"
+                "webm" -> "video/webm"
+                "3gp", "3gpp" -> "video/3gpp"
+                else -> null
+            }
+        require(mime != null) {
+            "Formato de vídeo no admitido o no identificado. Utiliza MP4, MOV, WebM o 3GP."
         }
-        val bytes = context.contentResolver.openInputStream(uri)?.use { readBounded(it, 40 * 1024 * 1024) }
+        val bytes = resolver.openInputStream(uri)?.use { readBounded(it, 40 * 1024 * 1024) }
             ?: error("No se ha podido leer el vídeo seleccionado.")
-        val extension = when (mime) {
+        val uploadExtension = when (mime) {
             "video/quicktime" -> "mov"
             "video/webm" -> "webm"
             "video/3gpp" -> "3gp"
@@ -85,7 +105,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("upload_preset", uploadPreset)
             .addFormDataPart("folder", "pawly/$folder/$ownerUid")
-            .addFormDataPart("file", "pawly-video.$extension", bytes.toRequestBody(mime!!.toMediaType()))
+            .addFormDataPart("file", "pawly-video.$uploadExtension", bytes.toRequestBody(mime!!.toMediaType()))
             .build()
         val request = Request.Builder()
             .url("https://api.cloudinary.com/v1_1/$cloudName/video/upload")
