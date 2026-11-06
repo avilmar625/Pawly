@@ -61,6 +61,7 @@ internal fun ProfileDialog(
     onGallery: () -> Unit,
     onCamera: () -> Unit,
     hasPhoto: Boolean,
+    syncStatus: String = "",
     profiles: Set<String>,
     onSelectProfile: (String) -> Unit,
     onAddProfile: () -> Unit,
@@ -72,7 +73,10 @@ internal fun ProfileDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = name, onValueChange = onNameChange, label = { Text("Nombre") }, singleLine = true, shape = RoundedCornerShape(14.dp))
-                Text(if (hasPhoto) "Foto de perfil guardada en este dispositivo" else "Añade una foto para reconocer a tu compañero", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text(if (hasPhoto) "Foto de perfil disponible" else "Añade una foto para reconocer a tu compañero", color = Muted, style = MaterialTheme.typography.bodySmall)
+                if (syncStatus.isNotBlank()) {
+                    Text(syncStatus, color = ForestLight, style = MaterialTheme.typography.labelSmall)
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onGallery) { Icon(Icons.Filled.PhotoLibrary, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Galería") }
                     OutlinedButton(onClick = onCamera) { Icon(Icons.Filled.PhotoCamera, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Cámara") }
