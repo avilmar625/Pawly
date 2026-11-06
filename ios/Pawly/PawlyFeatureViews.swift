@@ -293,12 +293,13 @@ struct CommunityView:View {
     @StateObject private var store=PawlyCommunityStore()
     @EnvironmentObject private var pets:PawlyPetStore
     @State private var composer=false
+    @State private var people=false
     @State private var comments:PawlyFeedPost?
     var body:some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing:13) {
-                    HStack{VStack(alignment:.leading,spacing:3){Text("La comunidad").font(.title2.bold());Text("Historias y aventuras Pawly").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();Button{composer=true}label:{Image(systemName:"plus").font(.headline).foregroundStyle(.white).padding(12).background(PawlyColors.primary,in:Circle())}}
+                    HStack{VStack(alignment:.leading,spacing:3){Text("La comunidad").font(.title2.bold());Text("Historias y aventuras Pawly").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();Button{people=true}label:{Image(systemName:"magnifyingglass").font(.headline).foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())};Button{composer=true}label:{Image(systemName:"plus").font(.headline).foregroundStyle(.white).padding(12).background(PawlyColors.primary,in:Circle())}}
                     if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
                     if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
                     ForEach(store.posts){post in
@@ -309,7 +310,75 @@ struct CommunityView:View {
                 .onAppear{store.listenFeed()}.onDisappear{store.stopFeed()}
                 .sheet(isPresented:$composer){PostComposerSheet(petName:pets.selectedPet?.name ?? ""){text,category,imageURL,videoURL in try await store.publish(text:text,petName:pets.selectedPet?.name ?? "",category:category,imageURL:imageURL,videoURL:videoURL)}}
                 .sheet(item:$comments){post in CommentsView(store:store,post:post)}
+                .sheet(isPresented:$people){PeopleSearchSheet(store:store)}
         }
+    }
+}
+
+struct PeopleSearchSheet:View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store:PawlyCommunityStore
+    @State private var query=""
+    @State private var results:[PawlyPublicUser]=[]
+    @State private var loading=false
+    @State private var status:String?
+    @State private var blockCandidate:PawlyPublicUser?
+    @State private var reportCandidate:PawlyPublicUser?
+    var body:some View {
+        NavigationStack {
+            VStack(spacing:10) {
+                HStack {
+                    TextField("Buscar por nombre de usuario",text:$query).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
+                    Button("Buscar"){search()}.disabled(query.trimmingCharacters(in:.whitespaces).count<2)
+                }.padding(.horizontal)
+                if loading {ProgressView()}
+                if let status {Text(status).font(.caption).foregroundStyle(PawlyColors.muted).padding(.horizontal)}
+                List(results) { user in
+                    VStack(alignment:.leading,spacing:9) {
+                        HStack(spacing:10) {
+                            Image(systemName:"person.crop.circle.fill").font(.largeTitle).foregroundStyle(PawlyColors.primary)
+                            VStack(alignment:.leading,spacing:3) {
+                                Text(user.displayName).font(.headline)
+                                Text("@\(user.username) · \(user.followersCount) seguidores").font(.caption).foregroundStyle(.secondary)
+                                if !user.bio.isEmpty {Text(user.bio).font(.caption).foregroundStyle(PawlyColors.muted).lineLimit(2)}
+                            }
+                        }
+                        HStack {
+                            Button(user.following ? "Siguiendo" : "Seguir") {
+                                Task {
+                                    do {try await store.setFollowing(user,follow:!user.following);try await searchNow()}
+                                    catch {status=error.localizedDescription}
+                                }
+                            }.buttonStyle(.borderedProminent).tint(PawlyColors.primary)
+                            Button("Mensaje") {
+                                Task {do{_ = try await store.startConversation(username:user.username);status="Conversación creada. Ya aparece en la pestaña Mensajes."}catch{status=error.localizedDescription}}
+                            }.buttonStyle(.bordered)
+                            Menu {
+                                Button(role:.destructive){blockCandidate=user}label:{Label("Bloquear",systemImage:"hand.raised")}
+                                Button{reportCandidate=user}label:{Label("Denunciar",systemImage:"flag")}
+                            } label:{Image(systemName:"ellipsis").padding(8)}
+                        }
+                    }.padding(.vertical,5)
+                }
+            }
+            .navigationTitle("Personas Pawly")
+            .toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
+            .confirmationDialog("¿Bloquear a @\(blockCandidate?.username ?? "")?",isPresented:Binding(get:{blockCandidate != nil},set:{if !$0{blockCandidate=nil}}),titleVisibility:.visible) {
+                Button("Bloquear",role:.destructive){if let user=blockCandidate{Task{do{try await store.blockUser(user);results.removeAll{$0.id==user.id};status="Cuenta bloqueada."}catch{status=error.localizedDescription}}};blockCandidate=nil}
+            }
+            .confirmationDialog("Motivo de la denuncia",isPresented:Binding(get:{reportCandidate != nil},set:{if !$0{reportCandidate=nil}}),titleVisibility:.visible) {
+                ForEach(["Acoso o comportamiento abusivo","Spam o publicidad","Contenido inapropiado","Suplantación de identidad"],id:\.self){reason in
+                    Button(reason){if let user=reportCandidate{Task{do{try await store.reportUser(user,reason:reason);status="Denuncia enviada para revisión."}catch{status=error.localizedDescription}}};reportCandidate=nil}
+                }
+            }
+        }
+    }
+    private func search(){Task{await searchNow()}}
+    @MainActor private func searchNow() async throws {
+        loading=true
+        do{results=try await store.searchUsers(query);status=results.isEmpty ? "No se han encontrado perfiles públicos.":nil}
+        catch{status=error.localizedDescription}
+        loading=false
     }
 }
 
