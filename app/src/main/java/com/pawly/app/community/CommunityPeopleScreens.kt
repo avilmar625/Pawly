@@ -101,26 +101,30 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                 if (user!!.bio.isNotBlank()) Text(user!!.bio, color = Ink, modifier = Modifier.padding(8.dp))
                 Text(user!!.followersCount.toString() + " seguidores · " + user!!.followingCount + " siguiendo", color = Muted, style = MaterialTheme.typography.bodySmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button(onClick = {
-                        busy = true
-                        scope.launch {
-                            runCatching {
-                                val next = !following
-                                repo.follow(uid, next)
-                                following = next
-                                user = user?.copy(followersCount = (user?.followersCount ?: 0) + if (next) 1 else -1)
-                            }.onFailure { error = it.localizedMessage }
-                            busy = false
-                        }
-                    }, enabled = !busy) { Text(if (following) "Dejar de seguir" else "Seguir") }
-                    Spacer(Modifier.width(6.dp))
-                    OutlinedButton(onClick = { onMessage(uid) }) { Icon(Icons.Default.Chat, null); Text("Mensaje") }
+                    if (uid != repo.currentUid) {
+                        Button(onClick = {
+                            busy = true
+                            scope.launch {
+                                runCatching {
+                                    val next = !following
+                                    repo.follow(uid, next)
+                                    following = next
+                                    user = user?.copy(followersCount = (user?.followersCount ?: 0) + if (next) 1 else -1)
+                                }.onFailure { error = it.localizedMessage }
+                                busy = false
+                            }
+                        }, enabled = !busy) { Text(if (following) "Dejar de seguir" else "Seguir") }
+                        Spacer(Modifier.width(6.dp))
+                        OutlinedButton(onClick = { onMessage(uid) }) { Icon(Icons.Default.Chat, null); Text("Mensaje") }
+                    }
                     var menu by remember { mutableStateOf(false) }
                     Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreHoriz, "Más opciones") }
                         DropdownMenu(menu, { menu = false }) {
-                            DropdownMenuItem(text = { Text("Denunciar perfil") }, onClick = { menu = false; onReport(uid to "user") })
-                            DropdownMenuItem(text = { Text("Bloquear usuario") }, onClick = { menu = false; onBlock(uid) })
+                            if (uid != repo.currentUid) {
+                                DropdownMenuItem(text = { Text("Denunciar perfil") }, onClick = { menu = false; onReport(uid to "user") })
+                                DropdownMenuItem(text = { Text("Bloquear usuario") }, onClick = { menu = false; onBlock(uid) })
+                            }
                         }
                     }
                 }
@@ -137,6 +141,7 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                     Column(Modifier.padding(12.dp)) {
                         if (post.text.isNotBlank()) Text(post.text, color = Ink)
                         if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación", Modifier.fillMaxWidth().heightIn(max = 260.dp))
+                        if (post.videoUrl.isNotBlank()) PawlyVideoPlayer(post.videoUrl, Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(12.dp)))
                         Text(post.likeCount.toString() + " me gusta · " + post.commentCount + " comentarios", color = Muted, style = MaterialTheme.typography.labelSmall)
                     }
                 }
