@@ -364,7 +364,7 @@ private fun PawlyMainApp(
                             selected = active,
                             onClick = {
                                 selected = tab
-                                if (tab != Tab.HEALTH) sharedPetSelection = null
+                                if (tab != Tab.HEALTH && tab != Tab.MORE) sharedPetSelection = null
                             },
                             icon = {
                                 Icon(tabIcon, contentDescription = tab.label, modifier = Modifier.size(21.dp))
@@ -426,10 +426,12 @@ private fun PawlyMainApp(
                     elegantDesign = elegantDesign
                 )
                 Tab.DIARY -> DiaryScreen(
-                    dogName = dogName,
+                    dogName = healthPetName,
                     entries = diaryEntries,
                     onEntriesChange = { diaryEntries = it },
-                    elegantDesign = elegantDesign
+                    elegantDesign = elegantDesign,
+                    sharedPetOwnerUid = sharedPetSelection?.ownerUid,
+                    petId = if (sharedPetSelection == null) null else healthPetId
                 )
                 Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
                 Tab.MORE -> MoreHubScreen(
