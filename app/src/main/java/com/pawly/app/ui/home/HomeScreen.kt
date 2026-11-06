@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,10 +53,10 @@ internal fun HomeScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("PAWLY", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 3.2.sp)
+                    Text("HOLA, QUÉ ALEGRÍA VEROS", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
                     Text(dateLabel, color = Muted, style = MaterialTheme.typography.bodySmall)
                 }
-                Surface(onClick = onAbout, shape = CircleShape, color = Color.White, shadowElevation = 2.dp) {
+                Surface(onClick = onAbout, shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Filled.Person, contentDescription = "Acerca de Pawly", tint = Forest)
                     }
@@ -65,8 +66,8 @@ internal fun HomeScreen(
         item { HomePetHero(dogName, dogPhoto, onEditProfile) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Tu día con ${dogName.ifBlank { "tu compañero" }}", style = MaterialTheme.typography.headlineMedium, color = Ink)
-                Text("Todo lo importante para disfrutar juntos, en un mismo lugar.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+                Text("Un día más juntos, ${dogName.ifBlank { "amigo" }}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text("Todo lo importante para disfrutar juntos, en un mismo lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
         }
         item {
@@ -90,10 +91,10 @@ internal fun HomeScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("La rutina de hoy", style = MaterialTheme.typography.titleLarge, color = Ink)
+                    Text("La rutina de hoy", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
                     Text(if (completed == 2) "¡Todo al día! Qué bien lo hacéis." else "Pequeños cuidados que suman.", color = Muted, style = MaterialTheme.typography.bodySmall)
                 }
-                Text("$completed de 2", color = Forest, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text("$completed de 2", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
             LinearProgressIndicator(
                 progress = { completed / 2f },
@@ -188,7 +189,11 @@ private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
                     if (photo != null) {
                         Image(photo.asImageBitmap(), contentDescription = "Foto de $name", modifier = Modifier.fillMaxSize().clip(CircleShape))
                     } else {
-                        Text("🐾", fontSize = 48.sp)
+                        AsyncImage(
+                            model = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=420&h=420&fit=crop&crop=faces",
+                            contentDescription = "Perro al aire libre",
+                            modifier = Modifier.fillMaxSize().clip(CircleShape)
+                        )
                     }
                 }
             }
@@ -215,14 +220,14 @@ private fun HomeStatCard(
     label: String,
     accent: Color
 ) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 1.dp) {
+    Surface(modifier = modifier, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = Forest, modifier = Modifier.size(21.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(value, color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                Text(label, color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -239,7 +244,7 @@ private fun HomeRoutineCard(
     iconColor: Color,
     iconBackground: Color
 ) {
-    Surface(shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 1.dp) {
+    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Row(
             Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(horizontal = 15.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -250,8 +255,8 @@ private fun HomeRoutineCard(
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(helper, color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
-                Text(title, color = if (checked) Muted else Ink, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(subtitle, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
         }
@@ -290,14 +295,14 @@ private fun HomeFeatureCard(
 
 @Composable
 private fun HomeLearnCard(onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(22.dp), color = Color.White, shadowElevation = 1.dp) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
             Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF1EBD9)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Filled.MenuBook, contentDescription = null, tint = Color(0xFF8B7443), modifier = Modifier.size(24.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("Un minuto para aprender", color = Ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Consejos, artículos e ideas para cuidar mejor.", color = Muted, fontSize = 11.sp)
+                Text("Un minuto para aprender", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Consejos, artículos e ideas para cuidar mejor.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
             Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Forest)
         }
@@ -332,7 +337,7 @@ internal fun TaskRow(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold, color = if (checked) Muted else Ink)
+                Text(title, fontWeight = FontWeight.SemiBold, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                 Text(subtitle, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
