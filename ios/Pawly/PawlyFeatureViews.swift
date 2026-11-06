@@ -1,5 +1,8 @@
 import SwiftUI
 import FirebaseFirestore
+import PhotosUI
+import AVKit
+import FirebaseAuth
 
 struct PawlyTabView: View {
     @StateObject private var pets = PawlyPetStore()
@@ -304,7 +307,7 @@ struct CommunityView:View {
                 }.padding(15)
             }.background(PawlyColors.canvas).navigationBarHidden(true)
                 .onAppear{store.listenFeed()}.onDisappear{store.stopFeed()}
-                .sheet(isPresented:$composer){PostComposerSheet(petName:pets.selectedPet?.name ?? ""){text,category in try await store.publish(text:text,petName:pets.selectedPet?.name ?? "",category:category)}}
+                .sheet(isPresented:$composer){PostComposerSheet(petName:pets.selectedPet?.name ?? ""){text,category,imageURL,videoURL in try await store.publish(text:text,petName:pets.selectedPet?.name ?? "",category:category,imageURL:imageURL,videoURL:videoURL)}}
                 .sheet(item:$comments){post in CommentsView(store:store,post:post)}
         }
     }
@@ -317,7 +320,14 @@ struct FeedPostCard:View {
     var body:some View {
         VStack(alignment:.leading,spacing:11){
             HStack{Image(systemName:"person.crop.circle.fill").font(.title2).foregroundStyle(PawlyColors.primary);VStack(alignment:.leading,spacing:2){Text(post.authorName).font(.subheadline.weight(.semibold));Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
-            Text(post.text).frame(maxWidth:.infinity,alignment:.leading)
+            if !post.text.isEmpty { Text(post.text).frame(maxWidth:.infinity,alignment:.leading) }
+            if !post.imageURL.isEmpty, let url=URL(string:post.imageURL) {
+                AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
+                    .frame(maxWidth:.infinity).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
+            }
+            if !post.videoURL.isEmpty, let url=URL(string:post.videoURL) {
+                VideoPlayer(player:AVPlayer(url:url)).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
+            }
             HStack(spacing:20){Button(action:onLike){Label("\(post.likeCount)",systemImage:post.likedByMe ? "heart.fill":"heart")}.foregroundStyle(post.likedByMe ? .pink:PawlyColors.muted);Button(action:onComment){Label("\(post.commentCount)",systemImage:"bubble.right")}.foregroundStyle(PawlyColors.muted)}
                 .font(.subheadline.weight(.semibold))
         }.padding(15).background(.white,in:RoundedRectangle(cornerRadius:19))
@@ -327,7 +337,7 @@ struct FeedPostCard:View {
 struct PostComposerSheet:View {
     @Environment(\.dismiss) private var dismiss
     var petName:String
-    var onPublish:(String,String) async throws->Void
+    var onPublish:(String,String,String,String) async throws->Void
     @State private var text=""
     @State private var category="STORY"
     @State private var busy=false
@@ -337,14 +347,38 @@ struct PostComposerSheet:View {
             Form {
                 Picker("Tipo",selection:$category){Text("Historia").tag("STORY");Text("Adopción").tag("ADOPTION");Text("Perdido").tag("LOST");Text("Encontrado").tag("FOUND");Text("Acogida").tag("FOSTER")}
                 TextField("¿Qué queréis compartir?",text:$text,axis:.vertical).lineLimit(5...10)
+                HStack {
+                    PhotosPicker(selection:$imageItem,matching:.images){Label("Foto",systemImage:"photo")}
+                    PhotosPicker(selection:$videoItem,matching:.videos){Label("Vídeo",systemImage:"video")}
+                }
+                if imageItem != nil { Label("Fotografía seleccionada",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
+                if videoItem != nil { Label("Vídeo seleccionado",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
                 if !petName.isEmpty{LabeledContent("Mascota",value:petName)}
                 if let error{Text(error).foregroundStyle(.red)}
                 Text("Para publicar necesitas verificar tu correo.").font(.caption).foregroundStyle(.secondary)
             }.navigationTitle("Nueva publicación").toolbar{
                 ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}
                 ToolbarItem(placement:.confirmationAction){Button(busy ? "Publicando…" : "Publicar"){
-                    Task{busy=true;do{try await onPublish(text,category);dismiss()}catch{self.error=error.localizedDescription};busy=false}
-                }.disabled(busy || text.trimmingCharacters(in:.whitespaces).isEmpty)}
+                    Task {
+                        busy=true
+                        do {
+                            guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
+                            let uploader=PawlyCloudinaryUploader()
+                            var imageURL="",videoURL=""
+                            if let item=imageItem {
+                                guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
+                                imageURL=try await uploader.uploadImage(data,folder:"post-photos",ownerUID:uid)
+                            }
+                            if let item=videoItem {
+                                guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
+                                videoURL=try await uploader.uploadVideo(data,folder:"post-videos",ownerUID:uid)
+                            }
+                            try await onPublish(text,category,imageURL,videoURL)
+                            dismiss()
+                        } catch { self.error=error.localizedDescription }
+                        busy=false
+                    }
+                }.disabled(busy || (text.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil))}
             }
         }
     }
@@ -405,12 +439,46 @@ struct ChatView:View {
     @State private var draft=""
     @State private var error:String?
     @State private var listener:ListenerRegistration?
+    @State private var imageItem:PhotosPickerItem?
+    @State private var videoItem:PhotosPickerItem?
     var body:some View{
         NavigationStack{
             VStack(spacing:0){
-                ScrollViewReader{proxy in ScrollView{LazyVStack(spacing:9){ForEach(messages){m in HStack{if m.senderID==store.uid{Spacer(minLength:50)};VStack(alignment:.leading,spacing:4){Text(m.text).foregroundStyle(m.senderID==store.uid ? .white:PawlyColors.ink);if m.senderID==store.uid && m.readBy.contains(chat.otherUserID){Text("Visto").font(.caption2).foregroundStyle(.white.opacity(0.7))}}.padding(12).background(m.senderID==store.uid ? PawlyColors.primary:.white,in:RoundedRectangle(cornerRadius:15));if m.senderID != store.uid{Spacer(minLength:50)}}.id(m.id)}}.padding(14)}.onChange(of:messages.count){_ in if let last=messages.last{proxy.scrollTo(last.id,anchor:.bottom)}}}
+                ScrollViewReader{proxy in ScrollView{LazyVStack(spacing:9){ForEach(messages){m in HStack{if m.senderID==store.uid{Spacer(minLength:50)};VStack(alignment:.leading,spacing:5){
+                    if !m.text.isEmpty { Text(m.text).foregroundStyle(m.senderID==store.uid ? .white:PawlyColors.ink) }
+                    if !m.imageURL.isEmpty,let url=URL(string:m.imageURL){AsyncImage(url:url){$0.resizable().scaledToFill()}placeholder:{ProgressView()}.frame(width:210,height:160).clipShape(RoundedRectangle(cornerRadius:10))}
+                    if !m.videoURL.isEmpty,let url=URL(string:m.videoURL){VideoPlayer(player:AVPlayer(url:url)).frame(width:230,height:160).clipShape(RoundedRectangle(cornerRadius:10))}
+                    if m.senderID==store.uid && m.readBy.contains(chat.otherUserID){Text("Visto").font(.caption2).foregroundStyle(.white.opacity(0.7))}
+                }.padding(12).background(m.senderID==store.uid ? PawlyColors.primary:.white,in:RoundedRectangle(cornerRadius:15));if m.senderID != store.uid{Spacer(minLength:50)}}.id(m.id)}}.padding(14)}.onChange(of:messages.count){_ in if let last=messages.last{proxy.scrollTo(last.id,anchor:.bottom)}}}
                 if let error{Text(error).font(.caption).foregroundStyle(.red)}
-                HStack{TextField("Mensaje",text:$draft,axis:.vertical).lineLimit(1...4).textFieldStyle(.roundedBorder);Button{let v=draft;Task{do{try await store.sendMessage(conversationID:chat.id,text:v);draft="";error=nil}catch{error=$0.localizedDescription}}}label:{Image(systemName:"arrow.up.circle.fill").font(.system(size:30)).foregroundStyle(PawlyColors.primary)}.disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty)}.padding()
+                HStack(spacing:10) {
+                    PhotosPicker(selection:$imageItem,matching:.images){Image(systemName:"photo").font(.title3).foregroundStyle(PawlyColors.primary)}
+                    PhotosPicker(selection:$videoItem,matching:.videos){Image(systemName:"video").font(.title3).foregroundStyle(PawlyColors.primary)}
+                    TextField("Mensaje",text:$draft,axis:.vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                    Button {
+                        let value=draft
+                        Task {
+                            do {
+                                guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
+                                let uploader=PawlyCloudinaryUploader()
+                                var imageURL="",videoURL=""
+                                if let item=imageItem {
+                                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
+                                    imageURL=try await uploader.uploadImage(data,folder:"message-photos",ownerUID:uid)
+                                }
+                                if let item=videoItem {
+                                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
+                                    videoURL=try await uploader.uploadVideo(data,folder:"message-videos",ownerUID:uid)
+                                }
+                                try await store.sendMessage(conversationID:chat.id,text:value,imageURL:imageURL,videoURL:videoURL)
+                                draft="";imageItem=nil;videoItem=nil;error=nil
+                            } catch { error=$0.localizedDescription }
+                        }
+                    } label:{Image(systemName:"arrow.up.circle.fill").font(.system(size:30)).foregroundStyle(PawlyColors.primary)}
+                    .disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil)
+                }.padding()
+                .onChange(of:imageItem){_ in if imageItem != nil {videoItem=nil}}
+                .onChange(of:videoItem){_ in if videoItem != nil {imageItem=nil}}
             }.background(PawlyColors.canvas).navigationTitle(chat.otherUserName).toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
                 .onAppear{store.listenMessages(conversationID:chat.id){messages=$0};Task{await store.markRead(conversationID:chat.id)}}
                 .onDisappear{store.stopMessages()}
