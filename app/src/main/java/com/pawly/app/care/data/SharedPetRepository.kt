@@ -135,5 +135,15 @@ class SharedPetRepository(
         val ref = petRef(sharedPetId(petId))
         check(ref.get().await().getString("ownerUid") == uid()) { "Solo el propietario puede gestionar el acceso." }
         ref.collection("members").document(memberUid).delete().await()
+        val accepted = db.collection("petInvitations")
+            .whereEqualTo("sharedPetId", ref.id)
+            .whereEqualTo("inviteeUid", memberUid)
+            .whereEqualTo("status", "accepted").get().await()
+        accepted.documents.forEach { invite ->
+            invite.reference.update(mapOf(
+                "status" to "revoked",
+                "revokedAt" to FieldValue.serverTimestamp()
+            )).await()
+        }
     }
 }
