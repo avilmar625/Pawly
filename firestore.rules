@@ -276,7 +276,7 @@ service cloud.firestore {
         && request.resource.data.imageUrl.size() <= 2048
         && (!('videoUrl' in request.resource.data)
           || (request.resource.data.videoUrl is string
-            && request.resource.data.videoUrl.matches('^https://')
+            && (request.resource.data.videoUrl.size() == 0 || request.resource.data.videoUrl.matches('^https://'))
             && request.resource.data.videoUrl.size() <= 2048))
         && (request.resource.data.text.size() > 0
           || request.resource.data.imageUrl.size() > 0
@@ -342,7 +342,7 @@ service cloud.firestore {
           && request.resource.data.imageUrl.size() <= 2048
           && (!('videoUrl' in request.resource.data)
             || (request.resource.data.videoUrl is string
-              && request.resource.data.videoUrl.matches('^https://')
+              && (request.resource.data.videoUrl.size() == 0 || request.resource.data.videoUrl.matches('^https://'))
               && request.resource.data.videoUrl.size() <= 2048))
           && request.resource.data.readBy is list
           && request.resource.data.readBy.size() == 1
