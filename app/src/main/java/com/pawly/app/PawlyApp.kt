@@ -2,6 +2,7 @@ package com.pawly.app
 
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.data.FirebasePetProfileRepository
+import com.pawly.app.care.data.PetShareInvitation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -145,6 +146,9 @@ private fun PawlyMainApp(
             "pawly-pet:$normalizedName".toByteArray()
         ).toString().also { preferences.edit().putString(key, it).apply() }
     }
+    var sharedPetSelection by remember { mutableStateOf<PetShareInvitation?>(null) }
+    val healthPetId = sharedPetSelection?.sharedPetId?.removePrefix("${sharedPetSelection.ownerUid}_") ?: activePetId
+    val healthPetName = sharedPetSelection?.petName ?: dogName
     var dogProfiles by remember { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var dogPhotoPath by remember(activePetId, preferences) {
         mutableStateOf(preferences.getString("dog_photo_path_$activePetId", null) ?: preferences.getString("dog_photo_path", null))
@@ -343,7 +347,10 @@ private fun PawlyMainApp(
                         }
                         NavigationBarItem(
                             selected = active,
-                            onClick = { selected = tab },
+                            onClick = {
+                                selected = tab
+                                if (tab != Tab.HEALTH) sharedPetSelection = null
+                            },
                             icon = {
                                 Icon(tabIcon, contentDescription = tab.label, modifier = Modifier.size(21.dp))
                             },
@@ -388,9 +395,12 @@ private fun PawlyMainApp(
                 )
                 Tab.LEARN -> LearningHubScreen(dogName = dogName, elegantDesign = elegantDesign)
                 Tab.HEALTH -> PetCareHubScreen(
-                    petName = dogName,
-                    petId = activePetId,
+                    petName = healthPetName,
+                    petId = healthPetId,
                     storageScope = storageScope,
+                    sharedPetOwnerUid = sharedPetSelection?.ownerUid,
+                    onOpenSharedPet = { sharedPetSelection = it },
+                    onCloseSharedPet = { sharedPetSelection = null },
                     medicineDone = medicineDone,
                     onMedicineToggle = { medicineDone = it },
                     dates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { (key, _) -> key.removePrefix("$dogName|") },
