@@ -69,6 +69,10 @@ internal fun PawlyApp(
     onAccentChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val servicePreferences = remember(context) { context.getSharedPreferences("pawly_services", android.content.Context.MODE_PRIVATE) }
+    var cloudinaryCloudName by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_cloud_name", BuildConfig.CLOUDINARY_CLOUD_NAME).orEmpty()) }
+    var cloudinaryImagePreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_image_preset", BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).orEmpty()) }
+    var cloudinaryVideoPreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_video_preset", BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).orEmpty()) }
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     var localMode by remember { mutableStateOf(false) }
     var signedIn by remember(repository) { mutableStateOf(repository?.currentUid != null) }
@@ -317,6 +321,19 @@ private fun PawlyMainApp(
             onDarkModeChange = onDarkModeChange,
             onAccentChange = onAccentChange,
             onLanguageChange = { preferences.edit().putString("language", it).apply() },
+            cloudinaryCloudName = cloudinaryCloudName,
+            cloudinaryImagePreset = cloudinaryImagePreset,
+            cloudinaryVideoPreset = cloudinaryVideoPreset,
+            onSaveCloudinary = { cloudName, imagePreset, videoPreset ->
+                cloudinaryCloudName = cloudName
+                cloudinaryImagePreset = imagePreset
+                cloudinaryVideoPreset = videoPreset
+                servicePreferences.edit()
+                    .putString("cloudinary_cloud_name", cloudName)
+                    .putString("cloudinary_image_preset", imagePreset)
+                    .putString("cloudinary_video_preset", videoPreset)
+                    .apply()
+            },
             onDismiss = { showSettings = false }
         )
     }
