@@ -11,13 +11,14 @@ Port nativo para iPhone con SwiftUI. Android permanece intacto en `app/`. La app
 - Rutinas de cuidado: alta, consulta, marcar como completadas y borrar.
 - Diario compartido por mascota en `sharedPets/{ownerUid}_{petId}/diary`, con alta, consulta y borrado.
 - Comunidad: muro en tiempo real, publicaciones de texto por categoría, likes y comentarios.
-- Mensajería privada en tiempo real: iniciar chat por nombre de usuario, mensajes de texto y confirmación de lectura.
+- Mensajería privada en tiempo real: iniciar chat por nombre de usuario, mensajes de texto/foto/vídeo y confirmación de lectura.
+- Publicaciones con texto, foto o vídeo; las imágenes se comprimen y los archivos se suben a Cloudinary mediante presets unsigned.
 - Cierre de sesión.
 
 ## Funciones aún pendientes
 
 Esta rama amplía la primera base, pero todavía no es una paridad total con Android. Faltan:
-- Subida y visualización de fotos/vídeos con Cloudinary en publicaciones y mensajes.
+- Mejoras de edición de medios, reproducción en segundo plano y gestión/borrado de archivos remotos en Cloudinary.
 - Búsqueda de perfiles, seguir/dejar de seguir, perfiles públicos y bloqueo/denuncia desde iOS.
 - Invitaciones y administración de perfiles de mascotas compartidos.
 - Notificaciones push entrantes: registrar APNs/FCM en iOS y disponer de un emisor confiable en backend.
@@ -55,6 +56,16 @@ En Xcode selecciona un simulador o conecta el iPhone, configura tu equipo en Sig
 ```bash
 xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
+
+## Configurar Cloudinary para iOS
+
+La app usa el mismo Cloudinary que Android. En Xcode, selecciona el target Pawly y añade estos valores en Build Settings (User-Defined), o completa las claves vacías equivalentes en `ios/project.yml` y vuelve a ejecutar `xcodegen generate`:
+
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_IMAGE_UPLOAD_PRESET`
+- `CLOUDINARY_VIDEO_UPLOAD_PRESET`
+
+Utiliza los mismos unsigned presets que Android. No incluyas nunca el API Secret de Cloudinary en la app. Las fotos se limitan a 8 MB tras compresión y los vídeos a 40 MB.
 
 ## Compatibilidad de datos
 
