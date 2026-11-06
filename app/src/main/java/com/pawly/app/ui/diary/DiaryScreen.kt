@@ -53,6 +53,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 import coil3.compose.AsyncImage
 import com.pawly.app.care.data.FirebasePetProfileRepository
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun DiaryScreen(
