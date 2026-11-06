@@ -183,6 +183,11 @@ class FirebaseCommunityRepository private constructor(
         return CloudinaryImageUploader(appContext).upload(uri, folder, uid)
     }
 
+    suspend fun uploadVideo(uri: Uri, folder: String): String {
+        val uid = requireVerifiedUid()
+        return CloudinaryImageUploader(appContext).uploadVideo(uri, folder, uid)
+    }
+
     suspend fun saveDog(dog: PawlyDog) {
         val uid = requireUid()
         val cleanName = dog.name.trim()
@@ -271,6 +276,7 @@ class FirebaseCommunityRepository private constructor(
                         dogName = doc.getString("dogName") ?: "",
                         text = doc.getString("text") ?: "",
                         imageUrl = doc.getString("imageUrl") ?: "",
+                        videoUrl = doc.getString("videoUrl") ?: "",
                         likeCount = doc.getLong("likeCount") ?: 0,
                         commentCount = doc.getLong("commentCount") ?: 0,
                         likedByMe = uid in likedBy,
@@ -306,6 +312,7 @@ class FirebaseCommunityRepository private constructor(
                         dogName = doc.getString("dogName") ?: "",
                         text = doc.getString("text") ?: "",
                         imageUrl = doc.getString("imageUrl") ?: "",
+                        videoUrl = doc.getString("videoUrl") ?: "",
                         likeCount = doc.getLong("likeCount") ?: 0,
                         commentCount = doc.getLong("commentCount") ?: 0,
                         likedByMe = currentUid in likedBy,
@@ -316,10 +323,10 @@ class FirebaseCommunityRepository private constructor(
             }
     }
 
-    suspend fun publishPost(text: String, imageUrl: String, dogName: String, category: String = "STORY") {
+    suspend fun publishPost(text: String, imageUrl: String, videoUrl: String, dogName: String, category: String = "STORY") {
         val uid = requireVerifiedUid()
         val user = getMyProfile() ?: error("Completa primero tu perfil.")
-        CommunityInputRules.validatePost(text, imageUrl)
+        CommunityInputRules.validatePost(text, imageUrl, videoUrl)
         require(category in setOf("STORY", "ADOPTION", "LOST", "FOUND", "FOSTER")) { "Selecciona una categoría válida." }
         db.collection("posts").add(
             mapOf(
@@ -330,6 +337,7 @@ class FirebaseCommunityRepository private constructor(
                 "category" to category,
                 "text" to text.trim().take(2000),
                 "imageUrl" to imageUrl,
+                "videoUrl" to videoUrl,
                 "likeCount" to 0,
                 "commentCount" to 0,
                 "likedBy" to emptyList<String>(),
@@ -582,18 +590,20 @@ class FirebaseCommunityRepository private constructor(
                         text = d.getString("text") ?: "",
                         createdAt = d.getTimestamp("createdAt")?.toDate()?.time ?: 0,
                         imageUrl = d.getString("imageUrl") ?: "",
+                        videoUrl = d.getString("videoUrl") ?: "",
                         readBy = (d.get("readBy") as? List<*>)?.filterIsInstance<String>().orEmpty()
                     )
                 })
             }
     }
 
-    suspend fun sendMessage(conversationId: String, text: String, imageUrl: String = "") {
+    suspend fun sendMessage(conversationId: String, text: String, imageUrl: String = "", videoUrl: String = "") {
         val uid = requireVerifiedUid()
         val clean = text.trim()
         require(clean.length <= 2000) { "El mensaje no puede superar los 2000 caracteres." }
-        require(clean.isNotBlank() || imageUrl.isNotBlank()) { "Escribe un mensaje o adjunta una fotografía." }
-        require(imageUrl.length <= 2048) { "La dirección de la imagen no es válida." }
+        require(clean.isNotBlank() || imageUrl.isNotBlank() || videoUrl.isNotBlank()) { "Escribe un mensaje o adjunta una fotografía o un vídeo." }
+        require(imageUrl.length <= 2048 && videoUrl.length <= 2048) { "La dirección del archivo multimedia no es válida." }
+        require(imageUrl.isBlank() || videoUrl.isBlank()) { "Adjunta una fotografía o un vídeo, no ambos." }
         val ref = db.collection("conversations").document(conversationId)
         val conversationSnapshot = ref.get().await()
         val participants = conversationSnapshot.get("participants") as? List<String> ?: emptyList()
@@ -603,12 +613,12 @@ class FirebaseCommunityRepository private constructor(
         val blockedMe = db.collection("users").document(otherUid).collection("blocked").document(uid).get().await().exists()
         check(!blockedByMe && !blockedMe) { "No puedes enviar mensajes a esta cuenta." }
         val messageRef = ref.collection("messages").document()
-        val preview = clean.ifBlank { "📷 Fotografía" }.take(120)
+        val preview = clean.ifBlank { if (videoUrl.isNotBlank()) "🎥 Vídeo" else "📷 Fotografía" }.take(120)
         db.runTransaction { tx ->
             val conversation = tx.get(ref)
             check(uid in (conversation.get("participants") as? List<String>).orEmpty()) { "No formas parte de esta conversación." }
             tx.set(messageRef, mapOf(
-                "senderId" to uid, "text" to clean.take(2000), "imageUrl" to imageUrl,
+                "senderId" to uid, "text" to clean.take(2000), "imageUrl" to imageUrl, "videoUrl" to videoUrl,
                 "readBy" to listOf(uid), "createdAt" to FieldValue.serverTimestamp()
             ))
             tx.update(ref, mapOf("lastMessage" to preview, "updatedAt" to FieldValue.serverTimestamp()))
