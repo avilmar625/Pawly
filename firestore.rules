@@ -273,6 +273,14 @@ service cloud.firestore {
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 2000
         && request.resource.data.imageUrl is string
+        && request.resource.data.imageUrl.size() <= 2048
+        && (!('videoUrl' in request.resource.data)
+          || (request.resource.data.videoUrl is string
+            && request.resource.data.videoUrl.matches('^https://')
+            && request.resource.data.videoUrl.size() <= 2048))
+        && (request.resource.data.text.size() > 0
+          || request.resource.data.imageUrl.size() > 0
+          || ('videoUrl' in request.resource.data && request.resource.data.videoUrl.size() > 0))
         && (!('category' in request.resource.data) || request.resource.data.category in ['STORY', 'ADOPTION', 'LOST', 'FOUND', 'FOSTER']);
       allow update: if signedIn()
         && (
@@ -324,12 +332,18 @@ service cloud.firestore {
           && !blockedEitherWay(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0] == request.auth.uid ? get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[1] : get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0]);
         allow create: if verified()
           && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.keys().hasOnly(['senderId', 'text', 'imageUrl', 'readBy', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'imageUrl', 'videoUrl', 'readBy', 'createdAt'])
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 2000
-          && (request.resource.data.text.size() > 0 || (request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() > 0))
+          && (request.resource.data.text.size() > 0
+            || (request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() > 0)
+            || ('videoUrl' in request.resource.data && request.resource.data.videoUrl is string && request.resource.data.videoUrl.size() > 0))
           && request.resource.data.imageUrl is string
           && request.resource.data.imageUrl.size() <= 2048
+          && (!('videoUrl' in request.resource.data)
+            || (request.resource.data.videoUrl is string
+              && request.resource.data.videoUrl.matches('^https://')
+              && request.resource.data.videoUrl.size() <= 2048))
           && request.resource.data.readBy is list
           && request.resource.data.readBy.size() == 1
           && request.auth.uid in request.resource.data.readBy
