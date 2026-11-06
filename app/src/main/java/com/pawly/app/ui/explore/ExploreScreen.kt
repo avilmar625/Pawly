@@ -28,6 +28,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -231,7 +233,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             )
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 filters.forEach { item ->
                     FilterChip(
                         selected = filter == item,
@@ -247,8 +249,8 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             }
         }
         item {
-            Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.primary) {
-                Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
+                Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("VUESTROS FAVORITOS", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Text("${savedPlaces.size} lugares guardados", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
