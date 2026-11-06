@@ -56,13 +56,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 internal enum class Tab(val label: String) {
-    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad")
+    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más")
 }
 
 @Composable
 internal fun PawlyApp(
     darkMode: Boolean = false,
     accent: String = "forest",
+    designStyle: String = "simple",
+    onDesignStyleChange: (String) -> Unit = {},
     onDarkModeChange: (Boolean) -> Unit = {},
     onAccentChange: (String) -> Unit = {}
 ) {
@@ -75,6 +77,8 @@ internal fun PawlyApp(
         PawlyMainApp(
             darkMode = darkMode,
             accent = accent,
+            designStyle = designStyle,
+            onDesignStyleChange = onDesignStyleChange,
             onDarkModeChange = onDarkModeChange,
             onAccentChange = onAccentChange
         )
@@ -100,6 +104,8 @@ internal fun PawlyApp(
             storageScope = repository.currentUid,
             darkMode = darkMode,
             accent = accent,
+            designStyle = designStyle,
+            onDesignStyleChange = onDesignStyleChange,
             onDarkModeChange = onDarkModeChange,
             onAccentChange = onAccentChange
         )
@@ -117,6 +123,8 @@ private fun PawlyMainApp(
     storageScope: String? = null,
     darkMode: Boolean = false,
     accent: String = "forest",
+    designStyle: String = "simple",
+    onDesignStyleChange: (String) -> Unit = {},
     onDarkModeChange: (Boolean) -> Unit = {},
     onAccentChange: (String) -> Unit = {}
 ) {
@@ -124,6 +132,8 @@ private fun PawlyMainApp(
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var showAbout by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    val elegantDesign = designStyle == "elegant"
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
     var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
@@ -196,7 +206,7 @@ private fun PawlyMainApp(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Tab.entries.forEach { tab ->
+                    listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
                         val active = selected == tab
                         val tabIcon = when (tab) {
                             Tab.HOME -> Icons.Filled.Home
@@ -205,6 +215,9 @@ private fun PawlyMainApp(
                             Tab.HEALTH -> Icons.Filled.FavoriteBorder
                             Tab.DIARY -> Icons.Filled.AutoStories
                             Tab.COMMUNITY -> Icons.Filled.Groups
+                            Tab.MORE -> Icons.Filled.MoreHoriz
+                            Tab.LEARN -> Icons.Filled.MenuBook
+                            Tab.DIARY -> Icons.Filled.AutoStories
                         }
                         Column(
                             Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
@@ -252,17 +265,20 @@ private fun PawlyMainApp(
                     onAbout = { showAbout = true },
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
                     diaryCount = diaryEntries.size,
-                    dogPhoto = dogPhoto
+                    dogPhoto = dogPhoto,
+                    elegantDesign = elegantDesign
                 )
                 Tab.EXPLORE -> ExploreScreen(
                     savedPlaces = savedPlaceNames,
                     onToggleSave = { name ->
                         savedPlaceNames = if (name in savedPlaceNames) savedPlaceNames - name else savedPlaceNames + name
-                    }
+                    },
+                    elegantDesign = elegantDesign
                 )
-                Tab.LEARN -> LearningHubScreen(dogName = dogName)
+                Tab.LEARN -> LearningHubScreen(dogName = dogName, elegantDesign = elegantDesign)
                 Tab.HEALTH -> PetCareHubScreen(
                     petName = dogName,
+                    elegantDesign = elegantDesign,
                     petId = dogName,
                     storageScope = storageScope,
                     medicineDone = medicineDone,
@@ -275,16 +291,36 @@ private fun PawlyMainApp(
                 )
                 Tab.DIARY -> DiaryScreen(
                     dogName = dogName,
+                    elegantDesign = elegantDesign,
                     entries = diaryEntries,
                     onEntriesChange = { diaryEntries = it }
                 )
-                Tab.COMMUNITY -> CommunityScreen()
+                Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
+                Tab.MORE -> MoreHubScreen(
+                    onLearn = { selected = Tab.LEARN },
+                    onDiary = { selected = Tab.DIARY },
+                    onSettings = { showSettings = true },
+                    elegantDesign = elegantDesign
+                )
             }
         }
     }
 
     if (showAbout) {
         AboutDialog(onDismiss = { showAbout = false })
+    }
+    if (showSettings) {
+        PawlySettingsDialog(
+            darkMode = darkMode,
+            accent = accent,
+            language = preferences.getString("language", "es") ?: "es",
+            designStyle = designStyle,
+            onDesignStyleChange = onDesignStyleChange,
+            onDarkModeChange = onDarkModeChange,
+            onAccentChange = onAccentChange,
+            onLanguageChange = { preferences.edit().putString("language", it).apply() },
+            onDismiss = { showSettings = false }
+        )
     }
     if (showProfileEditor) {
         ProfileDialog(

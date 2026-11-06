@@ -15,10 +15,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             var darkMode by remember { mutableStateOf(preferences.getBoolean("dark_mode", false)) }
             var accent by remember { mutableStateOf(preferences.getString("accent", "forest") ?: "forest") }
+            var designStyle by remember { mutableStateOf(preferences.getString("design_style", "simple") ?: "simple") }
             PawlyTheme(darkMode = darkMode, accent = accent) {
                 PawlyApp(
                     darkMode = darkMode,
                     accent = accent,
+                    designStyle = designStyle,
+                    onDesignStyleChange = { designStyle = it; preferences.edit().putString("design_style", it).apply() },
                     onDarkModeChange = { darkMode = it; preferences.edit().putBoolean("dark_mode", it).apply() },
                     onAccentChange = { accent = it; preferences.edit().putString("accent", it).apply() }
                 )

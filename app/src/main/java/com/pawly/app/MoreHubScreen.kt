@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 internal fun MoreHubScreen(
     onLearn: () -> Unit,
     onDiary: () -> Unit,
+    onSettings: () -> Unit,
     elegantDesign: Boolean = false
 ) {
     Column(
@@ -43,7 +44,7 @@ internal fun MoreHubScreen(
                 }
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!elegantDesign) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("TU ESPACIO PAWLY", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
             Text("Todo lo vuestro,\nen un mismo lugar.", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
             Text("Herramientas y recuerdos para acompañaros cada día.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
@@ -78,6 +79,13 @@ internal fun MoreHubScreen(
             description = "Artículos, consejos y recursos para su bienestar.",
             tint = Color(0xFFE9E8F3),
             onClick = onLearn
+        )
+        MoreDestinationCard(
+            icon = Icons.Filled.Settings,
+            title = "Ajustes",
+            description = "Diseño, colores, modo oscuro e idioma.",
+            tint = Color(0xFFE5EDE7),
+            onClick = onSettings
         )
         Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(19.dp)) {
             Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
