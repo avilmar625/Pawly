@@ -57,7 +57,8 @@ import coil3.compose.AsyncImage
 internal fun DiaryScreen(
     dogName: String,
     entries: List<String>,
-    onEntriesChange: (List<String>) -> Unit
+    onEntriesChange: (List<String>) -> Unit,
+    elegantDesign: Boolean = false
 ) {
     var note by remember { mutableStateOf("") }
     LazyColumn(
@@ -66,7 +67,7 @@ internal fun DiaryScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Box(Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(28.dp))) {
+            Box(Modifier.fillMaxWidth().height(if (elegantDesign) 245.dp else 205.dp).clip(RoundedCornerShape(28.dp))) {
                 AsyncImage(
                     model = "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1100&h=500&fit=crop",
                     contentDescription = "Perro disfrutando de un paseo",
