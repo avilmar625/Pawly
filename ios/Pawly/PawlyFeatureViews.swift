@@ -216,7 +216,7 @@ struct CareView:View {
     }
     @MainActor private func load() async {
         guard let pet=pets.selectedPet else{return}
-        do{async let p=pets.loadPassport(pet.id);async let t=pets.loadTasks(pet.id);passport=try await p;tasks=try await t;error=nil}
+        do{async let p=pets.loadPassport(pet);async let t=pets.loadTasks(pet);passport=try await p;tasks=try await t;error=nil}
         catch{self.error=error.localizedDescription}
     }
     private func save(_ entry:PawlyPassportEntry) async {guard let pet=pets.selectedPet else{return};do{try await pets.savePassport(entry,pet:pet);await load()}catch{self.error=error.localizedDescription}}
