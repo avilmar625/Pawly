@@ -44,6 +44,15 @@ internal fun PawlySettingsDialog(
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text("Estilo de diseño", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Text("Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(18.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(if (designStyle == "elegant") "Vista elegante activada" else "Vista simple activada", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                Text(if (designStyle == "elegant") "Fotografías, portadas y tarjetas con más personalidad." else "Interfaz ligera, directa y con menos elementos visuales.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                         DesignStyleCard(
                             modifier = Modifier.weight(1f),
