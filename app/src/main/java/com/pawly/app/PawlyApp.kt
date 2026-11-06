@@ -1,4 +1,6 @@
 package com.pawly.app
+
+import com.pawly.app.care.data.PetCareLocalStore
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -278,6 +280,11 @@ private fun PawlyMainApp(storageScope: String? = null) {
                 val cleaned = profileDraft.trim()
                 if (cleaned.isNotEmpty()) {
                     if (cleaned != dogName) {
+                        PetCareLocalStore.renamePet(context, dogName, cleaned, storageScope)
+                        val oldHealthPrefix = "${dogName}|"
+                        healthDates = healthDates.mapKeys { (key, value) ->
+                            if (key.startsWith(oldHealthPrefix)) "${cleaned}|${key.removePrefix(oldHealthPrefix)}" else key
+                        }
                         val oldKey = "pet_id_${dogName.trim().lowercase()}"
                         val newKey = "pet_id_${cleaned.lowercase()}"
                         val stableId = preferences.getString(oldKey, null)
