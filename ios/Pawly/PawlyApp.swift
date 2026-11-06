@@ -57,7 +57,7 @@ struct FirebaseSetupView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(PawlyColors.muted)
                 Label("Configuración pendiente", systemImage: "wrench.and.screwdriver")
-                    .font(.footnote.semibold()).foregroundStyle(PawlyColors.primary)
+                    .font(.footnote.weight(.semibold)).foregroundStyle(PawlyColors.primary)
             }
             .padding(28)
             .pawlyCard()
