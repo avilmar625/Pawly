@@ -99,13 +99,13 @@ internal fun LearningHubScreen(dogName: String) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text("PAWLY · APRENDER Y DESCUBRIR", color = ForestLight, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
-            Text("Un mundo mejor para ellos.", style = MaterialTheme.typography.headlineMedium, color = Ink)
-            Text("Actualidad, ideas, educación y recursos para compartir más vida juntos.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text("PAWLY · APRENDER Y DESCUBRIR", color = MaterialTheme.colorScheme.primaryLight, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
+            Text("Un mundo mejor para ellos.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+            Text("Actualidad, ideas, educación y recursos para compartir más vida juntos.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
 
         Surface(
-            color = Forest,
+            color = MaterialTheme.colorScheme.primary,
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -122,8 +122,8 @@ internal fun LearningHubScreen(dogName: String) {
         if (dogProfile != null) {
             Surface(color = Paper, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("Una selección para ${dogProfile!!.name}", color = Forest, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("Basada en la edad y las características que has guardado en su ficha.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    Text("Una selección para ${dogProfile!!.name}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("Basada en la edad y las características que has guardado en su ficha.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     recommendedGuides.forEach { GuideCard(it) }
                 }
             }
@@ -160,7 +160,7 @@ internal fun LearningHubScreen(dogName: String) {
                     if (article != null) savedArticles = if (id in savedArticles) savedArticles - id else savedArticles + (id to article)
                 }, onRefresh = { refreshKey++ }, onOpen = { url -> runCatching { uriHandler.openUri(url) } })
                 SectionLabel("Entidades y directorios")
-                Text("Consulta sus canales oficiales para conocer animales disponibles, requisitos y formas de colaborar.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text("Consulta sus canales oficiales para conocer animales disponibles, requisitos y formas de colaborar.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 PawlyLearningLibrary.organisations.filter { it.tag in setOf("Adopción", "Protección", "Directorio") }.forEach {
                     ContentLinkCard(it) { runCatching { uriHandler.openUri(it.url) } }
                 }
@@ -188,14 +188,14 @@ internal fun LearningHubScreen(dogName: String) {
                 Surface(color = Lime.copy(alpha = .35f), shape = RoundedCornerShape(16.dp)) {
                     Text(
                         "Consejo Pawly: prioriza vídeos que expliquen el porqué de los ejercicios, respeten el ritmo del perro y no utilicen miedo, dolor ni intimidación.",
-                        Modifier.padding(14.dp), color = Forest, style = MaterialTheme.typography.bodySmall
+                        Modifier.padding(14.dp), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
             PawlyContentSection.SAVED -> {
                 NewsSectionHeader("Tus noticias guardadas", "Artículos que has marcado para leer más tarde. Se conservan en este dispositivo.")
                 if (savedArticles.isEmpty()) {
-                    Text("Todavía no has guardado ninguna noticia. Usa el icono de marcador en cualquier artículo.", color = Muted)
+                    Text("Todavía no has guardado ninguna noticia. Usa el icono de marcador en cualquier artículo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     NewsResults(
                         articles = savedArticles.values.sortedByDescending { it.publishedAtMillis },
@@ -221,7 +221,7 @@ internal fun LearningHubScreen(dogName: String) {
 
         Text(
             "Pawly selecciona enlaces y muestra metadatos de fuentes externas. El contenido original pertenece a sus autores; comprueba fecha, contexto y credenciales. Las guías no sustituyen al veterinario ni a un profesional cualificado.",
-            color = Muted, style = MaterialTheme.typography.labelSmall
+            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall
         )
         Spacer(Modifier.height(8.dp))
     }
