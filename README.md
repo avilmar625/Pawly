@@ -208,3 +208,7 @@ npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes --proje
 ```
 
 La subida de imágenes en mensajes reutiliza Cloudinary. Las notificaciones push automáticas siguen necesitando una función backend de confianza; no se han añadido credenciales privadas ni se ha activado facturación.
+
+
+### Permisos de perfiles compartidos
+En la pestaña de compartir se puede invitar con dos niveles: **Puede editar** o **Solo lectura**. La estructura de permisos queda almacenada en la invitación y en el miembro. La exposición del pasaporte y de las rutinas a esos roles sigue pendiente de la migración segura a rutas compartidas; hasta entonces, los registros sanitarios continúan privados.
