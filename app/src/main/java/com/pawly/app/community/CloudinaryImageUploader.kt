@@ -28,7 +28,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
         val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
         val uploadPreset = BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET.trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
-            "Configura CLOUDINARY_CLOUD_NAME y CLOUDINARY_UPLOAD_PRESET en local.properties para subir fotografías."
+            "Configura CLOUDINARY_CLOUD_NAME y el preset Cloudinary correspondiente en local.properties para subir fotografías."
         }
         require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
         require(folder in setOf("profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos")) {
@@ -66,7 +66,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
         val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
         val uploadPreset = BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET.trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
-            "Configura CLOUDINARY_CLOUD_NAME y CLOUDINARY_UPLOAD_PRESET en local.properties para subir vídeos."
+            "Configura CLOUDINARY_CLOUD_NAME y el preset Cloudinary correspondiente en local.properties para subir vídeos."
         }
         require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
         require(folder in setOf("post-videos", "message-videos")) { "La carpeta de vídeos solicitada no está permitida." }
