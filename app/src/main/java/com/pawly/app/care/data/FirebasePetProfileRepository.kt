@@ -48,13 +48,12 @@ class FirebasePetProfileRepository(
 
     suspend fun saveProfile(petId: String, name: String, photoUrl: String?) {
         require(uid() == ownerUid) { "Solo el propietario puede modificar este perfil." }
-        val cleanName = name.trim()
-        require(cleanName.isNotBlank() && cleanName.length <= 40)
-        require(photoUrl == null || (photoUrl.startsWith("https://") && photoUrl.length <= 2048))
+        val cleanName = PetProfileValidation.name(name)
+        val cleanPhotoUrl = PetProfileValidation.photoUrl(photoUrl)
         profile(petId).set(mapOf(
             "petId" to petId,
             "name" to cleanName,
-            "photoUrl" to photoUrl,
+            "photoUrl" to cleanPhotoUrl,
             "updatedAt" to FieldValue.serverTimestamp()
         )).await()
     }
@@ -67,22 +66,19 @@ class FirebasePetProfileRepository(
     /** Replaces the bounded memory book atomically, preserving the visible order. */
     suspend fun replaceDiary(petId: String, entries: List<String>) {
         require(uid() == ownerUid) { "Solo el propietario puede modificar el diario." }
-        require(entries.size <= 200) { "El diario admite hasta 200 recuerdos por mascota." }
-        require(entries.all { it.isNotBlank() && it.length <= 1000 }) {
-            "Cada recuerdo debe tener entre 1 y 1.000 caracteres."
-        }
+        val cleanEntries = PetProfileValidation.diary(entries)
         val collection = diary(petId)
         val existing = collection.get().await()
         require(existing.size() <= 450) {
             "El diario remoto tiene demasiados registros para actualizarse de una vez."
         }
         val batch = db.batch()
-        val retainedIds = entries.indices.map { index -> "entry_${index.toString().padStart(3, '0')}" }.toSet()
-        entries.forEachIndexed { index, text ->
+        val retainedIds = cleanEntries.indices.map { index -> "entry_${index.toString().padStart(3, '0')}" }.toSet()
+        cleanEntries.forEachIndexed { index, text ->
             val id = "entry_${index.toString().padStart(3, '0')}"
             batch.set(collection.document(id), mapOf(
                 "id" to id,
-                "text" to text.trim(),
+                "text" to text,
                 "position" to index,
                 "updatedAt" to FieldValue.serverTimestamp()
             ))
