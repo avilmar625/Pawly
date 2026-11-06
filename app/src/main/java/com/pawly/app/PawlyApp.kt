@@ -1,6 +1,7 @@
 package com.pawly.app
 
 import com.pawly.app.care.data.PetCareLocalStore
+import com.pawly.app.care.data.FirebasePetProfileRepository
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -119,6 +120,13 @@ private fun PawlyMainApp(
 ) {
     val context = LocalContext.current
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
+    val profileRepository = remember(storageScope) {
+        storageScope?.let { runCatching { FirebasePetProfileRepository(ownerUid = it) }.getOrNull() }
+    }
+    val imageUploader = remember(context) { CloudinaryImageUploader(context) }
+    val coroutineScope = rememberCoroutineScope()
+    var cloudSyncReadyForPet by remember { mutableStateOf<String?>(null) }
+    var cloudSyncMessage by remember { mutableStateOf(if (storageScope == null) "Solo en este dispositivo" else "Preparando sincronización…") }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var showSettings by remember { mutableStateOf(false) }
     val settingsPreferences = remember(context) { context.getSharedPreferences("pawly_appearance", android.content.Context.MODE_PRIVATE) }
@@ -138,12 +146,30 @@ private fun PawlyMainApp(
         ).toString().also { preferences.edit().putString(key, it).apply() }
     }
     var dogProfiles by remember { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
-    var dogPhotoPath by remember { mutableStateOf(preferences.getString("dog_photo_path", null)) }
+    var dogPhotoPath by remember(activePetId, preferences) {
+        mutableStateOf(preferences.getString("dog_photo_path_$activePetId", null) ?: preferences.getString("dog_photo_path", null))
+    }
+    var remoteDogPhotoUrl by remember(activePetId, preferences) {
+        mutableStateOf(preferences.getString("dog_photo_url_$activePetId", null))
+    }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) runCatching {
             val destination = File(context.filesDir, "dog-profile-${System.currentTimeMillis()}.jpg")
             context.contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use { output -> input.copyTo(output) } }
             dogPhotoPath = destination.absolutePath
+            if (storageScope != null && profileRepository != null) {
+                coroutineScope.launch {
+                    runCatching {
+                        val url = imageUploader.upload(uri, "dog-photos", storageScope)
+                        profileRepository.saveProfile(activePetId, dogName, url)
+                        remoteDogPhotoUrl = url
+                        preferences.edit().putString("dog_photo_url_$activePetId", url).apply()
+                        cloudSyncMessage = "Foto sincronizada"
+                    }.onFailure {
+                        cloudSyncMessage = "Foto guardada aquí; no se pudo subir: ${it.localizedMessage ?: "error de red"}"
+                    }
+                }
+            }
         }
     }
     val cameraCapture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
@@ -151,6 +177,19 @@ private fun PawlyMainApp(
             val destination = File(context.filesDir, "dog-profile-${System.currentTimeMillis()}.jpg")
             destination.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
             dogPhotoPath = destination.absolutePath
+            if (storageScope != null && profileRepository != null) {
+                coroutineScope.launch {
+                    runCatching {
+                        val url = imageUploader.upload(Uri.fromFile(destination), "dog-photos", storageScope)
+                        profileRepository.saveProfile(activePetId, dogName, url)
+                        remoteDogPhotoUrl = url
+                        preferences.edit().putString("dog_photo_url_$activePetId", url).apply()
+                        cloudSyncMessage = "Foto sincronizada"
+                    }.onFailure {
+                        cloudSyncMessage = "Foto guardada aquí; no se pudo subir: ${it.localizedMessage ?: "error de red"}"
+                    }
+                }
+            }
         }
     }
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
@@ -175,7 +214,57 @@ private fun PawlyMainApp(
 
     LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).apply() }
     LaunchedEffect(dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
-    LaunchedEffect(dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
+    LaunchedEffect(dogPhotoPath, activePetId) { preferences.edit().putString("dog_photo_path_$activePetId", dogPhotoPath).apply() }
+    LaunchedEffect(remoteDogPhotoUrl, activePetId) {
+        preferences.edit().putString("dog_photo_url_$activePetId", remoteDogPhotoUrl).apply()
+    }
+    LaunchedEffect(activePetId, dogName, storageScope, profileRepository) {
+        cloudSyncReadyForPet = null
+        if (profileRepository == null) {
+            cloudSyncReadyForPet = activePetId
+            cloudSyncMessage = "Solo en este dispositivo"
+        } else {
+            runCatching {
+                profileRepository.ensurePet(activePetId, dogName)
+                val cloudProfile = profileRepository.loadProfile(activePetId)
+                if (cloudProfile == null) {
+                    profileRepository.saveProfile(activePetId, dogName, remoteDogPhotoUrl)
+                } else {
+                    if (cloudProfile.name.isNotBlank() && cloudProfile.name != dogName) {
+                        dogProfiles = (dogProfiles - dogName) + cloudProfile.name
+                        dogName = cloudProfile.name
+                    }
+                    if (!cloudProfile.photoUrl.isNullOrBlank()) {
+                        remoteDogPhotoUrl = cloudProfile.photoUrl
+                        preferences.edit().putString("dog_photo_url_$activePetId", cloudProfile.photoUrl).apply()
+                    }
+                }
+                val cloudDiary = profileRepository.loadDiary(activePetId)
+                if (cloudDiary.isNotEmpty()) {
+                    diaryEntries = cloudDiary
+                } else if (diaryEntries.isNotEmpty()) {
+                    profileRepository.replaceDiary(activePetId, diaryEntries)
+                }
+                cloudSyncMessage = "Perfil y diario sincronizados"
+            }.onFailure {
+                cloudSyncMessage = "Sincronización pendiente: ${it.localizedMessage ?: "comprueba la conexión y las reglas de Firestore"}"
+            }
+            cloudSyncReadyForPet = activePetId
+        }
+    }
+    LaunchedEffect(diaryEntries, activePetId, cloudSyncReadyForPet) {
+        if (profileRepository != null && cloudSyncReadyForPet == activePetId) {
+            runCatching { profileRepository.replaceDiary(activePetId, diaryEntries) }
+                .onSuccess { cloudSyncMessage = "Diario sincronizado" }
+                .onFailure { cloudSyncMessage = "Diario pendiente de sincronizar" }
+        }
+    }
+    LaunchedEffect(dogName, activePetId, cloudSyncReadyForPet) {
+        if (profileRepository != null && cloudSyncReadyForPet == activePetId) {
+            runCatching { profileRepository.saveProfile(activePetId, dogName, remoteDogPhotoUrl) }
+                .onFailure { cloudSyncMessage = "Perfil pendiente de sincronizar" }
+        }
+    }
     LaunchedEffect(walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
     LaunchedEffect(medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
     LaunchedEffect(healthDates) {
@@ -284,6 +373,7 @@ private fun PawlyMainApp(
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
                     diaryCount = diaryEntries.size,
                     dogPhoto = dogPhoto,
+                    dogPhotoUrl = remoteDogPhotoUrl,
                     elegantDesign = elegantDesign
                 )
                 Tab.EXPLORE -> ExploreScreen(
@@ -371,7 +461,8 @@ private fun PawlyMainApp(
             },
             onGallery = { galleryPicker.launch("image/*") },
             onCamera = { cameraCapture.launch(null) },
-            hasPhoto = dogPhoto != null,
+            hasPhoto = dogPhoto != null || !remoteDogPhotoUrl.isNullOrBlank(),
+            syncStatus = cloudSyncMessage,
             profiles = dogProfiles,
             onSelectProfile = { dogName = it; showProfileEditor = false },
             onAddProfile = {
