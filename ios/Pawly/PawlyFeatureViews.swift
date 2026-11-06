@@ -569,47 +569,98 @@ struct ChatView:View {
     @State private var listener:ListenerRegistration?
     @State private var imageItem:PhotosPickerItem?
     @State private var videoItem:PhotosPickerItem?
-    var body:some View{
-        NavigationStack{
-            VStack(spacing:0){
-                ScrollViewReader{proxy in ScrollView{LazyVStack(spacing:9){ForEach(messages){m in HStack{if m.senderID==store.uid{Spacer(minLength:50)};VStack(alignment:.leading,spacing:5){
-                    if !m.text.isEmpty { Text(m.text).foregroundStyle(m.senderID==store.uid ? .white:PawlyColors.ink) }
-                    if !m.imageURL.isEmpty,let url=URL(string:m.imageURL){AsyncImage(url:url){$0.resizable().scaledToFill()}placeholder:{ProgressView()}.frame(width:210,height:160).clipShape(RoundedRectangle(cornerRadius:10))}
-                    if !m.videoURL.isEmpty,let url=URL(string:m.videoURL){VideoPlayer(player:AVPlayer(url:url)).frame(width:230,height:160).clipShape(RoundedRectangle(cornerRadius:10))}
-                    if m.senderID==store.uid && m.readBy.contains(chat.otherUserID){Text("Visto").font(.caption2).foregroundStyle(.white.opacity(0.7))}
-                }.padding(12).background(m.senderID==store.uid ? PawlyColors.primary:.white,in:RoundedRectangle(cornerRadius:15));if m.senderID != store.uid{Spacer(minLength:50)}}.id(m.id)}}.padding(14)}.onChange(of:messages.count){_ in if let last=messages.last{proxy.scrollTo(last.id,anchor:.bottom)}}}
-                if let error{Text(error).font(.caption).foregroundStyle(.red)}
-                HStack(spacing:10) {
-                    PhotosPicker(selection:$imageItem,matching:.images){Image(systemName:"photo").font(.title3).foregroundStyle(PawlyColors.primary)}
-                    PhotosPicker(selection:$videoItem,matching:.videos){Image(systemName:"video").font(.title3).foregroundStyle(PawlyColors.primary)}
-                    TextField("Mensaje",text:$draft,axis:.vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
-                    Button {
-                        let value=draft
-                        Task {
-                            do {
-                                guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
-                                let uploader=PawlyCloudinaryUploader()
-                                var imageURL="",videoURL=""
-                                if let item=imageItem {
-                                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
-                                    imageURL=try await uploader.uploadImage(data,folder:"message-photos",ownerUID:uid)
-                                }
-                                if let item=videoItem {
-                                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
-                                    videoURL=try await uploader.uploadVideo(data,folder:"message-videos",ownerUID:uid)
-                                }
-                                try await store.sendMessage(conversationID:chat.id,text:value,imageURL:imageURL,videoURL:videoURL)
-                                draft="";imageItem=nil;videoItem=nil;error=nil
-                            } catch { error=$0.localizedDescription }
-                        }
-                    } label:{Image(systemName:"arrow.up.circle.fill").font(.system(size:30)).foregroundStyle(PawlyColors.primary)}
-                    .disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil)
-                }.padding()
-                .onChange(of:imageItem){_ in if imageItem != nil {videoItem=nil}}
-                .onChange(of:videoItem){_ in if videoItem != nil {imageItem=nil}}
-            }.background(PawlyColors.canvas).navigationTitle(chat.otherUserName).toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
-                .onAppear{store.listenMessages(conversationID:chat.id){messages=$0};Task{await store.markRead(conversationID:chat.id)}}
-                .onDisappear{store.stopMessages()}
+
+    var body:some View {
+        NavigationStack {
+            VStack(spacing:0) {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing:9) {
+                            ForEach(messages) { message in
+                                messageRow(message).id(message.id)
+                            }
+                        }.padding(14)
+                    }
+                    .onChange(of:messages.count) { _ in
+                        if let last=messages.last { proxy.scrollTo(last.id,anchor:.bottom) }
+                    }
+                }
+                if let error { Text(error).font(.caption).foregroundStyle(.red) }
+                composer
+            }
+            .background(PawlyColors.canvas)
+            .navigationTitle(chat.otherUserName)
+            .toolbar { ToolbarItem(placement:.confirmationAction) { Button("Cerrar") { dismiss() } } }
+            .onAppear {
+                store.listenMessages(conversationID:chat.id) { messages=$0 }
+                Task { await store.markRead(conversationID:chat.id) }
+            }
+            .onDisappear { store.stopMessages() }
+        }
+    }
+
+    @ViewBuilder private func messageRow(_ message:PawlyChatMessage) -> some View {
+        HStack {
+            if message.senderID == store.uid { Spacer(minLength:50) }
+            VStack(alignment:.leading,spacing:5) {
+                if !message.text.isEmpty {
+                    Text(message.text).foregroundStyle(message.senderID == store.uid ? .white : PawlyColors.ink)
+                }
+                if !message.imageURL.isEmpty, let url=URL(string:message.imageURL) {
+                    AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
+                        .frame(width:210,height:160).clipShape(RoundedRectangle(cornerRadius:10))
+                }
+                if !message.videoURL.isEmpty, let url=URL(string:message.videoURL) {
+                    VideoPlayer(player:AVPlayer(url:url)).frame(width:230,height:160)
+                        .clipShape(RoundedRectangle(cornerRadius:10))
+                }
+                if message.senderID == store.uid && message.readBy.contains(chat.otherUserID) {
+                    Text("Visto").font(.caption2).foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            .padding(12)
+            .background(message.senderID == store.uid ? PawlyColors.primary : Color.white,in:RoundedRectangle(cornerRadius:15))
+            if message.senderID != store.uid { Spacer(minLength:50) }
+        }
+    }
+
+    private var composer:some View {
+        HStack(spacing:10) {
+            PhotosPicker(selection:$imageItem,matching:.images) {
+                Image(systemName:"photo").font(.title3).foregroundStyle(PawlyColors.primary)
+            }
+            PhotosPicker(selection:$videoItem,matching:.videos) {
+                Image(systemName:"video").font(.title3).foregroundStyle(PawlyColors.primary)
+            }
+            TextField("Mensaje",text:$draft,axis:.vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+            Button(action:send) {
+                Image(systemName:"arrow.up.circle.fill").font(.system(size:30)).foregroundStyle(PawlyColors.primary)
+            }
+            .disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil)
+        }
+        .padding()
+        .onChange(of:imageItem) { _ in if imageItem != nil { videoItem=nil } }
+        .onChange(of:videoItem) { _ in if videoItem != nil { imageItem=nil } }
+    }
+
+    private func send() {
+        let value=draft
+        Task {
+            do {
+                guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
+                let uploader=PawlyCloudinaryUploader()
+                var imageURL="",videoURL=""
+                if let item=imageItem {
+                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
+                    imageURL=try await uploader.uploadImage(data,folder:"message-photos",ownerUID:uid)
+                }
+                if let item=videoItem {
+                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
+                    videoURL=try await uploader.uploadVideo(data,folder:"message-videos",ownerUID:uid)
+                }
+                try await store.sendMessage(conversationID:chat.id,text:value,imageURL:imageURL,videoURL:videoURL)
+                draft="";imageItem=nil;videoItem=nil;error=nil
+            } catch { self.error=error.localizedDescription }
         }
     }
 }
