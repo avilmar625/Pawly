@@ -73,7 +73,7 @@ internal fun PetCareHubScreen(
                 }
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Agenda", "Pasaporte", "Cuidados").forEach { item ->
+                listOf("Agenda", "Pasaporte", "Cuidados", "Compartir").forEach { item ->
                     FilterChip(
                         selected = section == item,
                         onClick = { section = item },
@@ -102,7 +102,8 @@ internal fun PetCareHubScreen(
                 onDateChange = onDateChange
             )
             "Pasaporte" -> PetPassportSection(petName, storageScope, petId)
-            else -> PetCarePlanSection(petName, storageScope, petId)
+            "Cuidados" -> PetCarePlanSection(petName, storageScope, petId)
+            else -> PetSharingSection(petName = petName, petId = petId, ownerUid = storageScope)
         }
     }
 }
