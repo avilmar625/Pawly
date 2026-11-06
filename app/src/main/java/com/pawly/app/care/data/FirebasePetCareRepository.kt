@@ -29,7 +29,13 @@ class FirebasePetCareRepository(
 
     /** Creates the shared space for its owner or verifies that the current user is a member. */
     suspend fun ensureSharedPet(petId: String, petName: String) {
-        val owner = sharedPetOwnerUid ?: return
+        val owner = sharedPetOwnerUid
+        if (owner == null) {
+            // A previous Android build accidentally stored the owner's own records
+            // in the shared-pet namespace. Copy them once to the private namespace.
+            migrateLegacySharedRecords(petId)
+            return
+        }
         val id = sharedId(petId)
         if (uid() == owner) {
             SharedPetRepository(auth, db).ensureOwnedPet(petId, petName)
@@ -38,6 +44,45 @@ class FirebasePetCareRepository(
             check(db.collection("sharedPets").document(id)
                 .collection("members").document(uid()).get().await().exists()) {
                 "No tienes acceso a este perfil compartido."
+            }
+        }
+    }
+
+    /**
+     * Recover records written by the earlier implementation to the shared path
+     * for the owner's own pet. Existing private records always take precedence.
+     */
+    private suspend fun migrateLegacySharedRecords(petId: String) {
+        val currentUid = uid()
+        val legacyRef = db.collection("sharedPets").document("${currentUid}_${petId}")
+        val legacyPet = runCatching { legacyRef.get().await() }.getOrNull() ?: return
+        if (!legacyPet.exists() || legacyPet.getString("ownerUid") != currentUid) return
+        val member = runCatching {
+            legacyRef.collection("members").document(currentUid).get().await()
+        }.getOrNull() ?: return
+        if (!member.exists()) return
+
+        val privatePassport = passport(petId)
+        if (privatePassport.limit(1).get().await().isEmpty) {
+            val legacy = legacyRef.collection("passport").get().await()
+            if (!legacy.isEmpty) {
+                val batch = db.batch()
+                legacy.documents.forEach { document ->
+                    batch.set(privatePassport.document(document.id), document.data ?: emptyMap<String, Any>())
+                }
+                batch.commit().await()
+            }
+        }
+
+        val privateTasks = tasks(petId)
+        if (privateTasks.limit(1).get().await().isEmpty) {
+            val legacy = legacyRef.collection("tasks").get().await()
+            if (!legacy.isEmpty) {
+                val batch = db.batch()
+                legacy.documents.forEach { document ->
+                    batch.set(privateTasks.document(document.id), document.data ?: emptyMap<String, Any>())
+                }
+                batch.commit().await()
             }
         }
     }

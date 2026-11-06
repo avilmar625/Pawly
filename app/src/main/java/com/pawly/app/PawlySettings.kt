@@ -29,8 +29,16 @@ internal fun PawlySettingsDialog(
     onDarkModeChange: (Boolean) -> Unit,
     onAccentChange: (String) -> Unit,
     onLanguageChange: (String) -> Unit,
+    cloudinaryCloudName: String,
+    cloudinaryImagePreset: String,
+    cloudinaryVideoPreset: String,
+    onSaveCloudinary: (String, String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var cloudName by remember(cloudinaryCloudName) { mutableStateOf(cloudinaryCloudName) }
+    var imagePreset by remember(cloudinaryImagePreset) { mutableStateOf(cloudinaryImagePreset) }
+    var videoPreset by remember(cloudinaryVideoPreset) { mutableStateOf(cloudinaryVideoPreset) }
+    var cloudinaryFeedback by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -101,6 +109,47 @@ internal fun PawlySettingsDialog(
                         }
                     }
                     Text("La traducción integral de todas las pantallas se incorporará progresivamente; por ahora la interfaz principal sigue en español.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Servicios multimedia · Cloudinary", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text("Configura aquí las subidas de fotos y vídeos sin tener que recompilar la aplicación. Estos datos son nombres de configuración, no incluyas el API Secret.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = cloudName,
+                        onValueChange = { cloudName = it.trim(); cloudinaryFeedback = null },
+                        label = { Text("Cloud name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = imagePreset,
+                        onValueChange = { imagePreset = it.trim(); cloudinaryFeedback = null },
+                        label = { Text("Preset unsigned de imágenes") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = videoPreset,
+                        onValueChange = { videoPreset = it.trim(); cloudinaryFeedback = null },
+                        label = { Text("Preset unsigned de vídeos") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Button(
+                        onClick = {
+                            if (!cloudName.matches(Regex("[A-Za-z0-9_-]+")) || imagePreset.isBlank() || videoPreset.isBlank()) {
+                                cloudinaryFeedback = "Introduce un Cloud name válido y los dos presets."
+                            } else {
+                                onSaveCloudinary(cloudName, imagePreset, videoPreset)
+                                cloudinaryFeedback = "Configuración guardada. Ya puedes volver a intentar la subida."
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Guardar configuración multimedia") }
+                    if (cloudinaryFeedback != null) {
+                        Text(cloudinaryFeedback!!, color = if (cloudinaryFeedback!!.startsWith("Configuración")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("Crea los presets como Unsigned en Cloudinary. No pegues aquí una API Key ni un API Secret.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Text("Tus ajustes se guardan en este dispositivo.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

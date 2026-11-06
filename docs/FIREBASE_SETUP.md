@@ -1,6 +1,6 @@
 # Configuración completa de Firebase y Cloudinary para Pawly
 
-Esta guía corresponde a la rama `cambios36`. Separa los pasos que se hacen una sola vez en las consolas de Firebase y Cloudinary de los cambios que ya están preparados en Android.
+Esta guía describe la configuración de servicios para las versiones Android de Pawly. Separa los pasos que se hacen una sola vez en las consolas de Firebase y Cloudinary de los cambios que ya están preparados en Android.
 
 **Arquitectura elegida para mantener el coste controlado:**
 
@@ -116,9 +116,11 @@ Guarda ambos presets y copia sus nombres exactamente. Los nombres de presets uns
 
 Las carpetas `pawly/...` que envía la app sirven para organizar el contenido, no son una barrera de seguridad. Las URLs entregadas por Cloudinary son públicas para cualquiera que las conozca. Firestore protege el acceso a los mensajes y publicaciones, pero no vuelve privada la URL del archivo ni ofrece cifrado de extremo a extremo. No subas documentos, imágenes íntimas ni material sensible.
 
-## 5. Configuración local de Cloudinary en Android
+## 5. Configuración de Cloudinary en Android
 
-En la raíz del proyecto:
+**Opción recomendada para una app ya instalada:** abre Pawly → Más → Ajustes → Servicios multimedia. Introduce el Cloud name y los dos presets unsigned (imágenes y vídeos) y pulsa Guardar. La configuración queda almacenada en el dispositivo y no requiere generar otro APK. Esto permite probar Cloudinary también en instalaciones distribuidas.
+
+**Opción para desarrolladores:** en la raíz del proyecto, antes de compilar:
 
 1. Copia `local.properties.example` como `local.properties`.
 2. Rellena los tres valores:
