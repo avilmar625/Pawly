@@ -41,6 +41,7 @@ internal fun HomeScreen(
     onEditProfile: () -> Unit,
     diaryCount: Int,
     dogPhoto: Bitmap?,
+    dogPhotoUrl: String? = null,
     elegantDesign: Boolean = false
 ) {
     val completed = listOf(walkDone, medicineDone).count { it }
@@ -71,7 +72,7 @@ internal fun HomeScreen(
                 }
             }
         }
-        item { HomePetHero(dogName, dogPhoto, onEditProfile, elegantDesign) }
+        item { HomePetHero(dogName, dogPhoto, dogPhotoUrl, onEditProfile, elegantDesign) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text("Un día bonito\ncon $firstName.", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -168,7 +169,7 @@ internal fun HomeScreen(
 }
 
 @Composable
-private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit, elegantDesign: Boolean) {
+private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit: () -> Unit, elegantDesign: Boolean) {
     Box(
         Modifier.fillMaxWidth()
             .height(if (elegantDesign) 292.dp else 246.dp)
@@ -184,7 +185,8 @@ private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit, elegan
             )
         } else {
             AsyncImage(
-                model = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=1200&h=800&fit=crop&crop=faces",
+                model = photoUrl?.takeIf { it.startsWith("https://") }
+                    ?: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=1200&h=800&fit=crop&crop=faces",
                 contentDescription = "Perro disfrutando al aire libre",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
