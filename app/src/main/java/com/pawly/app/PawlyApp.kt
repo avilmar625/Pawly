@@ -316,7 +316,6 @@ private fun PawlyMainApp(
                 Tab.MORE -> MoreHubScreen(
                     onLearn = { selected = Tab.LEARN },
                     onDiary = { selected = Tab.DIARY },
-                    onHealth = { selected = Tab.HEALTH },
                     elegantDesign = elegantDesign
                 )
             }
