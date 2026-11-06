@@ -66,7 +66,7 @@ internal fun DiaryScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Box(Modifier.fillMaxWidth().height(174.dp).clip(RoundedCornerShape(26.dp))) {
+            Box(Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(28.dp))) {
                 AsyncImage(
                     model = "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1100&h=500&fit=crop",
                     contentDescription = "Perro disfrutando de un paseo",
@@ -76,10 +76,10 @@ internal fun DiaryScreen(
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC10251F)))))
                 Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
                     Text("VUESTROS RECUERDOS", color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                    Text("Una vida llena de historias.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    Text("Cada paseo merece un recuerdo.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 }
             }
-            Text("Guarda esos momentos que merecen quedarse.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Text("Un álbum personal para volver a vuestros mejores momentos.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
