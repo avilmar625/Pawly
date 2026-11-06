@@ -46,7 +46,7 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
     val visiblePosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item {
-            Surface(onClick = onCreate, color = Forest, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+            Surface(onClick = onCreate, color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.AddAPhoto, null, tint = Lime)
                     Spacer(Modifier.width(10.dp))
@@ -81,13 +81,13 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
 @Composable
 internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    Surface(color = Paper, shape = RoundedCornerShape(21.dp), shadowElevation = 1.dp) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(21.dp), shadowElevation = 1.dp) {
         Column {
             Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                 Avatar(post.authorPhoto, post.authorName)
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f).clickable { onOpenUser(post.authorId) }) {
-                    Text(post.authorName, color = Ink, fontWeight = FontWeight.Bold)
+                    Text(post.authorName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     Text((if (post.dogName.isBlank()) "Una historia Pawly" else "Con " + post.dogName) + " · " + when (post.category) { "ADOPTION" -> "Adopción"; "LOST" -> "Perdido"; "FOUND" -> "Encontrado"; "FOSTER" -> "Acogida"; else -> "Comunidad" }, color = if (post.category == "LOST") Color(0xFFB44E43) else ForestLight, style = MaterialTheme.typography.labelSmall)
                 }
                 Box {
@@ -98,16 +98,16 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                     }
                 }
             }
-            if (post.text.isNotBlank()) Text(post.text, color = Ink, modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp))
+            if (post.text.isNotBlank()) Text(post.text, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp))
             if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación", Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 340.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { onLike(post) }) {
                     Icon(if (post.likedByMe) Icons.Default.Favorite else Icons.Default.FavoriteBorder, null, tint = if (post.likedByMe) Color(0xFFC65B55) else Forest)
-                    Text(" " + post.likeCount, color = Ink)
+                    Text(" " + post.likeCount, color = MaterialTheme.colorScheme.onSurface)
                 }
                 TextButton(onClick = { onComments(post) }) {
-                    Icon(Icons.Default.ChatBubbleOutline, null, tint = Forest)
-                    Text(" " + post.commentCount + " comentarios", color = Ink)
+                    Icon(Icons.Default.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.primary)
+                    Text(" " + post.commentCount + " comentarios", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
