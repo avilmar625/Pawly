@@ -72,7 +72,7 @@ internal fun PawlyApp(
     var signedIn by remember(repository) { mutableStateOf(repository?.currentUid != null) }
 
     if (localMode) {
-        PawlyMainApp()
+        PawlyMainApp(darkMode, accent, onDarkModeChange, onAccentChange)
         return
     }
 
@@ -91,7 +91,7 @@ internal fun PawlyApp(
     }
 
     if (signedIn) {
-        PawlyMainApp(storageScope = repository.currentUid)
+        PawlyMainApp(darkMode, accent, onDarkModeChange, onAccentChange, storageScope = repository.currentUid)
     } else {
         CommunityAuthPanel(
             repo = repository,
@@ -101,7 +101,7 @@ internal fun PawlyApp(
     }
 }
 
-private fun PawlyMainApp(storageScope: String? = null) {
+private fun PawlyMainApp(\n    darkMode: Boolean,\n    accent: String,\n    onDarkModeChange: (Boolean) -> Unit,\n    onAccentChange: (String) -> Unit,\n    storageScope: String? = null\n) {
     val context = LocalContext.current
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
