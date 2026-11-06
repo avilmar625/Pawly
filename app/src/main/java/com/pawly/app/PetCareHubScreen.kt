@@ -54,10 +54,20 @@ internal fun PetCareHubScreen(
     onMedicineToggle: (Boolean) -> Unit,
     dates: Map<String, String>,
     onDateChange: (String, String?) -> Unit,
-    elegantDesign: Boolean = false
+    elegantDesign: Boolean = false,
+    sharedPetOwnerUid: String? = null,
+    onOpenSharedPet: (PetShareInvitation) -> Unit = {},
+    onCloseSharedPet: () -> Unit = {}
 ) {
     var section by remember { mutableStateOf("Agenda") }
+    LaunchedEffect(sharedPetOwnerUid) { section = if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte" }
     Column(Modifier.fillMaxSize()) {
+        if (sharedPetOwnerUid != null) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Perfil compartido · ${petName}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                TextButton(onClick = onCloseSharedPet) { Text("Volver a mi mascota") }
+            }
+        }
         Column(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -96,7 +106,7 @@ internal fun PetCareHubScreen(
                 }
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Agenda", "Pasaporte", "Cuidados", "Compartir").forEach { item ->
+                (if (sharedPetOwnerUid == null) listOf("Agenda", "Pasaporte", "Cuidados", "Compartir") else listOf("Agenda", "Pasaporte", "Cuidados")).forEach { item ->
                     FilterChip(
                         selected = section == item,
                         onClick = { section = item },
@@ -124,30 +134,33 @@ internal fun PetCareHubScreen(
                 dates = dates,
                 onDateChange = onDateChange
             )
-            "Pasaporte" -> PetPassportSection(petName, storageScope, petId)
-            "Cuidados" -> PetCarePlanSection(petName, storageScope, petId)
-            else -> PetSharingSection(petName = petName, petId = petId, ownerUid = storageScope)
+            "Pasaporte" -> PetPassportSection(petName, storageScope, petId, sharedPetOwnerUid)
+            "Cuidados" -> PetCarePlanSection(petName, storageScope, petId, sharedPetOwnerUid)
+            else -> PetSharingSection(petName = petName, petId = petId, ownerUid = storageScope, onOpenSharedPet = onOpenSharedPet)
         }
     }
 }
 
 @Composable
-private fun PetPassportSection(petName: String, storageScope: String?, petId: String) {
+private fun PetPassportSection(petName: String, storageScope: String?, petId: String, sharedPetOwnerUid: String? = null) {
     val context = LocalContext.current
     var entries by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
-    val cloudRepository = remember(storageScope) {
-        if (storageScope != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = storageScope) }.getOrNull() else null
+    val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
+    val cloudRepository = remember(cloudOwnerUid) {
+        if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
     var syncMessage by remember(storageScope) {
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
-    var cloudLoading by remember(storageScope) { mutableStateOf(storageScope != null) }
+    var cloudLoading by remember(cloudOwnerUid) { mutableStateOf(cloudOwnerUid != null) }
+    var canEdit by remember(cloudOwnerUid, petId) { mutableStateOf(true) }
     LaunchedEffect(cloudRepository, petId) {
         val repo = cloudRepository ?: return@LaunchedEffect
         cloudLoading = true
         try {
             repo.ensureSharedPet(petId, petName)
+            canEdit = repo.canEditSharedPet(petId)
             val remoteEntries = repo.loadPassportEntries(petId)
             if (remoteEntries.isEmpty() && entries.isNotEmpty()) {
                 repo.savePassportEntries(petId, entries)
@@ -196,7 +209,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                     Text("${entries.size} registros", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text("Añadir") }
+                    Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text("Añadir") }
                     TextButton(onClick = {
                         runCatching { PetCarePdfExporter.sharePassport(context, petName, entries) }
                             .onFailure { syncMessage = "No se pudo preparar el PDF" }
@@ -284,22 +297,25 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
 }
 
 @Composable
-private fun PetCarePlanSection(petName: String, storageScope: String?, petId: String) {
+private fun PetCarePlanSection(petName: String, storageScope: String?, petId: String, sharedPetOwnerUid: String? = null) {
     val context = LocalContext.current
     var tasks by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
-    val cloudRepository = remember(storageScope) {
-        if (storageScope != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = storageScope) }.getOrNull() else null
+    val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
+    val cloudRepository = remember(cloudOwnerUid) {
+        if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
     var syncMessage by remember(storageScope) {
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
-    var cloudLoading by remember(storageScope) { mutableStateOf(storageScope != null) }
+    var cloudLoading by remember(cloudOwnerUid) { mutableStateOf(cloudOwnerUid != null) }
+    var canEdit by remember(cloudOwnerUid, petId) { mutableStateOf(true) }
     LaunchedEffect(cloudRepository, petId) {
         val repo = cloudRepository ?: return@LaunchedEffect
         cloudLoading = true
         try {
             repo.ensureSharedPet(petId, petName)
+            canEdit = repo.canEditSharedPet(petId)
             val remoteTasks = repo.loadCareTasks(petId)
             if (remoteTasks.isEmpty() && tasks.isNotEmpty()) {
                 repo.saveCareTasks(petId, tasks)
@@ -346,7 +362,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                     Text("${tasks.count { it.completed }} de ${tasks.size} marcadas como hechas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Text("Añadir") }
+                    Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Text("Añadir") }
                     TextButton(onClick = {
                         runCatching { PetCarePdfExporter.shareCarePlan(context, petName, tasks) }
                             .onFailure { syncMessage = "No se pudo preparar el PDF" }
