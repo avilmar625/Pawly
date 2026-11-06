@@ -96,7 +96,7 @@ struct PawlyProfileEditorView:View {
   Form {
    Section("Tu identidad") {
     HStack(spacing:14) {
-     if let url=URL(string:photoURL),!photoURL.isEmpty{AsyncImage(url:url){$0.resizable().scaledToFill()}placeholder:{PawlyAvatarPlaceholder()}.frame(width:76,height:76).clipShape(Circle())}
+     if let url=URL(string:photoURL),!photoURL.isEmpty{AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { PawlyAvatarPlaceholder() }.frame(width:76,height:76).clipShape(Circle())}
      else{PawlyAvatarPlaceholder().frame(width:76,height:76)}
      VStack(alignment:.leading,spacing:6){Text(displayName.isEmpty ? "Tu nombre":displayName).font(.headline);Text(session.user?.email ?? "").font(.caption).foregroundStyle(.secondary)
       PhotosPicker(selection:$imageItem,matching:.images){Label("Cambiar fotografía",systemImage:"camera")}.font(.caption)}
@@ -166,6 +166,7 @@ struct PawlyExploreView:View{
     }.padding()
     if !results.isEmpty{Map(coordinateRegion:$region,annotationItems:results){p in MapMarker(coordinate:p.coordinate,tint:.green)}.frame(height:205)}
     if let error{Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal)}
+    if let locationMessage=locationProvider.message{Text(locationMessage).font(.caption).foregroundStyle(.secondary).padding(.horizontal)}
     List(results){p in VStack(alignment:.leading,spacing:6){
      HStack{VStack(alignment:.leading,spacing:3){Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)}
       Spacer();Button{toggleSaved(p)}label:{Image(systemName:saved.contains(where:{$0.id==p.id}) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain)}
