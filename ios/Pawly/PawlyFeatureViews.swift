@@ -471,7 +471,12 @@ struct PeopleSearchSheet:View {
                 List(results) { user in
                     VStack(alignment:.leading,spacing:9) {
                         HStack(spacing:10) {
-                            Image(systemName:"person.crop.circle.fill").font(.largeTitle).foregroundStyle(PawlyColors.primary)
+                            if let url=URL(string:user.photoURL),!user.photoURL.isEmpty {
+                                AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{PawlyAvatarPlaceholder()}
+                                    .frame(width:48,height:48).clipShape(Circle())
+                            } else {
+                                PawlyAvatarPlaceholder().frame(width:48,height:48)
+                            }
                             VStack(alignment:.leading,spacing:3) {
                                 Text(user.displayName).font(.headline)
                                 Text("@\(user.username) · \(user.followersCount) seguidores").font(.caption).foregroundStyle(.secondary)
@@ -523,7 +528,12 @@ struct FeedPostCard:View {
     var onComment:()->Void
     var body:some View {
         VStack(alignment:.leading,spacing:11){
-            HStack{Image(systemName:"person.crop.circle.fill").font(.title2).foregroundStyle(PawlyColors.primary);VStack(alignment:.leading,spacing:2){Text(post.authorName).font(.subheadline.weight(.semibold));Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
+            HStack{
+                if let url=URL(string:post.authorPhoto),!post.authorPhoto.isEmpty {
+                    AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{PawlyAvatarPlaceholder()}
+                        .frame(width:38,height:38).clipShape(Circle())
+                } else { PawlyAvatarPlaceholder().frame(width:38,height:38) }
+                VStack(alignment:.leading,spacing:2){Text(post.authorName).font(.subheadline.weight(.semibold));Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
             if !post.text.isEmpty { Text(post.text).frame(maxWidth:.infinity,alignment:.leading) }
             if !post.imageURL.isEmpty, let url=URL(string:post.imageURL) {
                 AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
