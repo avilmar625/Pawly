@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun Avatar(url: String, label: String, size: Int = 44) {
     if (url.isNotBlank()) AsyncImage(url, "Foto de " + label, Modifier.size(size.dp).clip(CircleShape))
-    else Box(Modifier.size(size.dp).clip(CircleShape).background(Lime), contentAlignment = Alignment.Center) {
+    else Box(Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
         Text(label.trim().firstOrNull()?.uppercase() ?: "🐾", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = (size / 2).sp)
     }
 }
