@@ -518,14 +518,28 @@ class FirebaseCommunityRepository private constructor(
         val blockedMe = db.collection("users").document(otherUid).collection("blocked").document(me).get().await().exists()
         check(!myBlocked && !blockedMe) { "No puedes iniciar una conversación con esta cuenta." }
         val ref = db.collection("conversations").document(id)
-        ref.set(
-            mapOf(
-                "participants" to ids,
-                "participantNames" to mapOf(me to (myProfile?.displayName ?: "Yo"), otherUid to (other?.displayName ?: "Usuario")),
-                "updatedAt" to FieldValue.serverTimestamp()
-            ),
-            com.google.firebase.firestore.SetOptions.merge()
-        ).await()
+        // Existing conversations may only update lastMessage/updatedAt under Firestore rules.
+        // Re-opening a chat must not rewrite participants or participantNames.
+        db.runTransaction { transaction ->
+            val existing = transaction.get(ref)
+            if (existing.exists()) {
+                check((existing.get("participants") as? List<*>)?.toSet() == ids.toSet()) {
+                    "La conversación existente no coincide con sus participantes."
+                }
+            } else {
+                transaction.set(
+                    ref,
+                    mapOf(
+                        "participants" to ids,
+                        "participantNames" to mapOf(
+                            me to (myProfile?.displayName ?: "Yo"),
+                            otherUid to (other?.displayName ?: "Usuario")
+                        ),
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+            }
+        }.await()
         return id
     }
 
