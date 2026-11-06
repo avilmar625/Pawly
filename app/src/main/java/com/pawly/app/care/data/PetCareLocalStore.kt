@@ -75,4 +75,21 @@ internal object PetCareLocalStore {
         preferences(context, storageScope).edit()
             .putString(key("care", petName), json.toString()).apply()
     }
+
+    /** Move legacy name-keyed local records when a profile is renamed. */
+    fun renamePet(context: Context, oldName: String, newName: String, storageScope: String? = null) {
+        if (oldName.trim().equals(newName.trim(), ignoreCase = true)) return
+        val prefs = preferences(context, storageScope)
+        val prefixes = listOf("passport", "care")
+        val editor = prefs.edit()
+        prefixes.forEach { prefix ->
+            val oldKey = key(prefix, oldName)
+            val newKey = key(prefix, newName)
+            val oldValue = prefs.getString(oldKey, null)
+            if (oldValue != null && !prefs.contains(newKey)) {
+                editor.putString(newKey, oldValue).remove(oldKey)
+            }
+        }
+        editor.apply()
+    }
 }
