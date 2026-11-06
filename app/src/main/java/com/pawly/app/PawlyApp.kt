@@ -102,6 +102,14 @@ private fun PawlyMainApp(storageScope: String? = null) {
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
     var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
+    // Keep the legacy deterministic ID on first use so existing Firestore data remains addressable.
+    val activePetId = remember(dogName, preferences) {
+        val normalizedName = dogName.trim().lowercase()
+        val key = "pet_id_$normalizedName"
+        preferences.getString(key, null) ?: java.util.UUID.nameUUIDFromBytes(
+            "pawly-pet:$normalizedName".toByteArray()
+        ).toString().also { preferences.edit().putString(key, it).apply() }
+    }
     var dogProfiles by remember { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var dogPhotoPath by remember { mutableStateOf(preferences.getString("dog_photo_path", null)) }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -238,6 +246,7 @@ private fun PawlyMainApp(storageScope: String? = null) {
                 Tab.LEARN -> LearningHubScreen(dogName = dogName)
                 Tab.HEALTH -> PetCareHubScreen(
                     petName = dogName,
+                    petId = activePetId,
                     storageScope = storageScope,
                     medicineDone = medicineDone,
                     onMedicineToggle = { medicineDone = it },
@@ -268,6 +277,18 @@ private fun PawlyMainApp(storageScope: String? = null) {
             onSave = {
                 val cleaned = profileDraft.trim()
                 if (cleaned.isNotEmpty()) {
+                    if (cleaned != dogName) {
+                        val oldKey = "pet_id_${dogName.trim().lowercase()}"
+                        val newKey = "pet_id_${cleaned.lowercase()}"
+                        val stableId = preferences.getString(oldKey, null)
+                            ?: java.util.UUID.nameUUIDFromBytes(
+                                "pawly-pet:${dogName.trim().lowercase()}".toByteArray()
+                            ).toString()
+                        if (!preferences.contains(newKey)) {
+                            preferences.edit().putString(newKey, stableId).apply()
+                        }
+                        preferences.edit().remove(oldKey).apply()
+                    }
                     dogProfiles = (dogProfiles - dogName) + cleaned
                     dogName = cleaned
                 }
