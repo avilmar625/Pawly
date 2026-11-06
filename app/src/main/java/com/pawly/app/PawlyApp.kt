@@ -193,8 +193,12 @@ private fun PawlyMainApp(
         }
     }
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
-    var walkDone by remember { mutableStateOf(preferences.getBoolean("walk_done", false)) }
-    var medicineDone by remember { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
+    var walkDone by remember(activePetId, preferences) {
+        mutableStateOf(preferences.getBoolean("walk_done_$activePetId", if (dogProfiles.size == 1) preferences.getBoolean("walk_done", false) else false))
+    }
+    var medicineDone by remember(activePetId, preferences) {
+        mutableStateOf(preferences.getBoolean("medicine_done_$activePetId", if (dogProfiles.size == 1) preferences.getBoolean("medicine_done", false) else false))
+    }
     var healthDates by remember {
         mutableStateOf(runCatching {
             val json = JSONArray(preferences.getString("health_dates", "[]") ?: "[]")
@@ -204,9 +208,10 @@ private fun PawlyMainApp(
     var savedPlaceNames by remember {
         mutableStateOf(preferences.getStringSet("saved_places", emptySet())?.toSet() ?: emptySet())
     }
-    val storedEntries = remember(preferences) {
+    val storedEntries = remember(preferences, activePetId) {
         runCatching {
-            val json = JSONArray(preferences.getString("diary_entries", "[]") ?: "[]")
+            val legacy = if (dogProfiles.size == 1) preferences.getString("diary_entries", "[]") else "[]"
+            val json = JSONArray(preferences.getString("diary_entries_$activePetId", legacy) ?: "[]")
             List(json.length()) { index -> json.getString(index) }
         }.getOrDefault(emptyList())
     }
@@ -240,11 +245,9 @@ private fun PawlyMainApp(
                     }
                 }
                 val cloudDiary = profileRepository.loadDiary(activePetId)
-                if (cloudDiary.isNotEmpty()) {
-                    diaryEntries = cloudDiary
-                } else if (diaryEntries.isNotEmpty()) {
-                    profileRepository.replaceDiary(activePetId, diaryEntries)
-                }
+                val mergedDiary = (diaryEntries + cloudDiary).distinct().take(200)
+                if (mergedDiary != diaryEntries) diaryEntries = mergedDiary
+                if (mergedDiary != cloudDiary) profileRepository.replaceDiary(activePetId, mergedDiary)
                 cloudSyncMessage = "Perfil y diario sincronizados"
             }.onFailure {
                 cloudSyncMessage = "Sincronización pendiente: ${it.localizedMessage ?: "comprueba la conexión y las reglas de Firestore"}"
@@ -265,8 +268,8 @@ private fun PawlyMainApp(
                 .onFailure { cloudSyncMessage = "Perfil pendiente de sincronizar" }
         }
     }
-    LaunchedEffect(walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
-    LaunchedEffect(medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
+    LaunchedEffect(walkDone, activePetId) { preferences.edit().putBoolean("walk_done_$activePetId", walkDone).apply() }
+    LaunchedEffect(medicineDone, activePetId) { preferences.edit().putBoolean("medicine_done_$activePetId", medicineDone).apply() }
     LaunchedEffect(healthDates) {
         val json = JSONArray()
         healthDates.forEach { (key, value) -> json.put(org.json.JSONArray().put(key).put(value)) }
@@ -275,10 +278,10 @@ private fun PawlyMainApp(
     LaunchedEffect(savedPlaceNames) {
         preferences.edit().putStringSet("saved_places", savedPlaceNames.toSet()).apply()
     }
-    LaunchedEffect(diaryEntries) {
+    LaunchedEffect(diaryEntries, activePetId) {
         val json = JSONArray()
         diaryEntries.forEach { entry -> json.put(entry) }
-        preferences.edit().putString("diary_entries", json.toString()).apply()
+        preferences.edit().putString("diary_entries_$activePetId", json.toString()).apply()
     }
 
     Scaffold(
