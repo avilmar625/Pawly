@@ -189,7 +189,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                     }
                                 }
                             } catch (e: Exception) {
-                                error = e.toPawlyMessage("No se pudo iniciar sesión con Google.") + "\\n\\nRevisa Google en Authentication, la SHA-1 de la firma debug y que app/google-services.json esté actualizado con el cliente OAuth Web."
+                                error = e.toPawlyMessage("No se pudo iniciar sesión con Google.") + "\n\nRevisa Google en Authentication, la SHA-1 de la firma debug y que app/google-services.json esté actualizado con el cliente OAuth Web."
                             } finally {
                                 busy = false
                             }
