@@ -56,7 +56,7 @@ struct HomeView: View {
                         .padding(20).frame(maxWidth:.infinity,alignment:.leading)
                         .background(LinearGradient(colors:[PawlyColors.primary,Color(red:0.35,green:0.66,blue:0.53)],startPoint:.topLeading,endPoint:.bottomTrailing),
                                     in:RoundedRectangle(cornerRadius:24))
-                        .contextMenu { Button(role:.destructive) { petToDelete=pet;showDelete=true } label:{Label("Eliminar perfil",systemImage:"trash")} }
+                        .contextMenu { if pet.ownerUID == nil { Button(role:.destructive) { petToDelete=pet;showDelete=true } label:{Label("Eliminar perfil",systemImage:"trash")} } }
                     } else {
                         PawlyEmptyState(icon:"pawprint",title:"Tu historia empieza aquí",detail:"Añade el perfil de tu mascota para organizar sus cuidados y recuerdos.")
                     }
@@ -73,6 +73,7 @@ struct HomeView: View {
                                     .foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())
                                 VStack(alignment:.leading,spacing:3) {
                                     Text(pet.name).font(.headline).foregroundStyle(PawlyColors.ink)
+                                    if pet.ownerUID != nil { Text("Perfil compartido").font(.caption2).foregroundStyle(PawlyColors.primary) }
                                     Text([pet.breed,pet.age].filter{!$0.isEmpty}.joined(separator:" · "))
                                         .font(.caption).foregroundStyle(PawlyColors.muted)
                                 }
@@ -104,7 +105,7 @@ struct PetPicker:View {
         Menu {
             ForEach(pets.pets) { pet in
                 Button { pets.select(pet) } label:{
-                    if pet.id==pets.selectedPetID { Label(pet.name,systemImage:"checkmark") } else { Text(pet.name) }
+                    if pet.id==pets.selectedPetID { Label(pet.name,systemImage:pet.ownerUID == nil ? "checkmark":"person.2.fill") } else { Text(pet.ownerUID == nil ? pet.name : "\(pet.name) · Compartida") }
                 }
             }
         } label:{
@@ -286,7 +287,7 @@ struct PetSharingSheet:View {
                     TextField("Nombre de usuario",text:$username).textInputAutocapitalization(.never).autocorrectionDisabled()
                     Picker("Permisos",selection:$role){Text("Puede editar").tag("editor");Text("Solo lectura").tag("reader")}
                     Button(busy ? "Enviando…" : "Enviar invitación"){Task{await invite()}}
-                        .disabled(busy || pets.selectedPet == nil || username.trimmingCharacters(in:.whitespaces).count<3)
+                        .disabled(busy || pets.selectedPet == nil || pets.selectedPet?.ownerUID != nil || username.trimmingCharacters(in:.whitespaces).count<3)
                 }
                 Section("Invitaciones recibidas") {
                     if pending.isEmpty {Text("No tienes invitaciones pendientes.").font(.caption).foregroundStyle(.secondary)}
