@@ -33,10 +33,44 @@ class FirebasePetCareRepository(
         val id = sharedId(petId)
         if (uid() == owner) {
             SharedPetRepository(auth, db).ensureOwnedPet(petId, petName)
+            migrateLegacyPrivateRecords(petId)
         } else {
             check(db.collection("sharedPets").document(id)
                 .collection("members").document(uid()).get().await().exists()) {
                 "No tienes acceso a este perfil compartido."
+            }
+        }
+    }
+
+    /**
+     * One-time, non-destructive migration from the previous owner-private paths.
+     * Existing shared records always win; legacy documents are left untouched.
+     */
+    private suspend fun migrateLegacyPrivateRecords(petId: String) {
+        val legacyRoot = db.collection("users").document(uid())
+            .collection("petCare").document(petId)
+
+        val sharedPassport = passport(petId)
+        if (sharedPassport.limit(1).get().await().isEmpty) {
+            val legacy = legacyRoot.collection("passport").get().await()
+            if (!legacy.isEmpty) {
+                val batch = db.batch()
+                legacy.documents.forEach { document ->
+                    batch.set(sharedPassport.document(document.id), document.data ?: emptyMap<String, Any>())
+                }
+                batch.commit().await()
+            }
+        }
+
+        val sharedTasks = tasks(petId)
+        if (sharedTasks.limit(1).get().await().isEmpty) {
+            val legacy = legacyRoot.collection("tasks").get().await()
+            if (!legacy.isEmpty) {
+                val batch = db.batch()
+                legacy.documents.forEach { document ->
+                    batch.set(sharedTasks.document(document.id), document.data ?: emptyMap<String, Any>())
+                }
+                batch.commit().await()
             }
         }
     }
