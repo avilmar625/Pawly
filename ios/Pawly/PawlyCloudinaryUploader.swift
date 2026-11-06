@@ -12,7 +12,7 @@ struct PawlyCloudinaryUploader {
         let factor=min(1,1600/max(longest,1))
         let target=CGSize(width:image.size.width*factor,height:image.size.height*factor)
         let format=UIGraphicsImageRendererFormat(); format.scale=1
-        let resized=UIGraphicsImageRenderer(size:target,format:format).image { image.draw(in:CGRect(origin:.zero,size:target)) }
+        let resized=UIGraphicsImageRenderer(size:target,format:format).image { _ in image.draw(in:CGRect(origin:.zero,size:target)) }
         guard let jpeg=resized.jpegData(compressionQuality:0.82) else { throw PawlyMediaError.invalidImage }
         guard jpeg.count <= 8*1024*1024 else { throw PawlyMediaError.imageTooLarge }
         return try await upload(bytes:jpeg,filename:"pawly-image.jpg",mime:"image/jpeg",resource:"image",
