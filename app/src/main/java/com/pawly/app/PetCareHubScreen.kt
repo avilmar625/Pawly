@@ -37,6 +37,7 @@ import com.pawly.app.care.data.FirebasePetCareRepository
 import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.model.PassportEntry
+import com.pawly.app.care.export.PetCarePdfExporter
 
 @Composable
 internal fun PetCareHubScreen(
@@ -169,7 +170,13 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                     Text("Historial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text("${entries.size} registros", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text("Añadir") }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text("Añadir") }
+                    TextButton(onClick = {
+                        runCatching { PetCarePdfExporter.sharePassport(context, petName, entries) }
+                            .onFailure { syncMessage = "No se pudo preparar el PDF" }
+                    }) { Text("Compartir PDF") }
+                }
             }
         }
         if (entries.isEmpty()) {
@@ -312,7 +319,13 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                     Text("Rutinas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text("${tasks.count { it.completed }} de ${tasks.size} marcadas como hechas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Text("Añadir") }
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Button(onClick = { showAdd = true }, enabled = !cloudLoading) { Icon(Icons.Default.Add, null); Text("Añadir") }
+                    TextButton(onClick = {
+                        runCatching { PetCarePdfExporter.shareCarePlan(context, petName, tasks) }
+                            .onFailure { syncMessage = "No se pudo preparar el PDF" }
+                    }) { Text("Compartir PDF") }
+                }
             }
         }
         if (tasks.isEmpty()) {
