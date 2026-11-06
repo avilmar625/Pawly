@@ -12,7 +12,7 @@ data class PetShareInvitation(
     val ownerName: String, val ownerUid: String, val role: String, val status: String
 )
 
-/** Collaboration for pet profile access. Health records remain owner-private in cambios23. */
+/** Collaboration for pet profiles, shared health records and caregiver permissions. */
 class SharedPetRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
