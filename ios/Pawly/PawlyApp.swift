@@ -3,12 +3,14 @@ import FirebaseCore
 
 @main
 struct PawlyApp: App {
-    @StateObject private var session = PawlySession()
+    @StateObject private var session: PawlySession
 
     init() {
-        if Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") != nil {
+        if Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") != nil,
+           FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
+        _session = StateObject(wrappedValue: PawlySession())
     }
 
     var body: some Scene {
