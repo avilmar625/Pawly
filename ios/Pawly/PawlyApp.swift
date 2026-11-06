@@ -3,6 +3,8 @@ import FirebaseCore
 
 @main
 struct PawlyApp: App {
+    @UIApplicationDelegateAdaptor(PawlyAppDelegate.self) private var appDelegate
+    @AppStorage("pawly.darkMode") private var darkMode = false
     @StateObject private var session: PawlySession
 
     init() {
@@ -28,7 +30,7 @@ struct PawlyApp: App {
                         .environmentObject(session)
                 }
             }
-            .preferredColorScheme(.light)
+            .preferredColorScheme(darkMode ? .dark : .light)
         }
     }
 }
