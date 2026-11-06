@@ -19,10 +19,10 @@ Port nativo para iPhone con SwiftUI. Android permanece intacto en `app/`. La app
 
 Esta rama amplía la primera base, pero todavía no es una paridad total con Android. Faltan:
 - Mejoras de edición de medios, reproducción en segundo plano y gestión/borrado de archivos remotos en Cloudinary.
-- Búsqueda de perfiles, seguir/dejar de seguir, perfiles públicos y bloqueo/denuncia desde iOS.
+- Notificaciones push con backend/APNs y moderación operativa; eliminación integral automatizada de cuenta y medios.
 - Invitaciones y administración de perfiles de mascotas compartidos.
 - Notificaciones push entrantes: registrar APNs/FCM en iOS y disponer de un emisor confiable en backend.
-- Sincronización de las preferencias y recordatorios locales, exportación PDF y eliminación integral de cuenta/datos.
+- Sincronización de preferencias y recordatorios locales, y ejecución automática del borrado completo de cuenta/datos y archivos remotos.
 - Pruebas de extremo a extremo con dos cuentas Firebase reales.
 
 ## Requisitos
