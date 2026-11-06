@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
@@ -9,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 
 internal val Forest = Color(0xFF173F35)
 internal val ForestLight = Color(0xFF2D6655)
@@ -37,17 +40,17 @@ internal fun PawlyTheme(darkMode: Boolean = false, accent: String = "forest", co
     val scheme = if (darkMode) {
         darkColorScheme(
             primary = primary,
-            onPrimary = Color(0xFF071D18),
-            primaryContainer = Color(0xFF254B3F),
-            onPrimaryContainer = Color(0xFFE0F2E7),
+            onPrimary = Color.White,
+            primaryContainer = Color(0xFF2D5144),
+            onPrimaryContainer = Color(0xFFE5F2E9),
             secondary = secondary,
             onSecondary = Color(0xFF102027),
             secondaryContainer = Color(0xFF293D42),
             onSecondaryContainer = Color(0xFFDCEEF0),
             background = Color(0xFF101713),
             onBackground = Color(0xFFE6EEE8),
-            surface = Color(0xFF19221D),
-            onSurface = Color(0xFFE6EEE8),
+            surface = Color(0xFF1B2620),
+            onSurface = Color(0xFFEAF1EC),
             surfaceVariant = Color(0xFF29342E),
             onSurfaceVariant = Color(0xFFB7C4BA),
             outline = Color(0xFF53645A),
@@ -68,10 +71,10 @@ internal fun PawlyTheme(darkMode: Boolean = false, accent: String = "forest", co
             onSecondary = Color.White,
             secondaryContainer = Color(0xFFE9EFE9),
             onSecondaryContainer = Color(0xFF263A30),
-            background = Cream,
-            onBackground = Ink,
-            surface = Paper,
-            onSurface = Ink,
+            background = Color(0xFFF6F7F2),
+            onBackground = Color(0xFF202A23),
+            surface = Color(0xFFFFFEFC),
+            onSurface = Color(0xFF202A23),
             surfaceVariant = Color(0xFFF0F2ED),
             onSurfaceVariant = Muted,
             outline = Color(0xFF87948A),
@@ -80,6 +83,13 @@ internal fun PawlyTheme(darkMode: Boolean = false, accent: String = "forest", co
     }
     MaterialTheme(
         colorScheme = scheme,
+        shapes = Shapes(
+            extraSmall = RoundedCornerShape(10.dp),
+            small = RoundedCornerShape(14.dp),
+            medium = RoundedCornerShape(20.dp),
+            large = RoundedCornerShape(26.dp),
+            extraLarge = RoundedCornerShape(32.dp)
+        ),
         typography = Typography(
             displayLarge = TextStyle(fontSize = 48.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 54.sp, letterSpacing = (-1.1).sp),
             displayMedium = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 46.sp, letterSpacing = (-0.7).sp),
