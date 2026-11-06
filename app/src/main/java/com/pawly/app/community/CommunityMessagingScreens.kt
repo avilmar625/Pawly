@@ -152,8 +152,8 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         }, { error = it })
         onDispose { listener.remove() }
     }
-    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
-        Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), tonalElevation = 1.dp) { Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver") }; Avatar("", conversation.otherUserName, 36); Spacer(Modifier.width(10.dp)); Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium) } }
+    Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp)) {
+        Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 2.dp) { Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver") }; Avatar("", conversation.otherUserName, 36); Spacer(Modifier.width(10.dp)); Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium) } }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             items(messages, key = { it.id }) { item ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (item.senderId == uid) Arrangement.End else Arrangement.Start) {
@@ -201,7 +201,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                 }
             }, enabled = !sending && (draft.isNotBlank() || attachment != null)) {
                 if (sending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Default.Send, "Enviar", tint = MaterialTheme.colorScheme.onPrimary)
+                else Icon(Icons.Default.Send, "Enviar", tint = MaterialTheme.colorScheme.primary)
             }
         }
         Spacer(Modifier.height(8.dp))
