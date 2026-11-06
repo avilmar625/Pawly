@@ -147,7 +147,7 @@ private fun PawlyMainApp(
         ).toString().also { preferences.edit().putString(key, it).apply() }
     }
     var sharedPetSelection by remember { mutableStateOf<PetShareInvitation?>(null) }
-    val healthPetId = sharedPetSelection?.sharedPetId?.removePrefix("${sharedPetSelection.ownerUid}_") ?: activePetId
+    val healthPetId = sharedPetSelection?.let { it.sharedPetId.removePrefix("${it.ownerUid}_") } ?: activePetId
     val healthPetName = sharedPetSelection?.petName ?: dogName
     var dogProfiles by remember { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var dogPhotoPath by remember(activePetId, preferences) {
