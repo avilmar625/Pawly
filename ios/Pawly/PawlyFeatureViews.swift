@@ -686,14 +686,31 @@ struct AccountView:View {
     @EnvironmentObject private var session:PawlySession
     @EnvironmentObject private var pets:PawlyPetStore
     @State private var error:String?
+    @State private var deletionStatus:String?
+    @State private var showDeletionConfirmation=false
     var body:some View{
         NavigationStack{
             Form{
-                Section("Cuenta"){LabeledContent("Correo",value:session.user?.email ?? "—");LabeledContent("Verificación",value:session.user?.isEmailVerified == true ? "Verificado":"Pendiente")}
+                Section("Cuenta"){
+                    LabeledContent("Correo",value:session.user?.email ?? "—")
+                    LabeledContent("Verificación",value:session.user?.isEmailVerified == true ? "Verificado":"Pendiente")
+                }
                 Section("Mascotas"){ForEach(pets.pets){pet in Text(pet.name)}}
+                Section("Privacidad"){
+                    Button("Solicitar eliminación de cuenta",role:.destructive){showDeletionConfirmation=true}
+                    if let deletionStatus { Text(deletionStatus).font(.footnote).foregroundStyle(PawlyColors.muted) }
+                }
                 Section{Button("Cerrar sesión",role:.destructive){do{try session.signOut()}catch{self.error=error.localizedDescription}}}
                 if let error{Text(error).foregroundStyle(.red)}
-            }.navigationTitle("Mi cuenta")
+            }
+            .navigationTitle("Mi cuenta")
+            .confirmationDialog("¿Solicitar la eliminación de tu cuenta?",isPresented:$showDeletionConfirmation,titleVisibility:.visible){
+                Button("Enviar solicitud",role:.destructive){
+                    Task{do{try await session.requestAccountDeletion();deletionStatus="Solicitud registrada. El equipo debe completar la eliminación de los datos.";error=nil}
+                        catch{self.error=error.localizedDescription}}
+                }
+                Button("Cancelar",role:.cancel){}
+            }message:{Text("Esto envía una solicitud al equipo de Pawly; no elimina automáticamente tu cuenta ni los archivos almacenados.")}
         }
     }
 }
