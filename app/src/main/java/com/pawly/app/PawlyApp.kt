@@ -101,7 +101,13 @@ internal fun PawlyApp(
     }
 }
 
-private fun PawlyMainApp(\n    darkMode: Boolean,\n    accent: String,\n    onDarkModeChange: (Boolean) -> Unit,\n    onAccentChange: (String) -> Unit,\n    storageScope: String? = null\n) {
+private fun PawlyMainApp(
+    darkMode: Boolean,
+    accent: String,
+    onDarkModeChange: (Boolean) -> Unit,
+    onAccentChange: (String) -> Unit,
+    storageScope: String? = null
+) {
     val context = LocalContext.current
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
