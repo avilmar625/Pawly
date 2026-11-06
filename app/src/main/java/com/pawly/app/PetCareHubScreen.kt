@@ -152,7 +152,8 @@ internal fun PetCareHubScreen(
 @Composable
 private fun PetPassportSection(petName: String, storageScope: String?, petId: String, sharedPetOwnerUid: String? = null) {
     val context = LocalContext.current
-    var entries by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
+    val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
+    var entries by remember(petName, localStorageScope, petId) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, localStorageScope)) }
     val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
     val cloudRepository = remember(cloudOwnerUid) {
         if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
@@ -175,7 +176,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                 syncMessage = "Historial local sincronizado con tu cuenta"
             } else {
                 entries = remoteEntries
-                PetCareLocalStore.saveEntries(context, petName, remoteEntries, storageScope)
+                PetCareLocalStore.saveEntries(context, petName, remoteEntries, localStorageScope)
                 syncMessage = "Sincronizado con tu cuenta"
             }
         } catch (error: Exception) {
@@ -248,7 +249,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                     }
                     TextButton(enabled = canEdit, onClick = {
                         entries = entries.filterNot { it.id == entry.id }
-                        PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
+                        PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
                                 runCatching { repo.deletePassportEntry(petId, entry.id) }
@@ -307,7 +308,8 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
 @Composable
 private fun PetCarePlanSection(petName: String, storageScope: String?, petId: String, sharedPetOwnerUid: String? = null) {
     val context = LocalContext.current
-    var tasks by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
+    val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
+    var tasks by remember(petName, localStorageScope, petId) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, localStorageScope)) }
     val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
     val cloudRepository = remember(cloudOwnerUid) {
         if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
@@ -330,7 +332,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                 syncMessage = "Rutinas locales sincronizadas con tu cuenta"
             } else {
                 tasks = remoteTasks
-                PetCareLocalStore.saveTasks(context, petName, remoteTasks, storageScope)
+                PetCareLocalStore.saveTasks(context, petName, remoteTasks, localStorageScope)
                 syncMessage = "Sincronizado con tu cuenta"
             }
         } catch (error: Exception) {
@@ -389,7 +391,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                         enabled = canEdit,
                         onCheckedChange = { checked ->
                             tasks = tasks.map { if (it.id == task.id) it.copy(completed = checked) else it }
-                            PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
+                            PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
                             tasks.firstOrNull { it.id == task.id }?.let { updatedTask ->
                                 cloudRepository?.let { repo ->
                                     coroutineScope.launch {
