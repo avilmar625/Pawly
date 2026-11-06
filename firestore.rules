@@ -97,35 +97,6 @@ service cloud.firestore {
         allow delete: if owner(uid);
       }
 
-      // Shared health data is visible only to accepted members of the pet profile.
-      // Owners and editors can change records; readers have read-only access.
-      match /passport/{entryId} {
-        allow read: if isMember();
-        allow create, update: if isMember()
-          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
-          && request.resource.data.keys().hasOnly(['id', 'type', 'title', 'detail', 'date'])
-          && request.resource.data.id == entryId
-          && request.resource.data.type is string && request.resource.data.type.size() <= 40
-          && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
-          && request.resource.data.detail is string && request.resource.data.detail.size() <= 1200
-          && request.resource.data.date is string && request.resource.data.date.size() <= 40;
-        allow delete: if isMember()
-          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
-      }
-      match /tasks/{taskId} {
-        allow read: if isMember();
-        allow create, update: if isMember()
-          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
-          && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed'])
-          && request.resource.data.id == taskId
-          && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
-          && request.resource.data.responsible is string && request.resource.data.responsible.size() <= 80
-          && request.resource.data.frequency is string && request.resource.data.frequency.size() <= 80
-          && request.resource.data.completed is bool;
-        allow delete: if isMember()
-          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
-      }
-
       // Private health passport and care routines. These records are never public.
       match /petCare/{petId} {
         allow read, write: if owner(uid);
@@ -164,7 +135,7 @@ service cloud.firestore {
     }
 
 
-    // Shared pet profile invitations. Health records remain owner-private in cambios23.
+    // Shared pet profile invitations and role-protected health records.
     match /sharedPets/{sharedPetId} {
       function isMember() {
         return signedIn() && exists(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid));
@@ -198,6 +169,35 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)).data.ownerUid == request.auth.uid
           && memberUid != request.auth.uid;
         allow update: if false;
+      }
+
+      // Shared health data is visible only to accepted members of the pet profile.
+      // Owners and editors can change records; readers have read-only access.
+      match /passport/{entryId} {
+        allow read: if isMember();
+        allow create, update: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+          && request.resource.data.keys().hasOnly(['id', 'type', 'title', 'detail', 'date'])
+          && request.resource.data.id == entryId
+          && request.resource.data.type is string && request.resource.data.type.size() <= 40
+          && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
+          && request.resource.data.detail is string && request.resource.data.detail.size() <= 1200
+          && request.resource.data.date is string && request.resource.data.date.size() <= 40;
+        allow delete: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
+      }
+      match /tasks/{taskId} {
+        allow read: if isMember();
+        allow create, update: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+          && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed'])
+          && request.resource.data.id == taskId
+          && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
+          && request.resource.data.responsible is string && request.resource.data.responsible.size() <= 80
+          && request.resource.data.frequency is string && request.resource.data.frequency.size() <= 80
+          && request.resource.data.completed is bool;
+        allow delete: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
       }
     }
 
