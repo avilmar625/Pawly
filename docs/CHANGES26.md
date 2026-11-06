@@ -8,7 +8,7 @@ Esta iteración prioriza una mejora de percepción y experiencia: imagen, jerarq
 - Inicio: saludo contextual, tarjetas y tipografía más limpias; la foto del perfil de la mascota se mantiene como protagonista y se ofrece una fotografía de respaldo si aún no hay foto local.
 - Explorar: tarjetas de categorías con fotografías editoriales, recorte uniforme y jerarquía de información más clara. Las fotografías remotas requieren conexión y pueden no estar disponibles si el proveedor externo cambia la URL.
 - Diario: cabecera fotográfica, tarjetas adaptadas al tema y estado vacío diseñado.
-- Salud: superficies y colores principales adaptados al esquema Material 3.
+- Salud y pantallas heredadas principales: superficies, fondos y colores de texto adaptados progresivamente al esquema Material 3 y a modo oscuro.
 - Acceso a Comunidad: cabecera fotográfica y formulario con jerarquía visual y botones más cuidados.
 - Reparada la declaración de `PawlyMainApp` que en la rama anterior contenía secuencias de salto de línea literales y no Kotlin válido.
 
