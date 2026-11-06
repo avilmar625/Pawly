@@ -1,5 +1,9 @@
 name: iOS CI
 
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ios, ios-funciones]
