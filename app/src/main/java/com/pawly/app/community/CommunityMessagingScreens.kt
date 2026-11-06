@@ -183,7 +183,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) {
-                Icon(Icons.Default.AddPhotoAlternate, "Adjuntar fotografía", tint = Forest)
+                Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = Forest)
             }
             OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f),
                 placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
