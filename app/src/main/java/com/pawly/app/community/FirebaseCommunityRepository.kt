@@ -581,16 +581,18 @@ class FirebaseCommunityRepository private constructor(
         require(clean.isNotBlank() || imageUrl.isNotBlank()) { "Escribe un mensaje o adjunta una fotografía." }
         require(imageUrl.length <= 2048) { "La dirección de la imagen no es válida." }
         val ref = db.collection("conversations").document(conversationId)
+        val conversationSnapshot = ref.get().await()
+        val participants = conversationSnapshot.get("participants") as? List<String> ?: emptyList()
+        check(uid in participants && participants.size == 2) { "No formas parte de esta conversación." }
+        val otherUid = participants.first { it != uid }
+        val blockedByMe = db.collection("users").document(uid).collection("blocked").document(otherUid).get().await().exists()
+        val blockedMe = db.collection("users").document(otherUid).collection("blocked").document(uid).get().await().exists()
+        check(!blockedByMe && !blockedMe) { "No puedes enviar mensajes a esta cuenta." }
         val messageRef = ref.collection("messages").document()
         val preview = clean.ifBlank { "📷 Fotografía" }.take(120)
         db.runTransaction { tx ->
             val conversation = tx.get(ref)
             check(uid in (conversation.get("participants") as? List<String>).orEmpty()) { "No formas parte de esta conversación." }
-            val participants = conversation.get("participants") as? List<String> ?: emptyList()
-            val otherUid = participants.firstOrNull { it != uid } ?: error("Conversación no válida.")
-            check(!db.collection("users").document(uid).collection("blocked").document(otherUid).get().await().exists()) {
-                "Has bloqueado a esta persona."
-            }
             tx.set(messageRef, mapOf(
                 "senderId" to uid, "text" to clean.take(2000), "imageUrl" to imageUrl,
                 "readBy" to listOf(uid), "createdAt" to FieldValue.serverTimestamp()
@@ -602,7 +604,11 @@ class FirebaseCommunityRepository private constructor(
     suspend fun markConversationRead(conversationId: String) {
         val uid = requireUid()
         val messages = db.collection("conversations").document(conversationId)
-            .collection("messages").whereNotEqualTo("senderId", uid).limit(200).get().await()
+            .collection("messages").whereEqualTo("senderId", run {
+                val participants = db.collection("conversations").document(conversationId).get().await()
+                    .get("participants") as? List<String> ?: emptyList()
+                participants.firstOrNull { it != uid } ?: error("Conversación no válida.")
+            }).limit(200).get().await()
         val unread = messages.documents.filter { uid !in (it.get("readBy") as? List<*>)?.filterIsInstance<String>().orEmpty() }
         unread.chunked(400).forEach { chunk ->
             val batch = db.batch()
