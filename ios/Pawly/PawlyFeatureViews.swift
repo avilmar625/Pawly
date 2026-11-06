@@ -157,6 +157,7 @@ struct CareView:View {
     @State private var showEntry=false
     @State private var showTask=false
     @State private var showShare=false
+    @State private var exportURL:URL?
     @State private var error:String?
     var body:some View {
         NavigationStack {
@@ -190,11 +191,27 @@ struct CareView:View {
                 }
             }
             .navigationTitle("Salud y cuidados")
-             .toolbar{ToolbarItemGroup(placement:.topBarTrailing){Button{showShare=true} label:{Image(systemName:"person.2.badge.plus")};PetPicker()}}
+              .toolbar{ToolbarItemGroup(placement:.topBarTrailing){
+                if let exportURL { ShareLink(item:exportURL){Image(systemName:"square.and.arrow.up")} }
+                else { Button(action:exportPDF){Image(systemName:"square.and.arrow.up")} }
+                Button{showShare=true} label:{Image(systemName:"person.2.badge.plus")}
+                PetPicker()
+            }}
             .task(id:pets.selectedPetID){await load()}
             .sheet(isPresented:$showEntry){PassportEntrySheet{entry in await save(entry)}}
              .sheet(isPresented:$showTask){CareTaskSheet{task in await save(task)}}
             .sheet(isPresented:$showShare){PetSharingSheet()}
+        }
+    }
+    private func exportPDF() {
+        guard let pet=pets.selectedPet else{return}
+        Task {
+            do {
+                let entries=try await pets.loadPassport(pet.id)
+                let routines=try await pets.loadTasks(pet.id)
+                exportURL=try PawlyPDFExporter.create(pet:pet,passport:entries,tasks:routines)
+                error=nil
+            } catch { self.error=error.localizedDescription }
         }
     }
     @MainActor private func load() async {
