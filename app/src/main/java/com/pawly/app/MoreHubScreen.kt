@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.sp
 internal fun MoreHubScreen(
     onLearn: () -> Unit,
     onDiary: () -> Unit,
-    onHealth: () -> Unit,
     elegantDesign: Boolean = false
 ) {
     Column(
