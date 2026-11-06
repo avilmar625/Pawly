@@ -171,7 +171,7 @@ struct CareView:View {
                                 VStack(alignment:.leading,spacing:4){
                                     HStack{Text(entry.title).font(.subheadline.weight(.semibold));Spacer();Text(entry.type).font(.caption).foregroundStyle(PawlyColors.primary)}
                                     Text("\(entry.date) · \(entry.detail)").font(.caption).foregroundStyle(.secondary)
-                                }.swipeActions{Button(role:.destructive){removeEntry(entry)}label:{Label("Eliminar",systemImage:"trash")}}
+                                }.swipeActions{Button(role:.destructive){removeEntry(entry)} label:{Label("Eliminar",systemImage:"trash")}}
                             }
                         }
                         Section {
@@ -182,7 +182,7 @@ struct CareView:View {
                                     Button {toggle(task)} label:{Image(systemName:task.completed ? "checkmark.circle.fill":"circle").foregroundStyle(PawlyColors.primary)}
                                         .buttonStyle(.plain)
                                     VStack(alignment:.leading,spacing:3){Text(task.title).strikethrough(task.completed);Text([task.frequency,task.responsible].filter{!$0.isEmpty}.joined(separator:" · ")).font(.caption).foregroundStyle(.secondary)}
-                                }.swipeActions{Button(role:.destructive){removeTask(task)}label:{Label("Eliminar",systemImage:"trash")}}
+                                }.swipeActions{Button(role:.destructive){removeTask(task)} label:{Label("Eliminar",systemImage:"trash")}}
                             }
                         }
                         if let error {Section{Text(error).font(.caption).foregroundStyle(.red)}}
@@ -190,7 +190,7 @@ struct CareView:View {
                 }
             }
             .navigationTitle("Salud y cuidados")
-             .toolbar{ToolbarItemGroup(placement:.topBarTrailing){Button{showShare=true}label:{Image(systemName:"person.2.badge.plus")};PetPicker()}}
+             .toolbar{ToolbarItemGroup(placement:.topBarTrailing){Button{showShare=true} label:{Image(systemName:"person.2.badge.plus")};PetPicker()}}
             .task(id:pets.selectedPetID){await load()}
             .sheet(isPresented:$showEntry){PassportEntrySheet{entry in await save(entry)}}
              .sheet(isPresented:$showTask){CareTaskSheet{task in await save(task)}}
@@ -204,9 +204,9 @@ struct CareView:View {
     }
     private func save(_ entry:PawlyPassportEntry) async {guard let pet=pets.selectedPet else{return};do{try await pets.savePassport(entry,petID:pet.id);await load()}catch{self.error=error.localizedDescription}}
     private func save(_ task:PawlyCareTask) async {guard let pet=pets.selectedPet else{return};do{try await pets.saveTask(task,petID:pet.id);await load()}catch{self.error=error.localizedDescription}}
-    private func removeEntry(_ e:PawlyPassportEntry){guard let p=pets.selectedPet else{return};Task{do{try await pets.deletePassport(e.id,petID:p.id);await load()}catch{error=$0.localizedDescription}}}
-    private func removeTask(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{do{try await pets.deleteTask(t.id,petID:p.id);await load()}catch{error=$0.localizedDescription}}}
-    private func toggle(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{var x=t;x.completed.toggle();do{try await pets.saveTask(x,petID:p.id);await load()}catch{error=$0.localizedDescription}}}
+    private func removeEntry(_ e:PawlyPassportEntry){guard let p=pets.selectedPet else{return};Task{do{try await pets.deletePassport(e.id,petID:p.id);await load()}catch { self.error = error.localizedDescription }}}
+    private func removeTask(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{do{try await pets.deleteTask(t.id,petID:p.id);await load()}catch { self.error = error.localizedDescription }}}
+    private func toggle(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{var x=t;x.completed.toggle();do{try await pets.saveTask(x,petID:p.id);await load()}catch { self.error = error.localizedDescription }}}
 }
 
 struct PassportEntrySheet:View {
@@ -333,7 +333,7 @@ struct DiaryView:View {
                             if entries.isEmpty {Text("Todavía no hay recuerdos. El primero siempre es especial.").foregroundStyle(.secondary)}
                             ForEach(entries){e in
                                 VStack(alignment:.leading,spacing:5){Text(e.text);if let d=e.updatedAt{Text(d.formatted(date:.abbreviated,time:.shortened)).font(.caption).foregroundStyle(.secondary)}}
-                                    .swipeActions{Button(role:.destructive){remove(e)}label:{Label("Eliminar",systemImage:"trash")}}
+                                    .swipeActions{Button(role:.destructive){remove(e)} label:{Label("Eliminar",systemImage:"trash")}}
                             }
                         }.listStyle(.plain).refreshable{await load()}
                     }
@@ -342,8 +342,8 @@ struct DiaryView:View {
         }
     }
     @MainActor private func load() async {guard let p=pets.selectedPet else{return};do{entries=try await pets.loadDiary(p);error=nil}catch{self.error=error.localizedDescription}}
-    private func add(){guard let p=pets.selectedPet else{return};let value=draft;Task{do{try await pets.addDiaryEntry(value,pet:p);draft="";await load()}catch{error=$0.localizedDescription}}}
-    private func remove(_ e:PawlyDiaryEntry){guard let p=pets.selectedPet else{return};Task{do{try await pets.deleteDiaryEntry(e.id,pet:p);await load()}catch{error=$0.localizedDescription}}}
+    private func add(){guard let p=pets.selectedPet else{return};let value=draft;Task{do{try await pets.addDiaryEntry(value,pet:p);draft="";await load()}catch { self.error = error.localizedDescription }}}
+    private func remove(_ e:PawlyDiaryEntry){guard let p=pets.selectedPet else{return};Task{do{try await pets.deleteDiaryEntry(e.id,pet:p);await load()}catch { self.error = error.localizedDescription }}}
 }
 
 struct CommunityView:View {
@@ -356,7 +356,7 @@ struct CommunityView:View {
         NavigationStack {
             ScrollView {
                 VStack(spacing:13) {
-                    HStack{VStack(alignment:.leading,spacing:3){Text("La comunidad").font(.title2.bold());Text("Historias y aventuras Pawly").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();Button{people=true}label:{Image(systemName:"magnifyingglass").font(.headline).foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())};Button{composer=true}label:{Image(systemName:"plus").font(.headline).foregroundStyle(.white).padding(12).background(PawlyColors.primary,in:Circle())}}
+                    HStack{VStack(alignment:.leading,spacing:3){Text("La comunidad").font(.title2.bold());Text("Historias y aventuras Pawly").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();Button{people=true} label:{Image(systemName:"magnifyingglass").font(.headline).foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())};Button{composer=true} label:{Image(systemName:"plus").font(.headline).foregroundStyle(.white).padding(12).background(PawlyColors.primary,in:Circle())}}
                     if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
                     if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
                     ForEach(store.posts){post in
@@ -411,8 +411,8 @@ struct PeopleSearchSheet:View {
                                 Task {do{_ = try await store.startConversation(username:user.username);status="Conversación creada. Ya aparece en la pestaña Mensajes."}catch{status=error.localizedDescription}}
                             }.buttonStyle(.bordered)
                             Menu {
-                                Button(role:.destructive){blockCandidate=user}label:{Label("Bloquear",systemImage:"hand.raised")}
-                                Button{reportCandidate=user}label:{Label("Denunciar",systemImage:"flag")}
+                                Button(role:.destructive){blockCandidate=user} label:{Label("Bloquear",systemImage:"hand.raised")}
+                                Button{reportCandidate=user} label:{Label("Denunciar",systemImage:"flag")}
                             } label:{Image(systemName:"ellipsis").padding(8)}
                         }
                     }.padding(.vertical,5)
@@ -524,7 +524,7 @@ struct CommentsView:View {
         NavigationStack {
             VStack {
                 List(comments){c in VStack(alignment:.leading,spacing:4){Text(c.authorName).font(.caption.bold()).foregroundStyle(PawlyColors.primary);Text(c.text)}}
-                HStack{TextField("Escribe un comentario",text:$draft).textFieldStyle(.roundedBorder);Button("Enviar"){let v=draft;Task{do{try await store.addComment(postID:post.id,text:v);draft=""}catch{error=$0.localizedDescription}}}.disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty)}.padding()
+                HStack{TextField("Escribe un comentario",text:$draft).textFieldStyle(.roundedBorder);Button("Enviar"){let v=draft;Task{do{try await store.addComment(postID:post.id,text:v);draft=""}catch { self.error = error.localizedDescription }}}.disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty)}.padding()
                 if let error{Text(error).font(.caption).foregroundStyle(.red)}
             }.navigationTitle("Comentarios").toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
                 .onAppear{listener=store.listenComments(postID:post.id){comments=$0}}.onDisappear{listener?.remove()}
@@ -541,7 +541,7 @@ struct MessagesView:View {
             List {
                 if store.chats.isEmpty{Text("Tu bandeja está vacía. Inicia una conversación con otra persona de Pawly.").foregroundStyle(.secondary)}
                 ForEach(store.chats){chat in Button{selected=chat}label{HStack(spacing:12){Image(systemName:"person.crop.circle.fill").font(.largeTitle).foregroundStyle(PawlyColors.primary);VStack(alignment:.leading,spacing:4){Text(chat.otherUserName).font(.headline).foregroundStyle(PawlyColors.ink);Text(chat.lastMessage.isEmpty ? "Iniciar conversación":chat.lastMessage).font(.caption).foregroundStyle(PawlyColors.muted).lineLimit(1)}}.padding(.vertical,4)}}
-            }.navigationTitle("Mensajes").toolbar{ToolbarItem(placement:.topBarTrailing){Button{newChat=true}label:{Image(systemName:"square.and.pencil")}}}
+            }.navigationTitle("Mensajes").toolbar{ToolbarItem(placement:.topBarTrailing){Button{newChat=true} label:{Image(systemName:"square.and.pencil")}}}
                 .onAppear{store.listenChats()}.onDisappear{store.stopChats()}
                 .sheet(isPresented:$newChat){NewChatSheet{username in try await store.startConversation(username:username);store.listenChats()}}
                 .sheet(item:$selected){chat in ChatView(store:store,chat:chat)}
