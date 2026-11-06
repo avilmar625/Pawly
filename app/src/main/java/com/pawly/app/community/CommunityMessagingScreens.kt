@@ -45,39 +45,69 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
     var text by remember { mutableStateOf("") }
     var dog by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("STORY") }
-    var uri by remember { mutableStateOf<Uri?>(null) }
+    var mediaUri by remember { mutableStateOf<Uri?>(null) }
+    var mediaIsVideo by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (category == "LOST") "Aviso de mascota perdida" else if (category == "FOUND") "Aviso de mascota encontrada" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") }, text = {
-        Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Tipo de publicación", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("STORY" to "Historia", "ADOPTION" to "Adopción", "LOST" to "Perdido", "FOUND" to "Encontrado", "FOSTER" to "Acogida").forEach { (value, label) ->
-                    FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label) })
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        mediaUri = it
+        mediaIsVideo = false
+    }
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        mediaUri = it
+        mediaIsVideo = true
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (category == "LOST") "Aviso de mascota perdida" else if (category == "FOUND") "Aviso de mascota encontrada" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") },
+        text = {
+            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Tipo de publicación", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("STORY" to "Historia", "ADOPTION" to "Adopción", "LOST" to "Perdido", "FOUND" to "Encontrado", "FOSTER" to "Acogida").forEach { (value, label) ->
+                        FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label) })
+                    }
                 }
+                OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado de la mascota"; "ADOPTION" -> "Especie, edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+                OutlinedTextField(dog, { dog = it }, label = { Text("Nombre de la mascota (opcional)") }, modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.AddAPhoto, null); Text("Foto")
+                    }
+                    OutlinedButton(onClick = { videoPicker.launch("video/*") }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.Videocam, null); Text("Vídeo")
+                    }
+                }
+                if (mediaUri != null) {
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(if (mediaIsVideo) Icons.Default.Videocam else Icons.Default.Image, null, tint = MaterialTheme.colorScheme.primary)
+                            Text(if (mediaIsVideo) "Vídeo seleccionado · máximo 40 MB" else "Fotografía seleccionada · se optimizará al subirla", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                            TextButton(onClick = { mediaUri = null }) { Text("Quitar") }
+                        }
+                    }
+                }
+                if (category != "STORY") Text("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
             }
-            OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado de la mascota"; "ADOPTION" -> "Especie, edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-            OutlinedTextField(dog, { dog = it }, label = { Text("Nombre de la mascota (opcional)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.AddAPhoto, null); Text(if (uri == null) "Añadir fotografía" else "Foto seleccionada") }
-            if (category != "STORY") Text("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
-        }
-    }, confirmButton = {
-        TextButton(enabled = !busy && (text.isNotBlank() || uri != null), onClick = {
-            busy = true
-            scope.launch {
-                try {
-                    val image = uri?.let { repo.uploadImage(it, "post-photos") }.orEmpty()
-                    repo.publishPost(text, image, dog, category)
-                    onDone()
-                } catch (e: Exception) { error = e.localizedMessage ?: "No se pudo publicar." }
-                finally { busy = false }
-            }
-        }) { Text(if (busy) "Publicando…" else "Publicar") }
-    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+        },
+        confirmButton = {
+            TextButton(enabled = !busy && (text.isNotBlank() || mediaUri != null), onClick = {
+                busy = true
+                scope.launch {
+                    try {
+                        val image = mediaUri?.takeIf { !mediaIsVideo }?.let { repo.uploadImage(it, "post-photos") }.orEmpty()
+                        val video = mediaUri?.takeIf { mediaIsVideo }?.let { repo.uploadVideo(it, "post-videos") }.orEmpty()
+                        repo.publishPost(text, image, video, dog, category)
+                        onDone()
+                    } catch (e: Exception) { error = e.localizedMessage ?: "No se pudo publicar." }
+                    finally { busy = false }
+                }
+            }) { Text(if (busy) "Subiendo y publicando…" else "Publicar") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
 }
-
 
 @Composable
 internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, onDismiss: () -> Unit) {
@@ -142,9 +172,17 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
     var draft by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var attachment by remember { mutableStateOf<Uri?>(null) }
+    var attachmentIsVideo by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { attachment = it }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        attachment = it
+        attachmentIsVideo = false
+    }
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
+        attachment = it
+        attachmentIsVideo = true
+    }
     DisposableEffect(conversation.id) {
         val listener = repo.listenMessages(conversation.id, {
             messages = it
@@ -153,67 +191,59 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         onDispose { listener.remove() }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp)) {
-        Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 2.dp) { Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver") }; Avatar("", conversation.otherUserName, 36); Spacer(Modifier.width(10.dp)); Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium) } }
+        Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 2.dp) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver") }
+                Avatar("", conversation.otherUserName, 36)
+                Spacer(Modifier.width(10.dp))
+                Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium)
+            }
+        }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             items(messages, key = { it.id }) { item ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (item.senderId == uid) Arrangement.End else Arrangement.Start) {
                     Column(horizontalAlignment = if (item.senderId == uid) Alignment.End else Alignment.Start) {
                         Surface(color = if (item.senderId == uid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = if (item.senderId == uid) 5.dp else 18.dp, bottomStart = if (item.senderId == uid) 18.dp else 5.dp), shadowElevation = 1.dp) {
                             Column(Modifier.widthIn(max = 300.dp).padding(horizontal = 13.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                if (item.imageUrl.isNotBlank()) AsyncImage(
-                                    model = item.imageUrl, contentDescription = "Fotografía enviada",
-                                    modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp))
-                                )
+                                if (item.imageUrl.isNotBlank()) AsyncImage(model = item.imageUrl, contentDescription = "Fotografía enviada", modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp)))
+                                if (item.videoUrl.isNotBlank()) PawlyVideoPlayer(item.videoUrl, Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(10.dp)))
                                 if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
-                        if (item.senderId == uid && item.readBy.any { it != uid }) {
-                            Text("Visto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        if (item.senderId == uid && item.readBy.any { it != uid }) Text("Visto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         }
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
-        attachment?.let { selectedImage ->
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(11.dp)
-                ) {
-                    AsyncImage(
-                        model = selectedImage,
-                        contentDescription = "Vista previa de la fotografía adjunta",
-                        modifier = Modifier.size(62.dp).clip(RoundedCornerShape(11.dp))
-                    )
+        attachment?.let {
+            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp)) {
+                Row(Modifier.fillMaxWidth().padding(9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                    Icon(if (attachmentIsVideo) Icons.Default.Videocam else Icons.Default.Image, null, modifier = Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("Fotografía lista", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Se optimizará antes de enviarla", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (attachmentIsVideo) "Vídeo listo" else "Fotografía lista", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(if (attachmentIsVideo) "Máximo 40 MB" else "Se optimizará antes de enviarla", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     TextButton(onClick = { attachment = null }) { Text("Quitar") }
                 }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) {
-                Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = MaterialTheme.colorScheme.primary)
-            }
-            OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp),
-                placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
+            IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) { Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = MaterialTheme.colorScheme.primary) }
+            IconButton(onClick = { videoPicker.launch("video/*") }, enabled = !sending) { Icon(Icons.Default.Videocam, "Adjuntar vídeo", tint = MaterialTheme.colorScheme.primary) }
+            OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp), placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
             IconButton(onClick = {
-                val text = draft
-                val uri = attachment
+                val messageText = draft
+                val selected = attachment
+                val selectedIsVideo = attachmentIsVideo
                 sending = true
                 scope.launch {
                     runCatching {
-                        val imageUrl = uri?.let { repo.uploadImage(it, "message-photos") }.orEmpty()
-                        repo.sendMessage(conversation.id, text, imageUrl)
-                        draft = ""; attachment = null
+                        val imageUrl = selected?.takeIf { !selectedIsVideo }?.let { repo.uploadImage(it, "message-photos") }.orEmpty()
+                        val videoUrl = selected?.takeIf { selectedIsVideo }?.let { repo.uploadVideo(it, "message-videos") }.orEmpty()
+                        repo.sendMessage(conversation.id, messageText, imageUrl, videoUrl)
+                        draft = ""
+                        attachment = null
                     }.onFailure { error = it.localizedMessage ?: "No se pudo enviar el mensaje." }
                     sending = false
                 }
@@ -225,4 +255,3 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         Spacer(Modifier.height(8.dp))
     }
 }
-
