@@ -168,3 +168,30 @@ firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 Si faltan reglas o conexión, la copia local se conserva y se muestra sincronización pendiente. Las URLs unsigned de Cloudinary son públicas para quien las conozca. No se necesita Firebase Storage ni Blaze.
+
+## 12. Vídeos en publicaciones y mensajería (cambios36)
+
+La app permite adjuntar una fotografía o un vídeo (un archivo por publicación/mensaje):
+
+- Fotos: JPEG optimizado a un máximo aproximado de 1600 px y 8 MB tras compresión.
+- Vídeos: MP4, MOV, WebM o 3GP, hasta 40 MB. Se suben sin transcodificación al endpoint de vídeo de Cloudinary.
+- Firestore guarda las URLs HTTPS y los metadatos; el contenido binario permanece en Cloudinary.
+- Las publicaciones y los mensajes muestran el reproductor integrado de Android. El usuario controla la reproducción.
+- Las reglas de Firestore validan que las URL sean HTTPS y no superen 2048 caracteres. El límite de 40 MB también se comprueba en el cliente; configura además un límite equivalente en el preset de Cloudinary.
+- Las URL de Cloudinary son públicas para quien las conozca. No subas contenido sensible ni consideres este sistema cifrado de extremo a extremo.
+
+No actives Firebase Storage para esta arquitectura ni añadas el API Secret de Cloudinary a `local.properties`, al código o al APK.
+
+## 13. Plantilla local de configuración
+
+Copia `local.properties.example` a `local.properties` y sustituye los dos valores de Cloudinary. Además, coloca el JSON descargado de Firebase en `app/google-services.json`. Ambos archivos son locales y están excluidos de Git. Sin esos datos reales la app puede compilar, pero no podrá inicializar Firebase ni subir multimedia.
+
+## 14. Comprobación de reglas y compilación
+
+```bash
+firebase use
+firebase deploy --only firestore:rules,firestore:indexes
+./gradlew testDebugUnitTest lintDebug assembleDebug
+```
+
+Prueba con dos cuentas verificadas: publicar una foto, publicar un vídeo corto, enviar una foto y un vídeo por chat, reproducirlos desde otra cuenta y comprobar que un usuario no autenticado no puede escribir. Comprueba también que las URL de archivos anteriores siguen apareciendo aunque no tengan el campo `videoUrl`.
