@@ -17,6 +17,9 @@ on:
     branches: [main, ios]
     paths:
       - "ios/**"
+      - "functions/**"
+      - "firestore.rules"
+      - "firebase.json"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
@@ -32,6 +35,11 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
       - name: Validate Firebase Functions
         working-directory: functions
