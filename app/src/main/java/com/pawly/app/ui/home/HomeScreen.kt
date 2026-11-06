@@ -99,7 +99,7 @@ internal fun HomeScreen(
             LinearProgressIndicator(
                 progress = { completed / 2f },
                 modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
-                color = MaterialTheme.colorScheme.primaryLight,
+                color = MaterialTheme.colorScheme.secondary,
                 trackColor = Line
             )
         }
