@@ -68,6 +68,10 @@ struct PawlySettingsView:View {
      else{reminders.cancelAllNotifications()}
     }}
     NavigationLink{PawlyRemindersView()}label:{Label("Gestionar recordatorios",systemImage:"bell.badge")}
+    Button("Activar notificaciones push"){Task{
+     message=await reminders.requestPermission()
+     if message?.contains("activadas")==true{UIApplication.shared.registerForRemoteNotifications()}
+    }}
     if let message{Text(message).font(.caption).foregroundStyle(.secondary)}
    }
    Section("Privacidad"){Text("Los ajustes de apariencia se guardan en este dispositivo. Los recordatorios son locales; las notificaciones entre usuarios requieren APNs y las funciones de Firebase.").font(.caption).foregroundStyle(.secondary)}
