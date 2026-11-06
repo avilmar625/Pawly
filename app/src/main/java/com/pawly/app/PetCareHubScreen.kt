@@ -293,7 +293,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                     if (cleanTitle.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) {
                         val newEntry = PassportEntry(UUID.randomUUID().toString(), selectedType, cleanTitle.take(80), detail.trim().take(500), date.trim())
                         entries = entries + newEntry
-                        PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
+                        PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
                                 runCatching { repo.savePassportEntry(petId, newEntry) }
@@ -418,7 +418,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                     }
                     TextButton(enabled = canEdit, onClick = {
                         tasks = tasks.filterNot { it.id == task.id }
-                        PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
+                        PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
                                 runCatching { repo.deleteCareTask(petId, task.id) }
@@ -452,7 +452,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                     if (title.isNotBlank()) {
                         val newTask = CareTask(UUID.randomUUID().toString(), title.trim().take(80), responsible.trim().take(60), frequency, false)
                         tasks = tasks + newTask
-                        PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
+                        PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
                                 runCatching { repo.saveCareTask(petId, newTask) }
