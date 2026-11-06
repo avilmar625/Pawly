@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseFirestore
-import PhotosUI\nimport UIKit
+import PhotosUI
+import UIKit
 import AVKit
 import FirebaseAuth
 
@@ -25,7 +26,8 @@ struct HomeView: View {
     @EnvironmentObject private var pets:PawlyPetStore
     @State private var showAdd=false
     @State private var showDelete=false
-    @State private var petToDelete:PawlyPet?\n    @State private var petToEdit:PawlyPet?
+    @State private var petToDelete:PawlyPet?
+    @State private var petToEdit:PawlyPet?
     var body: some View {
         NavigationStack {
             ScrollView {
