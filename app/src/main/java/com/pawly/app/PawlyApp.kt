@@ -191,57 +191,79 @@ private fun PawlyMainApp(
     }
 
     Scaffold(
-        containerColor = if (darkMode) MaterialTheme.colorScheme.background else Cream,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
-                        Spacer(Modifier.width(7.dp))
-                        Text("PAWLY", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.2.sp, fontSize = 15.sp)
+            Surface(
+                color = MaterialTheme.colorScheme.background,
+                shadowElevation = 0.dp
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 19.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(shape = RoundedCornerShape(15.dp), color = MaterialTheme.colorScheme.primary) {
+                        Box(Modifier.size(38.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Filled.Pets, contentDescription = null, tint = Color.White, modifier = Modifier.size(21.dp))
+                        }
                     }
-                    IconButton(onClick = { showSettings = true }) { Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.primary) }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                        Text("pawly", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.6).sp, fontSize = 22.sp)
+                        Text("MÁS VIDA JUNTOS", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, fontSize = 8.sp)
+                    }
+                    Surface(
+                        onClick = { showSettings = true },
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Filled.Tune, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(19.dp))
+                        }
+                    }
                 }
             }
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                tonalElevation = 8.dp,
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = 23.dp, topEnd = 23.dp),
+                shadowElevation = 12.dp
             ) {
-                // Keep the primary navigation focused. Secondary areas live in "Más".
-                listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
-                    val active = if (tab == Tab.MORE) selected == Tab.MORE || selected == Tab.LEARN || selected == Tab.DIARY else selected == tab
-                    val tabIcon = when (tab) {
-                        Tab.HOME -> Icons.Filled.Home
-                        Tab.EXPLORE -> Icons.Filled.Explore
-                        Tab.LEARN -> Icons.Filled.MenuBook
-                        Tab.HEALTH -> Icons.Filled.FavoriteBorder
-                        Tab.DIARY -> Icons.Filled.AutoStories
-                        Tab.COMMUNITY -> Icons.Filled.Groups
-                        Tab.MORE -> Icons.Filled.GridView
-                    }
-                    NavigationBarItem(
-                        selected = active,
-                        onClick = { selected = tab },
-                        icon = {
-                            Icon(
-                                tabIcon,
-                                contentDescription = tab.label,
-                                modifier = Modifier.size(22.dp)
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    tonalElevation = 0.dp,
+                ) {
+                    // Five focused destinations; secondary areas stay grouped under More.
+                    listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
+                        val active = if (tab == Tab.MORE) selected == Tab.MORE || selected == Tab.LEARN || selected == Tab.DIARY else selected == tab
+                        val tabIcon = when (tab) {
+                            Tab.HOME -> Icons.Filled.Home
+                            Tab.EXPLORE -> Icons.Filled.Explore
+                            Tab.LEARN -> Icons.Filled.MenuBook
+                            Tab.HEALTH -> Icons.Filled.FavoriteBorder
+                            Tab.DIARY -> Icons.Filled.AutoStories
+                            Tab.COMMUNITY -> Icons.Filled.Groups
+                            Tab.MORE -> Icons.Filled.GridView
+                        }
+                        NavigationBarItem(
+                            selected = active,
+                            onClick = { selected = tab },
+                            icon = {
+                                Icon(tabIcon, contentDescription = tab.label, modifier = Modifier.size(21.dp))
+                            },
+                            label = { Text(tab.label, maxLines = 1, fontSize = 10.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium) },
+                            alwaysShowLabel = true,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        },
-                        label = { Text(tab.label, maxLines = 1, fontSize = 10.sp) },
-                        alwaysShowLabel = true,
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    )
+                    }
                 }
             }
         }
