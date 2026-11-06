@@ -237,3 +237,15 @@ La subida de imágenes en mensajes reutiliza Cloudinary. Las notificaciones push
 
 ### Permisos de perfiles compartidos
 En la pestaña de compartir se puede invitar con dos niveles: **Puede editar** o **Solo lectura**. La estructura de permisos queda almacenada en la invitación y en el miembro. La exposición del pasaporte y de las rutinas a esos roles sigue pendiente de la migración segura a rutas compartidas; hasta entonces, los registros sanitarios continúan privados.
+
+
+## cambios35 · Sincronización integral de mascota y colaboración
+
+- La ficha principal sincroniza nombre y URL de fotografía por mascota en Firestore; las imágenes se comprimen y suben a Cloudinary.
+- El Diario de recuerdos se sincroniza por mascota y combina entradas locales y remotas al inicializar la nube.
+- Foto, diario y rutinas rápidas quedan aislados por ID estable de mascota, con migración de las preferencias antiguas.
+- Desde Salud → Compartir se pueden abrir perfiles aceptados. Pasaporte y rutinas respetan los roles editor/solo lectura.
+- Se amplían las reglas de Firestore para proteger ficha y Diario compartidos. Despliega las reglas antes de probar.
+- Si Firebase o Cloudinary no están disponibles, se conserva la copia local.
+
+Limitaciones: Cloudinary unsigned entrega URLs públicas para quien las conozca; no hay cifrado privado E2E. Agenda rápida y checks del día siguen siendo locales. Push automático requiere backend confiable y Blaze/Cloud Functions, que no se activa. El borrado integral de cuentas también necesita backend y operación. Requiere pruebas físicas y revisión legal antes de publicar.
