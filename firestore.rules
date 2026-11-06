@@ -140,7 +140,7 @@ service cloud.firestore {
       function isMember() {
         return signedIn() && exists(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid));
       }
-      allow get: if isMember();
+      allow get: if signedIn() && (isMember() || sharedPetId.matches('^' + request.auth.uid + '_.*'));
       allow list: if false;
       allow create: if verified()
         && request.resource.data.ownerUid == request.auth.uid
@@ -156,7 +156,7 @@ service cloud.firestore {
       match /members/{memberUid} {
         allow read: if isMember();
         allow create: if verified() && (
-          (get(/databases/$(database)/documents/sharedPets/$(sharedPetId)).data.ownerUid == request.auth.uid
+          (getAfter(/databases/$(database)/documents/sharedPets/$(sharedPetId)).data.ownerUid == request.auth.uid
             && memberUid == request.auth.uid && request.resource.data.role == 'owner')
           ||
           (memberUid == request.auth.uid
