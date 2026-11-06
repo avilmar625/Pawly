@@ -66,15 +66,15 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Surface(color = Paper, shape = RoundedCornerShape(20.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp)) {
                 Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Avatar(profile?.photoUrl.orEmpty(), name, 58)
                         Spacer(Modifier.width(10.dp))
                         Column {
-                            Text(name.ifBlank { "Tu perfil" }, color = Forest, style = MaterialTheme.typography.titleLarge)
-                            Text("@" + profile?.username.orEmpty(), color = Muted)
-                            Text((profile?.followersCount ?: 0).toString() + " seguidores · " + (profile?.followingCount ?: 0) + " siguiendo", color = Muted, style = MaterialTheme.typography.labelSmall)
+                            Text(name.ifBlank { "Tu perfil" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                            Text("@" + profile?.username.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text((profile?.followersCount ?: 0).toString() + " seguidores · " + (profile?.followingCount ?: 0) + " siguiendo", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     OutlinedButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
@@ -84,7 +84,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
                     OutlinedTextField(name, { name = it }, label = { Text("Nombre público") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(bio, { bio = it }, label = { Text("Presentación") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) { Text("Perfil público", fontWeight = FontWeight.SemiBold); Text("Permite que te encuentren.", color = Muted, style = MaterialTheme.typography.bodySmall) }
+                        Column(Modifier.weight(1f)) { Text("Perfil público", fontWeight = FontWeight.SemiBold); Text("Permite que te encuentren.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                         Switch(isPublic, { isPublic = it })
                     }
                     Button(onClick = {
@@ -105,19 +105,19 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Mis mascotas", color = Forest, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text("Mis mascotas", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                 Button(onClick = { editDog = null; showDogEditor = true }) { Icon(Icons.Default.Add, null); Text("Añadir") }
             }
         }
         items(dogs, key = { it.id }) { dog -> DogProfileCard(dog) { editDog = dog; showDogEditor = true } }
-        item { Text("Cuentas bloqueadas", color = Forest, style = MaterialTheme.typography.titleMedium) }
-        if (blockedUsers.isEmpty()) item { Text("No has bloqueado a nadie.", color = Muted, style = MaterialTheme.typography.bodySmall) }
+        item { Text("Cuentas bloqueadas", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) }
+        if (blockedUsers.isEmpty()) item { Text("No has bloqueado a nadie.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
         items(blockedUsers, key = { it.uid }) { blocked ->
-            Surface(color = Paper, shape = RoundedCornerShape(14.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(14.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(blocked.displayName, color = Ink, fontWeight = FontWeight.SemiBold)
-                        if (blocked.username.isNotBlank()) Text("@" + blocked.username, color = Muted, style = MaterialTheme.typography.labelSmall)
+                        Text(blocked.displayName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                        if (blocked.username.isNotBlank()) Text("@" + blocked.username, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     }
                     TextButton(onClick = {
                         scope.launch { runCatching { repo.unblock(blocked.uid); status = "Cuenta desbloqueada." }.onFailure { error = it.localizedMessage } }
@@ -126,12 +126,12 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
             }
         }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
-        if (status != null) item { Text(status!!, color = ForestLight) }
+        if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primaryLight) }
         item {
-            Surface(color = Paper, shape = RoundedCornerShape(18.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("Privacidad y cuenta", color = Forest, fontWeight = FontWeight.Bold)
-                    Text("Puedes solicitar que eliminemos tu cuenta y los datos asociados. La solicitud queda registrada para su revisión; no se borra nada automáticamente en este paso.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    Text("Privacidad y cuenta", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text("Puedes solicitar que eliminemos tu cuenta y los datos asociados. La solicitud queda registrada para su revisión; no se borra nada automáticamente en este paso.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(
                         onClick = { confirmAccountDeletion = true },
                         modifier = Modifier.fillMaxWidth(),
@@ -140,12 +140,12 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
                         Icon(Icons.Default.DeleteForever, null)
                         Text(if (accountDeletionSubmitted) "Solicitud enviada" else "Solicitar eliminación de cuenta")
                     }
-                    if (accountDeletionSubmitted) Text("Solicitud registrada. El equipo deberá verificarla y completar la eliminación de datos.", color = ForestLight, style = MaterialTheme.typography.bodySmall)
+                    if (accountDeletionSubmitted) Text("Solicitud registrada. El equipo deberá verificarla y completar la eliminación de datos.", color = MaterialTheme.colorScheme.primaryLight, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         item { OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Logout, null); Text("Cerrar sesión") } }
-        item { Text("Comparte solo la información que quieras hacer pública. Evita direcciones y datos sensibles.", color = Muted, style = MaterialTheme.typography.labelSmall) }
+        item { Text("Comparte solo la información que quieras hacer pública. Evita direcciones y datos sensibles.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall) }
     }
     if (confirmAccountDeletion) {
         AlertDialog(
@@ -178,16 +178,16 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
 
 @Composable
 internal fun DogProfileCard(dog: PawlyDog, onClick: (() -> Unit)? = null) {
-    Surface(color = Paper, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (dog.photoUrl.isNotBlank()) AsyncImage(dog.photoUrl, "Foto de " + dog.name, Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)))
             else Box(Modifier.size(64.dp).clip(RoundedCornerShape(14.dp)).background(Lime), contentAlignment = Alignment.Center) { Text(petEmoji(dog.species), fontSize = 30.sp) }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(dog.name, color = Forest, fontWeight = FontWeight.Bold)
-                Text(listOf(dog.species, dog.breed, dog.age).filter { it.isNotBlank() }.joinToString(" · "), color = Muted, style = MaterialTheme.typography.bodySmall)
-                if (dog.description.isNotBlank()) Text(dog.description, color = Ink, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                if (dog.traits.isNotEmpty()) Text(dog.traits.joinToString(" · "), color = ForestLight, style = MaterialTheme.typography.labelSmall)
+                Text(dog.name, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                Text(listOf(dog.species, dog.breed, dog.age).filter { it.isNotBlank() }.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (dog.description.isNotBlank()) Text(dog.description, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                if (dog.traits.isNotEmpty()) Text(dog.traits.joinToString(" · "), color = MaterialTheme.colorScheme.primaryLight, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
@@ -212,7 +212,7 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Añadir mascota" else "Editar mascota") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Photo, null); Text(if (uri != null || photoUrl.isNotBlank()) "Cambiar foto" else "Añadir foto") }
-            Text("Tipo de mascota", color = Forest, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+            Text("Tipo de mascota", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 listOf("Perro", "Gato", "Conejo", "Ave", "Roedor", "Reptil", "Otro").forEach { option ->
                     FilterChip(selected = species == option, onClick = { species = option }, label = { Text(option) })
