@@ -25,6 +25,7 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
     var username by remember { mutableStateOf("") }
     var members by remember { mutableStateOf(emptyList<PetShareMember>()) }
     var invitations by remember { mutableStateOf(emptyList<PetShareInvitation>()) }
+    var acceptedShares by remember { mutableStateOf(emptyList<PetShareInvitation>()) }
     var message by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -37,6 +38,7 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
                 repository.ensureOwnedPet(petId, petName)
                 members = repository.getMembers(petId)
                 invitations = repository.getMyInvitations()
+                acceptedShares = repository.getAcceptedShares()
             }.onFailure { message = it.localizedMessage ?: "No se pudo actualizar el acceso." }
             loading = false
         }
@@ -94,6 +96,18 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
                             }
                         }) { Icon(Icons.Default.PersonRemove, contentDescription = "Retirar acceso") }
                     }
+                }
+            }
+        }
+        item { Text("Perfiles compartidos contigo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+        if (acceptedShares.isEmpty()) item {
+            Text("Cuando aceptes una invitación, aparecerá aquí.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        }
+        items(acceptedShares, key = { "accepted_" + it.id }) { shared ->
+            Card {
+                Column(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Text(shared.petName, fontWeight = FontWeight.SemiBold)
+                    Text("Compartido por ${shared.ownerName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
