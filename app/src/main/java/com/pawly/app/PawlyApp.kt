@@ -196,7 +196,6 @@ private fun PawlyMainApp(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 tonalElevation = 8.dp,
-                windowInsets = NavigationBarDefaults.windowInsets
             ) {
                 Tab.entries.forEach { tab ->
                     val active = selected == tab
