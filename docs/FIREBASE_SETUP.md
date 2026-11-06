@@ -121,7 +121,7 @@ Prueba primero una cuenta de correo y después una segunda cuenta distinta. Veri
 
 Al entrar en Pasaporte o Cuidados con una cuenta, Pawly crea (si aún no existe) el espacio compartido de esa mascota y guarda allí los registros nuevos: `sharedPets/{ownerUid}_{petId}/passport` y `/tasks`. Los perfiles compartidos usan los miembros aceptados del documento `sharedPets`: propietario y editores pueden escribir; lectores solo pueden consultar. Las reglas de Firestore aplican los permisos en servidor, no dependen de ocultar botones en Android.
 
-La primera carga conserva la migración local que ya existía: si la colección compartida está vacía y hay datos locales, se importan. Los datos antiguos que solo existan en la ruta privada `users/{uid}/petCare` no se borran ni se migran automáticamente en esta fase. Antes de desplegar, revisa y publica las reglas actualizadas:
+La primera carga conserva la migración local que ya existía: si la colección compartida está vacía y hay datos locales, se importan. Los datos antiguos de `users/{uid}/petCare` se copian automáticamente al espacio compartido la primera vez que el propietario abre Pasaporte o Cuidados. La copia antigua se conserva; la migración no elimina documentos. Antes de desplegar, revisa y publica las reglas actualizadas:
 
 ```bash
 firebase deploy --only firestore:rules,firestore:indexes
