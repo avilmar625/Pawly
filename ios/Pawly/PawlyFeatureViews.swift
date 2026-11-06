@@ -156,6 +156,7 @@ struct CareView:View {
     @State private var tasks:[PawlyCareTask]=[]
     @State private var showEntry=false
     @State private var showTask=false
+    @State private var showShare=false
     @State private var error:String?
     var body:some View {
         NavigationStack {
@@ -189,10 +190,11 @@ struct CareView:View {
                 }
             }
             .navigationTitle("Salud y cuidados")
-            .toolbar{ToolbarItem(placement:.topBarTrailing){PetPicker()}}
+             .toolbar{ToolbarItemGroup(placement:.topBarTrailing){Button{showShare=true}label:{Image(systemName:"person.2.badge.plus")};PetPicker()}}
             .task(id:pets.selectedPetID){await load()}
             .sheet(isPresented:$showEntry){PassportEntrySheet{entry in await save(entry)}}
-            .sheet(isPresented:$showTask){CareTaskSheet{task in await save(task)}}
+             .sheet(isPresented:$showTask){CareTaskSheet{task in await save(task)}}
+            .sheet(isPresented:$showShare){PetSharingSheet()}
         }
     }
     @MainActor private func load() async {
@@ -248,6 +250,61 @@ struct CareTaskSheet:View {
                     Task{await onSave(PawlyCareTask(id:UUID().uuidString,title:title,responsible:responsible,frequency:frequency,completed:false));dismiss()}
                 }.disabled(title.trimmingCharacters(in:.whitespaces).isEmpty)}
             }
+        }
+    }
+}
+
+struct PetSharingSheet:View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var pets:PawlyPetStore
+    @State private var username=""
+    @State private var role="editor"
+    @State private var pending:[PawlyPetInvitation]=[]
+    @State private var status:String?
+    @State private var busy=false
+    var body:some View {
+        NavigationStack {
+            Form {
+                Section("Compartir \(pets.selectedPet?.name ?? "mascota")") {
+                    TextField("Nombre de usuario",text:$username).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Picker("Permisos",selection:$role){Text("Puede editar").tag("editor");Text("Solo lectura").tag("reader")}
+                    Button(busy ? "Enviando…" : "Enviar invitación"){Task{await invite()}}
+                        .disabled(busy || pets.selectedPet == nil || username.trimmingCharacters(in:.whitespaces).count<3)
+                }
+                Section("Invitaciones recibidas") {
+                    if pending.isEmpty {Text("No tienes invitaciones pendientes.").font(.caption).foregroundStyle(.secondary)}
+                    ForEach(pending) { invitation in
+                        VStack(alignment:.leading,spacing:6) {
+                            Text("\(invitation.ownerName) quiere compartir «\(invitation.petName)» contigo.")
+                            Text(invitation.role=="reader" ? "Acceso de solo lectura":"Acceso de edición").font(.caption).foregroundStyle(.secondary)
+                            HStack {
+                                Button("Aceptar"){respond(invitation,true)}.buttonStyle(.borderedProminent).tint(PawlyColors.primary)
+                                Button("Rechazar",role:.destructive){respond(invitation,false)}.buttonStyle(.bordered)
+                            }
+                        }.padding(.vertical,4)
+                    }
+                }
+                if let status {Section{Text(status).font(.footnote).foregroundStyle(PawlyColors.muted)}}
+            }
+            .navigationTitle("Compartir perfil")
+            .toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
+            .task{await load()}
+        }
+    }
+    @MainActor private func load() async {
+        do{pending=try await pets.pendingInvitations()}catch{status=error.localizedDescription}
+    }
+    @MainActor private func invite() async {
+        guard let pet=pets.selectedPet else{return}
+        busy=true
+        do{try await pets.invite(username,role:role,pet:pet);username="";status="Invitación enviada."}
+        catch{status=error.localizedDescription}
+        busy=false
+    }
+    private func respond(_ invitation:PawlyPetInvitation,_ accept:Bool) {
+        Task {
+            do{try await pets.respondToInvitation(invitation,accept:accept);pending.removeAll{$0.id==invitation.id};status=accept ? "Perfil compartido añadido a tu cuenta.":"Invitación rechazada."}
+            catch{status=error.localizedDescription}
         }
     }
 }
