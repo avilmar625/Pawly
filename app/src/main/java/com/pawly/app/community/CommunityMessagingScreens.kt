@@ -175,10 +175,28 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
             }
         }
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
-        if (attachment != null) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Fotografía adjunta", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
-                TextButton(onClick = { attachment = null }) { Text("Quitar") }
+        attachment?.let { selectedImage ->
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(11.dp)
+                ) {
+                    AsyncImage(
+                        model = selectedImage,
+                        contentDescription = "Vista previa de la fotografía adjunta",
+                        modifier = Modifier.size(62.dp).clip(RoundedCornerShape(11.dp))
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Fotografía lista", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Se optimizará antes de enviarla", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    TextButton(onClick = { attachment = null }) { Text("Quitar") }
+                }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
