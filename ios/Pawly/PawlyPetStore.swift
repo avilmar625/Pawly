@@ -82,9 +82,11 @@ final class PawlyPetStore: ObservableObject {
         let pet = PawlyPet(id: UUID().uuidString, name: clean, breed: breed.trimmingCharacters(in: .whitespacesAndNewlines),
                            age: age.trimmingCharacters(in: .whitespacesAndNewlines), description: description.trimmingCharacters(in: .whitespacesAndNewlines),
                            photoURL: "", species: species)
-        var updated = pets; updated.append(pet)
-        try await db.collection("users").document(uid).updateData(["dogProfiles": updated.map(encode)])
-        pets = updated; selectedPetID = pet.id
+        var updatedOwned = pets.filter { $0.ownerUID == nil }
+        updatedOwned.append(pet)
+        try await db.collection("users").document(uid).updateData(["dogProfiles": updatedOwned.map(encode)])
+        pets = updatedOwned + pets.filter { $0.ownerUID != nil }
+        selectedPetID = pet.id
     }
     private func encode(_ pet: PawlyPet) -> [String: Any] {
         ["id": pet.id, "name": pet.name, "breed": pet.breed, "age": pet.age, "description": pet.description,
@@ -93,10 +95,10 @@ final class PawlyPetStore: ObservableObject {
     func deletePet(_ pet: PawlyPet) async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
         guard pet.ownerUID == nil else { throw PawlyStoreError.noSharedAccess }
-        let updated = pets.filter { $0.id != pet.id }
-        try await db.collection("users").document(uid).updateData(["dogProfiles": updated.map(encode)])
-        pets = updated
-        if selectedPetID == pet.id { selectedPetID = updated.first?.id }
+        let updatedOwned = pets.filter { $0.ownerUID == nil && $0.id != pet.id }
+        try await db.collection("users").document(uid).updateData(["dogProfiles": updatedOwned.map(encode)])
+        pets = updatedOwned + pets.filter { $0.ownerUID != nil }
+        if selectedPetID == pet.id { selectedPetID = pets.first?.id }
     }
 
     private func passportRoot(_ pet:PawlyPet) throws -> CollectionReference {
