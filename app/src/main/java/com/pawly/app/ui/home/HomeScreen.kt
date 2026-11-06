@@ -40,7 +40,8 @@ internal fun HomeScreen(
     onAbout: () -> Unit,
     onEditProfile: () -> Unit,
     diaryCount: Int,
-    dogPhoto: Bitmap?
+    dogPhoto: Bitmap?,
+    elegantDesign: Boolean = false
 ) {
     val completed = listOf(walkDone, medicineDone).count { it }
     val dateLabel = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("es", "ES"))
@@ -70,7 +71,7 @@ internal fun HomeScreen(
                 }
             }
         }
-        item { HomePetHero(dogName, dogPhoto, onEditProfile) }
+        item { HomePetHero(dogName, dogPhoto, onEditProfile, elegantDesign) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text("Un día bonito\ncon $firstName.", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -167,10 +168,10 @@ internal fun HomeScreen(
 }
 
 @Composable
-private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
+private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit, elegantDesign: Boolean) {
     Box(
         Modifier.fillMaxWidth()
-            .height(246.dp)
+            .height(if (elegantDesign) 292.dp else 246.dp)
             .clip(RoundedCornerShape(30.dp))
             .clickable(onClick = onEdit)
     ) {
@@ -202,10 +203,10 @@ private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Surface(color = Color(0xFFDDEBAF), shape = RoundedCornerShape(50)) {
+            Surface(color = if (elegantDesign) Color(0xFFFFD7B8) else Color(0xFFDDEBAF), shape = RoundedCornerShape(50)) {
                 Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Icon(Icons.Filled.Pets, contentDescription = null, tint = Color(0xFF234638), modifier = Modifier.size(12.dp))
-                    Text("VUESTRO COMPAÑERO", color = Color(0xFF234638), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    Text(if (elegantDesign) "EL PROTAGONISTA DE VUESTRA HISTORIA" else "VUESTRO COMPAÑERO", color = Color(0xFF234638), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                 }
             }
             Text(name.ifBlank { "Tu compañero" }, color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold)
