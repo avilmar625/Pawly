@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
+import coil3.compose.AsyncImage
 
 @Composable
 internal fun DiaryScreen(
@@ -65,12 +66,12 @@ internal fun DiaryScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Text("VUESTROS RECUERDOS", color = Forest, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
+            Text("VUESTROS RECUERDOS", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
             Text("Una vida llena\nde historias.", style = MaterialTheme.typography.headlineLarge)
-            Text("Guarda esos momentos que merecen quedarse.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text("Guarda esos momentos que merecen quedarse.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         item {
-            Surface(shape = RoundedCornerShape(24.dp), color = Forest) {
+            Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
                     Text("UN RECUERDO NUEVO", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Spacer(Modifier.height(8.dp))
@@ -108,8 +109,19 @@ internal fun DiaryScreen(
             }
         }
         item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · ${entries.size} recuerdos guardados") }
+        if (entries.isEmpty()) {
+            item {
+                Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
+                    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp))
+                        Text("Aquí empieza vuestra historia", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Guarda el primer recuerdo y vuelve a él cuando quieras.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         items(entries) { entry ->
-            Surface(shape = RoundedCornerShape(20.dp), color = Paper, shadowElevation = 1.dp) {
+            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) {
                         Text("🐾", fontSize = 24.sp)
@@ -117,7 +129,7 @@ internal fun DiaryScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(entry, fontWeight = FontWeight.SemiBold)
-                        Text("Guardado en este dispositivo", color = Muted, fontSize = 11.sp)
+                        Text("Guardado en este dispositivo", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                     Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Peach)
                 }
