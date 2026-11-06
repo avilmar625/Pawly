@@ -99,7 +99,7 @@ internal fun LearningHubScreen(dogName: String) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text("PAWLY · APRENDER Y DESCUBRIR", color = MaterialTheme.colorScheme.primaryLight, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
+            Text("PAWLY · APRENDER Y DESCUBRIR", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
             Text("Un mundo mejor para ellos.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
             Text("Actualidad, ideas, educación y recursos para compartir más vida juntos.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
