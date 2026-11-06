@@ -41,6 +41,7 @@ import com.pawly.app.care.model.PassportEntry
 @Composable
 internal fun PetCareHubScreen(
     petName: String,
+    petId: String,
     storageScope: String? = null,
     medicineDone: Boolean,
     onMedicineToggle: (Boolean) -> Unit,
@@ -99,23 +100,20 @@ internal fun PetCareHubScreen(
                 dates = dates,
                 onDateChange = onDateChange
             )
-            "Pasaporte" -> PetPassportSection(petName, storageScope)
-            else -> PetCarePlanSection(petName, storageScope)
+            "Pasaporte" -> PetPassportSection(petName, storageScope, petId)
+            else -> PetCarePlanSection(petName, storageScope, petId)
         }
     }
 }
 
 @Composable
-private fun PetPassportSection(petName: String, storageScope: String?) {
+private fun PetPassportSection(petName: String, storageScope: String?, petId: String) {
     val context = LocalContext.current
     var entries by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
     val cloudRepository = remember(storageScope) {
         if (storageScope != null) runCatching { FirebasePetCareRepository() }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
-    val petId = remember(petName) {
-        UUID.nameUUIDFromBytes("pawly-pet:${petName.trim().lowercase()}".toByteArray()).toString()
-    }
     var syncMessage by remember(storageScope) {
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
@@ -254,16 +252,13 @@ private fun PetPassportSection(petName: String, storageScope: String?) {
 }
 
 @Composable
-private fun PetCarePlanSection(petName: String, storageScope: String?) {
+private fun PetCarePlanSection(petName: String, storageScope: String?, petId: String) {
     val context = LocalContext.current
     var tasks by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
     val cloudRepository = remember(storageScope) {
         if (storageScope != null) runCatching { FirebasePetCareRepository() }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
-    val petId = remember(petName) {
-        UUID.nameUUIDFromBytes("pawly-pet:${petName.trim().lowercase()}".toByteArray()).toString()
-    }
     var syncMessage by remember(storageScope) {
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
