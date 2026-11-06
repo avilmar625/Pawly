@@ -147,7 +147,7 @@ internal fun DiaryScreen(
             }
         }
         item {
-            Text("Tus recuerdos se guardan localmente en este dispositivo. No se sincronizan con otros teléfonos ni se incluyen fotografías.", color = Muted, fontSize = 11.sp)
+            Text("Tus recuerdos se guardan localmente en este dispositivo. No se sincronizan con otros teléfonos ni se incluyen fotografías.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
