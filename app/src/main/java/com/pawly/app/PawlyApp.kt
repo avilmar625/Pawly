@@ -146,12 +146,18 @@ private fun PawlyMainApp(
             "pawly-pet:$normalizedName".toByteArray()
         ).toString().also { preferences.edit().putString(key, it).apply() }
     }
+    val shouldMigrateLegacyPetData = remember(preferences, activePetId) {
+        if (preferences.getString("legacy_pet_data_migrated_to", null) == null) {
+            preferences.edit().putString("legacy_pet_data_migrated_to", activePetId).apply()
+            true
+        } else false
+    }
     var sharedPetSelection by remember { mutableStateOf<PetShareInvitation?>(null) }
     val healthPetId = sharedPetSelection?.let { it.sharedPetId.removePrefix("${it.ownerUid}_") } ?: activePetId
     val healthPetName = sharedPetSelection?.petName ?: dogName
     var dogProfiles by remember { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var dogPhotoPath by remember(activePetId, preferences) {
-        mutableStateOf(preferences.getString("dog_photo_path_$activePetId", null) ?: preferences.getString("dog_photo_path", null))
+        mutableStateOf(preferences.getString("dog_photo_path_$activePetId", null) ?: if (shouldMigrateLegacyPetData) preferences.getString("dog_photo_path", null) else null)
     }
     var remoteDogPhotoUrl by remember(activePetId, preferences) {
         mutableStateOf(preferences.getString("dog_photo_url_$activePetId", null))
@@ -198,10 +204,10 @@ private fun PawlyMainApp(
     }
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
     var walkDone by remember(activePetId, preferences) {
-        mutableStateOf(preferences.getBoolean("walk_done_$activePetId", if (dogProfiles.size == 1) preferences.getBoolean("walk_done", false) else false))
+        mutableStateOf(preferences.getBoolean("walk_done_$activePetId", if (shouldMigrateLegacyPetData) preferences.getBoolean("walk_done", false) else false))
     }
     var medicineDone by remember(activePetId, preferences) {
-        mutableStateOf(preferences.getBoolean("medicine_done_$activePetId", if (dogProfiles.size == 1) preferences.getBoolean("medicine_done", false) else false))
+        mutableStateOf(preferences.getBoolean("medicine_done_$activePetId", if (shouldMigrateLegacyPetData) preferences.getBoolean("medicine_done", false) else false))
     }
     var healthDates by remember {
         mutableStateOf(runCatching {
@@ -214,7 +220,7 @@ private fun PawlyMainApp(
     }
     val storedEntries = remember(preferences, activePetId) {
         runCatching {
-            val legacy = if (dogProfiles.size == 1) preferences.getString("diary_entries", "[]") else "[]"
+            val legacy = if (shouldMigrateLegacyPetData) preferences.getString("diary_entries", "[]") else "[]"
             val json = JSONArray(preferences.getString("diary_entries_$activePetId", legacy) ?: "[]")
             List(json.length()) { index -> json.getString(index) }
         }.getOrDefault(emptyList())
@@ -240,7 +246,16 @@ private fun PawlyMainApp(
                     profileRepository.saveProfile(activePetId, dogName, remoteDogPhotoUrl)
                 } else {
                     if (cloudProfile.name.isNotBlank() && cloudProfile.name != dogName) {
-                        dogProfiles = (dogProfiles - dogName) + cloudProfile.name
+                        val previousName = dogName
+                        PetCareLocalStore.renamePet(context, previousName, cloudProfile.name, storageScope)
+                        val oldHealthPrefix = "$previousName|"
+                        healthDates = healthDates.mapKeys { (key, _) ->
+                            if (key.startsWith(oldHealthPrefix)) "${cloudProfile.name}|${key.removePrefix(oldHealthPrefix)}" else key
+                        }
+                        val oldKey = "pet_id_${previousName.trim().lowercase()}"
+                        val newKey = "pet_id_${cloudProfile.name.trim().lowercase()}"
+                        preferences.edit().putString(newKey, activePetId).remove(oldKey).apply()
+                        dogProfiles = (dogProfiles - previousName) + cloudProfile.name
                         dogName = cloudProfile.name
                     }
                     if (!cloudProfile.photoUrl.isNullOrBlank()) {
