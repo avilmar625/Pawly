@@ -53,16 +53,16 @@ final class PawlyCommunityStore: ObservableObject {
         }
     }
     func stopFeed(){feedListener?.remove();feedListener=nil}
-    func publish(text:String,petName:String,category:String) async throws {
+    func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "") async throws {
         try requireVerified()
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
-        guard !clean.isEmpty,clean.count<=2000 else{throw PawlyCommunityError.invalidPost}
+        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidPost}
         guard let uid else{throw PawlyCommunityError.notSignedIn}
         let profile=try await db.collection("users").document(uid).getDocument()
         try await db.collection("posts").addDocument(data:[
             "authorId":uid,"authorName":profile.get("displayName") as? String ?? profile.get("username") as? String ?? "Usuario Pawly",
             "authorPhoto":profile.get("photoUrl") as? String ?? "","dogName":String(petName.prefix(40)),
-            "category":category,"text":clean,"imageUrl":"","videoUrl":"","likeCount":0,"commentCount":0,
+            "category":category,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"likeCount":0,"commentCount":0,
             "likedBy":[String](),"createdAt":FieldValue.serverTimestamp()
         ])
     }
@@ -127,8 +127,8 @@ final class PawlyCommunityStore: ObservableObject {
             } ?? [])
         }
     }
-    func sendMessage(conversationID:String,text:String) async throws {
-        try requireVerified();guard let uid,let clean=text.trimmingCharacters(in:.whitespacesAndNewlines).nilIfEmpty,clean.count<=2000 else{throw PawlyCommunityError.invalidMessage}
+    func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "") async throws {
+        try requireVerified();guard let uid else{throw PawlyCommunityError.notSignedIn}\n        let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)\n        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidMessage}
         let ref=db.collection("conversations").document(conversationID), conv=try await ref.getDocument()
         let participants=conv.get("participants") as? [String] ?? []
         guard participants.contains(uid),participants.count==2 else{throw PawlyCommunityError.notParticipant}
@@ -137,8 +137,8 @@ final class PawlyCommunityStore: ObservableObject {
         let b=try await db.collection("users").document(other).collection("blocked").document(uid).getDocument()
         guard !a.exists,!b.exists else{throw PawlyCommunityError.blocked}
         let batch=db.batch(), msg=ref.collection("messages").document()
-        batch.setData(["senderId":uid,"text":clean,"imageUrl":"","videoUrl":"","readBy":[uid],"createdAt":FieldValue.serverTimestamp()],forDocument:msg)
-        batch.updateData(["lastMessage":String(clean.prefix(120)),"updatedAt":FieldValue.serverTimestamp()],forDocument:ref)
+        batch.setData(["senderId":uid,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"readBy":[uid],"createdAt":FieldValue.serverTimestamp()],forDocument:msg)
+        let preview = clean.isEmpty ? (videoURL.isEmpty ? "📷 Fotografía" : "🎥 Vídeo") : String(clean.prefix(120))\n        batch.updateData(["lastMessage":preview,"updatedAt":FieldValue.serverTimestamp()],forDocument:ref)
         try await batch.commit()
     }
     func markRead(conversationID:String) async {
