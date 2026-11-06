@@ -603,12 +603,13 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun markConversationRead(conversationId: String) {
         val uid = requireUid()
+        val conversation = db.collection("conversations").document(conversationId).get().await()
+        val participants = conversation.get("participants") as? List<String> ?: emptyList()
+        check(uid in participants && participants.size == 2) { "No formas parte de esta conversación." }
+        val otherUid = participants.first { it != uid }
         val messages = db.collection("conversations").document(conversationId)
-            .collection("messages").whereEqualTo("senderId", run {
-                val participants = db.collection("conversations").document(conversationId).get().await()
-                    .get("participants") as? List<String> ?: emptyList()
-                participants.firstOrNull { it != uid } ?: error("Conversación no válida.")
-            }).limit(200).get().await()
+            .collection("messages").whereEqualTo("senderId", otherUid)
+            .orderBy("createdAt", Query.Direction.DESCENDING).limit(200).get().await()
         val unread = messages.documents.filter { uid !in (it.get("readBy") as? List<*>)?.filterIsInstance<String>().orEmpty() }
         unread.chunked(400).forEach { chunk ->
             val batch = db.batch()
