@@ -250,7 +250,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.primary) {
                 Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("VUESTROS FAVORITOS", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("VUESTROS FAVORITOS", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Text("${savedPlaces.size} lugares guardados", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Text("Guarda ideas para otro día.", color = Color.White.copy(alpha = .72f), fontSize = 11.sp)
                     }
@@ -295,7 +295,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
                     Icon(if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "Guardar", tint = MaterialTheme.colorScheme.primary)
                 }
             }
-            HorizontalDivider(color = Line)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
         }
     }
