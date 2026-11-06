@@ -1,6 +1,6 @@
 package com.pawly.app.care.model
 
-/** A private, user-entered item in a pet's health history. */
+/** A user-entered item in a pet's shared health passport. */
 data class PassportEntry(
     val id: String,
     val type: String,
@@ -9,7 +9,7 @@ data class PassportEntry(
     val date: String
 )
 
-/** A local care routine. It is not shared with other devices yet. */
+/** A care routine stored locally for offline use and synchronized to the pet's shared Firestore space when signed in. */
 data class CareTask(
     val id: String,
     val title: String,
