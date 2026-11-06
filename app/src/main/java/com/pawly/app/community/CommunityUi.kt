@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.net.Uri
+import android.widget.MediaController
+import android.widget.VideoView
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
@@ -56,4 +59,23 @@ internal fun EmptyCommunityCard(title: String, subtitle: String) {
             Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+@Composable
+internal fun PawlyVideoPlayer(url: String, modifier: Modifier = Modifier) {
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            VideoView(context).apply {
+                setMediaController(MediaController(context).also { it.setAnchorView(this) })
+                setVideoURI(Uri.parse(url))
+            }
+        },
+        update = { view ->
+            if (view.tag != url) {
+                view.tag = url
+                view.setVideoURI(Uri.parse(url))
+            }
+        }
+    )
 }
