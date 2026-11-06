@@ -56,7 +56,7 @@ import androidx.core.content.ContextCompat
 import org.json.JSONArray
 
 internal enum class Tab(val label: String) {
-    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad")
+    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más")
 }
 
 @Composable
