@@ -1,46 +1,46 @@
 # Pawly para iOS
 
-Esta carpeta contiene el port nativo para iPhone. La aplicación Android original permanece en `app/` y no se modifica. iOS utiliza SwiftUI y el SDK oficial de Firebase para compartir el mismo proyecto de Authentication y Firestore.
+Port nativo para iPhone con SwiftUI. Android permanece intacto en `app/`. La app iOS utiliza el mismo proyecto Firebase para compartir cuentas y datos compatibles.
 
-## Estado de esta primera entrega
+## Funciones implementadas en esta rama
 
-- Proyecto iOS generado con XcodeGen.
-- Inicio de sesión con correo y contraseña.
-- Registro con verificación de correo.
-- Recuperación de contraseña.
-- Sesión persistente mediante Firebase Authentication.
-- Primer diseño SwiftUI con pestañas Inicio, Comunidad, Recuerdos y Cuenta.
-- Lectura inicial del perfil de mascota desde `sharedPets`.
-- Workflow de compilación para simulador iOS en GitHub Actions.
+- Firebase Authentication: acceso con correo y contraseña, registro, verificación y recuperación.
+- Sesión persistente.
+- Perfiles de mascotas sincronizados con `users/{uid}.dogProfiles`, con selector persistente entre aperturas.
+- Pasaporte sanitario: alta, consulta y borrado de vacunas, revisiones y tratamientos.
+- Rutinas de cuidado: alta, consulta, marcar como completadas y borrar.
+- Diario compartido por mascota en `sharedPets/{ownerUid}_{petId}/diary`, con alta, consulta y borrado.
+- Comunidad: muro en tiempo real, publicaciones de texto por categoría, likes y comentarios.
+- Mensajería privada en tiempo real: iniciar chat por nombre de usuario, mensajes de texto y confirmación de lectura.
+- Cierre de sesión.
 
-La comunidad, chat, multimedia, diario completo, salud, recordatorios y perfiles compartidos todavía deben portarse. No se presentan como terminados.
+## Funciones aún pendientes
 
-## Requisitos en el Mac
+Esta rama amplía la primera base, pero todavía no es una paridad total con Android. Faltan:
+- Subida y visualización de fotos/vídeos con Cloudinary en publicaciones y mensajes.
+- Búsqueda de perfiles, seguir/dejar de seguir, perfiles públicos y bloqueo/denuncia desde iOS.
+- Invitaciones y administración de perfiles de mascotas compartidos.
+- Notificaciones push entrantes: registrar APNs/FCM en iOS y disponer de un emisor confiable en backend.
+- Sincronización de las preferencias y recordatorios locales, exportación PDF y eliminación integral de cuenta/datos.
+- Pruebas de extremo a extremo con dos cuentas Firebase reales.
 
-- macOS compatible con la versión de Xcode instalada.
-- Xcode 16 o posterior.
-- Homebrew.
-- XcodeGen.
+## Requisitos
 
-Instala XcodeGen:
-
-```bash
-brew install xcodegen
-```
+- macOS y Xcode 16 o posterior.
+- Homebrew y XcodeGen (`brew install xcodegen`).
+- Proyecto Firebase actual de Pawly.
 
 ## Configurar Firebase iOS
 
-1. Abre Firebase Console y entra en el mismo proyecto que utiliza Pawly Android.
-2. En Configuración del proyecto añade una aplicación iOS.
-3. Usa el identificador de paquete exacto: `com.pawly.ios`.
-4. Descarga `GoogleService-Info.plist`.
-5. Coloca el archivo en `ios/Pawly/GoogleService-Info.plist`.
-6. No lo subas a Git: está excluido por el `.gitignore` de la raíz.
-7. Activa Email/Password en Authentication. Las cuentas y usuarios de Firebase Authentication son comunes entre Android e iOS cuando ambas apps están registradas en el mismo proyecto.
+1. En Firebase Console, dentro del proyecto que ya utiliza Android, registra una aplicación iOS.
+2. Identificador de paquete: `com.pawly.ios`.
+3. Descarga el archivo específico de iOS `GoogleService-Info.plist`.
+4. Colócalo en `ios/Pawly/GoogleService-Info.plist`. No reutilices el `google-services.json` de Android.
+5. Mantén Email/Password habilitado en Authentication. Las cuentas existentes de Firebase podrán iniciar sesión en iOS.
 
-No reutilices el `google-services.json` de Android: iOS necesita su propio `GoogleService-Info.plist`.
+El plist está excluido de Git para no publicar configuración privada del proyecto.
 
-## Generar y abrir el proyecto
+## Generar y ejecutar
 
 Desde la raíz del repositorio:
 
@@ -50,14 +50,16 @@ xcodegen generate
 open Pawly.xcodeproj
 ```
 
-Selecciona el simulador o tu iPhone. Para instalar en un iPhone físico necesitarás seleccionar tu equipo de desarrollo en Signing & Capabilities y confiar en el certificado de desarrollo.
-
-También puedes compilar desde Terminal:
+En Xcode selecciona un simulador o conecta el iPhone, configura tu equipo en Signing & Capabilities y pulsa Run. Para compilar sin firma:
 
 ```bash
-xcodebuild -project Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-## Compartir datos con Android
+## Compatibilidad de datos
 
-La app usa el mismo proyecto Firebase y conserva la colección `users` y la colección `sharedPets` para comenzar la integración. No migres ni borres datos para instalar la app iOS. Algunas funciones Android guardan información local y no aparecerán automáticamente en iOS hasta que se porte su sincronización.
+- Los perfiles se leen/escriben en `users/{uid}.dogProfiles`.
+- El pasaporte y las rutinas privadas siguen las rutas Android `users/{uid}/petCare/{petId}/passport` y `tasks`.
+- El diario se sincroniza en el perfil compartido `sharedPets/{uid}_{petId}/diary`. Para crear ese espacio, el usuario debe haber verificado su correo. Si el perfil ya existe pero el usuario no figura como miembro, la app muestra un error y no intenta saltarse las reglas.
+- Comunidad y chat usan las colecciones Firestore existentes `posts`, `comments`, `conversations` y `messages`. Publicar, comentar, dar like e iniciar conversaciones exige correo verificado.
+- El contenido multimedia todavía no se sube desde iOS; esta versión no simula ni guarda URLs ficticias.
