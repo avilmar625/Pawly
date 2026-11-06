@@ -48,7 +48,7 @@ private enum class CommunityPage(val label: String) {
 }
 
 @Composable
-internal fun CommunityScreen() {
+internal fun CommunityScreen(elegantDesign: Boolean = false) {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
@@ -57,7 +57,7 @@ internal fun CommunityScreen() {
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!) { uid = repository.currentUid }
+    else CommunityHub(repository, uid!!, elegantDesign) { uid = repository.currentUid }
 }
 
 
@@ -232,7 +232,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 
 
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignOut: () -> Unit) {
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, onSignOut: () -> Unit) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
@@ -278,7 +278,27 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
         onDispose { feedListener.remove(); followingListener.remove() }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Surface(
+        if (elegantDesign) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp).height(190.dp).clip(RoundedCornerShape(26.dp))) {
+                AsyncImage(
+                    model = "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=1200&h=700&fit=crop",
+                    contentDescription = "Perros jugando juntos",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
+                Row(Modifier.fillMaxSize().padding(start = 19.dp, end = 8.dp, top = 15.dp, bottom = 15.dp), verticalAlignment = Alignment.Bottom) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("PAWLY COMMUNITY", color = Color.White.copy(alpha = .84f), fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
+                        Text("Comunidad", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                        Text("Aventuras que se comparten.", color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
+                    }
+                    Surface(color = Color.White.copy(alpha = .17f), shape = CircleShape) {
+                        IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White) }
+                    }
+                }
+            }
+        } else Surface(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
             shape = RoundedCornerShape(26.dp),
             color = MaterialTheme.colorScheme.primary
