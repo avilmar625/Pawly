@@ -14,3 +14,6 @@ local.properties
 
 # Firebase project config in the repository root (keep local)
 /google-services.json
+
+# Firebase CLI project selection (local to this checkout)
+/.firebaserc
