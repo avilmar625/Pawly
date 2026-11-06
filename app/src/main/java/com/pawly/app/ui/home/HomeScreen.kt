@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -44,30 +45,36 @@ internal fun HomeScreen(
     val completed = listOf(walkDone, medicineDone).count { it }
     val dateLabel = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("es", "ES"))
         .format(Date()).replaceFirstChar { it.uppercase(Locale("es", "ES")) }
+    val firstName = dogName.ifBlank { "tu compañero" }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 30.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp)
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 30.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("HOLA, QUÉ ALEGRÍA VEROS", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-                    Text(dateLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(dateLabel.uppercase(Locale("es", "ES")), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.25.sp)
+                    Text("Qué bien tenerte por aquí", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                Surface(onClick = onAbout, shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+                Surface(
+                    onClick = onAbout,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Person, contentDescription = "Acerca de Pawly", tint = Forest)
+                        Icon(Icons.Filled.Pets, contentDescription = "Acerca de Pawly", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     }
                 }
             }
         }
         item { HomePetHero(dogName, dogPhoto, onEditProfile) }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Un día más juntos, ${dogName.ifBlank { "amigo" }}", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text("Todo lo importante para disfrutar juntos, en un mismo lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("Un día bonito\ncon $firstName.", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+                Text("Cuidados, recuerdos y nuevas aventuras. Todo vuestro, en un mismo lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
         }
         item {
@@ -76,87 +83,84 @@ internal fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Filled.CheckCircle,
                     value = "$completed/2",
-                    label = "rutinas hechas",
-                    accent = Color(0xFFE5EEDC)
+                    label = "rutinas de hoy",
+                    accent = Color(0xFFE5EFE5)
                 )
                 HomeStatCard(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Filled.AutoStories,
                     value = diaryCount.toString(),
                     label = "recuerdos",
-                    accent = Color(0xFFF5E7DD)
+                    accent = Color(0xFFF6E9DF)
                 )
             }
         }
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("La rutina de hoy", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-                    Text(if (completed == 2) "¡Todo al día! Qué bien lo hacéis." else "Pequeños cuidados que suman.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Surface(
+                shape = RoundedCornerShape(26.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(17.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text("Vuestro día, paso a paso", style = MaterialTheme.typography.titleLarge)
+                            Text(if (completed == 2) "¡Todo hecho! Os lo habéis ganado." else "Pequeños gestos, grandes cuidados.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(14.dp)) {
+                            Text("$completed/2", modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+                    LinearProgressIndicator(
+                        progress = { completed / 2f },
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    HomeRoutineRow(
+                        icon = Icons.Filled.DirectionsWalk,
+                        title = "Paseo y olfateo",
+                        subtitle = "Un rato para explorar sin prisa",
+                        checked = walkDone,
+                        onChecked = onWalkToggle,
+                        iconBackground = Color(0xFFE6EFDF),
+                        iconTint = Color(0xFF456C50)
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    HomeRoutineRow(
+                        icon = Icons.Filled.FavoriteBorder,
+                        title = "Revisar sus cuidados",
+                        subtitle = "Comprueba lo que toca hoy",
+                        checked = medicineDone,
+                        onChecked = onMedicineToggle,
+                        iconBackground = Color(0xFFF6E9DF),
+                        iconTint = Color(0xFF986747)
+                    )
                 }
-                Text("$completed de 2", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
-            LinearProgressIndicator(
-                progress = { completed / 2f },
-                modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
-                color = MaterialTheme.colorScheme.secondary,
-                trackColor = Line
-            )
         }
         item {
-            HomeRoutineCard(
-                icon = Icons.Filled.DirectionsWalk,
-                title = "Paseo y olfateo",
-                subtitle = "Un rato para explorar sin prisa",
-                helper = "MOVIMIENTO",
-                checked = walkDone,
-                onChecked = onWalkToggle,
-                iconColor = Color(0xFF456C50),
-                iconBackground = Color(0xFFE6EFDF)
-            )
-        }
-        item {
-            HomeRoutineCard(
-                icon = Icons.Filled.Medication,
-                title = "Revisar cuidados",
-                subtitle = "Comprueba lo que toca hoy",
-                helper = "BIENESTAR",
-                checked = medicineDone,
-                onChecked = onMedicineToggle,
-                iconColor = Color(0xFF986747),
-                iconBackground = Color(0xFFF6E9DF)
-            )
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Vuestra próxima aventura", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Planes para salir de la rutina.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Salid a descubrir", style = MaterialTheme.typography.titleLarge)
+                        Text("Hay un mundo de planes por compartir.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                     TextButton(onClick = onExplore) { Text("Ver todo") }
                 }
-                HomeFeatureCard(
-                    title = "Hay mucho por descubrir",
-                    subtitle = "Encuentra rutas, rincones y planes para compartir.",
-                    action = "EXPLORAR LUGARES",
-                    icon = Icons.Filled.Explore,
-                    onClick = onExplore
-                )
+                HomeExploreCard(onClick = onExplore)
             }
         }
-        item {
-            HomeLearnCard(onClick = onLearn)
-        }
+        item { HomeLearnCard(onClick = onLearn) }
         item {
             Text(
                 "HECHO PARA COMPARTIR MÁS VIDA JUNTOS",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.2.sp,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                letterSpacing = 1.25.sp,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -166,7 +170,7 @@ internal fun HomeScreen(
 private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
     Box(
         Modifier.fillMaxWidth()
-            .height(224.dp)
+            .height(246.dp)
             .clip(RoundedCornerShape(30.dp))
             .clickable(onClick = onEdit)
     ) {
@@ -179,7 +183,7 @@ private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
             )
         } else {
             AsyncImage(
-                model = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=1200&h=700&fit=crop&crop=faces",
+                model = "https://images.unsplash.com/photo-1552053831-71594a27632d?w=1200&h=800&fit=crop&crop=faces",
                 contentDescription = "Perro disfrutando al aire libre",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
@@ -188,41 +192,31 @@ private fun HomePetHero(name: String, photo: Bitmap?, onEdit: () -> Unit) {
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    0f to Color(0x18203328),
-                    0.42f to Color(0x40304436),
+                    0f to Color(0x08101D17),
+                    0.38f to Color(0x28101D17),
                     1f to Color(0xE610281F)
                 )
             )
         )
         Column(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Surface(color = Lime.copy(alpha = .95f), shape = RoundedCornerShape(50)) {
-                Text(
-                    "VUESTRO COMPAÑERO",
-                    modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
-                    color = Forest,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.2.sp
-                )
+            Surface(color = Color(0xFFDDEBAF), shape = RoundedCornerShape(50)) {
+                Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Icon(Icons.Filled.Pets, contentDescription = null, tint = Color(0xFF234638), modifier = Modifier.size(12.dp))
+                    Text("VUESTRO COMPAÑERO", color = Color(0xFF234638), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                }
             }
-            Text(
-                name,
-                color = Color.White,
-                fontSize = 34.sp,
-                lineHeight = 38.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
+            Text(name.ifBlank { "Tu compañero" }, color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("El protagonista de cada aventura", color = Color.White.copy(alpha = .92f), fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
                 Surface(color = Color.White.copy(alpha = .2f), shape = RoundedCornerShape(50)) {
-                    Row(Modifier.padding(horizontal = 11.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(5.dp))
-                        Text("Editar", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Editar perfil", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -238,13 +232,18 @@ private fun HomeStatCard(
     label: String,
     accent: Color
 ) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = Forest, modifier = Modifier.size(21.dp))
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(Modifier.padding(horizontal = 13.dp, vertical = 15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(13.dp)).background(accent), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = Color(0xFF315A45), modifier = Modifier.size(20.dp))
             }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+            Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -252,60 +251,54 @@ private fun HomeStatCard(
 }
 
 @Composable
-private fun HomeRoutineCard(
+private fun HomeRoutineRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
-    helper: String,
     checked: Boolean,
     onChecked: (Boolean) -> Unit,
-    iconColor: Color,
-    iconBackground: Color
+    iconBackground: Color,
+    iconTint: Color
 ) {
-    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
-        Row(
-            Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(horizontal = 15.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(iconBackground), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(24.dp))
-            }
-            Spacer(Modifier.width(13.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(helper, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
-                Text(title, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
+    Row(
+        Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(iconBackground), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
         }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onChecked,
+            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+        )
     }
 }
 
 @Composable
-private fun HomeFeatureCard(
-    title: String,
-    subtitle: String,
-    action: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
+private fun HomeExploreCard(onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(25.dp),
+        shape = RoundedCornerShape(26.dp),
         color = MaterialTheme.colorScheme.primary
     ) {
         Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = Color.White.copy(alpha = .76f), fontSize = 12.sp, lineHeight = 17.sp)
+                Text("Una aventura os espera", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("Encuentra rutas, playas y rincones dog-friendly para vuestra próxima escapada.", color = Color.White.copy(alpha = .82f), fontSize = 12.sp, lineHeight = 17.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(action, color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = .8.sp)
+                    Text("EXPLORAR LUGARES", color = Color(0xFFDDEBAF), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = .8.sp)
                     Spacer(Modifier.width(5.dp))
-                    Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = Lime, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = Color(0xFFDDEBAF), modifier = Modifier.size(14.dp))
                 }
             }
-            Box(Modifier.size(64.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp))
+            Box(Modifier.padding(start = 8.dp).size(58.dp).clip(CircleShape).background(Color.White.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Explore, contentDescription = null, tint = Color.White, modifier = Modifier.size(29.dp))
             }
         }
     }
@@ -313,16 +306,21 @@ private fun HomeFeatureCard(
 
 @Composable
 private fun HomeLearnCard(onClick: () -> Unit) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFFF1EBD9)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.MenuBook, contentDescription = null, tint = Color(0xFF8B7443), modifier = Modifier.size(24.dp))
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFF1EBD9)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.MenuBook, contentDescription = null, tint = Color(0xFF8B7443), modifier = Modifier.size(23.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text("Un minuto para aprender", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Consejos, artículos e ideas para cuidar mejor.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                Text("Consejos e ideas para cuidar mejor.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
-            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Forest)
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -345,7 +343,7 @@ internal fun TaskRow(
     onChecked: (Boolean) -> Unit,
     tint: Color
 ) {
-    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Row(
             Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(horizontal = 15.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically
