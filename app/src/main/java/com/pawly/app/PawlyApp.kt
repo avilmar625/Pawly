@@ -60,7 +60,12 @@ internal enum class Tab(val label: String) {
 }
 
 @Composable
-internal fun PawlyApp() {
+internal fun PawlyApp(
+    darkMode: Boolean,
+    accent: String,
+    onDarkModeChange: (Boolean) -> Unit,
+    onAccentChange: (String) -> Unit
+) {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     var localMode by remember { mutableStateOf(false) }
@@ -100,6 +105,9 @@ private fun PawlyMainApp(storageScope: String? = null) {
     val context = LocalContext.current
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
+    var showSettings by remember { mutableStateOf(false) }
+    val settingsPreferences = remember(context) { context.getSharedPreferences("pawly_appearance", android.content.Context.MODE_PRIVATE) }
+    var language by remember { mutableStateOf(settingsPreferences.getString("language", "es") ?: "es") }
     var showAbout by remember { mutableStateOf(false) }
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
@@ -168,7 +176,15 @@ private fun PawlyMainApp(storageScope: String? = null) {
     }
 
     Scaffold(
-        containerColor = Cream,
+        containerColor = if (darkMode) MaterialTheme.colorScheme.background else Cream,
+        topBar = {
+            Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+                Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 18.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("🐾 PAWLY", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { showSettings = true }) { Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = MaterialTheme.colorScheme.primary) }
+                }
+            }
+        },
         bottomBar = {
             Surface(
                 color = Color.White,
@@ -268,6 +284,17 @@ private fun PawlyMainApp(storageScope: String? = null) {
         }
     }
 
+    if (showSettings) {
+        PawlySettingsDialog(
+            darkMode = darkMode,
+            accent = accent,
+            language = language,
+            onDarkModeChange = onDarkModeChange,
+            onAccentChange = onAccentChange,
+            onLanguageChange = { language = it; settingsPreferences.edit().putString("language", it).apply() },
+            onDismiss = { showSettings = false }
+        )
+    }
     if (showAbout) {
         AboutDialog(onDismiss = { showAbout = false })
     }
