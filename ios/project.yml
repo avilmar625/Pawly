@@ -17,6 +17,10 @@ targets:
     platform: iOS
     sources:
       - path: Pawly
+        excludes:
+          - Info.plist
+          - Pawly.entitlements
+          - GoogleService-Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.pawly.ios
