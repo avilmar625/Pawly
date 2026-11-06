@@ -14,6 +14,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import kotlin.math.max
 
 /**
@@ -30,7 +31,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
             "Configura CLOUDINARY_CLOUD_NAME y CLOUDINARY_UPLOAD_PRESET en local.properties para subir fotografías."
         }
         require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
-        require(folder in setOf("profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos")) {
+        require(folder in setOf("profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos", "post-videos", "message-videos")) {
             "La carpeta de imágenes solicitada no está permitida."
         }
 
@@ -58,6 +59,60 @@ internal class CloudinaryImageUploader(private val context: Context) {
             JSONObject(responseText).optString("secure_url").takeIf { it.startsWith("https://") }
                 ?: error("Cloudinary no ha devuelto una URL segura para la imagen.")
         }
+    }
+
+
+    suspend fun uploadVideo(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
+        val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
+        val uploadPreset = BuildConfig.CLOUDINARY_UPLOAD_PRESET.trim()
+        require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
+            "Configura CLOUDINARY_CLOUD_NAME y CLOUDINARY_UPLOAD_PRESET en local.properties para subir vídeos."
+        }
+        require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
+        require(folder in setOf("post-videos", "message-videos")) { "La carpeta de vídeos solicitada no está permitida." }
+        val mime = context.contentResolver.getType(uri)?.lowercase()
+        require(mime in setOf("video/mp4", "video/quicktime", "video/webm", "video/3gpp")) {
+            "Formato de vídeo no admitido. Utiliza MP4, MOV, WebM o 3GP."
+        }
+        val bytes = context.contentResolver.openInputStream(uri)?.use { readBounded(it, 40 * 1024 * 1024) }
+            ?: error("No se ha podido leer el vídeo seleccionado.")
+        val extension = when (mime) {
+            "video/quicktime" -> "mov"
+            "video/webm" -> "webm"
+            "video/3gpp" -> "3gp"
+            else -> "mp4"
+        }
+        val body = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("upload_preset", uploadPreset)
+            .addFormDataPart("folder", "pawly/$folder/$ownerUid")
+            .addFormDataPart("file", "pawly-video.$extension", bytes.toRequestBody(mime!!.toMediaType()))
+            .build()
+        val request = Request.Builder()
+            .url("https://api.cloudinary.com/v1_1/$cloudName/video/upload")
+            .post(body).build()
+        client.newCall(request).execute().use { response ->
+            val responseText = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                val message = runCatching { JSONObject(responseText).optJSONObject("error")?.optString("message") }.getOrNull().orEmpty()
+                error(message.ifBlank { "Cloudinary rechazó el vídeo (HTTP " + response.code + ")." })
+            }
+            JSONObject(responseText).optString("secure_url").takeIf { it.startsWith("https://") }
+                ?: error("Cloudinary no ha devuelto una URL segura para el vídeo.")
+        }
+    }
+
+    private fun readBounded(input: InputStream, maxBytes: Int): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(16 * 1024)
+        var total = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            require(total <= maxBytes) { "El vídeo supera el límite de 40 MB." }
+            output.write(buffer, 0, read)
+        }
+        return output.toByteArray()
     }
 
     private fun compressJpeg(uri: Uri): ByteArray {
