@@ -199,6 +199,38 @@ service cloud.firestore {
         allow delete: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
       }
+      match /profile/{profileId} {
+        allow read: if isMember() && profileId == 'current';
+        allow create, update: if isMember() && profileId == 'current'
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+          && request.resource.data.keys().hasOnly(['petId', 'name', 'photoUrl', 'updatedAt'])
+          && request.resource.data.petId is string
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 40
+          && (request.resource.data.photoUrl == null
+            || (request.resource.data.photoUrl is string
+              && request.resource.data.photoUrl.matches('^https://')
+              && request.resource.data.photoUrl.size() <= 2048));
+        allow delete: if isMember() && profileId == 'current'
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role == 'owner';
+      }
+
+      match /diary/{entryId} {
+        allow read: if isMember();
+        allow create, update: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+          && request.resource.data.keys().hasOnly(['id', 'text', 'position', 'updatedAt'])
+          && request.resource.data.id == entryId
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000
+          && request.resource.data.position is int
+          && request.resource.data.position >= 0
+          && request.resource.data.position <= 199;
+        allow delete: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
+      }
     }
 
     match /petInvitations/{invitationId} {
