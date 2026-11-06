@@ -26,7 +26,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
 
     suspend fun upload(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
         val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
-        val uploadPreset = BuildConfig.CLOUDINARY_UPLOAD_PRESET.trim()
+        val uploadPreset = BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET.trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
             "Configura CLOUDINARY_CLOUD_NAME y CLOUDINARY_UPLOAD_PRESET en local.properties para subir fotografías."
         }
@@ -64,7 +64,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
 
     suspend fun uploadVideo(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
         val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
-        val uploadPreset = BuildConfig.CLOUDINARY_UPLOAD_PRESET.trim()
+        val uploadPreset = BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET.trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
             "Configura CLOUDINARY_CLOUD_NAME y CLOUDINARY_UPLOAD_PRESET en local.properties para subir vídeos."
         }
