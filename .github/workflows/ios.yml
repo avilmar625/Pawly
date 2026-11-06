@@ -9,6 +9,9 @@ on:
     branches: [ios, ios-funciones]
     paths:
       - "ios/**"
+      - "functions/**"
+      - "firestore.rules"
+      - "firebase.json"
       - ".github/workflows/ios.yml"
   pull_request:
     branches: [main, ios]
@@ -29,6 +32,12 @@ jobs:
 
       - name: Install XcodeGen
         run: brew install xcodegen
+
+      - name: Validate Firebase Functions
+        working-directory: functions
+        run: |
+          npm install
+          node --check index.js
 
       - name: Generate Xcode project
         working-directory: ios
