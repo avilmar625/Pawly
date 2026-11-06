@@ -128,7 +128,9 @@ final class PawlyCommunityStore: ObservableObject {
         }
     }
     func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "") async throws {
-        try requireVerified();guard let uid else{throw PawlyCommunityError.notSignedIn}\n        let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)\n        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidMessage}
+        try requireVerified();guard let uid else{throw PawlyCommunityError.notSignedIn}
+        let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidMessage}
         let ref=db.collection("conversations").document(conversationID), conv=try await ref.getDocument()
         let participants=conv.get("participants") as? [String] ?? []
         guard participants.contains(uid),participants.count==2 else{throw PawlyCommunityError.notParticipant}
@@ -138,7 +140,8 @@ final class PawlyCommunityStore: ObservableObject {
         guard !a.exists,!b.exists else{throw PawlyCommunityError.blocked}
         let batch=db.batch(), msg=ref.collection("messages").document()
         batch.setData(["senderId":uid,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"readBy":[uid],"createdAt":FieldValue.serverTimestamp()],forDocument:msg)
-        let preview = clean.isEmpty ? (videoURL.isEmpty ? "📷 Fotografía" : "🎥 Vídeo") : String(clean.prefix(120))\n        batch.updateData(["lastMessage":preview,"updatedAt":FieldValue.serverTimestamp()],forDocument:ref)
+        let preview = clean.isEmpty ? (videoURL.isEmpty ? "📷 Fotografía" : "🎥 Vídeo") : String(clean.prefix(120))
+        batch.updateData(["lastMessage":preview,"updatedAt":FieldValue.serverTimestamp()],forDocument:ref)
         try await batch.commit()
     }
     func markRead(conversationID:String) async {
