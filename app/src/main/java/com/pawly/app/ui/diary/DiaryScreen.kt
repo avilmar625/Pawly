@@ -52,15 +52,50 @@ import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
 import coil3.compose.AsyncImage
+import com.pawly.app.care.data.FirebasePetProfileRepository
 
 @Composable
 internal fun DiaryScreen(
     dogName: String,
     entries: List<String>,
     onEntriesChange: (List<String>) -> Unit,
-    elegantDesign: Boolean = false
+    elegantDesign: Boolean = false,
+    sharedPetOwnerUid: String? = null,
+    petId: String? = null
 ) {
     var note by remember { mutableStateOf("") }
+    val sharedDiaryRepository = remember(sharedPetOwnerUid) {
+        sharedPetOwnerUid?.let { runCatching { FirebasePetProfileRepository(ownerUid = it) }.getOrNull() }
+    }
+    var visibleEntries by remember(sharedPetOwnerUid, petId, entries) { mutableStateOf(entries) }
+    var canEditSharedDiary by remember(sharedPetOwnerUid, petId) { mutableStateOf(true) }
+    var diarySyncMessage by remember(sharedPetOwnerUid) { mutableStateOf<String?>(null) }
+    val diaryScope = rememberCoroutineScope()
+    LaunchedEffect(sharedPetOwnerUid, petId, sharedDiaryRepository) {
+        if (sharedPetOwnerUid != null && petId != null && sharedDiaryRepository != null) {
+            runCatching {
+                visibleEntries = sharedDiaryRepository.loadDiary(petId)
+                canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId)
+                diarySyncMessage = if (canEditSharedDiary) "Diario compartido · puedes añadir recuerdos" else "Diario compartido · solo lectura"
+            }.onFailure { diarySyncMessage = "No se pudo cargar el diario compartido" }
+        } else {
+            visibleEntries = entries
+            canEditSharedDiary = true
+            diarySyncMessage = null
+        }
+    }
+    fun updateEntries(updated: List<String>) {
+        visibleEntries = updated
+        if (sharedPetOwnerUid == null) {
+            onEntriesChange(updated)
+        } else if (petId != null && sharedDiaryRepository != null) {
+            diaryScope.launch {
+                runCatching { sharedDiaryRepository.replaceDiary(petId, updated) }
+                    .onSuccess { diarySyncMessage = "Diario compartido sincronizado" }
+                    .onFailure { diarySyncMessage = "No se pudo sincronizar el cambio" }
+            }
+        }
+    }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(22.dp),
@@ -90,6 +125,7 @@ internal fun DiaryScreen(
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it },
+                        enabled = canEditSharedDiary,
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("¿Qué habéis hecho hoy?", color = Color.White.copy(alpha = .6f)) },
                         shape = RoundedCornerShape(15.dp),
@@ -105,11 +141,11 @@ internal fun DiaryScreen(
                     Button(
                         onClick = {
                             if (note.isNotBlank()) {
-                                onEntriesChange(listOf(note.trim()) + entries)
+                                updateEntries(listOf(note.trim()) + visibleEntries)
                                 note = ""
                             }
                         },
-                        enabled = note.isNotBlank(),
+                        enabled = note.isNotBlank() && canEditSharedDiary,
                         colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest),
                         shape = RoundedCornerShape(13.dp)
                     ) {
@@ -120,8 +156,9 @@ internal fun DiaryScreen(
                 }
             }
         }
-        item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · ${entries.size} recuerdos guardados") }
-        if (entries.isEmpty()) {
+        if (diarySyncMessage != null) item { Text(diarySyncMessage!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
+        item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · ${visibleEntries.size} recuerdos guardados") }
+        if (visibleEntries.isEmpty()) {
             item {
                 Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
                     Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -132,7 +169,7 @@ internal fun DiaryScreen(
                 }
             }
         }
-        items(entries) { entry ->
+        items(visibleEntries) { entry ->
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) {
@@ -141,14 +178,14 @@ internal fun DiaryScreen(
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(entry, fontWeight = FontWeight.SemiBold)
-                        Text("Guardado en este dispositivo", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        Text(if (sharedPetOwnerUid != null) "Recuerdo del perfil compartido" else "Guardado en tu espacio personal", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                     Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Peach)
                 }
             }
         }
         item {
-            Text("Tus recuerdos se guardan localmente en este dispositivo. No se sincronizan con otros teléfonos ni se incluyen fotografías.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Text(if (sharedPetOwnerUid != null) "Los recuerdos pertenecen al perfil compartido y respetan sus permisos de acceso." else "Los recuerdos se sincronizan con tu cuenta cuando hay conexión. No se incluyen fotografías en las entradas.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
