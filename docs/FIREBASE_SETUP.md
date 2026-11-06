@@ -77,7 +77,7 @@ Los perfiles de mascota de Comunidad continúan guardándose en el documento pri
 1. Crea/abre una cuenta en https://cloudinary.com/.
 2. Copia el **Cloud name** del Dashboard.
 3. En Settings → Upload → Upload presets crea un preset **Unsigned**.
-4. Limita los formatos admitidos (JPG, PNG y WebP) y el tamaño máximo. Pawly convierte las fotos a JPEG y las reduce antes de subirlas. El preset unsigned no requiere API Secret en el móvil. Las fotos de chat se suben a `pawly/message-photos/{uid}`; asegúrate de que el preset permita esa ruta.
+4. Limita los formatos admitidos (JPG, PNG y WebP) y el tamaño máximo. Pawly convierte las fotos a JPEG y las reduce antes de subirlas. El preset unsigned no requiere API Secret en el móvil. Las fotos de chat se suben a `pawly/message-photos/{uid}`; asegúrate de que el preset permita esa ruta. **Importante:** con el preset unsigned las imágenes tienen URL pública de Cloudinary. Las reglas de Firestore protegen el mensaje y su URL, pero no convierten el archivo de Cloudinary en privado: cualquiera que obtenga el enlace podría abrirlo. No envíes imágenes sensibles. El cifrado de extremo a extremo o la entrega privada requieren una fase adicional.
 5. En `local.properties` (raíz del proyecto) añade:
 
 ```properties
