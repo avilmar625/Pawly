@@ -269,7 +269,7 @@ final class PawlyPetStore: ObservableObject {
 }
 
 enum PawlyStoreError: LocalizedError {
-    case notSignedIn, invalidPetName, invalidEntry, invalidTask, invalidDiary, diaryLimit, verifyEmail, noSharedAccess, invalidUsername, invalidInvitee, alreadyMember, invitationPending
+    case notSignedIn, invalidPetName, invalidEntry, invalidTask, invalidDiary, diaryLimit, verifyEmail, noSharedAccess, invalidUsername, invalidInvitee, alreadyMember, invitationPending, petNotFound
     var errorDescription:String? {
         switch self {
         case .notSignedIn:return "Inicia sesión para continuar."
@@ -280,6 +280,7 @@ enum PawlyStoreError: LocalizedError {
         case .diaryLimit:return "Has alcanzado el límite de 200 recuerdos."
         case .verifyEmail:return "Verifica tu correo electrónico para activar la sincronización del diario."
         case .noSharedAccess:return "No tienes acceso a este perfil compartido."
+        case .petNotFound:return "No se ha encontrado el perfil de mascota que intentas editar."
         case .invalidUsername:return "Escribe un nombre de usuario válido (3–24 caracteres)."
         case .invalidInvitee:return "No se ha encontrado ese usuario o no puedes invitarte a ti mismo."
         case .alreadyMember:return "Esta persona ya tiene acceso al perfil."
