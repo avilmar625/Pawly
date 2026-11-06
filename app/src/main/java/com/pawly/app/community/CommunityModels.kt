@@ -59,7 +59,9 @@ data class PawlyMessage(
     val id: String = "",
     val senderId: String = "",
     val text: String = "",
-    val createdAt: Long = 0
+    val createdAt: Long = 0,
+    val imageUrl: String = "",
+    val readBy: List<String> = emptyList()
 )
 
 data class PawlyBlockedUser(val uid: String, val displayName: String, val username: String)
