@@ -29,14 +29,18 @@ internal object CommunityInputRules {
         return username
     }
 
-    fun validatePost(text: String, imageUrl: String) {
-        require(text.isNotBlank() || imageUrl.isNotBlank()) {
-            "Añade un texto o una fotografía."
+    fun validatePost(text: String, imageUrl: String, videoUrl: String = "") {
+        require(text.isNotBlank() || imageUrl.isNotBlank() || videoUrl.isNotBlank()) {
+            "Añade un texto, una fotografía o un vídeo."
         }
         require(text.length <= 2000) { "La publicación no puede superar los 2.000 caracteres." }
-        require(imageUrl.isBlank() || imageUrl.startsWith("https://")) {
+        require(imageUrl.isBlank() || (imageUrl.startsWith("https://") && imageUrl.length <= 2048)) {
             "La dirección de la fotografía no es segura."
         }
+        require(videoUrl.isBlank() || (videoUrl.startsWith("https://") && videoUrl.length <= 2048)) {
+            "La dirección del vídeo no es segura."
+        }
+        require(imageUrl.isBlank() || videoUrl.isBlank()) { "Adjunta una fotografía o un vídeo, no ambos a la vez." }
     }
 
     fun validateComment(value: String): String {
