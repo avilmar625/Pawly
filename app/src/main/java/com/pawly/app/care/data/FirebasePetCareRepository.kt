@@ -7,43 +7,77 @@ import com.pawly.app.care.model.PassportEntry
 import kotlinx.coroutines.tasks.await
 
 /**
- * Cloud persistence for private pet-care records.
+ * Cloud persistence for pet-care records.
  *
- * Records are isolated below users/{uid}; Firestore rules enforce ownership.
- * The signed-in UI controls migration from account-scoped local preferences.
- * Local data is imported only when the authenticated pet-care collection is
- * empty, using a batch write to avoid partial imports.
+ * By default records stay private under users/{uid}. When sharedPetOwnerUid is
+ * supplied, records live below sharedPets/{ownerUid}_{petId}; Firestore rules
+ * then enforce the accepted member's owner/editor/reader role.
  */
 class FirebasePetCareRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val sharedPetOwnerUid: String? = null
 ) {
     private fun uid(): String = auth.currentUser?.uid
         ?: error("Inicia sesión para sincronizar los datos de salud.")
 
+    private fun sharedId(petId: String): String {
+        val owner = requireNotNull(sharedPetOwnerUid)
+        require(owner.isNotBlank() && petId.isNotBlank() && petId.length <= 100)
+        return "${owner}_${petId}"
+    }
+
+    /** Creates the shared space for its owner or verifies that the current user is a member. */
+    suspend fun ensureSharedPet(petId: String, petName: String) {
+        val owner = sharedPetOwnerUid ?: return
+        val id = sharedId(petId)
+        if (uid() == owner) {
+            SharedPetRepository(auth, db).ensureOwnedPet(petId, petName)
+        } else {
+            check(db.collection("sharedPets").document(id)
+                .collection("members").document(uid()).get().await().exists()) {
+                "No tienes acceso a este perfil compartido."
+            }
+        }
+    }
+
+    suspend fun canEditSharedPet(petId: String): Boolean {
+        if (sharedPetOwnerUid == null) return true
+        val member = db.collection("sharedPets").document(sharedId(petId))
+            .collection("members").document(uid()).get().await()
+        return member.getString("role") in setOf("owner", "editor")
+    }
+
     private fun passport(petId: String) =
-        db.collection("users").document(uid())
-            .collection("petCare").document(petId)
-            .collection("passport")
+        if (sharedPetOwnerUid == null) {
+            db.collection("users").document(uid()).collection("petCare").document(petId).collection("passport")
+        } else {
+            db.collection("sharedPets").document(sharedId(petId)).collection("passport")
+        }
 
     private fun tasks(petId: String) =
-        db.collection("users").document(uid())
-            .collection("petCare").document(petId)
-            .collection("tasks")
+        if (sharedPetOwnerUid == null) {
+            db.collection("users").document(uid()).collection("petCare").document(petId).collection("tasks")
+        } else {
+            db.collection("sharedPets").document(sharedId(petId)).collection("tasks")
+        }
+
+    private fun passportData(entry: PassportEntry) = mapOf(
+        "id" to entry.id, "type" to entry.type.trim().take(40),
+        "title" to entry.title.trim(), "detail" to entry.detail.trim(), "date" to entry.date.trim()
+    )
+
+    private fun taskData(task: CareTask) = mapOf(
+        "id" to task.id, "title" to task.title.trim(),
+        "responsible" to task.responsible.trim(), "frequency" to task.frequency.trim(),
+        "completed" to task.completed
+    )
 
     suspend fun savePassportEntry(petId: String, entry: PassportEntry) {
         require(petId.isNotBlank() && entry.id.isNotBlank())
         require(entry.title.isNotBlank() && entry.title.length <= 120)
         require(entry.detail.length <= 1200 && entry.date.length <= 40 && entry.type.length <= 40)
-        passport(petId).document(entry.id).set(
-            mapOf(
-                "id" to entry.id,
-                "type" to entry.type,
-                "title" to entry.title.trim(),
-                "detail" to entry.detail.trim(),
-                "date" to entry.date.trim()
-            )
-        ).await()
+        passport(petId).document(entry.id).set(passportData(entry)).await()
     }
 
     suspend fun savePassportEntries(petId: String, entries: List<PassportEntry>) {
@@ -53,13 +87,7 @@ class FirebasePetCareRepository(
             require(entry.id.isNotBlank() && entry.title.isNotBlank())
             require(entry.title.length <= 120 && entry.detail.length <= 1200)
             require(entry.date.length <= 40 && entry.type.length <= 40)
-            batch.set(passport(petId).document(entry.id), mapOf(
-                "id" to entry.id,
-                "type" to entry.type,
-                "title" to entry.title.trim(),
-                "detail" to entry.detail.trim(),
-                "date" to entry.date.trim()
-            ))
+            batch.set(passport(petId).document(entry.id), passportData(entry))
         }
         if (entries.isNotEmpty()) batch.commit().await()
     }
@@ -67,13 +95,8 @@ class FirebasePetCareRepository(
     suspend fun loadPassportEntries(petId: String): List<PassportEntry> =
         passport(petId).get().await().documents.mapNotNull { doc ->
             val title = doc.getString("title") ?: return@mapNotNull null
-            PassportEntry(
-                id = doc.id,
-                type = doc.getString("type").orEmpty(),
-                title = title,
-                detail = doc.getString("detail").orEmpty(),
-                date = doc.getString("date").orEmpty()
-            )
+            PassportEntry(doc.id, doc.getString("type").orEmpty(), title,
+                doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
         }.sortedByDescending { it.date }
 
     suspend fun deletePassportEntry(petId: String, entryId: String) {
@@ -85,15 +108,7 @@ class FirebasePetCareRepository(
         require(petId.isNotBlank() && task.id.isNotBlank())
         require(task.title.isNotBlank() && task.title.length <= 120)
         require(task.responsible.length <= 80 && task.frequency.length <= 80)
-        tasks(petId).document(task.id).set(
-            mapOf(
-                "id" to task.id,
-                "title" to task.title.trim(),
-                "responsible" to task.responsible.trim(),
-                "frequency" to task.frequency.trim(),
-                "completed" to task.completed
-            )
-        ).await()
+        tasks(petId).document(task.id).set(taskData(task)).await()
     }
 
     suspend fun saveCareTasks(petId: String, careTasks: List<CareTask>) {
@@ -102,13 +117,7 @@ class FirebasePetCareRepository(
         careTasks.forEach { task ->
             require(task.id.isNotBlank() && task.title.isNotBlank())
             require(task.title.length <= 120 && task.responsible.length <= 80 && task.frequency.length <= 80)
-            batch.set(tasks(petId).document(task.id), mapOf(
-                "id" to task.id,
-                "title" to task.title.trim(),
-                "responsible" to task.responsible.trim(),
-                "frequency" to task.frequency.trim(),
-                "completed" to task.completed
-            ))
+            batch.set(tasks(petId).document(task.id), taskData(task))
         }
         if (careTasks.isNotEmpty()) batch.commit().await()
     }
@@ -116,13 +125,8 @@ class FirebasePetCareRepository(
     suspend fun loadCareTasks(petId: String): List<CareTask> =
         tasks(petId).get().await().documents.mapNotNull { doc ->
             val title = doc.getString("title") ?: return@mapNotNull null
-            CareTask(
-                id = doc.id,
-                title = title,
-                responsible = doc.getString("responsible").orEmpty(),
-                frequency = doc.getString("frequency").orEmpty(),
-                completed = doc.getBoolean("completed") ?: false
-            )
+            CareTask(doc.id, title, doc.getString("responsible").orEmpty(),
+                doc.getString("frequency").orEmpty(), doc.getBoolean("completed") ?: false)
         }
 
     suspend fun deleteCareTask(petId: String, taskId: String) {
