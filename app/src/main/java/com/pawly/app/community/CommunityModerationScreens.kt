@@ -50,21 +50,21 @@ internal fun ModerationScreen(repo: FirebaseCommunityRepository) {
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Text("Centro de moderación", color = Forest, style = MaterialTheme.typography.titleLarge)
-            Text("Los avisos quedan registrados para revisión del equipo.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            Text("Centro de moderación", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            Text("Los avisos quedan registrados para revisión del equipo.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
-        if (status != null) item { Text(status!!, color = ForestLight) }
+        if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primaryLight) }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
         if (reports.isEmpty()) item { EmptyCommunityCard("Sin denuncias pendientes", "Cuando alguien envíe un aviso, aparecerá aquí.") }
         items(reports, key = { it.id }) { report ->
-            Surface(color = Paper, shape = RoundedCornerShape(16.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(report.targetType.uppercase(), color = Forest, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text(report.status, color = Muted, style = MaterialTheme.typography.labelSmall)
+                        Text(report.targetType.uppercase(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(report.status, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     }
-                    Text("Motivo: " + report.reason, color = Ink)
-                    Text("Elemento: " + report.targetId, color = Muted, style = MaterialTheme.typography.labelSmall)
+                    Text("Motivo: " + report.reason, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Elemento: " + report.targetId, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (report.targetType == "post") {
                             OutlinedButton(onClick = {
@@ -95,7 +95,7 @@ internal fun ReportDialog(repo: FirebaseCommunityRepository, targetId: String, t
     val reasons = listOf("Contenido inapropiado", "Acoso o intimidación", "Spam o fraude", "Bienestar animal", "Suplantación de identidad", "Otro")
     AlertDialog(onDismissRequest = onDismiss, title = { Text("Denunciar") }, text = {
         Column {
-            Text("Selecciona el motivo del aviso.", color = Muted)
+            Text("Selecciona el motivo del aviso.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             reasons.forEach { item -> Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(reason == item, { reason = item }); Text(item) } }
         }
     }, confirmButton = {
