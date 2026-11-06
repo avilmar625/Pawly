@@ -1,45 +1,60 @@
-# Configuración de Firebase y Cloudinary para Pawly (cambios19)
+# Configuración completa de Firebase y Cloudinary para Pawly
 
-Esta guía separa lo que debe hacerse en la consola de Firebase de lo que ya está preparado en el repositorio. No compartas credenciales privadas ni subas configuraciones locales a GitHub.
+Esta guía corresponde a la rama `cambios36`. Separa los pasos que se hacen una sola vez en las consolas de Firebase y Cloudinary de los cambios que ya están preparados en Android.
 
-## 1. Descargar google-services.json
+**Arquitectura elegida para mantener el coste controlado:**
 
-1. Abre https://console.firebase.google.com/ y entra en tu proyecto existente de Pawly.
-2. Pulsa el engranaje junto a **Descripción general del proyecto** → **Configuración del proyecto** → pestaña **General**.
-3. Baja hasta **Tus aplicaciones**.
-4. Selecciona la aplicación Android cuyo nombre de paquete sea exactamente `com.pawly.app`.
-5. Pulsa **Descargar google-services.json**.
-6. Copia el archivo descargado a la carpeta `app/` de la raíz del repositorio. La ruta final debe ser `app/google-services.json`.
-7. Comprueba que el nombre sea exactamente `google-services.json`, sin sufijos como `(1)`.
+- **Firebase Authentication:** registro e inicio de sesión.
+- **Cloud Firestore:** perfiles sociales, publicaciones, comentarios, conversaciones, invitaciones y datos compartidos de mascotas.
+- **Firebase Cloud Messaging (FCM):** registro del token Android y recepción de mensajes push cuando exista un emisor de confianza.
+- **Cloudinary:** alojamiento y entrega CDN de fotos y vídeos.
+- **Almacenamiento local Android:** preferencias, recordatorios locales y partes de la experiencia que aún no se sincronizan.
 
-Si no existe todavía una app Android en ese proyecto, pulsa **Añadir app** → Android e introduce `com.pawly.app`. No registres otra aplicación con el mismo paquete si ya aparece una.
+No se utiliza Firebase Storage. No hace falta activar Blaze ni vincular una tarjeta para seguir esta arquitectura. Firebase Storage exige actualmente el plan Blaze; por eso las fotos y vídeos se alojan en Cloudinary.
 
-El archivo contiene identificadores del proyecto, no una contraseña de servidor. Aun así, Pawly lo mantiene fuera de Git con `.gitignore`. No lo publiques ni compartas su contenido.
+---
 
-## 2. Activar Authentication
+## 1. Firebase: proyecto y aplicación Android
 
-En Firebase Console → **Authentication** → **Comenzar** → **Método de acceso**:
+1. Entra en [Firebase Console](https://console.firebase.google.com/) y abre el proyecto de Pawly.
+2. En el engranaje de **Configuración del proyecto → General → Tus aplicaciones**, busca la app Android con el identificador exacto:
+   `com.pawly.app`.
+3. Si no existe, pulsa **Añadir aplicación → Android** y registra ese identificador. No crees otra app duplicada si ya existe.
+4. Descarga `google-services.json`.
+5. Colócalo en la raíz del módulo Android, exactamente en:
 
-- Activa **Correo electrónico/contraseña**.
-- Guarda los cambios.
-- Google es opcional. Si lo activas, añade antes la huella SHA-1 de debug (ver debajo), vuelve a descargar el JSON y sustituye el archivo local.
+   ```
+   app/google-services.json
+   ```
 
-Para obtener la huella debug desde la raíz del proyecto:
+Este archivo contiene identificadores de configuración del proyecto. Está excluido de Git por `.gitignore`; no lo subas al repositorio ni lo pegues en un chat público. Sin este archivo, Pawly puede compilar, pero no inicializará Firebase en el dispositivo.
 
-```bash
-./gradlew signingReport
-```
+## 2. Firebase Authentication
 
-Busca `Variant: debug` y copia `SHA1`; si vas a probar un APK firmado de release, registra también la SHA-1 de esa variante. Añádelas en Configuración del proyecto → General → Tu app Android → Huellas digitales SHA. Guarda y vuelve a descargar `google-services.json` en `app/`. Comprueba que en Authentication → Método de acceso → Google está habilitado y tiene un correo de asistencia configurado. En el JSON debe aparecer un cliente OAuth Android (tipo 1) con el package `com.pawly.app` y su SHA-1, además de un cliente Web (tipo 3); el plugin genera con este último el recurso `default_web_client_id` que Pawly usa como `serverClientId`.
+En **Authentication → Comenzar → Método de acceso**:
 
-## 3. Crear Firestore
+1. Activa **Correo electrónico/contraseña**.
+2. Guarda.
+3. Para habilitar Google:
+   - Activa el proveedor **Google**.
+   - Configura el correo de asistencia.
+   - En Android Studio ejecuta `./gradlew signingReport`.
+   - Copia la huella **SHA-1** de la variante `debug` y añádela en **Configuración del proyecto → General → Tu app Android → Huellas digitales SHA**.
+   - Descarga de nuevo `google-services.json` y reemplaza el anterior.
+   - Comprueba que el JSON contiene el cliente OAuth Android y el cliente OAuth Web. El cliente Web es el que Credential Manager entrega a Firebase como `serverClientId`.
 
-1. En Firebase Console abre **Firestore Database** → **Crear base de datos**.
+La aplicación envía correo de verificación en el registro. Algunas acciones sociales y de publicación requieren una cuenta verificada. Para probar Google Sign-In, usa primero una compilación debug con su SHA-1 registrada.
+
+## 3. Cloud Firestore
+
+1. Abre **Firestore Database → Crear base de datos**.
 2. Selecciona **modo producción**.
-3. Escoge una región europea adecuada para tus usuarios. La ubicación de la base de datos no se puede cambiar después sin migrar los datos.
-4. No pegues reglas abiertas de pruebas. Las reglas versionadas en `firestore.rules` limitan los datos privados por UID.
+3. Elige una región europea próxima a los usuarios. La región no se puede cambiar después sin migrar la base de datos.
+4. No pegues reglas de prueba abiertas. Las reglas versionadas en este repositorio controlan el acceso por UID, pertenencia y rol.
 
-Desde la raíz del proyecto, instala/actualiza Firebase CLI si es necesario y ejecuta:
+### Vincular la CLI al proyecto
+
+Instala Firebase CLI si aún no está instalada. Desde la carpeta raíz del repositorio ejecuta:
 
 ```bash
 firebase login
@@ -47,57 +62,102 @@ firebase projects:list
 firebase use --add
 ```
 
-Selecciona el ID del proyecto que acabas de abrir; puedes usar el alias `default`. Antes de desplegar, comprueba que el proyecto activo sea el correcto:
+Selecciona el ID del proyecto de Pawly y usa el alias `default`. Este paso crea el archivo local `.firebaserc`; no inventes el ID ni lo añadas a Git si contiene configuración específica de tu cuenta.
+
+Comprueba el proyecto activo:
 
 ```bash
 firebase use
 ```
 
-Despliega las reglas e índices del repositorio:
+Debe mostrar el proyecto correcto antes de desplegar. Publica reglas e índices:
 
 ```bash
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-No uses reglas de desarrollo del tipo `allow read, write: if true`.
+El archivo `firebase.json` ya apunta a `firestore.rules` y `firestore.indexes.json`. No hay reglas abiertas del tipo `allow read, write: if true`.
 
-## 4. Datos privados de mascotas (cambios19)
+### Datos que ya usan Firestore
 
-La rama cambios19 incorpora `FirebasePetCareRepository` y reglas de propietario para:
+- Comunidad: perfiles de usuario, perfiles de mascotas, publicaciones, likes, comentarios, seguidores, bloqueos, denuncias y conversaciones.
+- Chat: mensajes de texto, fotos y vídeos; acceso restringido a los dos participantes.
+- Mascotas compartidas: invitaciones, miembros y roles; el propietario y los editores pueden modificar los registros permitidos, los lectores solo consultan.
+- Pasaporte sanitario, rutinas, ficha básica y Diario: espacio de mascota compartido bajo `sharedPets/{ownerUid}_{petId}`, con las reglas de miembro/rol correspondientes.
 
-- Pasaporte veterinario: `users/{uid}/petCare/{petId}/passport/{entryId}`.
-- Rutinas: `users/{uid}/petCare/{petId}/tasks/{taskId}`.
+Los recordatorios del dispositivo y algunas marcas de tareas cotidianas siguen siendo locales. No se debe interpretar que todo el contenido de Pawly se sincroniza automáticamente por el mero hecho de iniciar sesión.
 
-Solo la cuenta propietaria puede leer o modificar esos registros. En cambios20, las secciones Pasaporte sanitario y Cuidados ya utilizan este repositorio cuando el usuario ha iniciado sesión. Al entrar, descargan los registros remotos y, si Firestore está vacío para esa mascota, importan en una operación por lotes los registros locales de esa cuenta. Las altas, cambios y eliminaciones se guardan localmente y se envían a Firestore. Si falla la red, la copia local se conserva y la pantalla indica que la sincronización está pendiente. El modo local sin cuenta sigue guardando solo en el dispositivo.
+## 4. Cloudinary: cuenta y presets de subida
 
-Los perfiles de mascota de Comunidad continúan guardándose en el documento privado `users/{uid}` como `dogProfiles`. La siguiente fase debe vincular el ID estable de cada mascota con su espacio `petCare`.
+Crea o abre una cuenta en [Cloudinary](https://cloudinary.com/). En el Dashboard copia el **Cloud name**.
 
-## 5. Cloudinary para fotografías (incluidos mensajes privados)
+Pawly usa dos presets unsigned distintos para que cada tipo de archivo tenga una lista de formatos independiente. En **Settings → Upload → Upload presets**, crea:
 
-1. Crea/abre una cuenta en https://cloudinary.com/.
-2. Copia el **Cloud name** del Dashboard.
-3. En Settings → Upload → Upload presets crea un preset **Unsigned**.
-4. Limita los formatos admitidos (JPG, PNG y WebP) y el tamaño máximo. Pawly convierte las fotos a JPEG y las reduce antes de subirlas. El preset unsigned no requiere API Secret en el móvil. Las fotos de chat se suben a `pawly/message-photos/{uid}`; asegúrate de que el preset permita esa ruta. **Importante:** con el preset unsigned las imágenes tienen URL pública de Cloudinary. Las reglas de Firestore protegen el mensaje y su URL, pero no convierten el archivo de Cloudinary en privado: cualquiera que obtenga el enlace podría abrirlo. No envíes imágenes sensibles. El cifrado de extremo a extremo o la entrega privada requieren una fase adicional.
-5. En `local.properties` (raíz del proyecto) añade:
+### Preset A: imágenes
+
+- Nombre sugerido: `pawly_images_unsigned`.
+- Signing Mode: **Unsigned**.
+- Allowed formats: `jpg, jpeg, png, webp`.
+- Activa **Disallow public ID** si aparece en las opciones.
+- No permitas formatos que Pawly no utiliza.
+- La app convierte las fotografías a JPEG y las optimiza antes de subirlas.
+
+### Preset B: vídeos
+
+- Nombre sugerido: `pawly_videos_unsigned`.
+- Signing Mode: **Unsigned**.
+- Allowed formats: `mp4, mov, webm, 3gp`.
+- Activa **Disallow public ID** si aparece en las opciones.
+- No permitas otros formatos.
+
+Guarda ambos presets y copia sus nombres exactamente. Los nombres de presets unsigned quedan visibles en el APK y no son contraseñas.
+
+**Límite importante de seguridad:** Cloudinary no aplica un límite de tamaño por preset unsigned. Pawly comprueba 8 MB para las fotos ya comprimidas y 40 MB para los vídeos en el cliente, pero un cliente modificado podría saltarse esa comprobación. Los presets unsigned también permiten que cualquiera que conozca el nombre intente subir archivos. Esta arquitectura es adecuada para pruebas y uso inicial controlado, pero no equivale a cargas autenticadas de producción. Para una comunidad pública a gran escala habrá que añadir un backend que firme las subidas y valide al usuario; no se debe poner el API Secret en Android.
+
+Las carpetas `pawly/...` que envía la app sirven para organizar el contenido, no son una barrera de seguridad. Las URLs entregadas por Cloudinary son públicas para cualquiera que las conozca. Firestore protege el acceso a los mensajes y publicaciones, pero no vuelve privada la URL del archivo ni ofrece cifrado de extremo a extremo. No subas documentos, imágenes íntimas ni material sensible.
+
+## 5. Configuración local de Cloudinary en Android
+
+En la raíz del proyecto:
+
+1. Copia `local.properties.example` como `local.properties`.
+2. Rellena los tres valores:
 
 ```properties
 CLOUDINARY_CLOUD_NAME=tu_cloud_name
-CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned
+CLOUDINARY_IMAGE_UPLOAD_PRESET=pawly_images_unsigned
+CLOUDINARY_VIDEO_UPLOAD_PRESET=pawly_videos_unsigned
 ```
 
-No añadas el API Secret de Cloudinary a Android. El preset unsigned es práctico para pruebas, pero no sustituye cargas firmadas desde un backend para producción.
+3. Guarda el archivo. No añadas el API Secret de Cloudinary.
+4. Sincroniza Gradle en Android Studio.
 
-## 6. Plan gratuito y límites de servicios
+La app conserva compatibilidad temporal con el antiguo valor `CLOUDINARY_UPLOAD_PRESET`: si falta uno de los presets nuevos, utiliza ese valor como alternativa. Es preferible configurar los dos presets separados y retirar la clave antigua.
 
-- Mantén Firebase en el plan **Spark**: Authentication con Google/correo, Firestore dentro de sus cuotas y FCM son suficientes para cuentas, perfiles, publicaciones, comentarios y chat en tiempo real mientras la app está abierta. Revisa las cuotas de Firestore en la consola.
-- **No uses Firebase Storage** en Spark: los buckets de Cloud Storage for Firebase requieren Blaze.
-- Las imágenes se alojan en Cloudinary, no en Firebase Storage. Su plan gratuito tiene límites propios que pueden cambiar; controla el uso en su Dashboard.
-- FCM puede recibir notificaciones sin coste, pero enviar notificaciones desde el servidor al destinatario exige un backend confiable. Cloud Functions requiere Blaze. En Spark no habrá push automático de mensajes; el chat se sincroniza en tiempo real mientras la app está conectada.
-- No vincules una cuenta de facturación ni actives Blaze para seguir estos pasos.
+## 6. Fotos y vídeos: funcionamiento actual
 
-## 7. Compilar y probar
+| Contenido | Servicio | Límites de la app |
+|---|---|---|
+| Foto de perfil social | Cloudinary + URL en Firestore | JPEG optimizado |
+| Foto de mascota / ficha | Cloudinary + URL en Firestore | JPEG optimizado |
+| Foto de publicación | Cloudinary + URL en Firestore | 8 MB tras compresión |
+| Vídeo de publicación | Cloudinary + URL en Firestore | 40 MB |
+| Foto en mensaje privado | Cloudinary + URL en Firestore | 8 MB tras compresión |
+| Vídeo en mensaje privado | Cloudinary + URL en Firestore | 40 MB |
 
-Con JDK 17 y Android Studio:
+Las fotos se redimensionan antes de subirlas (lado mayor máximo aproximado de 1600 px, calidad JPEG 82). Los vídeos admitidos son MP4, MOV, WebM y 3GP; se suben al endpoint de vídeo de Cloudinary sin transcodificación previa. En publicaciones y chat se muestra un reproductor integrado.
+
+Firestore almacena las URL HTTPS y los metadatos; los bytes no se guardan en Firestore. La app permite un único adjunto (foto o vídeo) por publicación o mensaje.
+
+## 7. Firebase Cloud Messaging (notificaciones)
+
+Pawly registra el token FCM del dispositivo y declara el servicio Android que puede recibir mensajes. **Eso no significa que la app ya envíe notificaciones push a otros usuarios.**
+
+El envío requiere un emisor de confianza (por ejemplo, Cloud Functions o un servidor propio) que utilice credenciales de servidor fuera del APK. No se debe llamar a la API de envío con una clave privada desde Android. En la arquitectura sin backend de pago, el chat se actualiza en tiempo real mientras la aplicación está conectada; las notificaciones push automáticas entre usuarios quedan pendientes.
+
+## 8. Compilar y probar
+
+Con JDK 17, Android Studio y los archivos locales preparados:
 
 ```bash
 ./gradlew testDebugUnitTest
@@ -105,93 +165,28 @@ Con JDK 17 y Android Studio:
 ./gradlew assembleDebug
 ```
 
-Prueba primero una cuenta de correo y después una segunda cuenta distinta. Verifica registro, correo de verificación, inicio/cierre de sesión, recuperación de contraseña, perfil, mascotas, publicaciones y mensajería. No uses datos médicos reales durante las pruebas iniciales.
+Prueba con dos cuentas distintas y verificadas:
 
-## 8. Qué no está automatizado todavía
+1. Registrar una cuenta con correo y verificarlo.
+2. Cerrar sesión y registrar una segunda cuenta.
+3. Comprobar que cada cuenta ve su propio perfil y sus datos.
+4. Publicar una foto y comprobar que aparece desde la segunda cuenta.
+5. Publicar un vídeo corto MP4 y reproducirlo desde la segunda cuenta.
+6. Enviar una foto y un vídeo por chat y comprobar que solo los participantes pueden leer el mensaje en Firestore.
+7. Compartir una mascota con rol editor y después lector; verificar que los permisos se respetan en el servidor.
+8. Comprobar que al cerrar sesión no se mezclan los datos locales de distintas cuentas.
 
-- Las pantallas principales Inicio, Salud, Diario y Explorar siguen conservando parte de sus datos en almacenamiento local.
-- El nuevo repositorio de salud aún necesita integración con la UI y una migración local confirmada por el usuario.
-- Las invitaciones de cuidadores y los permisos compartidos entre familiares necesitan un modelo específico; no se debe compartir una cuenta ni abrir los datos de salud.
-- FCM registra tokens y recibe notificaciones; el envío automático desde Pawly necesita backend confiable. En cambios30 se registra el token al iniciar sesión, pero todavía no se envían pushes de mensajes.
-- La solicitud de eliminación de cuenta aún no borra todos los documentos, subcolecciones ni archivos de Cloudinary.
-- App Check debe activarse después de registrar y probar la app; no actives enforcement hasta validar instalaciones debug y release.
-- Funciones servidor (Cloud Functions/Cloud Run), cargas firmadas y tareas administrativas pueden requerir facturación. No actives Blaze sin revisar primero presupuesto y límites.
+No uses información veterinaria real durante las pruebas iniciales. Comprueba también el consumo y los límites del plan gratuito de Cloudinary desde su Dashboard.
 
-## 9. Privacidad y seguridad antes de producción
+## 9. Qué no está listo para producción
 
-- Mantén las reglas de Firestore cerradas y pruébalas con dos cuentas.
-- No guardes service account keys, contraseñas, OAuth client secrets ni API secrets en el APK o en GitHub.
-- Completa política de privacidad, términos, soporte y procedimiento de eliminación de cuenta.
-- Configura alertas de presupuesto y revisa el uso de cada servicio.
+- Las cargas unsigned de Cloudinary no autentican al usuario y las URLs son públicas para quien las conozca.
+- No hay backend propio que firme subidas, aplique moderación o elimine archivos de Cloudinary.
+- No hay envío automático de push entre usuarios; solo registro/recepción FCM.
+- La solicitud de eliminación de cuenta no borra automáticamente todas las subcolecciones y archivos multimedia.
+- No hay cifrado de extremo a extremo para chat ni multimedia.
+- Algunas preferencias, recordatorios y estados diarios permanecen locales.
+- App Check y su enforcement no deben activarse hasta integrar el SDK, probar debug/release y verificar que no bloquean a usuarios legítimos.
+- Política de privacidad, términos, soporte, moderación operativa y proceso de eliminación deben completarse antes de publicar la app.
 
-
-## 10. Datos sanitarios compartidos (cambios30)
-
-Al entrar en Pasaporte o Cuidados con una cuenta, Pawly crea (si aún no existe) el espacio compartido de esa mascota y guarda allí los registros nuevos: `sharedPets/{ownerUid}_{petId}/passport` y `/tasks`. Los perfiles compartidos usan los miembros aceptados del documento `sharedPets`: propietario y editores pueden escribir; lectores solo pueden consultar. Las reglas de Firestore aplican los permisos en servidor, no dependen de ocultar botones en Android.
-
-La primera carga conserva la migración local que ya existía: si la colección compartida está vacía y hay datos locales, se importan. Los datos antiguos de `users/{uid}/petCare` se copian automáticamente al espacio compartido la primera vez que el propietario abre Pasaporte o Cuidados. La copia antigua se conserva; la migración no elimina documentos. Antes de desplegar, revisa y publica las reglas actualizadas:
-
-```bash
-firebase deploy --only firestore:rules,firestore:indexes
-```
-
-La selección de mascotas recibidas por invitación y su navegación desde el perfil de otro cuidador se completarán en la siguiente iteración. No compartas una cuenta para probarlo: utiliza dos cuentas verificadas distintas.
-
-
-## 11. Diagnóstico de Google Sign-In
-
-Si el botón de Google muestra un error:
-
-1. Comprueba que el package Android en Firebase sea exactamente `com.pawly.app`.
-2. Ejecuta `./gradlew signingReport` desde la raíz y registra en Firebase la SHA-1 de `debug` (la que usa Android Studio al pulsar Run). Si pruebas un APK release firmado, registra también la SHA-1 de esa clave.
-3. Comprueba que Google esté habilitado como proveedor en Authentication y que exista un correo de asistencia.
-4. Descarga otra vez el JSON y reemplaza `app/google-services.json`.
-5. En Android Studio ejecuta **Sync Project with Gradle Files**, desinstala la app del móvil e instala de nuevo la compilación.
-6. Si sigue fallando, copia el texto exacto del error de Pawly y el resultado de `signingReport` (puedes ocultar los SHA salvo los primeros/últimos caracteres). Nunca compartas claves privadas ni el contenido completo de archivos sensibles.
-
-El botón usa Credential Manager para obtener un ID token de Google y Firebase Auth para validarlo. Que el proveedor esté activado no basta si el JSON descargado no contiene el cliente OAuth Web correcto.
-
-
-## 6. Ficha y Diario sincronizados (cambios35)
-
-La ficha básica y el Diario usan el espacio compartido de cada mascota:
-
-- `profile/current`: nombre y URL HTTPS de la fotografía.
-- `diary/{entryId}`: recuerdos ordenados por posición.
-- La foto se sube a Cloudinary en `pawly/dog-photos/{uid}`; Firestore guarda solo la URL.
-- Miembros aceptados pueden leer. Propietarios y editores pueden modificar; lectores no pueden añadir, editar ni borrar.
-
-Despliega las reglas desde la raíz:
-
-```bash
-firebase deploy --only firestore:rules,firestore:indexes
-```
-
-Si faltan reglas o conexión, la copia local se conserva y se muestra sincronización pendiente. Las URLs unsigned de Cloudinary son públicas para quien las conozca. No se necesita Firebase Storage ni Blaze.
-
-## 12. Vídeos en publicaciones y mensajería (cambios36)
-
-La app permite adjuntar una fotografía o un vídeo (un archivo por publicación/mensaje):
-
-- Fotos: JPEG optimizado a un máximo aproximado de 1600 px y 8 MB tras compresión.
-- Vídeos: MP4, MOV, WebM o 3GP, hasta 40 MB. Se suben sin transcodificación al endpoint de vídeo de Cloudinary.
-- Firestore guarda las URLs HTTPS y los metadatos; el contenido binario permanece en Cloudinary.
-- Las publicaciones y los mensajes muestran el reproductor integrado de Android. El usuario controla la reproducción.
-- Las reglas de Firestore validan que las URL sean HTTPS y no superen 2048 caracteres. El límite de 40 MB también se comprueba en el cliente; configura además un límite equivalente en el preset de Cloudinary.
-- Las URL de Cloudinary son públicas para quien las conozca. No subas contenido sensible ni consideres este sistema cifrado de extremo a extremo.
-
-No actives Firebase Storage para esta arquitectura ni añadas el API Secret de Cloudinary a `local.properties`, al código o al APK.
-
-## 13. Plantilla local de configuración
-
-Copia `local.properties.example` a `local.properties` y sustituye los dos valores de Cloudinary. Además, coloca el JSON descargado de Firebase en `app/google-services.json`. Ambos archivos son locales y están excluidos de Git. Sin esos datos reales la app puede compilar, pero no podrá inicializar Firebase ni subir multimedia.
-
-## 14. Comprobación de reglas y compilación
-
-```bash
-firebase use
-firebase deploy --only firestore:rules,firestore:indexes
-./gradlew testDebugUnitTest lintDebug assembleDebug
-```
-
-Prueba con dos cuentas verificadas: publicar una foto, publicar un vídeo corto, enviar una foto y un vídeo por chat, reproducirlos desde otra cuenta y comprobar que un usuario no autenticado no puede escribir. Comprueba también que las URL de archivos anteriores siguen apareciendo aunque no tengan el campo `videoUrl`.
+**No actives Firebase Storage ni Blaze para esta configuración.** Si en el futuro se decide añadir un backend o almacenamiento privado, primero se revisarán costes, cuotas y medidas de seguridad, y se pedirá aprobación expresa antes de cambiar el plan.
