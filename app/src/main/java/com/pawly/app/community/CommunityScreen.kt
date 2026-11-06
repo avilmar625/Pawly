@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
@@ -90,10 +91,11 @@ internal fun FirebaseSetupPanel(onContinueOffline: () -> Unit) {
 internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticated: () -> Unit, onContinueOffline: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val credentialManager = remember(context) { CredentialManager.create(context) }
     val webClientId = remember(context) {
         val resourceId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
-        if (resourceId != 0) context.getString(resourceId) else ""
+        if (resourceId != 0) resources.getString(resourceId) else ""
     }
     var register by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
