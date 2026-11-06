@@ -274,16 +274,28 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, onSignO
         onDispose { feedListener.remove(); followingListener.remove() }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("PAWLY", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp, fontSize = 12.sp)
-                Text("Comunidad", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.headlineMedium)
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+            shape = RoundedCornerShape(26.dp),
+            color = MaterialTheme.colorScheme.primary
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 19.dp, end = 8.dp, top = 15.dp, bottom = 15.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("PAWLY COMMUNITY", color = Lime, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
+                    Text("Comunidad", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    Text("Aventuras que se comparten.", color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.bodySmall)
+                }
+                Surface(color = Color.White.copy(alpha = .14f), shape = CircleShape) {
+                    IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White) }
+                }
             }
-            IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Forest) }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
-                FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) })
+                FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) }, shape = RoundedCornerShape(50))
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
