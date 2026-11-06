@@ -51,7 +51,7 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (category == "LOST") "Aviso de mascota perdida" else if (category == "FOUND") "Aviso de mascota encontrada" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") }, text = {
         Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Tipo de publicación", color = Forest, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+            Text("Tipo de publicación", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("STORY" to "Historia", "ADOPTION" to "Adopción", "LOST" to "Perdido", "FOUND" to "Encontrado", "FOSTER" to "Acogida").forEach { (value, label) ->
                     FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label) })
@@ -60,7 +60,7 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
             OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado de la mascota"; "ADOPTION" -> "Especie, edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
             OutlinedTextField(dog, { dog = it }, label = { Text("Nombre de la mascota (opcional)") }, modifier = Modifier.fillMaxWidth())
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.AddAPhoto, null); Text(if (uri == null) "Añadir fotografía" else "Foto seleccionada") }
-            if (category != "STORY") Text("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado.", color = Muted, style = MaterialTheme.typography.bodySmall)
+            if (category != "STORY") Text("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         }
     }, confirmButton = {
@@ -94,8 +94,8 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 items(comments, key = { it.id }) { comment ->
                     Column {
-                        Text(comment.authorName, color = Forest, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                        Text(comment.text, color = Ink)
+                        Text(comment.authorName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                        Text(comment.text, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -119,15 +119,15 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
         if (conversations.isEmpty()) item { EmptyCommunityCard("Tu bandeja está vacía", "Cuando escribas a otra persona, la conversación aparecerá aquí.") }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
         items(conversations, key = { it.id }) { c ->
-            Surface(onClick = { onOpen(c) }, color = Paper, shape = RoundedCornerShape(16.dp)) {
+            Surface(onClick = { onOpen(c) }, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
                 Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                     Avatar("", c.otherUserName)
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(c.otherUserName, color = Forest, fontWeight = FontWeight.Bold)
-                        Text(c.lastMessage.ifBlank { "Empezad a hablar" }, color = Muted, maxLines = 1)
+                        Text(c.otherUserName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text(c.lastMessage.ifBlank { "Empezad a hablar" }, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                     }
-                    Icon(Icons.Default.ChevronRight, null, tint = Forest)
+                    Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -168,7 +168,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                             }
                         }
                         if (item.senderId == uid && item.readBy.any { it != uid }) {
-                            Text("Visto", style = MaterialTheme.typography.labelSmall, color = Muted)
+                            Text("Visto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -177,13 +177,13 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         if (attachment != null) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Fotografía adjunta", modifier = Modifier.weight(1f), color = Forest, style = MaterialTheme.typography.labelMedium)
+                Text("Fotografía adjunta", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                 TextButton(onClick = { attachment = null }) { Text("Quitar") }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) {
-                Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = Forest)
+                Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = MaterialTheme.colorScheme.primary)
             }
             OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f),
                 placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
@@ -201,7 +201,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                 }
             }, enabled = !sending && (draft.isNotBlank() || attachment != null)) {
                 if (sending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Default.Send, "Enviar", tint = Forest)
+                else Icon(Icons.Default.Send, "Enviar", tint = MaterialTheme.colorScheme.primary)
             }
         }
         Spacer(Modifier.height(8.dp))
