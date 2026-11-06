@@ -27,6 +27,38 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "petInvitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sharedPetId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "inviteeUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "petInvitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "inviteeUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
