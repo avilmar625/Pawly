@@ -134,6 +134,62 @@ service cloud.firestore {
       }
     }
 
+
+    // Shared pet profile invitations. Health records remain owner-private in cambios23.
+    match /sharedPets/{sharedPetId} {
+      function isMember() {
+        return signedIn() && exists(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid));
+      }
+      allow get: if isMember();
+      allow list: if false;
+      allow create: if verified()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.id == sharedPetId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40;
+      allow update: if verified() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40;
+      allow delete: if false;
+
+      match /members/{memberUid} {
+        allow read: if isMember();
+        allow create: if verified() && (
+          (get(/databases/$(database)/documents/sharedPets/$(sharedPetId)).data.ownerUid == request.auth.uid
+            && memberUid == request.auth.uid && request.resource.data.role == 'owner')
+          ||
+          (memberUid == request.auth.uid
+            && existsAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId))
+            && getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.inviteeUid == request.auth.uid
+            && getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.sharedPetId == sharedPetId
+            && getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.status == 'accepted')
+        );
+        allow delete: if verified()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)).data.ownerUid == request.auth.uid
+          && memberUid != request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    match /petInvitations/{invitationId} {
+      allow create: if verified()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.inviteeUid is string
+        && request.resource.data.inviteeUid != request.auth.uid
+        && request.resource.data.sharedPetId is string
+        && exists(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId))
+        && get(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId)).data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role == 'editor';
+      allow read: if verified() && (resource.data.ownerUid == request.auth.uid || resource.data.inviteeUid == request.auth.uid);
+      allow update: if verified() && resource.data.inviteeUid == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt'])
+        && request.resource.data.status in ['accepted', 'declined'];
+      allow delete: if false;
+    }
+
     match /posts/{postId} {
       allow read: if signedIn();
       allow create: if verified()
