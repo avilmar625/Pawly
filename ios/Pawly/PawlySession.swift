@@ -87,6 +87,19 @@ final class PawlySession: ObservableObject {
         )
     }
 
+    func requestAccountDeletion() async throws {
+        guard let user=Auth.auth().currentUser else { throw PawlySessionError.notSignedIn }
+        let db=Firestore.firestore()
+        let pending=try await db.collection("accountDeletionRequests").whereField("uid",isEqualTo:user.uid)
+            .whereField("status",isEqualTo:"pending").limit(to:1).getDocuments()
+        if pending.isEmpty {
+            try await db.collection("accountDeletionRequests").addDocument(data:[
+                "uid":user.uid,"email":user.email ?? "","requestedAt":FieldValue.serverTimestamp(),
+                "status":"pending","source":"ios"
+            ])
+        }
+    }
+
     func signOut() throws {
         try Auth.auth().signOut()
     }
@@ -104,4 +117,9 @@ enum PawlyAuthError: LocalizedError {
             return "Ese nombre de usuario ya está ocupado."
         }
     }
+}
+
+enum PawlySessionError:LocalizedError {
+    case notSignedIn
+    var errorDescription:String? { "Inicia sesión para solicitar la eliminación de la cuenta." }
 }
