@@ -115,3 +115,16 @@ Prueba primero una cuenta de correo y después una segunda cuenta distinta. Veri
 - No guardes service account keys, contraseñas, OAuth client secrets ni API secrets en el APK o en GitHub.
 - Completa política de privacidad, términos, soporte y procedimiento de eliminación de cuenta.
 - Configura alertas de presupuesto y revisa el uso de cada servicio.
+
+
+## 8. Datos sanitarios compartidos (cambios30)
+
+Al entrar en Pasaporte o Cuidados con una cuenta, Pawly crea (si aún no existe) el espacio compartido de esa mascota y guarda allí los registros nuevos: `sharedPets/{ownerUid}_{petId}/passport` y `/tasks`. Los perfiles compartidos usan los miembros aceptados del documento `sharedPets`: propietario y editores pueden escribir; lectores solo pueden consultar. Las reglas de Firestore aplican los permisos en servidor, no dependen de ocultar botones en Android.
+
+La primera carga conserva la migración local que ya existía: si la colección compartida está vacía y hay datos locales, se importan. Los datos antiguos que solo existan en la ruta privada `users/{uid}/petCare` no se borran ni se migran automáticamente en esta fase. Antes de desplegar, revisa y publica las reglas actualizadas:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+La selección de mascotas recibidas por invitación y su navegación desde el perfil de otro cuidador se completarán en la siguiente iteración. No compartas una cuenta para probarlo: utiliza dos cuentas verificadas distintas.
