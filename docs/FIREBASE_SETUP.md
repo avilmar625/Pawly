@@ -150,3 +150,21 @@ Si el botón de Google muestra un error:
 6. Si sigue fallando, copia el texto exacto del error de Pawly y el resultado de `signingReport` (puedes ocultar los SHA salvo los primeros/últimos caracteres). Nunca compartas claves privadas ni el contenido completo de archivos sensibles.
 
 El botón usa Credential Manager para obtener un ID token de Google y Firebase Auth para validarlo. Que el proveedor esté activado no basta si el JSON descargado no contiene el cliente OAuth Web correcto.
+
+
+## 6. Ficha y Diario sincronizados (cambios35)
+
+La ficha básica y el Diario usan el espacio compartido de cada mascota:
+
+- `profile/current`: nombre y URL HTTPS de la fotografía.
+- `diary/{entryId}`: recuerdos ordenados por posición.
+- La foto se sube a Cloudinary en `pawly/dog-photos/{uid}`; Firestore guarda solo la URL.
+- Miembros aceptados pueden leer. Propietarios y editores pueden modificar; lectores no pueden añadir, editar ni borrar.
+
+Despliega las reglas desde la raíz:
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+Si faltan reglas o conexión, la copia local se conserva y se muestra sincronización pendiente. Las URLs unsigned de Cloudinary son públicas para quien las conozca. No se necesita Firebase Storage ni Blaze.
