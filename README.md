@@ -177,3 +177,18 @@ La rama `cambios18` introduce un rediseño más marcado de Inicio y de la navega
 - [cambios20: sincronización del pasaporte sanitario y rutinas con Firestore](docs/CHANGES20.md).
 - [cambios21: identidad estable de mascotas y continuidad del historial al cambiar el nombre](docs/CHANGES21.md).
 - [Configuración de Firebase](docs/FIREBASE_SETUP.md).
+
+
+## Colaboración en perfiles (cambios23)
+
+La pestaña **Salud → Compartir** incorpora invitaciones privadas a perfiles de mascota mediante nombre de usuario de Pawly. La persona invitada puede aceptar o rechazar; el propietario puede consultar los miembros y retirar el acceso. Los perfiles aceptados aparecen en el apartado «Perfiles compartidos contigo».
+
+**Alcance importante:** cambios23 comparte el acceso y los metadatos básicos del perfil, pero todavía no comparte ni sincroniza el pasaporte sanitario, las rutinas, la agenda, las fotos privadas o el diario. Esos datos permanecen en la cuenta propietaria. La siguiente iteración debe migrar los datos de cuidado a un espacio compartido con permisos por rol y una estrategia segura para conservar el historial existente.
+
+Para activar esta función hay que desplegar las reglas e índices de Firestore actualizados desde la raíz del proyecto:
+
+```bash
+npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes
+```
+
+La función requiere iniciar sesión y verificar el correo electrónico. La invitación no envía un push por sí sola: el backend de notificaciones sigue pendiente. No se han cambiado las reglas de acceso del pasaporte privado existente.
