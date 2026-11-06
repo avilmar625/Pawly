@@ -153,18 +153,18 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         onDispose { listener.remove() }
     }
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp)) {
-        TextButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null); Text(conversation.otherUserName.ifBlank { "Conversación" }) }
+        Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), tonalElevation = 1.dp) { Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver") }; Avatar("", conversation.otherUserName, 36); Spacer(Modifier.width(10.dp)); Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium) } }
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             items(messages, key = { it.id }) { item ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (item.senderId == uid) Arrangement.End else Arrangement.Start) {
                     Column(horizontalAlignment = if (item.senderId == uid) Alignment.End else Alignment.Start) {
-                        Surface(color = if (item.senderId == uid) Forest else Paper, shape = RoundedCornerShape(15.dp)) {
-                            Column(Modifier.widthIn(max = 280.dp).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Surface(color = if (item.senderId == uid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = if (item.senderId == uid) 5.dp else 18.dp, bottomStart = if (item.senderId == uid) 18.dp else 5.dp), shadowElevation = 1.dp) {
+                            Column(Modifier.widthIn(max = 300.dp).padding(horizontal = 13.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 if (item.imageUrl.isNotBlank()) AsyncImage(
                                     model = item.imageUrl, contentDescription = "Fotografía enviada",
                                     modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp))
                                 )
-                                if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) Color.White else Ink)
+                                if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                         if (item.senderId == uid && item.readBy.any { it != uid }) {
@@ -185,7 +185,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
             IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) {
                 Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = MaterialTheme.colorScheme.primary)
             }
-            OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f),
+            OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp),
                 placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
             IconButton(onClick = {
                 val text = draft
@@ -201,7 +201,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                 }
             }, enabled = !sending && (draft.isNotBlank() || attachment != null)) {
                 if (sending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Default.Send, "Enviar", tint = MaterialTheme.colorScheme.primary)
+                else Icon(Icons.Default.Send, "Enviar", tint = MaterialTheme.colorScheme.onPrimary)
             }
         }
         Spacer(Modifier.height(8.dp))
