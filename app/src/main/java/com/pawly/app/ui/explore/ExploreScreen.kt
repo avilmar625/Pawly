@@ -129,6 +129,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     }
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
+    var selectedPlace by remember { mutableStateOf<Place?>(null) }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
     val places = listOf(
         Place("🌿", "Naturaleza", "Rutas y senderos", "Ideas para caminar juntos", "Busca caminos, sombra y agua antes de salir.", Color(0xFFE6EEDB), "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1000&h=500&fit=crop"),
@@ -159,7 +160,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             ) {
                 Icon(Icons.Filled.MyLocation, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (currentCoordinates == null) "Usar mi ubicación" else "Abrir lugares cercanos")
+                Text(if (currentCoordinates == null) "Usar mi ubicación" else "Actualizar ubicación")
             }
             currentAddress?.let { address ->
                 Text(address, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -265,40 +266,125 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             item { Text("No hay resultados. Prueba con otra búsqueda.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
         }
         items(visible) { place ->
-            PlaceCard(place = place, saved = place.name in savedPlaces, onSave = { onToggleSave(place.name) })
+            PlaceCard(place = place, saved = place.name in savedPlaces, onOpen = { selectedPlace = place }, onSave = { onToggleSave(place.name) })
         }
         item {
             Text("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
+    selectedPlace?.let { place ->
+        val mapSearch = when (place.category) {
+            "Naturaleza" -> "rutas de senderismo aptas para perros"
+            "Playas" -> "playas para perros y playas caninas"
+            "Comer" -> "terrazas y restaurantes que admiten perros"
+            "Alojarse" -> "alojamientos pet friendly que admiten perros"
+            else -> place.name
+        }
+        AlertDialog(
+            onDismissRequest = { selectedPlace = null },
+            icon = { Text(place.emoji, fontSize = 30.sp) },
+            title = { Text(place.name, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(place.detail, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val point = currentCoordinates
+                    val encoded = Uri.encode(mapSearch + if (point == null) " cerca de mí" else "")
+                    val url = if (point != null) {
+                        "https://www.google.com/maps/search/$encoded/@${point.first},${point.second},13z"
+                    } else "https://www.google.com/maps/search/$encoded"
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    selectedPlace = null
+                }) { Text("Buscar opciones en Maps") }
+            },
+            dismissButton = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { onToggleSave(place.name) }) {
+                        Icon(if (place.name in savedPlaces) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, null)
+                        Spacer(Modifier.width(5.dp))
+                        Text(if (place.name in savedPlaces) "Guardado" else "Guardar idea")
+                    }
+                    TextButton(onClick = { selectedPlace = null }) { Text("Cerrar") }
+                }
+            }
+        )
+    }
 }
 
 @Composable
-private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
-    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
+private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: () -> Unit) {
+    Surface(
+        onClick = onOpen,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(25.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp
+    ) {
         Column {
-            AsyncImage(
-                model = place.imageUrl,
-                contentDescription = place.name,
-                modifier = Modifier.fillMaxWidth().height(142.dp),
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop
-            )
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(58.dp).clip(RoundedCornerShape(17.dp)).background(place.color), contentAlignment = Alignment.Center) {
-                    Text(place.emoji, fontSize = 29.sp)
+            Box(Modifier.fillMaxWidth().height(178.dp)) {
+                AsyncImage(
+                    model = place.imageUrl,
+                    contentDescription = place.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(listOf(Color.Transparent, Color(0x990E211B)))
+                    )
+                )
+                Surface(
+                    modifier = Modifier.align(Alignment.TopStart).padding(13.dp),
+                    color = Color.White.copy(alpha = .94f),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Text(
+                        place.category.uppercase(),
+                        modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+                        color = Forest,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 1.sp
+                    )
                 }
-                Spacer(Modifier.width(13.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(place.category.uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text(place.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text(place.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                IconButton(
+                    onClick = onSave,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(7.dp)
+                        .background(Color.White.copy(alpha = .94f), CircleShape)
+                ) {
+                    Icon(
+                        if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                        contentDescription = if (saved) "Quitar de guardados" else "Guardar idea",
+                        tint = Forest
+                    )
                 }
-                IconButton(onClick = onSave) {
-                    Icon(if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "Guardar", tint = MaterialTheme.colorScheme.primary)
+                Column(
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 17.dp, vertical = 15.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(place.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(place.detail, color = Color.White.copy(alpha = .9f), fontSize = 12.sp)
                 }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    place.description,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Filled.ArrowForward, contentDescription = "Ver idea", tint = MaterialTheme.colorScheme.primary)
+            }
         }
     }
 }
