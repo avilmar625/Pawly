@@ -57,6 +57,10 @@ Aprender añade guías de adopción responsable y actuación ante perros perdido
 
 Las reglas de Firestore han cambiado para validar las nuevas categorías. Despliega la versión actualizada antes de probar las publicaciones: `firebase deploy --only firestore:rules`. El envío automático de push entre usuarios sigue necesitando un backend de confianza; no se simula desde el cliente ni se expone una clave de servidor.
 
+## Rediseño visual (cambios26)
+
+La rama `cambios26` introduce navegación Material 3, fotografías editoriales en Inicio/Explorar/Diario/Comunidad, estados vacíos más cuidados y adaptación inicial al tema. Las imágenes editoriales son remotas y requieren internet. La adaptación de las pantallas heredadas al modo oscuro sigue en progreso. Detalles en [docs/CHANGES26.md](docs/CHANGES26.md).
+
 ## Personalización y experiencia (cambios25)
 
 La rama `cambios25` inicia una capa de preferencias globales accesible desde el icono de ajustes de la barra superior:
