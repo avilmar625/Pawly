@@ -7,7 +7,7 @@ import android.net.Uri
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -169,9 +169,11 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                         busy = true
                         scope.launch {
                             try {
-                                val googleOption = GetGoogleIdOption.Builder()
-                                    .setFilterByAuthorizedAccounts(false)
-                                    .setServerClientId(webClientId)
+                                // Este botón explícito debe usar el flujo Sign in with Google.
+                                // GetGoogleIdOption está pensado para la hoja de selección/auto-login;
+                                // GetSignInWithGoogleOption abre el flujo de botón y permite elegir cuenta
+                                // incluso cuando Credential Manager no encuentra credenciales guardadas.
+                                val googleOption = GetSignInWithGoogleOption.Builder(webClientId)
                                     .build()
                                 val request = GetCredentialRequest.Builder()
                                     .addCredentialOption(googleOption)
