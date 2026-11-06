@@ -144,7 +144,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         item {
             Text("EXPLORA", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
             Text("El mundo es mejor\ncuando vais juntos.", style = MaterialTheme.typography.headlineLarge)
-            Text("Ideas para vuestra próxima aventura.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+            Text("Ideas para vuestra próxima aventura.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
             FilledTonalButton(
                 onClick = {
@@ -165,7 +165,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Busca un lugar real", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Text("Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    Text("Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = mapSearchQuery,
                         onValueChange = { mapSearchQuery = it },
@@ -200,7 +200,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 val point = "$latitude,$longitude"
                 val searches = listOf("Parques caninos" to "parques para perros", "Protectoras" to "protectoras de animales", "Veterinarios" to "veterinarios", "Urgencias veterinarias" to "urgencias veterinarias 24 horas", "Playas caninas" to "playas para perros", "Restaurantes dog-friendly" to "restaurantes que admiten perros", "Alojamientos" to "alojamientos que admiten perros", "Rutas" to "rutas de senderismo aptas para perros")
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Cerca de la ubicación obtenida", color = ForestLight, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text("Cerca de la ubicación obtenida", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                     searches.forEach { (label, term) ->
                         TextButton(onClick = {
                             val encoded = Uri.encode(term)
@@ -223,10 +223,10 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 shape = RoundedCornerShape(16.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = Paper,
-                    focusedContainerColor = Paper,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
                     unfocusedBorderColor = Line,
-                    focusedBorderColor = Forest
+                    focusedBorderColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
@@ -239,7 +239,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                         label = { Text(item, fontSize = 11.sp) },
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Forest,
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = Color.White
                         )
                     )
@@ -260,13 +260,13 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         }
         item { SectionHeading("Ideas para vuestra próxima salida", "Guarda categorías e inicia búsquedas reales cuando quieras") }
         if (visible.isEmpty()) {
-            item { Text("No hay resultados. Prueba con otra búsqueda.", color = Muted, modifier = Modifier.padding(12.dp)) }
+            item { Text("No hay resultados. Prueba con otra búsqueda.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
         }
         items(visible) { place ->
             PlaceCard(place = place, saved = place.name in savedPlaces, onSave = { onToggleSave(place.name) })
         }
         item {
-            Text("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar.", color = Muted, fontSize = 11.sp)
+            Text("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
@@ -289,7 +289,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onSave: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text(place.category.uppercase(), color = MaterialTheme.colorScheme.primary, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text(place.name, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text(place.detail, color = Muted, fontSize = 11.sp)
+                    Text(place.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
                 IconButton(onClick = onSave) {
                     Icon(if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, contentDescription = "Guardar", tint = MaterialTheme.colorScheme.primary)
