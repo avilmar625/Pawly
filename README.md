@@ -4,7 +4,7 @@
 
 Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana con animales de compañía: perfiles multi-especie, cuidados, aprendizaje, lugares, recuerdos y comunidad.
 
-> Estado: proyecto en desarrollo. La interfaz principal está implementada en Jetpack Compose. Parte del contenido sigue siendo demostrativo y las funciones que no estén conectadas a almacenamiento o servicios externos se indican expresamente en la aplicación.
+> Estado: proyecto en desarrollo activo. La comunidad utiliza Firebase Authentication y Firestore; la ficha/diario y los datos compartidos de mascotas tienen sincronización por mascota. Las fotos y vídeos de comunidad se alojan en Cloudinary. Las funciones aún locales o pendientes de backend se detallan en [la guía de configuración](docs/FIREBASE_SETUP.md). Para activar Firebase y multimedia hacen falta archivos locales y pasos de consola; no se incluyen credenciales en Git.
 
 ## Creadores
 
@@ -17,7 +17,7 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 - **Explorar:** búsqueda y filtros por categorías, con ideas genéricas y favoritos guardados en el dispositivo.
 - **Salud:** fechas por mascota y recordatorios locales con fecha y hora para vacunas, desparasitación y revisiones. Android puede retrasar avisos por ahorro de batería; no ofrece pautas veterinarias.
 - **Diario:** recuerdos de texto persistentes, con recuento actualizado.
-- **Persistencia local:** perfil, tareas, favoritos y diario se conservan entre sesiones en el dispositivo; no hay sincronización ni cuenta.
+- **Persistencia y sincronización:** la app conserva datos locales para uso sin conexión y sincroniza con Firebase las áreas conectadas cuando hay sesión y red. No todas las preferencias, recordatorios o marcas diarias se sincronizan.
 
 ## Exportación y uso compartido
 
@@ -229,7 +229,8 @@ La función requiere iniciar sesión y verificar el correo electrónico. La invi
 
 Para activar los cambios de backend:
 ```bash
-npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes --project pawly-83dca
+firebase use
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 La subida de imágenes en mensajes reutiliza Cloudinary. Las notificaciones push automáticas siguen necesitando una función backend de confianza; no se han añadido credenciales privadas ni se ha activado facturación.
@@ -249,3 +250,12 @@ En la pestaña de compartir se puede invitar con dos niveles: **Puede editar** o
 - Si Firebase o Cloudinary no están disponibles, se conserva la copia local.
 
 Limitaciones: Cloudinary unsigned entrega URLs públicas para quien las conozca; no hay cifrado privado E2E. Agenda rápida y checks del día siguen siendo locales. Push automático requiere backend confiable y Blaze/Cloud Functions, que no se activa. El borrado integral de cuentas también necesita backend y operación. Requiere pruebas físicas y revisión legal antes de publicar.
+
+
+## cambios36 · Preparación de Firebase y multimedia
+
+- Se separan los presets unsigned de Cloudinary para imágenes y vídeos, manteniendo compatibilidad temporal con el antiguo `CLOUDINARY_UPLOAD_PRESET`.
+- La guía de Firebase se ha actualizado para reflejar el estado real de la app, el despliegue de reglas/índices, las limitaciones del plan gratuito y las pruebas con dos cuentas.
+- La guía de Cloudinary explica formatos admitidos, límites aplicados por el cliente, privacidad de las URL y los riesgos de presets unsigned.
+- La configuración real sigue siendo local: `app/google-services.json` y `local.properties`. No se suben al repositorio.
+- Esta rama no crea ni modifica proyectos en las consolas de Firebase/Cloudinary y no activa facturación.
