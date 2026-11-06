@@ -170,4 +170,5 @@ La rama `cambios18` introduce un rediseño más marcado de Inicio y de la navega
 ## Últimos cambios de desarrollo
 
 - [cambios20: sincronización del pasaporte sanitario y rutinas con Firestore](docs/CHANGES20.md).
+- [cambios21: identidad estable de mascotas y continuidad del historial al cambiar el nombre](docs/CHANGES21.md).
 - [Configuración de Firebase](docs/FIREBASE_SETUP.md).
