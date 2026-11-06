@@ -216,8 +216,6 @@ private fun PawlyMainApp(
                             Tab.DIARY -> Icons.Filled.AutoStories
                             Tab.COMMUNITY -> Icons.Filled.Groups
                             Tab.MORE -> Icons.Filled.MoreHoriz
-                            Tab.LEARN -> Icons.Filled.MenuBook
-                            Tab.DIARY -> Icons.Filled.AutoStories
                         }
                         Column(
                             Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
