@@ -54,16 +54,18 @@ final class PawlyPetStore: ObservableObject {
                     photoURL:item["photoUrl"] as? String ?? "",species:item["species"] as? String ?? "Perro")
             }
             var sharedPets:[PawlyPet]=[]
-            let accepted=try await db.collection("petInvitations").whereField("inviteeUid",isEqualTo:uid)
-                .whereField("status",isEqualTo:"accepted").limit(to:30).getDocuments()
-            for invitation in accepted.documents {
-                guard let sharedID=invitation.get("sharedPetId") as? String else { continue }
-                let root=try await db.collection("sharedPets").document(sharedID).getDocument()
-                guard root.exists,let owner=root.get("ownerUid") as? String,let petID=root.get("petId") as? String else { continue }
-                let profile=try await root.reference.collection("profile").document("current").getDocument()
-                let name=profile.get("name") as? String ?? root.get("name") as? String ?? "Mascota compartida"
-                sharedPets.append(PawlyPet(id:petID,name:name,breed:"",age:"",description:"Perfil compartido",
-                    photoURL:profile.get("photoUrl") as? String ?? "",species:"Mascota",ownerUID:owner))
+            if Auth.auth().currentUser?.isEmailVerified == true {
+                let accepted=try await db.collection("petInvitations").whereField("inviteeUid",isEqualTo:uid)
+                    .whereField("status",isEqualTo:"accepted").limit(to:30).getDocuments()
+                for invitation in accepted.documents {
+                    guard let sharedID=invitation.get("sharedPetId") as? String else { continue }
+                    let root=try await db.collection("sharedPets").document(sharedID).getDocument()
+                    guard root.exists,let owner=root.get("ownerUid") as? String,let petID=root.get("petId") as? String else { continue }
+                    let profile=try await root.reference.collection("profile").document("current").getDocument()
+                    let name=profile.get("name") as? String ?? root.get("name") as? String ?? "Mascota compartida"
+                    sharedPets.append(PawlyPet(id:petID,name:name,breed:"",age:"",description:"Perfil compartido",
+                        photoURL:profile.get("photoUrl") as? String ?? "",species:"Mascota",ownerUID:owner))
+                }
             }
             pets=ownedPets+sharedPets
             if !pets.contains(where: { $0.id == selectedPetID && $0.ownerUID == nil }) &&
