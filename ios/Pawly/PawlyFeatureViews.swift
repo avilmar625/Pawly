@@ -346,7 +346,7 @@ struct PeopleSearchSheet:View {
                         HStack {
                             Button(user.following ? "Siguiendo" : "Seguir") {
                                 Task {
-                                    do {try await store.setFollowing(user,follow:!user.following);try await searchNow()}
+                                    do {try await store.setFollowing(user,follow:!user.following);await searchNow()}
                                     catch {status=error.localizedDescription}
                                 }
                             }.buttonStyle(.borderedProminent).tint(PawlyColors.primary)
@@ -374,7 +374,7 @@ struct PeopleSearchSheet:View {
         }
     }
     private func search(){Task{await searchNow()}}
-    @MainActor private func searchNow() async throws {
+    @MainActor private func searchNow() async {
         loading=true
         do{results=try await store.searchUsers(query);status=results.isEmpty ? "No se han encontrado perfiles públicos.":nil}
         catch{status=error.localizedDescription}
