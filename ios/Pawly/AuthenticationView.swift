@@ -4,6 +4,7 @@ struct AuthenticationView: View {
     @EnvironmentObject private var session: PawlySession
     @State private var isRegistering = false
     @State private var name = ""
+    @State private var username = ""
     @State private var email = ""
     @State private var password = ""
     @State private var message: String?
@@ -28,6 +29,9 @@ struct AuthenticationView: View {
                         if isRegistering {
                             field("Tu nombre", text: $name, icon: "person")
                                 .textInputAutocapitalization(.words)
+                            field("Nombre de usuario", text: $username, icon: "at")
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
                         }
                         field("Correo electrónico", text: $email, icon: "envelope")
                             .keyboardType(.emailAddress)
@@ -56,7 +60,8 @@ struct AuthenticationView: View {
                         .background(PawlyColors.primary, in: RoundedRectangle(cornerRadius: 16))
                         .foregroundStyle(.white)
                     }
-                    .disabled(isWorking || email.isEmpty || password.count < 6 || (isRegistering && name.trimmingCharacters(in: .whitespaces).isEmpty))
+                    .disabled(isWorking || email.isEmpty || password.count < 6 ||
+                              (isRegistering && (name.trimmingCharacters(in: .whitespaces).isEmpty || username.isEmpty)))
                     .opacity(isWorking ? 0.7 : 1)
                     if !isRegistering {
                         Button("He olvidado mi contraseña") {
@@ -98,7 +103,7 @@ struct AuthenticationView: View {
         defer { isWorking = false }
         do {
             if isRegistering {
-                try await session.register(email: email, password: password, displayName: name)
+                try await session.register(email: email, password: password, displayName: name, username: username)
                 message = "Cuenta creada. Revisa tu correo para verificarla."
                 isError = false
             } else {
