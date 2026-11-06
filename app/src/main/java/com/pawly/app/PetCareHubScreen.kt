@@ -40,6 +40,7 @@ import java.time.LocalDate
 import java.util.UUID
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.data.FirebasePetCareRepository
+import com.pawly.app.care.data.PetShareInvitation
 import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.model.PassportEntry
