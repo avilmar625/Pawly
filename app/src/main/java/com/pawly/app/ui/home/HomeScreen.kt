@@ -54,7 +54,7 @@ internal fun HomeScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text("HOLA, QUÉ ALEGRÍA VEROS", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-                    Text(dateLabel, color = Muted, style = MaterialTheme.typography.bodySmall)
+                    Text(dateLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Surface(onClick = onAbout, shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
@@ -92,14 +92,14 @@ internal fun HomeScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text("La rutina de hoy", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-                    Text(if (completed == 2) "¡Todo al día! Qué bien lo hacéis." else "Pequeños cuidados que suman.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                    Text(if (completed == 2) "¡Todo al día! Qué bien lo hacéis." else "Pequeños cuidados que suman.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Text("$completed de 2", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
             LinearProgressIndicator(
                 progress = { completed / 2f },
                 modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
-                color = ForestLight,
+                color = MaterialTheme.colorScheme.primaryLight,
                 trackColor = Line
             )
         }
@@ -131,8 +131,8 @@ internal fun HomeScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Vuestra próxima aventura", style = MaterialTheme.typography.titleLarge, color = Ink)
-                        Text("Planes para salir de la rutina.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                        Text("Vuestra próxima aventura", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Planes para salir de la rutina.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                     TextButton(onClick = onExplore) { Text("Ver todo") }
                 }
@@ -151,7 +151,7 @@ internal fun HomeScreen(
         item {
             Text(
                 "HECHO PARA COMPARTIR MÁS VIDA JUNTOS",
-                color = Muted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.2.sp,
@@ -254,7 +254,7 @@ private fun HomeRoutineCard(
             }
             Spacer(Modifier.width(13.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(helper, color = Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
+                Text(helper, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
                 Text(title, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -274,7 +274,7 @@ private fun HomeFeatureCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(25.dp),
-        color = Forest
+        color = MaterialTheme.colorScheme.primary
     ) {
         Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -314,7 +314,7 @@ private fun HomeLearnCard(onClick: () -> Unit) {
 internal fun SectionHeading(title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge)
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = Muted)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -327,7 +327,7 @@ internal fun TaskRow(
     onChecked: (Boolean) -> Unit,
     tint: Color
 ) {
-    Surface(shape = RoundedCornerShape(18.dp), color = Color.White, shadowElevation = 1.dp) {
+    Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
         Row(
             Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(horizontal = 15.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -338,7 +338,7 @@ internal fun TaskRow(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-                Text(subtitle, color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
         }
