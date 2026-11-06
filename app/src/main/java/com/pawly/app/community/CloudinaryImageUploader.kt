@@ -31,8 +31,9 @@ internal class CloudinaryImageUploader(private val context: Context) {
         .build()
 
     suspend fun upload(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
-        val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
-        val uploadPreset = BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET.trim()
+        val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
+        val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null) ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
+        val uploadPreset = (servicePreferences.getString("cloudinary_image_preset", null) ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
             "Configura CLOUDINARY_CLOUD_NAME y el preset Cloudinary correspondiente en local.properties para subir fotografías."
         }
@@ -69,8 +70,9 @@ internal class CloudinaryImageUploader(private val context: Context) {
 
 
     suspend fun uploadVideo(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
-        val cloudName = BuildConfig.CLOUDINARY_CLOUD_NAME.trim()
-        val uploadPreset = BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET.trim()
+        val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
+        val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null) ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
+        val uploadPreset = (servicePreferences.getString("cloudinary_video_preset", null) ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
             "Configura CLOUDINARY_CLOUD_NAME y el preset Cloudinary correspondiente en local.properties para subir vídeos."
         }
