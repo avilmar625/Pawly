@@ -2,6 +2,7 @@
 
 ## Funciones añadidas
 - Adjuntar fotografías a mensajes privados.
+- Invitaciones de perfiles de mascota con permisos seleccionables de editor o lector.
 - Cargar fotografías usando Cloudinary y la sesión verificada.
 - Confirmación de lectura por mensaje con el campo `readBy`.
 - Etiqueta «Visto» en mensajes propios cuando el destinatario los ha leído.
@@ -27,5 +28,5 @@ Desplegar reglas e índices de Firestore desde la raíz del proyecto:
 
 ## Pendiente
 - Notificaciones push reales requieren Cloud Functions/otro backend de confianza y decisión explícita sobre el plan de facturación.
-- Los perfiles compartidos de mascota todavía no exponen pasaporte y rutinas a cuidadores; la migración debe ser transaccional y no destructiva.
+- Los perfiles compartidos de mascota todavía no exponen pasaporte y rutinas a cuidadores; los roles editor/lector ya se guardan, pero sus permisos sobre datos sanitarios deben conectarse al nuevo repositorio compartido antes de habilitar el acceso.
 - Sin compilación local ni despliegue de Firebase confirmados en esta rama.
