@@ -66,10 +66,10 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp)) {
-                Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp), tonalElevation = 1.dp) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(profile?.photoUrl.orEmpty(), name, 58)
+                        Avatar(profile?.photoUrl.orEmpty(), name, 68)
                         Spacer(Modifier.width(10.dp))
                         Column {
                             Text(name.ifBlank { "Tu perfil" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
@@ -126,7 +126,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
             }
         }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
-        if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primaryLight) }
+        if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primary) }
         item {
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -140,7 +140,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
                         Icon(Icons.Default.DeleteForever, null)
                         Text(if (accountDeletionSubmitted) "Solicitud enviada" else "Solicitar eliminación de cuenta")
                     }
-                    if (accountDeletionSubmitted) Text("Solicitud registrada. El equipo deberá verificarla y completar la eliminación de datos.", color = MaterialTheme.colorScheme.primaryLight, style = MaterialTheme.typography.bodySmall)
+                    if (accountDeletionSubmitted) Text("Solicitud registrada. El equipo deberá verificarla y completar la eliminación de datos.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -187,7 +187,7 @@ internal fun DogProfileCard(dog: PawlyDog, onClick: (() -> Unit)? = null) {
                 Text(dog.name, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 Text(listOf(dog.species, dog.breed, dog.age).filter { it.isNotBlank() }.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 if (dog.description.isNotBlank()) Text(dog.description, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                if (dog.traits.isNotEmpty()) Text(dog.traits.joinToString(" · "), color = MaterialTheme.colorScheme.primaryLight, style = MaterialTheme.typography.labelSmall)
+                if (dog.traits.isNotEmpty()) Text(dog.traits.joinToString(" · "), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
             }
         }
     }
