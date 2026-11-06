@@ -2,6 +2,10 @@ package com.pawly.app
 
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import coil3.compose.AsyncImage
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,7 +27,7 @@ import com.pawly.app.content.PawlyLearningLibrary
 import kotlinx.coroutines.CancellationException
 
 @Composable
-internal fun LearningHubScreen(dogName: String) {
+internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) {
     val context = LocalContext.current
     val communityRepository = remember(context) { FirebaseCommunityRepository.create(context) }
     var dogProfile by remember(dogName) { mutableStateOf<PawlyDog?>(null) }
@@ -98,6 +102,21 @@ internal fun LearningHubScreen(dogName: String) {
         Modifier.fillMaxSize().background(Cream).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        if (elegantDesign) {
+            Box(Modifier.fillMaxWidth().height(218.dp).clip(RoundedCornerShape(28.dp))) {
+                AsyncImage(
+                    model = "https://images.unsplash.com/photo-1537151608828-ea2b11777ee8?w=1200&h=700&fit=crop",
+                    contentDescription = "Perro explorando la naturaleza",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
+                Column(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("PAWLY · APRENDER Y DESCUBRIR", color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
+                    Text("Un mundo mejor para ellos.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                }
+            }
+        }
         Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("PAWLY · APRENDER Y DESCUBRIR", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
             Text("Un mundo mejor para ellos.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
