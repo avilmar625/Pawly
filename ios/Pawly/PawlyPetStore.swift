@@ -77,19 +77,36 @@ final class PawlyPetStore: ObservableObject {
     }
     func select(_ pet: PawlyPet) { selectedPetID = pet.id }
 
-    func savePet(name: String, breed: String, age: String, species: String, description: String) async throws {
+    func savePet(name: String, breed: String, age: String, species: String, description: String, photoURL: String = "") async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean.count <= 40 else { throw PawlyStoreError.invalidPetName }
         let pet = PawlyPet(id: UUID().uuidString, name: clean, breed: breed.trimmingCharacters(in: .whitespacesAndNewlines),
                            age: age.trimmingCharacters(in: .whitespacesAndNewlines), description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-                           photoURL: "", species: species)
+                           photoURL: photoURL, species: species)
         var updatedOwned = pets.filter { $0.ownerUID == nil }
         updatedOwned.append(pet)
         try await db.collection("users").document(uid).updateData(["dogProfiles": updatedOwned.map(encode)])
         pets = updatedOwned + pets.filter { $0.ownerUID != nil }
         selectedPetID = pet.id
     }
+    func updatePet(_ original: PawlyPet, name: String, breed: String, age: String, species: String, description: String, photoURL: String) async throws {
+        guard let uid else { throw PawlyStoreError.notSignedIn }
+        guard original.ownerUID == nil else { throw PawlyStoreError.noSharedAccess }
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean.count <= 40 else { throw PawlyStoreError.invalidPetName }
+        let updated = PawlyPet(id: original.id, name: clean,
+            breed: breed.trimmingCharacters(in: .whitespacesAndNewlines),
+            age: age.trimmingCharacters(in: .whitespacesAndNewlines),
+            description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+            photoURL: photoURL, species: species)
+        var owned = pets.filter { $0.ownerUID == nil }
+        guard let index = owned.firstIndex(where: { $0.id == original.id }) else { throw PawlyStoreError.petNotFound }
+        owned[index] = updated
+        try await db.collection("users").document(uid).updateData(["dogProfiles": owned.map(encode)])
+        pets = owned + pets.filter { $0.ownerUID != nil }
+    }
+
     private func encode(_ pet: PawlyPet) -> [String: Any] {
         ["id": pet.id, "name": pet.name, "breed": pet.breed, "age": pet.age, "description": pet.description,
          "photoUrl": pet.photoURL, "species": pet.species, "traits": [String]()]
