@@ -7,14 +7,20 @@ struct PawlyCloudinaryUploader {
     private var videoPreset: String { Bundle.main.object(forInfoDictionaryKey:"CLOUDINARY_VIDEO_UPLOAD_PRESET") as? String ?? "" }
 
     func uploadImage(_ data: Data, folder: String, ownerUID: String) async throws -> String {
-        guard let image=UIImage(data:data), let jpeg=image.jpegData(compressionQuality:0.82) else { throw PawlyMediaError.invalidImage }
+        guard let image=UIImage(data:data) else { throw PawlyMediaError.invalidImage }
+        let longest=max(image.size.width*image.scale,image.size.height*image.scale)
+        let factor=min(1,1600/max(longest,1))
+        let target=CGSize(width:image.size.width*factor,height:image.size.height*factor)
+        let format=UIGraphicsImageRendererFormat(); format.scale=1
+        let resized=UIGraphicsImageRenderer(size:target,format:format).image { image.draw(in:CGRect(origin:.zero,size:target)) }
+        guard let jpeg=resized.jpegData(compressionQuality:0.82) else { throw PawlyMediaError.invalidImage }
         guard jpeg.count <= 8*1024*1024 else { throw PawlyMediaError.imageTooLarge }
         return try await upload(bytes:jpeg,filename:"pawly-image.jpg",mime:"image/jpeg",resource:"image",
                                 preset:imagePreset,folder:folder,ownerUID:ownerUID)
     }
     func uploadVideo(_ data: Data, folder: String, ownerUID: String) async throws -> String {
         guard data.count <= 40*1024*1024 else { throw PawlyMediaError.videoTooLarge }
-        return try await upload(bytes:data,filename:"pawly-video.mp4",mime:"video/mp4",resource:"video",
+        return try await upload(bytes:data,filename:"pawly-video.mov",mime:"video/quicktime",resource:"video",
                                 preset:videoPreset,folder:folder,ownerUID:ownerUID)
     }
     private func upload(bytes:Data,filename:String,mime:String,resource:String,preset:String,folder:String,ownerUID:String) async throws -> String {
