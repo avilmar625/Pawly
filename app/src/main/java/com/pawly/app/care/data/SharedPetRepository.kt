@@ -50,7 +50,8 @@ class SharedPetRepository(
         }.await()
     }
 
-    suspend fun inviteByUsername(petId: String, username: String) {
+    suspend fun inviteByUsername(petId: String, username: String, role: String = "editor") {
+        require(role in setOf("editor", "reader")) { "Selecciona un permiso válido." }
         val clean = username.trim().removePrefix("@").lowercase()
         require(clean.matches(Regex("[a-z0-9_.]{3,24}"))) { "Escribe un nombre de usuario válido." }
         val ownerUid = uid()
@@ -72,7 +73,7 @@ class SharedPetRepository(
             "ownerUid" to ownerUid,
             "ownerName" to (ownerProfile.getString("displayName") ?: ownerProfile.getString("username") ?: "Usuario Pawly"),
             "inviteeUid" to inviteeUid, "inviteeUsername" to clean,
-            "role" to "editor", "status" to "pending",
+            "role" to role, "status" to "pending",
             "createdAt" to FieldValue.serverTimestamp()
         )).await()
     }
