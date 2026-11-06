@@ -26,6 +26,12 @@ targets:
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Pawly necesita acceso a tus fotos para añadir imágenes de tus mascotas.
         INFOPLIST_KEY_NSCameraUsageDescription: Pawly necesita la cámara para hacer fotos de tus mascotas.
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Pawly puede usar tu ubicación para mostrar lugares y servicios cercanos para mascotas.
+        CLOUDINARY_CLOUD_NAME: ""
+        CLOUDINARY_IMAGE_UPLOAD_PRESET: ""
+        CLOUDINARY_VIDEO_UPLOAD_PRESET: ""
+        INFOPLIST_KEY_CLOUDINARY_CLOUD_NAME: "$(CLOUDINARY_CLOUD_NAME)"
+        INFOPLIST_KEY_CLOUDINARY_IMAGE_UPLOAD_PRESET: "$(CLOUDINARY_IMAGE_UPLOAD_PRESET)"
+        INFOPLIST_KEY_CLOUDINARY_VIDEO_UPLOAD_PRESET: "$(CLOUDINARY_VIDEO_UPLOAD_PRESET)"
         CODE_SIGN_STYLE: Automatic
     dependencies:
       - package: Firebase
