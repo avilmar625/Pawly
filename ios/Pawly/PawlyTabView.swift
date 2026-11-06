@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseFirestore
 
 struct PawlyTabView: View {
     @EnvironmentObject private var session: PawlySession
@@ -28,7 +29,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Hola, (session.user?.displayName?.components(separatedBy: " ").first ?? "bienvenido")")
+                            Text("Hola, \(session.user?.displayName?.components(separatedBy: " ").first ?? "bienvenido")")
                                 .font(.title2.bold()).foregroundStyle(PawlyColors.ink)
                             Text("Un día más de aventuras juntos")
                                 .font(.subheadline).foregroundStyle(PawlyColors.muted)
@@ -102,7 +103,7 @@ struct HomeView: View {
 struct CommunityView: View {
     var body: some View {
         NavigationStack {
-            ContentUnavailableView("Comunidad Pawly", systemImage: "person.3", description: Text("Aquí aparecerán publicaciones, perfiles y conversaciones. Estamos conectando las funciones sociales con Firebase."))
+            PawlyPlaceholderView(title: "Comunidad Pawly", icon: "person.3", detail: "Aquí aparecerán publicaciones, perfiles y conversaciones. Estamos conectando las funciones sociales con Firebase.")
                 .navigationTitle("Comunidad")
         }
     }
@@ -111,9 +112,31 @@ struct CommunityView: View {
 struct DiaryView: View {
     var body: some View {
         NavigationStack {
-            ContentUnavailableView("Tus recuerdos", systemImage: "book.closed", description: Text("El diario de aventuras y recuerdos se incorporará en la siguiente fase del port."))
+            PawlyPlaceholderView(title: "Tus recuerdos", icon: "book.closed", detail: "El diario de aventuras y recuerdos se incorporará en la siguiente fase del port.")
                 .navigationTitle("Recuerdos")
         }
+    }
+}
+
+struct PawlyPlaceholderView: View {
+    let title: String
+    let icon: String
+    let detail: String
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 36, weight: .medium))
+                .foregroundStyle(PawlyColors.primary)
+                .padding(20)
+                .background(PawlyColors.mint, in: Circle())
+            Text(title).font(.title2.bold()).foregroundStyle(PawlyColors.ink)
+            Text(detail).font(.subheadline).multilineTextAlignment(.center)
+                .foregroundStyle(PawlyColors.muted)
+                .padding(.horizontal, 28)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(PawlyColors.canvas)
     }
 }
 
