@@ -56,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
+import kotlinx.coroutines.launch
 
 internal enum class Tab(val label: String) {
     HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más")
