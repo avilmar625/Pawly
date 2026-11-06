@@ -126,11 +126,11 @@ internal fun HealthScreen(
         item {
             Surface(shape = RoundedCornerShape(23.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                 Row(Modifier.fillMaxWidth().padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
+                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.width(13.dp))
                     Column {
-                        Text("Su salud, siempre a mano", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("Una agenda sencilla para no olvidar nada.", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 11.sp)
+                        Text("Pasaporte de bienestar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("Vacunas, revisiones y cuidados de $dogName en un solo lugar.", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 11.sp)
                     }
                 }
             }
