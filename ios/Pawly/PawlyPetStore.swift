@@ -21,6 +21,9 @@ struct PawlyCareTask: Identifiable {
 struct PawlyDiaryEntry: Identifiable {
     var id: String; var text: String; var position: Int; var updatedAt: Date?
 }
+struct PawlyPetInvitation:Identifiable {
+    var id:String;var sharedPetID:String;var petName:String;var ownerName:String;var ownerUID:String;var role:String
+}
 
 @MainActor
 final class PawlyPetStore: ObservableObject {
@@ -140,6 +143,56 @@ final class PawlyPetStore: ObservableObject {
             if !member.exists { throw PawlyStoreError.noSharedAccess }
         }
     }
+    func invite(_ username:String,role:String,pet:PawlyPet) async throws {
+        guard let uid else { throw PawlyStoreError.notSignedIn }
+        guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyStoreError.verifyEmail }
+        guard role == "editor" || role == "reader" else { throw PawlyStoreError.invalidTask }
+        try await ensureSharedPet(pet)
+        let root=try sharedRoot(pet)
+        let key=username.trimmingCharacters(in:.whitespacesAndNewlines).replacingOccurrences(of:"@",with:"").lowercased()
+        guard key.range(of:"^[a-z0-9_.]{3,24}$",options:.regularExpression) != nil else { throw PawlyStoreError.invalidUsername }
+        let usernameDoc=try await db.collection("usernames").document(key).getDocument()
+        guard let invitee=usernameDoc.get("uid") as? String,invitee != uid else { throw PawlyStoreError.invalidInvitee }
+        let member=try await root.collection("members").document(invitee).getDocument()
+        guard !member.exists else { throw PawlyStoreError.alreadyMember }
+        let pending=try await db.collection("petInvitations").whereField("sharedPetId",isEqualTo:root.documentID)
+            .whereField("inviteeUid",isEqualTo:invitee).whereField("status",isEqualTo:"pending").limit(to:1).getDocuments()
+        guard pending.isEmpty else { throw PawlyStoreError.invitationPending }
+        let owner=try await db.collection("users").document(uid).getDocument()
+        try await db.collection("petInvitations").document(UUID().uuidString).setData([
+            "sharedPetId":root.documentID,"petName":pet.name,"ownerUid":uid,
+            "ownerName":owner.get("displayName") as? String ?? owner.get("username") as? String ?? "Usuario Pawly",
+            "inviteeUid":invitee,"inviteeUsername":key,"role":role,"status":"pending",
+            "createdAt":FieldValue.serverTimestamp()
+        ])
+    }
+    func pendingInvitations() async throws -> [PawlyPetInvitation] {
+        guard let uid else { throw PawlyStoreError.notSignedIn }
+        let docs=try await db.collection("petInvitations").whereField("inviteeUid",isEqualTo:uid)
+            .whereField("status",isEqualTo:"pending").limit(to:30).getDocuments()
+        return docs.documents.map { d in
+            PawlyPetInvitation(id:d.documentID,sharedPetID:d.get("sharedPetId") as? String ?? "",
+                petName:d.get("petName") as? String ?? "Mascota",ownerName:d.get("ownerName") as? String ?? "Usuario Pawly",
+                ownerUID:d.get("ownerUid") as? String ?? "",role:d.get("role") as? String ?? "editor")
+        }
+    }
+    func respondToInvitation(_ invitation:PawlyPetInvitation,accept:Bool) async throws {
+        guard let uid else { throw PawlyStoreError.notSignedIn }
+        guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyStoreError.verifyEmail }
+        let invitationRef=db.collection("petInvitations").document(invitation.id)
+        let profile=try await db.collection("users").document(uid).getDocument()
+        let memberRef=db.collection("sharedPets").document(invitation.sharedPetID).collection("members").document(uid)
+        let batch=db.batch()
+        if accept {
+            batch.setData(["uid":uid,"role":invitation.role,"invitationId":invitation.id,
+                "displayName":profile.get("displayName") as? String ?? profile.get("username") as? String ?? "Cuidador",
+                "username":profile.get("username") as? String ?? "",
+                "joinedAt":FieldValue.serverTimestamp()],forDocument:memberRef)
+        }
+        batch.updateData(["status":accept ? "accepted":"declined","respondedAt":FieldValue.serverTimestamp()],forDocument:invitationRef)
+        try await batch.commit()
+    }
+
     func loadDiary(_ pet: PawlyPet) async throws -> [PawlyDiaryEntry] {
         try await ensureSharedPet(pet)
         let root = try sharedRoot(pet)
@@ -169,7 +222,7 @@ final class PawlyPetStore: ObservableObject {
 }
 
 enum PawlyStoreError: LocalizedError {
-    case notSignedIn, invalidPetName, invalidEntry, invalidTask, invalidDiary, diaryLimit, verifyEmail, noSharedAccess
+    case notSignedIn, invalidPetName, invalidEntry, invalidTask, invalidDiary, diaryLimit, verifyEmail, noSharedAccess, invalidUsername, invalidInvitee, alreadyMember, invitationPending
     var errorDescription:String? {
         switch self {
         case .notSignedIn:return "Inicia sesión para continuar."
@@ -180,6 +233,10 @@ enum PawlyStoreError: LocalizedError {
         case .diaryLimit:return "Has alcanzado el límite de 200 recuerdos."
         case .verifyEmail:return "Verifica tu correo electrónico para activar la sincronización del diario."
         case .noSharedAccess:return "No tienes acceso a este perfil compartido."
+        case .invalidUsername:return "Escribe un nombre de usuario válido (3–24 caracteres)."
+        case .invalidInvitee:return "No se ha encontrado ese usuario o no puedes invitarte a ti mismo."
+        case .alreadyMember:return "Esta persona ya tiene acceso al perfil."
+        case .invitationPending:return "Ya hay una invitación pendiente para esta persona."
         }
     }
 }
