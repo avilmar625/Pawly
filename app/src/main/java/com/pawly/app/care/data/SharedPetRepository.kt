@@ -110,6 +110,9 @@ class SharedPetRepository(
     suspend fun respondToInvitation(invitationId: String, accept: Boolean) {
         val uid = uid()
         val ref = db.collection("petInvitations").document(invitationId)
+        val profile = db.collection("users").document(uid).get().await()
+        val displayName = profile.getString("displayName") ?: profile.getString("username") ?: "Cuidador"
+        val username = profile.getString("username") ?: ""
         db.runTransaction { tx ->
             val invite = tx.get(ref)
             check(invite.exists() && invite.getString("inviteeUid") == uid &&
@@ -118,7 +121,8 @@ class SharedPetRepository(
                 val memberRef = petRef(invite.getString("sharedPetId") ?: "").collection("members").document(uid)
                 tx.set(memberRef, mapOf(
                     "uid" to uid, "role" to (invite.getString("role") ?: "editor"),
-                    "invitationId" to invitationId, "joinedAt" to FieldValue.serverTimestamp()
+                    "invitationId" to invitationId, "displayName" to displayName,
+                    "username" to username, "joinedAt" to FieldValue.serverTimestamp()
                 ))
             }
             tx.update(ref, mapOf("status" to if (accept) "accepted" else "declined",
