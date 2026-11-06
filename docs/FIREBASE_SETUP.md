@@ -87,7 +87,15 @@ CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned
 
 No añadas el API Secret de Cloudinary a Android. El preset unsigned es práctico para pruebas, pero no sustituye cargas firmadas desde un backend para producción.
 
-## 6. Plan gratuito y límites de servicios\n\n- Mantén Firebase en el plan **Spark**: Authentication con Google/correo, Firestore dentro de sus cuotas y FCM son suficientes para cuentas, perfiles, publicaciones, comentarios y chat en tiempo real mientras la app está abierta. Revisa las cuotas de Firestore en la consola.\n- **No uses Firebase Storage** en Spark: los buckets de Cloud Storage for Firebase requieren Blaze.\n- Las imágenes se alojan en Cloudinary, no en Firebase Storage. Su plan gratuito tiene límites propios que pueden cambiar; controla el uso en su Dashboard.\n- FCM puede recibir notificaciones sin coste, pero enviar notificaciones desde el servidor al destinatario exige un backend confiable. Cloud Functions requiere Blaze. En Spark no habrá push automático de mensajes; el chat se sincroniza en tiempo real mientras la app está conectada.\n- No vincules una cuenta de facturación ni actives Blaze para seguir estos pasos.\n\n## 7. Compilar y probar
+## 6. Plan gratuito y límites de servicios
+
+- Mantén Firebase en el plan **Spark**: Authentication con Google/correo, Firestore dentro de sus cuotas y FCM son suficientes para cuentas, perfiles, publicaciones, comentarios y chat en tiempo real mientras la app está abierta. Revisa las cuotas de Firestore en la consola.
+- **No uses Firebase Storage** en Spark: los buckets de Cloud Storage for Firebase requieren Blaze.
+- Las imágenes se alojan en Cloudinary, no en Firebase Storage. Su plan gratuito tiene límites propios que pueden cambiar; controla el uso en su Dashboard.
+- FCM puede recibir notificaciones sin coste, pero enviar notificaciones desde el servidor al destinatario exige un backend confiable. Cloud Functions requiere Blaze. En Spark no habrá push automático de mensajes; el chat se sincroniza en tiempo real mientras la app está conectada.
+- No vincules una cuenta de facturación ni actives Blaze para seguir estos pasos.
+
+## 7. Compilar y probar
 
 Con JDK 17 y Android Studio:
 
@@ -117,7 +125,7 @@ Prueba primero una cuenta de correo y después una segunda cuenta distinta. Veri
 - Configura alertas de presupuesto y revisa el uso de cada servicio.
 
 
-## 8. Datos sanitarios compartidos (cambios30)
+## 10. Datos sanitarios compartidos (cambios30)
 
 Al entrar en Pasaporte o Cuidados con una cuenta, Pawly crea (si aún no existe) el espacio compartido de esa mascota y guarda allí los registros nuevos: `sharedPets/{ownerUid}_{petId}/passport` y `/tasks`. Los perfiles compartidos usan los miembros aceptados del documento `sharedPets`: propietario y editores pueden escribir; lectores solo pueden consultar. Las reglas de Firestore aplican los permisos en servidor, no dependen de ocultar botones en Android.
 
@@ -130,7 +138,7 @@ firebase deploy --only firestore:rules,firestore:indexes
 La selección de mascotas recibidas por invitación y su navegación desde el perfil de otro cuidador se completarán en la siguiente iteración. No compartas una cuenta para probarlo: utiliza dos cuentas verificadas distintas.
 
 
-## 10. Diagnóstico de Google Sign-In
+## 11. Diagnóstico de Google Sign-In
 
 Si el botón de Google muestra un error:
 
