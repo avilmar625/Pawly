@@ -46,6 +46,11 @@ class FirebasePetProfileRepository(
         )
     }
 
+    suspend fun canEditDiary(petId: String): Boolean {
+        val member = root(petId).collection("members").document(uid()).get().await()
+        return member.getString("role") in setOf("owner", "editor")
+    }
+
     suspend fun saveProfile(petId: String, name: String, photoUrl: String?) {
         require(uid() == ownerUid) { "Solo el propietario puede modificar este perfil." }
         val cleanName = PetProfileValidation.name(name)
@@ -65,7 +70,7 @@ class FirebasePetProfileRepository(
 
     /** Replaces the bounded memory book atomically, preserving the visible order. */
     suspend fun replaceDiary(petId: String, entries: List<String>) {
-        require(uid() == ownerUid) { "Solo el propietario puede modificar el diario." }
+        require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
         val cleanEntries = PetProfileValidation.diary(entries)
         val collection = diary(petId)
         val existing = collection.get().await()
