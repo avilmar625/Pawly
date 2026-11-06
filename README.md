@@ -57,6 +57,19 @@ Aprender añade guías de adopción responsable y actuación ante perros perdido
 
 Las reglas de Firestore han cambiado para validar las nuevas categorías. Despliega la versión actualizada antes de probar las publicaciones: `firebase deploy --only firestore:rules`. El envío automático de push entre usuarios sigue necesitando un backend de confianza; no se simula desde el cliente ni se expone una clave de servidor.
 
+## Personalización y experiencia (cambios25)
+
+La rama `cambios25` inicia una capa de preferencias globales accesible desde el icono de ajustes de la barra superior:
+
+- Modo oscuro (base de tema Material 3).
+- Cuatro paletas de acento: bosque, océano, baya y atardecer.
+- Preferencia de idioma guardada localmente: español, inglés o catalán. **La traducción integral de las pantallas existentes aún no está completada**; la selección queda como preferencia para la siguiente fase de internacionalización.
+- Los ajustes de apariencia se conservan en el dispositivo y no se envían a Firebase.
+
+El acceso social ya incluye correo/contraseña y Google mediante Android Credential Manager + Firebase Authentication, además de recuperación de contraseña por correo. Google requiere OAuth configurado y el `google-services.json` local. No se muestran proveedores ficticios: Apple y teléfono quedan pendientes de configuración y desarrollo específico.
+
+El rediseño global se inicia con una barra superior común y un panel de ajustes. El modo oscuro y la adaptación de todas las pantallas heredadas todavía necesitan una pasada de coherencia visual. Consulta [docs/CHANGES25.md](docs/CHANGES25.md).
+
 ## Tecnología
 
 - Kotlin y Android nativo.
