@@ -186,56 +186,42 @@ private fun PawlyMainApp(\n    darkMode: Boolean,\n    accent: String,\n    onDa
             }
         },
         bottomBar = {
-            Surface(
-                color = Color.White,
-                shadowElevation = 12.dp,
-                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = 8.dp,
+                windowInsets = NavigationBarDefaults.windowInsets
             ) {
-                Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding()
-                        .padding(horizontal = 5.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Tab.entries.forEach { tab ->
-                        val active = selected == tab
-                        val tabIcon = when (tab) {
-                            Tab.HOME -> Icons.Filled.Home
-                            Tab.EXPLORE -> Icons.Filled.Explore
-                            Tab.LEARN -> Icons.Filled.MenuBook
-                            Tab.HEALTH -> Icons.Filled.FavoriteBorder
-                            Tab.DIARY -> Icons.Filled.AutoStories
-                            Tab.COMMUNITY -> Icons.Filled.Groups
-                        }
-                        Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
-                                .clickable { selected = tab }
-                                .padding(vertical = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Box(
-                                Modifier.width(42.dp).height(29.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (active) Lime.copy(alpha = .75f) else Color.Transparent),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    tabIcon,
-                                    contentDescription = tab.label,
-                                    tint = if (active) Forest else Muted,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Text(
-                                tab.label,
-                                color = if (active) Forest else Muted,
-                                fontSize = 9.sp,
-                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                maxLines = 1
-                            )
-                        }
+                Tab.entries.forEach { tab ->
+                    val active = selected == tab
+                    val tabIcon = when (tab) {
+                        Tab.HOME -> Icons.Filled.Home
+                        Tab.EXPLORE -> Icons.Filled.Explore
+                        Tab.LEARN -> Icons.Filled.MenuBook
+                        Tab.HEALTH -> Icons.Filled.FavoriteBorder
+                        Tab.DIARY -> Icons.Filled.AutoStories
+                        Tab.COMMUNITY -> Icons.Filled.Groups
                     }
+                    NavigationBarItem(
+                        selected = active,
+                        onClick = { selected = tab },
+                        icon = {
+                            Icon(
+                                tabIcon,
+                                contentDescription = tab.label,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        label = { Text(tab.label, maxLines = 1, fontSize = 10.sp) },
+                        alwaysShowLabel = true,
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
                 }
             }
         }
