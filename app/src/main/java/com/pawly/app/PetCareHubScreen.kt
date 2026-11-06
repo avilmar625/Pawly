@@ -113,7 +113,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
     val context = LocalContext.current
     var entries by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, storageScope)) }
     val cloudRepository = remember(storageScope) {
-        if (storageScope != null) runCatching { FirebasePetCareRepository() }.getOrNull() else null
+        if (storageScope != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = storageScope) }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
     var syncMessage by remember(storageScope) {
@@ -124,6 +124,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
         val repo = cloudRepository ?: return@LaunchedEffect
         cloudLoading = true
         try {
+            repo.ensureSharedPet(petId, petName)
             val remoteEntries = repo.loadPassportEntries(petId)
             if (remoteEntries.isEmpty() && entries.isNotEmpty()) {
                 repo.savePassportEntries(petId, entries)
@@ -264,7 +265,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
     val context = LocalContext.current
     var tasks by remember(petName, storageScope) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, storageScope)) }
     val cloudRepository = remember(storageScope) {
-        if (storageScope != null) runCatching { FirebasePetCareRepository() }.getOrNull() else null
+        if (storageScope != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = storageScope) }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
     var syncMessage by remember(storageScope) {
@@ -275,6 +276,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
         val repo = cloudRepository ?: return@LaunchedEffect
         cloudLoading = true
         try {
+            repo.ensureSharedPet(petId, petName)
             val remoteTasks = repo.loadCareTasks(petId)
             if (remoteTasks.isEmpty() && tasks.isNotEmpty()) {
                 repo.saveCareTasks(petId, tasks)
