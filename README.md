@@ -78,6 +78,10 @@ El acceso social ya incluye correo/contraseña y Google mediante Android Credent
 
 El rediseño global se inicia con una barra superior común y un panel de ajustes. El modo oscuro y la adaptación de todas las pantallas heredadas todavía necesitan una pasada de coherencia visual. Consulta [docs/CHANGES25.md](docs/CHANGES25.md).
 
+## Colaboración y sincronización (cambios30)
+
+El pasaporte sanitario y las rutinas pueden almacenarse en el espacio Firestore compartido de cada mascota. Los permisos de servidor distinguen propietario/editor (lectura y escritura) y lector (solo lectura). El modo sin cuenta conserva el almacenamiento local. Es necesario desplegar las reglas de `firestore.rules` actualizadas antes de probar la sincronización compartida. La navegación para abrir directamente mascotas que otra persona comparte contigo y el envío push automático siguen pendientes; FCM en Android solo registra y recibe tokens hasta desplegar un backend de confianza.
+
 ## Tecnología
 
 - Kotlin y Android nativo.
