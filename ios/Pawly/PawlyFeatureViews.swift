@@ -8,12 +8,11 @@ struct PawlyTabView: View {
     @StateObject private var pets = PawlyPetStore()
     var body: some View {
         TabView {
-            HomeView().tabItem { Label("Inicio",systemImage:"house.fill") }
-            CareView().tabItem { Label("Cuidados",systemImage:"cross.case.fill") }
-            DiaryView().tabItem { Label("Recuerdos",systemImage:"book.closed.fill") }
-            CommunityView().tabItem { Label("Comunidad",systemImage:"person.3.fill") }
-            MessagesView().tabItem { Label("Mensajes",systemImage:"bubble.left.and.bubble.right.fill") }
-            AccountView().tabItem { Label("Cuenta",systemImage:"person.crop.circle") }
+            HomeView().tabItem { Label("Inicio", systemImage: "house.fill") }
+            PawlyExploreView().tabItem { Label("Explorar", systemImage: "map.fill") }
+            CareView().tabItem { Label("Salud", systemImage: "cross.case.fill") }
+            CommunityView().tabItem { Label("Comunidad", systemImage: "person.3.fill") }
+            PawlyMoreHubView().tabItem { Label("Más", systemImage: "square.grid.2x2.fill") }
         }
         .tint(PawlyColors.primary)
         .environmentObject(pets)
@@ -689,29 +688,37 @@ struct AccountView:View {
     @State private var error:String?
     @State private var deletionStatus:String?
     @State private var showDeletionConfirmation=false
-    var body:some View{
-        NavigationStack{
-            Form{
-                Section("Cuenta"){
+    var body:some View {
+        NavigationStack {
+            Form {
+                Section("Cuenta") {
                     LabeledContent("Correo",value:session.user?.email ?? "—")
                     LabeledContent("Verificación",value:session.user?.isEmailVerified == true ? "Verificado":"Pendiente")
+                    NavigationLink { PawlyProfileEditorView() } label:{Label("Editar perfil público",systemImage:"person.crop.circle")}
+                    NavigationLink { PawlySettingsView() } label:{Label("Ajustes de Pawly",systemImage:"slider.horizontal.3")}
                 }
-                Section("Mascotas"){ForEach(pets.pets){pet in Text(pet.name)}}
-                Section("Privacidad"){
+                Section("Mascotas") {
+                    ForEach(pets.pets) { pet in Text(pet.name) }
+                    NavigationLink { PetSharingSheet() } label:{Label("Compartir una mascota",systemImage:"person.2.badge.plus")}
+                }
+                Section("Privacidad") {
                     Button("Solicitar eliminación de cuenta",role:.destructive){showDeletionConfirmation=true}
                     if let deletionStatus { Text(deletionStatus).font(.footnote).foregroundStyle(PawlyColors.muted) }
                 }
-                Section{Button("Cerrar sesión",role:.destructive){do{try session.signOut()}catch{self.error=error.localizedDescription}}}
-                if let error{Text(error).foregroundStyle(.red)}
+                Section { Button("Cerrar sesión",role:.destructive){do{try session.signOut()}catch{self.error=error.localizedDescription}} }
+                if let error { Text(error).foregroundStyle(.red) }
             }
             .navigationTitle("Mi cuenta")
-            .confirmationDialog("¿Solicitar la eliminación de tu cuenta?",isPresented:$showDeletionConfirmation,titleVisibility:.visible){
-                Button("Enviar solicitud",role:.destructive){
-                    Task{do{try await session.requestAccountDeletion();deletionStatus="Solicitud registrada. El equipo debe completar la eliminación de los datos.";error=nil}
-                        catch{self.error=error.localizedDescription}}
+            .confirmationDialog("¿Solicitar la eliminación de tu cuenta?",isPresented:$showDeletionConfirmation,titleVisibility:.visible) {
+                Button("Enviar solicitud",role:.destructive) {
+                    Task { do {
+                        try await session.requestAccountDeletion()
+                        deletionStatus="Solicitud registrada. El backend completará el borrado cuando esté desplegado."
+                        error=nil
+                    } catch { self.error=error.localizedDescription } }
                 }
                 Button("Cancelar",role:.cancel){}
-            }message:{Text("Esto envía una solicitud al equipo de Pawly; no elimina automáticamente tu cuenta ni los archivos almacenados.")}
+            } message:{Text("La solicitud se procesa automáticamente solo cuando se ha desplegado la función de eliminación de Firebase.")}
         }
     }
 }
