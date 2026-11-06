@@ -210,8 +210,9 @@ private fun PawlyMainApp(
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 tonalElevation = 8.dp,
             ) {
-                Tab.entries.forEach { tab ->
-                    val active = selected == tab
+                // Keep the primary navigation focused. Secondary areas live in "Más".
+                listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
+                    val active = if (tab == Tab.MORE) selected == Tab.MORE || selected == Tab.LEARN || selected == Tab.DIARY else selected == tab
                     val tabIcon = when (tab) {
                         Tab.HOME -> Icons.Filled.Home
                         Tab.EXPLORE -> Icons.Filled.Explore
@@ -219,6 +220,7 @@ private fun PawlyMainApp(
                         Tab.HEALTH -> Icons.Filled.FavoriteBorder
                         Tab.DIARY -> Icons.Filled.AutoStories
                         Tab.COMMUNITY -> Icons.Filled.Groups
+                        Tab.MORE -> Icons.Filled.GridView
                     }
                     NavigationBarItem(
                         selected = active,
@@ -284,6 +286,11 @@ private fun PawlyMainApp(
                     onEntriesChange = { diaryEntries = it }
                 )
                 Tab.COMMUNITY -> CommunityScreen()
+                Tab.MORE -> MoreHubScreen(
+                    onLearn = { selected = Tab.LEARN },
+                    onDiary = { selected = Tab.DIARY },
+                    onHealth = { selected = Tab.HEALTH }
+                )
             }
         }
     }
