@@ -107,7 +107,7 @@ internal fun PetCareHubScreen(
                 }
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (if (sharedPetOwnerUid == null) listOf("Agenda", "Pasaporte", "Cuidados", "Compartir") else listOf("Agenda", "Pasaporte", "Cuidados")).forEach { item ->
+                (if (sharedPetOwnerUid == null) listOf("Agenda", "Pasaporte", "Cuidados", "Compartir") else listOf("Pasaporte", "Cuidados")).forEach { item ->
                     FilterChip(
                         selected = section == item,
                         onClick = { section = item },
@@ -151,7 +151,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
         if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
-    var syncMessage by remember(storageScope) {
+    var syncMessage by remember(cloudOwnerUid) {
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
     var cloudLoading by remember(cloudOwnerUid) { mutableStateOf(cloudOwnerUid != null) }
@@ -197,7 +197,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                         Spacer(Modifier.width(8.dp))
                         Text("Pasaporte sanitario", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
-                    Text("Un historial privado para tener a mano vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria.", style = MaterialTheme.typography.bodyMedium)
+                    Text("Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria.", style = MaterialTheme.typography.bodyMedium)
                     Text(syncMessage, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
@@ -239,7 +239,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                         Text(entry.type + " · " + entry.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    TextButton(onClick = {
+                    TextButton(enabled = canEdit, onClick = {
                         entries = entries.filterNot { it.id == entry.id }
                         PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
                         cloudRepository?.let { repo ->
@@ -290,7 +290,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                         }
                         title = ""; detail = ""; date = LocalDate.now().toString(); selectedType = "Vacuna"; showAdd = false
                     }
-                }, enabled = title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text("Guardar") }
+                }, enabled = canEdit && title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text("Guardar") }
             },
             dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancelar") } }
         )
@@ -306,7 +306,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
         if (cloudOwnerUid != null) runCatching { FirebasePetCareRepository(sharedPetOwnerUid = cloudOwnerUid) }.getOrNull() else null
     }
     val coroutineScope = rememberCoroutineScope()
-    var syncMessage by remember(storageScope) {
+    var syncMessage by remember(cloudOwnerUid) {
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
     var cloudLoading by remember(cloudOwnerUid) { mutableStateOf(cloudOwnerUid != null) }
@@ -351,7 +351,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                         Text("Organización de cuidados", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                     Text("Anota las rutinas y quién suele encargarse para que la familia tenga un plan claro.", style = MaterialTheme.typography.bodyMedium)
-                    Text(if (storageScope == null) "Guardado en este dispositivo. La sincronización entre cuidadores llegará en una fase posterior." else syncMessage, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
+                    Text(syncMessage, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                     if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
             }
@@ -379,6 +379,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.Checkbox(
                         checked = task.completed,
+                        enabled = canEdit,
                         onCheckedChange = { checked ->
                             tasks = tasks.map { if (it.id == task.id) it.copy(completed = checked) else it }
                             PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
@@ -397,7 +398,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                         Text(task.title, fontWeight = FontWeight.SemiBold)
                         Text("${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    TextButton(onClick = {
+                    TextButton(enabled = canEdit, onClick = {
                         tasks = tasks.filterNot { it.id == task.id }
                         PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
                         cloudRepository?.let { repo ->
@@ -443,7 +444,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                         }
                         title = ""; responsible = ""; frequency = "Diario"; showAdd = false
                     }
-                }, enabled = title.isNotBlank()) { Text("Guardar") }
+                }, enabled = canEdit && title.isNotBlank()) { Text("Guardar") }
             },
             dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancelar") } }
         )
