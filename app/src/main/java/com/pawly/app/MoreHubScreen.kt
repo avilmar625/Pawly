@@ -22,12 +22,28 @@ import androidx.compose.ui.unit.sp
 internal fun MoreHubScreen(
     onLearn: () -> Unit,
     onDiary: () -> Unit,
-    onHealth: () -> Unit
+    onHealth: () -> Unit,
+    elegantDesign: Boolean = false
 ) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
+        if (elegantDesign) {
+            Box(Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(28.dp))) {
+                coil3.compose.AsyncImage(
+                    model = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=1200&h=700&fit=crop",
+                    contentDescription = "Perro disfrutando al aire libre",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
+                Column(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("TU UNIVERSO PAWLY", color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.8.sp)
+                    Text("Todo lo que compartís, en un mismo lugar.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                }
+            }
+        }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("TU ESPACIO PAWLY", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
             Text("Todo lo vuestro,\nen un mismo lugar.", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -50,13 +66,6 @@ internal fun MoreHubScreen(
             }
         }
         Text("VUESTROS ESPACIOS", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
-        MoreDestinationCard(
-            icon = Icons.Filled.FavoriteBorder,
-            title = "Salud y cuidados",
-            description = "Agenda, pasaporte veterinario, rutinas y tratamientos.",
-            tint = Color(0xFFE5EFE5),
-            onClick = onHealth
-        )
         MoreDestinationCard(
             icon = Icons.Filled.AutoStories,
             title = "Diario de recuerdos",
