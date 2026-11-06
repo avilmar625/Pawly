@@ -31,6 +31,7 @@ data class PawlyPost(
     val dogName: String = "",
     val text: String = "",
     val imageUrl: String = "",
+    val videoUrl: String = "",
     val likeCount: Long = 0,
     val commentCount: Long = 0,
     val likedByMe: Boolean = false,
@@ -61,6 +62,7 @@ data class PawlyMessage(
     val text: String = "",
     val createdAt: Long = 0,
     val imageUrl: String = "",
+    val videoUrl: String = "",
     val readBy: List<String> = emptyList()
 )
 
