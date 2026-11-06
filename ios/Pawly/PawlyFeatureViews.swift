@@ -342,6 +342,8 @@ struct PostComposerSheet:View {
     @State private var category="STORY"
     @State private var busy=false
     @State private var error:String?
+    @State private var imageItem:PhotosPickerItem?
+    @State private var videoItem:PhotosPickerItem?
     var body:some View {
         NavigationStack {
             Form {
