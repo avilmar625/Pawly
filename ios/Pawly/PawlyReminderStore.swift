@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 import Combine
+import FirebaseAuth
 
 struct PawlyLocalReminder:Identifiable,Codable{
  var id:String;var title:String;var petName:String;var date:Date;var notes:String;var repeatRule:String;var completed:Bool
@@ -9,8 +10,18 @@ struct PawlyLocalReminder:Identifiable,Codable{
  static let shared=PawlyReminderStore()
  @Published private(set) var reminders:[PawlyLocalReminder]=[]
  @Published var statusMessage:String?
- private let center=UNUserNotificationCenter.current(),key="pawly.localReminders.v1"
- private init(){if let data=UserDefaults.standard.data(forKey:key),let values=try? JSONDecoder().decode([PawlyLocalReminder].self,from:data){reminders=values};rescheduleAll()}
+ private let center=UNUserNotificationCenter.current()
+ private var activeUID:String?
+ private var key:String{"pawly.localReminders.\(activeUID ?? "local")"}
+ private init(){activeUID=Auth.auth().currentUser?.uid;loadStored();rescheduleAll()}
+ func loadForCurrentUser(){
+  let uid=Auth.auth().currentUser?.uid
+  guard uid != activeUID else{return}
+  center.removeAllPendingNotificationRequests();activeUID=uid;loadStored();rescheduleAll()
+ }
+ private func loadStored(){
+  if let data=UserDefaults.standard.data(forKey:key),let values=try? JSONDecoder().decode([PawlyLocalReminder].self,from:data){reminders=values}else{reminders=[]}
+ }
  func requestPermission()async->String{
   do{let granted=try await center.requestAuthorization(options:[.alert,.sound,.badge]);statusMessage=granted ? "Notificaciones activadas en este dispositivo.":"Permiso denegado. Actívalo en Ajustes de iOS.";if granted{rescheduleAll()}}
   catch{statusMessage=error.localizedDescription};return statusMessage ?? ""
@@ -46,7 +57,7 @@ struct PawlyRemindersView:View{
    }
    Section{Button{showAdd=true}label:{Label("Crear recordatorio",systemImage:"plus.circle.fill")};Button{Task{_ = await store.requestPermission()}}label:{Label("Activar avisos",systemImage:"bell.badge")}}
    if let s=store.statusMessage{Section{Text(s).font(.caption).foregroundStyle(.secondary)}}
-  }.navigationTitle("Agenda").sheet(isPresented:$showAdd){PawlyReminderForm(petName:pets.selectedPet?.name ?? "Mi mascota"){t,d,n,r in store.add(title:t,petName:pets.selectedPet?.name ?? "Mi mascota",date:d,notes:n,repeatRule:r)}}.onAppear{store.refreshAuthorizationStatus()}
+  }.navigationTitle("Agenda").sheet(isPresented:$showAdd){PawlyReminderForm(petName:pets.selectedPet?.name ?? "Mi mascota"){t,d,n,r in store.add(title:t,petName:pets.selectedPet?.name ?? "Mi mascota",date:d,notes:n,repeatRule:r)}}.onAppear{store.loadForCurrentUser();store.refreshAuthorizationStatus()}
  }
 }
 struct PawlyReminderForm:View{
