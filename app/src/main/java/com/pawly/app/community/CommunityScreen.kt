@@ -10,6 +10,7 @@ import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -193,6 +194,20 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                     } else {
                                         throw firstError
                                     }
+                                } catch (noCredential: androidx.credentials.exceptions.NoCredentialException) {
+                                    // The explicit button flow can have no eligible credential even when
+                                    // a Google account exists on the device. Retry with the account
+                                    // chooser and include accounts not yet authorized for this app.
+                                    Log.i("PawlyGoogleSignIn", "No credential from explicit Google sign-in; retrying with account chooser.", noCredential)
+                                    val chooserOption = GetGoogleIdOption.Builder()
+                                        .setServerClientId(webClientId)
+                                        .setFilterByAuthorizedAccounts(false)
+                                        .setAutoSelectEnabled(false)
+                                        .build()
+                                    val chooserRequest = GetCredentialRequest.Builder()
+                                        .addCredentialOption(chooserOption)
+                                        .build()
+                                    credentialManager.getCredential(context, chooserRequest)
                                 }
                                 val credential = result.credential as? CustomCredential
                                 if (credential == null || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
@@ -222,7 +237,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 
                                 error = when {
                                     noCredential ->
-                                        "Google no encuentra una cuenta disponible en este dispositivo. En el emulador, usa una imagen «Google Play», abre Play Store e inicia sesión con una cuenta Google. Después vuelve a Pawly."
+                                        "Credential Manager no pudo ofrecer una cuenta de Google. Comprueba en Ajustes > Contraseñas y cuentas que la cuenta esté añadida al dispositivo, y que Google Play services esté actualizado. Si el selector sí muestra la cuenta pero el acceso falla, revisa en Firebase la SHA-1 de esta variante y descarga de nuevo app/google-services.json con el cliente OAuth Web actualizado."
                                     cancelled ->
                                         "Google ha interrumpido el acceso ( ${e.javaClass.simpleName} ). Detalle: ${exceptionMessage.ifBlank { "sin mensaje" }}.\n\nSi has elegido una cuenta y vuelve a esta pantalla, envíame el error completo de Logcat filtrando por PawlyGoogleSignIn."
                                     else ->
