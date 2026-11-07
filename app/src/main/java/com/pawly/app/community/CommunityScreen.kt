@@ -6,6 +6,7 @@ import android.os.Build
 import android.util.Log
 import android.net.Uri
 import androidx.credentials.CredentialManager
+import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
@@ -179,7 +180,20 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                 val request = GetCredentialRequest.Builder()
                                     .addCredentialOption(googleOption)
                                     .build()
-                                val result = credentialManager.getCredential(context, request)
+                                // If Google tries to reauthenticate a stale cached account, clear
+                                // Credential Manager state and retry the explicit sign-in flow once.
+                                val result = try {
+                                    credentialManager.getCredential(context, request)
+                                } catch (firstError: androidx.credentials.exceptions.GetCredentialCancellationException) {
+                                    val detail = firstError.localizedMessage.orEmpty()
+                                    if (detail.contains("Account reauth failed", ignoreCase = true)) {
+                                        Log.w("PawlyGoogleSignIn", "Cached Google account reauth failed; clearing credential state and retrying once.", firstError)
+                                        credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                                        credentialManager.getCredential(context, request)
+                                    } else {
+                                        throw firstError
+                                    }
+                                }
                                 val credential = result.credential as? CustomCredential
                                 if (credential == null || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                                     error = "No se ha recibido una credencial de Google válida."
