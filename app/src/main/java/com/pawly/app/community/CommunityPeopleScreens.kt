@@ -3,6 +3,7 @@ package com.pawly.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import android.net.Uri
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -103,6 +104,7 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (uid != repo.currentUid) {
                         Button(onClick = {
+                            error = null
                             busy = true
                             scope.launch {
                                 runCatching {
@@ -110,7 +112,10 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                                     repo.follow(uid, next)
                                     following = next
                                     user = user?.copy(followersCount = (user?.followersCount ?: 0) + if (next) 1 else -1)
-                                }.onFailure { error = it.localizedMessage }
+                                }.onFailure { failure ->
+                                    Log.e("PawlyCommunity", "Follow action failed", failure)
+                                    error = failure.toPawlyMessage("No se pudo actualizar el seguimiento.")
+                                }
                                 busy = false
                             }
                         }, enabled = !busy) { Text(if (following) "Dejar de seguir" else "Seguir") }
@@ -129,6 +134,9 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                     }
                 }
             }
+        }
+        if (error != null) {
+            Text(error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 6.dp))
         }
         Spacer(Modifier.height(12.dp))
         Text("Sus compañeros", color = Forest, fontWeight = FontWeight.Bold)
