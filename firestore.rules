@@ -48,13 +48,19 @@ service cloud.firestore {
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid)))
         )
         || verified()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followingCount'])
+        && owner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followingCount', 'lastFollowingChangeUid'])
+        && request.resource.data.lastFollowingChangeUid is string
+        && request.resource.data.lastFollowingChangeUid.size() > 0
+        && request.resource.data.lastFollowingChangeUid.size() <= 128
         && (
           (request.resource.data.followingCount == resource.data.followingCount + 1
-            && existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.auth.uid)))
+            && !exists(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid))
+            && existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid)))
           ||
           (request.resource.data.followingCount == resource.data.followingCount - 1
-            && !existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.auth.uid)))
+            && exists(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid))
+            && !existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid)))
         )
         || verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount'])
