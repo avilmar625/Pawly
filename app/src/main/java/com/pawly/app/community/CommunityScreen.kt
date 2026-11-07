@@ -297,6 +297,13 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     }
     val signOut: () -> Unit = {
         scope.launch {
+            // Clear Google's provider-side account selection state as well as Firebase Auth.
+            // This prevents Credential Manager from reusing a stale account reauthentication session.
+            runCatching {
+                CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+            }.onFailure {
+                Log.w("PawlyGoogleSignIn", "Could not clear Google credential state during sign-out.", it)
+            }
             runCatching { repo.signOut() }
                 .onFailure { notice = it.localizedMessage ?: "No se pudo cerrar la sesión correctamente." }
             onSignOut()
