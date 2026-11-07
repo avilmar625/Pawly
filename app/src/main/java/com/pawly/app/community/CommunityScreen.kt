@@ -425,7 +425,18 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         if (notice != null) Text(notice!!, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp))
         when {
             selectedUser != null -> PublicUserScreen(repo, selectedUser!!, onBack = { selectedUser = null }, onMessage = { id ->
-                scope.launch { runCatching { chat = PawlyConversation(id = repo.startConversation(id), otherUserId = id); page = CommunityPage.MESSAGES; selectedUser = null }.onFailure { notice = it.localizedMessage } }
+                scope.launch {
+                    runCatching {
+                        val conversationId = repo.startConversation(id)
+                        chat = PawlyConversation(id = conversationId, otherUserId = id)
+                        page = CommunityPage.MESSAGES
+                        selectedUser = null
+                        notice = null
+                    }.onFailure { failure ->
+                        Log.e("PawlyCommunity", "Start conversation failed", failure)
+                        notice = failure.toPawlyMessage("No se pudo iniciar la conversación.")
+                    }
+                }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
             page == CommunityPage.FEED -> FeedScreen(posts, followingIds, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
