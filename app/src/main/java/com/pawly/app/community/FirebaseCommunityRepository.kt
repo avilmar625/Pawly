@@ -425,12 +425,18 @@ class FirebaseCommunityRepository private constructor(
             if (follow && !alreadyFollowing) {
                 tx.set(following, mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp()))
                 tx.set(followers, mapOf("uid" to me, "createdAt" to FieldValue.serverTimestamp()))
-                tx.update(myProfile, "followingCount", FieldValue.increment(1))
+                tx.update(myProfile, mapOf(
+                    "followingCount" to FieldValue.increment(1),
+                    "lastFollowingChangeUid" to uid
+                ))
                 tx.update(theirProfile, "followersCount", FieldValue.increment(1))
             } else if (!follow && alreadyFollowing) {
                 tx.delete(following)
                 tx.delete(followers)
-                tx.update(myProfile, "followingCount", FieldValue.increment(-1))
+                tx.update(myProfile, mapOf(
+                    "followingCount" to FieldValue.increment(-1),
+                    "lastFollowingChangeUid" to uid
+                ))
                 tx.update(theirProfile, "followersCount", FieldValue.increment(-1))
             }
         }.await()
@@ -644,9 +650,16 @@ class FirebaseCommunityRepository private constructor(
 
     private fun requireUid(): String = currentUid ?: error("Inicia sesión para utilizar la comunidad.")
 
-    private fun requireVerifiedUid(): String {
+    private suspend fun requireVerifiedUid(): String {
         val user = auth.currentUser ?: error("Inicia sesión para utilizar la comunidad.")
-        check(user.isEmailVerified) { "Verifica tu correo electrónico para publicar, seguir, comentar y enviar mensajes." }
+        // Refresh both the FirebaseUser and its ID token so Firestore rules see the
+        // latest email_verified claim after the user verifies their email.
+        user.reload().await()
+        val token = user.getIdToken(true).await()
+        val verifiedClaim = token.claims["email_verified"] as? Boolean == true
+        check(user.isEmailVerified && verifiedClaim) {
+            "Verifica tu correo electrónico y vuelve a iniciar sesión para seguir personas y enviar mensajes."
+        }
         return user.uid
     }
 
