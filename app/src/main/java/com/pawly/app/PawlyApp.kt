@@ -140,9 +140,9 @@ private fun PawlyMainApp(
     val elegantDesign = designStyle == "elegant"
     var showProfileEditor by remember { mutableStateOf(false) }
     var profileDraft by remember { mutableStateOf("") }
-    var dogName by remember { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
-    var dogProfiles by remember { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
-    var dogPhotoPath by remember { mutableStateOf(preferences.getString("dog_photo_path", null)) }
+    var dogName by remember(preferences) { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
+    var dogProfiles by remember(preferences) { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
+    var dogPhotoPath by remember(preferences) { mutableStateOf(preferences.getString("dog_photo_path", null)) }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) runCatching {
             val destination = File(context.filesDir, "dog-profile-${System.currentTimeMillis()}.jpg")
@@ -158,15 +158,15 @@ private fun PawlyMainApp(
         }
     }
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
-    var walkDone by remember { mutableStateOf(preferences.getBoolean("walk_done", false)) }
-    var medicineDone by remember { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
-    var healthDates by remember {
+    var walkDone by remember(preferences) { mutableStateOf(preferences.getBoolean("walk_done", false)) }
+    var medicineDone by remember(preferences) { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
+    var healthDates by remember(preferences) {
         mutableStateOf(runCatching {
             val json = JSONArray(preferences.getString("health_dates", "[]") ?: "[]")
             buildMap { for (i in 0 until json.length()) { val row = json.getJSONArray(i); put(row.getString(0), row.getString(1)) } }
         }.getOrDefault(emptyMap()))
     }
-    var savedPlaceNames by remember {
+    var savedPlaceNames by remember(preferences) {
         mutableStateOf(preferences.getStringSet("saved_places", emptySet())?.toSet() ?: emptySet())
     }
     val storedEntries = remember(preferences) {
@@ -175,22 +175,22 @@ private fun PawlyMainApp(
             List(json.length()) { index -> json.getString(index) }
         }.getOrDefault(emptyList())
     }
-    var diaryEntries by remember { mutableStateOf(storedEntries) }
+    var diaryEntries by remember(preferences) { mutableStateOf(storedEntries) }
 
-    LaunchedEffect(dogName) { preferences.edit().putString("dog_name", dogName).apply() }
-    LaunchedEffect(dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
-    LaunchedEffect(dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
-    LaunchedEffect(walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
-    LaunchedEffect(medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
-    LaunchedEffect(healthDates) {
+    LaunchedEffect(preferences, dogName) { preferences.edit().putString("dog_name", dogName).apply() }
+    LaunchedEffect(preferences, dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
+    LaunchedEffect(preferences, dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
+    LaunchedEffect(preferences, walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
+    LaunchedEffect(preferences, medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
+    LaunchedEffect(preferences, healthDates) {
         val json = JSONArray()
         healthDates.forEach { (key, value) -> json.put(org.json.JSONArray().put(key).put(value)) }
         preferences.edit().putString("health_dates", json.toString()).apply()
     }
-    LaunchedEffect(savedPlaceNames) {
+    LaunchedEffect(preferences, savedPlaceNames) {
         preferences.edit().putStringSet("saved_places", savedPlaceNames.toSet()).apply()
     }
-    LaunchedEffect(diaryEntries) {
+    LaunchedEffect(preferences, diaryEntries) {
         val json = JSONArray()
         diaryEntries.forEach { entry -> json.put(entry) }
         preferences.edit().putString("diary_entries", json.toString()).apply()
