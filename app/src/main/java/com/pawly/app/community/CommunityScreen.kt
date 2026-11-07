@@ -3,6 +3,7 @@ package com.pawly.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import android.net.Uri
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -194,18 +195,25 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                 }
                             } catch (e: Exception) {
                                 val exceptionName = e.javaClass.simpleName
+                                val exceptionMessage = e.localizedMessage.orEmpty()
                                 val cancelled = exceptionName.contains("Cancellation", ignoreCase = true) ||
-                                    e.localizedMessage?.contains("cancelled by the user", ignoreCase = true) == true
+                                    exceptionMessage.contains("cancelled by the user", ignoreCase = true)
                                 val noCredential = exceptionName.contains("NoCredential", ignoreCase = true) ||
-                                    e.localizedMessage?.contains("no credentials available", ignoreCase = true) == true
+                                    exceptionMessage.contains("no credentials available", ignoreCase = true)
+
+                                // Keep the provider's real exception in Logcat. Credential Manager can
+                                // surface several different cancellation/provider failures through
+                                // similar UI messages; the exact class and cause are essential here.
+                                Log.e("PawlyGoogleSignIn", "Google credential flow failed: ${e.javaClass.name}: $exceptionMessage", e)
+
                                 error = when {
                                     noCredential ->
                                         "Google no encuentra una cuenta disponible en este dispositivo. En el emulador, usa una imagen «Google Play», abre Play Store e inicia sesión con una cuenta Google. Después vuelve a Pawly."
                                     cancelled ->
-                                        "Se ha cerrado el acceso de Google antes de terminar. Puedes volver a intentarlo o usar el acceso con correo."
+                                        "Google ha interrumpido el acceso ( ${e.javaClass.simpleName} ). Detalle: ${exceptionMessage.ifBlank { "sin mensaje" }}.\n\nSi has elegido una cuenta y vuelve a esta pantalla, envíame el error completo de Logcat filtrando por PawlyGoogleSignIn."
                                     else ->
                                         e.toPawlyMessage("No se pudo iniciar sesión con Google.") +
-                                            "\n\nComprueba que Google está activado en Firebase Authentication, que la SHA-1 de esta compilación está registrada y que app/google-services.json contiene el cliente OAuth Web actualizado."
+                                            "\n\nError técnico: ${e.javaClass.simpleName}: ${exceptionMessage}\n\nComprueba que Google está activado en Firebase Authentication, que la SHA-1 de esta compilación está registrada y que app/google-services.json contiene el cliente OAuth Web actualizado."
                                 }
                             } finally {
                                 busy = false
