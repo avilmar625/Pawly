@@ -7,7 +7,7 @@ import android.net.Uri
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -169,13 +169,11 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                         busy = true
                         scope.launch {
                             try {
-                                // Mostrar el selector de cuentas de Google sin exigir que la cuenta
-                                // ya estuviera autorizada previamente en este dispositivo.
-                                // Este flujo evita depender de una actividad de sign-in separada.
-                                val googleOption = GetGoogleIdOption.Builder()
-                                    .setServerClientId(webClientId)
-                                    .setFilterByAuthorizedAccounts(false)
-                                    .setAutoSelectEnabled(false)
+                                // Este botón explícito utiliza el flujo Sign in with Google.
+                                // GetGoogleIdOption está pensado para la hoja de credenciales y
+                                // puede devolver NoCredentialException si el dispositivo no tiene
+                                // cuentas autorizadas o el proveedor no puede ofrecerlas.
+                                val googleOption = GetSignInWithGoogleOption.Builder(webClientId)
                                     .build()
                                 val request = GetCredentialRequest.Builder()
                                     .addCredentialOption(googleOption)
@@ -195,13 +193,19 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                     }
                                 }
                             } catch (e: Exception) {
-                                val cancelled = e.javaClass.simpleName.contains("Cancellation", ignoreCase = true) ||
+                                val exceptionName = e.javaClass.simpleName
+                                val cancelled = exceptionName.contains("Cancellation", ignoreCase = true) ||
                                     e.localizedMessage?.contains("cancelled by the user", ignoreCase = true) == true
-                                error = if (cancelled) {
-                                    "Se ha cerrado el selector de Google sin completar el acceso. Vuelve a intentarlo o utiliza el acceso con correo."
-                                } else {
-                                    e.toPawlyMessage("No se pudo iniciar sesión con Google.") +
-                                        "\n\nComprueba que Google está activado en Firebase Authentication, que la SHA-1 de esta compilación está registrada y que app/google-services.json contiene el cliente OAuth Web actualizado."
+                                val noCredential = exceptionName.contains("NoCredential", ignoreCase = true) ||
+                                    e.localizedMessage?.contains("no credentials available", ignoreCase = true) == true
+                                error = when {
+                                    noCredential ->
+                                        "Google no encuentra una cuenta disponible en este dispositivo. En el emulador, usa una imagen «Google Play», abre Play Store e inicia sesión con una cuenta Google. Después vuelve a Pawly."
+                                    cancelled ->
+                                        "Se ha cerrado el acceso de Google antes de terminar. Puedes volver a intentarlo o usar el acceso con correo."
+                                    else ->
+                                        e.toPawlyMessage("No se pudo iniciar sesión con Google.") +
+                                            "\n\nComprueba que Google está activado en Firebase Authentication, que la SHA-1 de esta compilación está registrada y que app/google-services.json contiene el cliente OAuth Web actualizado."
                                 }
                             } finally {
                                 busy = false
