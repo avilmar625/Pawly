@@ -6,9 +6,11 @@ import android.os.Build
 import android.util.Log
 import android.net.Uri
 import androidx.credentials.CredentialManager
+import androidx.credentials.ClearCredentialStateRequest
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -179,7 +181,46 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                 val request = GetCredentialRequest.Builder()
                                     .addCredentialOption(googleOption)
                                     .build()
-                                val result = credentialManager.getCredential(context, request)
+                                // If Google tries to reauthenticate a stale cached account, clear
+                                // Credential Manager state and retry the explicit sign-in flow once.
+                                val result = try {
+                                    credentialManager.getCredential(context, request)
+                                } catch (firstError: androidx.credentials.exceptions.GetCredentialCancellationException) {
+                                    val detail = firstError.localizedMessage.orEmpty()
+                                    if (detail.contains("Account reauth failed", ignoreCase = true)) {
+                                        Log.i("PawlyGoogleSignIn", "Cached Google account session needs reauthentication; clearing provider state and opening the account chooser.")
+                                        runCatching {
+                                            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                                        }.onFailure {
+                                            Log.w("PawlyGoogleSignIn", "Could not clear the cached Google credential state.", it)
+                                        }
+                                        val chooserOption = GetGoogleIdOption.Builder()
+                                            .setServerClientId(webClientId)
+                                            .setFilterByAuthorizedAccounts(false)
+                                            .setAutoSelectEnabled(false)
+                                            .build()
+                                        val chooserRequest = GetCredentialRequest.Builder()
+                                            .addCredentialOption(chooserOption)
+                                            .build()
+                                        credentialManager.getCredential(context, chooserRequest)
+                                    } else {
+                                        throw firstError
+                                    }
+                                } catch (noCredential: androidx.credentials.exceptions.NoCredentialException) {
+                                    // The explicit button flow can have no eligible credential even when
+                                    // a Google account exists on the device. Retry with the account
+                                    // chooser and include accounts not yet authorized for this app.
+                                    Log.i("PawlyGoogleSignIn", "No credential from explicit Google sign-in; retrying with account chooser.", noCredential)
+                                    val chooserOption = GetGoogleIdOption.Builder()
+                                        .setServerClientId(webClientId)
+                                        .setFilterByAuthorizedAccounts(false)
+                                        .setAutoSelectEnabled(false)
+                                        .build()
+                                    val chooserRequest = GetCredentialRequest.Builder()
+                                        .addCredentialOption(chooserOption)
+                                        .build()
+                                    credentialManager.getCredential(context, chooserRequest)
+                                }
                                 val credential = result.credential as? CustomCredential
                                 if (credential == null || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                                     error = "No se ha recibido una credencial de Google válida."
@@ -196,6 +237,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                             } catch (e: Exception) {
                                 val exceptionName = e.javaClass.simpleName
                                 val exceptionMessage = e.localizedMessage.orEmpty()
+                                val accountReauthFailed = exceptionMessage.contains("Account reauth failed", ignoreCase = true)
                                 val cancelled = exceptionName.contains("Cancellation", ignoreCase = true) ||
                                     exceptionMessage.contains("cancelled by the user", ignoreCase = true)
                                 val noCredential = exceptionName.contains("NoCredential", ignoreCase = true) ||
@@ -207,8 +249,10 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                 Log.e("PawlyGoogleSignIn", "Google credential flow failed: ${e.javaClass.name}: $exceptionMessage", e)
 
                                 error = when {
+                                    accountReauthFailed ->
+                                        "Google necesita volver a validar la sesión guardada y no pudo hacerlo. He limpiado la sesión del proveedor e intentado abrir el selector de cuentas. Si sigue fallando, actualiza Google Play services y quita y vuelve a añadir la cuenta desde Ajustes > Contraseñas y cuentas."
                                     noCredential ->
-                                        "Google no encuentra una cuenta disponible en este dispositivo. En el emulador, usa una imagen «Google Play», abre Play Store e inicia sesión con una cuenta Google. Después vuelve a Pawly."
+                                        "Credential Manager no pudo ofrecer una cuenta de Google. Comprueba en Ajustes > Contraseñas y cuentas que la cuenta esté añadida al dispositivo, y que Google Play services esté actualizado. Si el selector sí muestra la cuenta pero el acceso falla, revisa en Firebase la SHA-1 de esta variante y descarga de nuevo app/google-services.json con el cliente OAuth Web actualizado."
                                     cancelled ->
                                         "Google ha interrumpido el acceso ( ${e.javaClass.simpleName} ). Detalle: ${exceptionMessage.ifBlank { "sin mensaje" }}.\n\nSi has elegido una cuenta y vuelve a esta pantalla, envíame el error completo de Logcat filtrando por PawlyGoogleSignIn."
                                     else ->
@@ -283,6 +327,13 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     }
     val signOut: () -> Unit = {
         scope.launch {
+            // Clear Google's provider-side account selection state as well as Firebase Auth.
+            // This prevents Credential Manager from reusing a stale account reauthentication session.
+            runCatching {
+                CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
+            }.onFailure {
+                Log.w("PawlyGoogleSignIn", "Could not clear Google credential state during sign-out.", it)
+            }
             runCatching { repo.signOut() }
                 .onFailure { notice = it.localizedMessage ?: "No se pudo cerrar la sesión correctamente." }
             onSignOut()
@@ -374,7 +425,18 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         if (notice != null) Text(notice!!, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 16.dp))
         when {
             selectedUser != null -> PublicUserScreen(repo, selectedUser!!, onBack = { selectedUser = null }, onMessage = { id ->
-                scope.launch { runCatching { chat = PawlyConversation(id = repo.startConversation(id), otherUserId = id); page = CommunityPage.MESSAGES; selectedUser = null }.onFailure { notice = it.localizedMessage } }
+                scope.launch {
+                    runCatching {
+                        val conversationId = repo.startConversation(id)
+                        chat = PawlyConversation(id = conversationId, otherUserId = id)
+                        page = CommunityPage.MESSAGES
+                        selectedUser = null
+                        notice = null
+                    }.onFailure { failure ->
+                        Log.e("PawlyCommunity", "Start conversation failed", failure)
+                        notice = failure.toPawlyMessage("No se pudo iniciar la conversación.")
+                    }
+                }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
             page == CommunityPage.FEED -> FeedScreen(posts, followingIds, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->

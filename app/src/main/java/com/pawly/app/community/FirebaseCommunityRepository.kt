@@ -77,6 +77,7 @@ class FirebaseCommunityRepository private constructor(
         val cleanEmail = CommunityInputRules.validateEmail(email)
         require(password.isNotEmpty()) { "Escribe tu contraseña." }
         auth.signInWithEmailAndPassword(cleanEmail, password).await()
+        ensureMyProfile()
     }
 
     /**
@@ -86,35 +87,8 @@ class FirebaseCommunityRepository private constructor(
     suspend fun signInWithGoogle(idToken: String) {
         require(idToken.isNotBlank()) { "Google no ha devuelto un token de acceso válido." }
         val credential = GoogleAuthProvider.getCredential(idToken, null)
-        val result = auth.signInWithCredential(credential).await()
-        val user = result.user ?: error("Firebase no ha devuelto el usuario de Google.")
-        val userRef = db.collection("users").document(user.uid)
-
-        if (!userRef.get().await().exists()) {
-            val username = "pawly_${user.uid.takeLast(8)}"
-            val usernameRef = db.collection("usernames").document(username.lowercase())
-            usernameRef.set(mapOf("uid" to user.uid)).await()
-            try {
-                userRef.set(
-                    mapOf(
-                        "uid" to user.uid,
-                        "username" to username,
-                        "usernameLower" to username.lowercase(),
-                        "displayName" to (user.displayName?.take(50)?.takeIf { it.isNotBlank() } ?: username),
-                        "bio" to "",
-                        "photoUrl" to (user.photoUrl?.toString() ?: ""),
-                        "isPublic" to true,
-                        "followersCount" to 0,
-                        "followingCount" to 0,
-                        "dogProfiles" to emptyList<Map<String, Any>>(),
-                        "createdAt" to FieldValue.serverTimestamp()
-                    )
-                ).await()
-            } catch (error: Exception) {
-                runCatching { usernameRef.delete().await() }
-                throw error
-            }
-        }
+        auth.signInWithCredential(credential).await()
+        ensureMyProfile()
     }
 
     suspend fun sendPasswordReset(email: String) {
@@ -165,14 +139,14 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun updateProfile(displayName: String, bio: String, isPublic: Boolean) {
         require(displayName.trim().isNotBlank()) { "El nombre público no puede estar vacío." }
-        val uid = requireUid()
+        val uid = ensureMyProfile().uid
         db.collection("users").document(uid).update(
             mapOf("displayName" to displayName.trim().take(50), "bio" to bio.trim().take(240), "isPublic" to isPublic)
         ).await()
     }
 
     suspend fun updateProfilePhoto(uri: Uri): String {
-        val uid = requireUid()
+        val uid = ensureMyProfile().uid
         val url = uploadImage(uri, "profile-photos")
         db.collection("users").document(uid).update("photoUrl", url).await()
         return url
@@ -189,7 +163,7 @@ class FirebaseCommunityRepository private constructor(
     }
 
     suspend fun saveDog(dog: PawlyDog) {
-        val uid = requireUid()
+        val uid = ensureMyProfile().uid
         val cleanName = dog.name.trim()
         require(cleanName.isNotBlank()) { "El perro necesita un nombre." }
         require(cleanName.length <= 40) { "El nombre no puede superar los 40 caracteres." }
@@ -217,7 +191,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun deleteDog(dogId: String) {
         require(dogId.isNotBlank()) { "No se ha indicado qué perro eliminar." }
-        val ref = db.collection("users").document(requireUid())
+        val ref = db.collection("users").document(ensureMyProfile().uid)
         db.runTransaction { transaction ->
             val snapshot = transaction.get(ref)
             val current = (snapshot.get("dogProfiles") as? List<Map<String, Any>>).orEmpty()
@@ -226,14 +200,10 @@ class FirebaseCommunityRepository private constructor(
         }.await()
     }
 
-    suspend fun getMyProfile(): PawlyUser? {
-        val uid = requireUid()
-        val doc = db.collection("users").document(uid).get().await()
-        return doc.toPawlyUser()
-    }
+    suspend fun getMyProfile(): PawlyUser? = ensureMyProfile()
 
     suspend fun getMyDogs(): List<PawlyDog> {
-        val uid = requireUid()
+        val uid = ensureMyProfile().uid
         val data = db.collection("users").document(uid).get().await().get("dogProfiles") as? List<Map<String, Any>>
         return data.orEmpty().map { map ->
             PawlyDog(
@@ -410,6 +380,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun follow(uid: String, follow: Boolean) {
         val me = requireVerifiedUid()
+        ensureMyProfile()
         require(uid != me) { "No puedes seguirte a ti mismo." }
         val following = db.collection("users").document(me).collection("following").document(uid)
         val followers = db.collection("users").document(uid).collection("followers").document(me)
@@ -425,12 +396,18 @@ class FirebaseCommunityRepository private constructor(
             if (follow && !alreadyFollowing) {
                 tx.set(following, mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp()))
                 tx.set(followers, mapOf("uid" to me, "createdAt" to FieldValue.serverTimestamp()))
-                tx.update(myProfile, "followingCount", FieldValue.increment(1))
+                tx.update(myProfile, mapOf(
+                    "followingCount" to FieldValue.increment(1),
+                    "lastFollowingChangeUid" to uid
+                ))
                 tx.update(theirProfile, "followersCount", FieldValue.increment(1))
             } else if (!follow && alreadyFollowing) {
                 tx.delete(following)
                 tx.delete(followers)
-                tx.update(myProfile, "followingCount", FieldValue.increment(-1))
+                tx.update(myProfile, mapOf(
+                    "followingCount" to FieldValue.increment(-1),
+                    "lastFollowingChangeUid" to uid
+                ))
                 tx.update(theirProfile, "followersCount", FieldValue.increment(-1))
             }
         }.await()
@@ -438,6 +415,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun block(uid: String) {
         val me = requireVerifiedUid()
+        ensureMyProfile()
         require(uid != me) { "No puedes bloquear tu propia cuenta." }
         val myFollowing = db.collection("users").document(me).collection("following").document(uid)
         val theirFollowing = db.collection("users").document(uid).collection("following").document(me)
@@ -644,9 +622,101 @@ class FirebaseCommunityRepository private constructor(
 
     private fun requireUid(): String = currentUid ?: error("Inicia sesión para utilizar la comunidad.")
 
-    private fun requireVerifiedUid(): String {
+    /**
+     * Repairs accounts that authenticated successfully but have no Firestore profile yet.
+     * This is needed by accounts created before the community profile was initialized.
+     */
+    private suspend fun ensureMyProfile(): PawlyUser {
         val user = auth.currentUser ?: error("Inicia sesión para utilizar la comunidad.")
-        check(user.isEmailVerified) { "Verifica tu correo electrónico para publicar, seguir, comentar y enviar mensajes." }
+        val uid = user.uid
+        val userRef = db.collection("users").document(uid)
+        userRef.get().await().toPawlyUser()?.let { return it }
+
+        val cleanUid = uid.lowercase().filter { it in 'a'..'z' || it in '0'..'9' }.ifBlank { "account" }
+        val emailPrefix = user.email?.substringBefore("@")
+            ?.lowercase()
+            ?.replace(Regex("[^a-z0-9_.]"), "")
+            ?.take(16)
+            .orEmpty()
+        val usernameCandidates = (
+            listOf(emailPrefix, "pawly_" + cleanUid.takeLast(8), "pawly_" + cleanUid.take(16)) +
+                (1..12).map { "pawly_" + cleanUid.take(10) + "_" + it }
+            )
+            .filter { it.length in 3..24 && Regex("^[A-Za-z0-9_.]{3,24}$").matches(it) }
+            .distinct()
+        check(usernameCandidates.isNotEmpty()) { "No se pudo preparar un nombre de usuario." }
+
+        // Reserve the username in its own committed write so the user-create rule can
+        // verify it with get(), then create the user document.
+        val username = db.runTransaction { transaction ->
+            val reservations = usernameCandidates.map { candidate ->
+                candidate to transaction.get(db.collection("usernames").document(candidate.lowercase()))
+            }
+            val selection = reservations.firstOrNull {
+                it.second.exists() && it.second.getString("uid") == uid
+            } ?: reservations.firstOrNull { !it.second.exists() }
+                ?: error("No se ha encontrado un nombre de usuario libre.")
+            if (!selection.second.exists()) {
+                transaction.set(
+                    db.collection("usernames").document(selection.first.lowercase()),
+                    mapOf("uid" to uid)
+                )
+            }
+            selection.first
+        }.await()
+
+        val usernameRef = db.collection("usernames").document(username.lowercase())
+        val displayName = user.displayName?.trim()?.takeIf { it.isNotBlank() }?.take(50)
+            ?: emailPrefix.takeIf { it.isNotBlank() }?.take(50)
+            ?: username
+        val profileData = mapOf(
+            "uid" to uid,
+            "username" to username,
+            "usernameLower" to username.lowercase(),
+            "displayName" to displayName,
+            "bio" to "",
+            "photoUrl" to (user.photoUrl?.toString() ?: ""),
+            "isPublic" to true,
+            "followersCount" to 0,
+            "followingCount" to 0,
+            "dogProfiles" to emptyList<Map<String, Any>>(),
+            "createdAt" to FieldValue.serverTimestamp()
+        )
+        try {
+            userRef.set(profileData).await()
+        } catch (writeError: Exception) {
+            val concurrentProfile = runCatching { userRef.get().await().toPawlyUser() }.getOrNull()
+            if (concurrentProfile != null) {
+                if (concurrentProfile.usernameLower != username.lowercase()) {
+                    runCatching { usernameRef.delete().await() }
+                }
+                return concurrentProfile
+            }
+            runCatching {
+                val reservation = usernameRef.get().await()
+                if (reservation.getString("uid") == uid) usernameRef.delete().await()
+            }
+            throw writeError
+        }
+        return PawlyUser(
+            uid = uid,
+            username = username,
+            usernameLower = username.lowercase(),
+            displayName = displayName,
+            photoUrl = user.photoUrl?.toString().orEmpty()
+        )
+    }
+
+    private suspend fun requireVerifiedUid(): String {
+        val user = auth.currentUser ?: error("Inicia sesión para utilizar la comunidad.")
+        // Refresh both the FirebaseUser and its ID token so Firestore rules see the
+        // latest email_verified claim after the user verifies their email.
+        user.reload().await()
+        val token = user.getIdToken(true).await()
+        val verifiedClaim = token.claims["email_verified"] as? Boolean == true
+        check(user.isEmailVerified && verifiedClaim) {
+            "Verifica tu correo electrónico y vuelve a iniciar sesión para seguir personas y enviar mensajes."
+        }
         return user.uid
     }
 

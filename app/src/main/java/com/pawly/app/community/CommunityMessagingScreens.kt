@@ -3,6 +3,7 @@ package com.pawly.app
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import android.net.Uri
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -244,7 +245,10 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                         repo.sendMessage(conversation.id, messageText, imageUrl, videoUrl)
                         draft = ""
                         attachment = null
-                    }.onFailure { error = it.localizedMessage ?: "No se pudo enviar el mensaje." }
+                    }.onFailure { failure ->
+                        Log.e("PawlyCommunity", "Send message failed", failure)
+                        error = failure.toPawlyMessage("No se pudo enviar el mensaje.")
+                    }
                     sending = false
                 }
             }, enabled = !sending && (draft.isNotBlank() || attachment != null)) {
