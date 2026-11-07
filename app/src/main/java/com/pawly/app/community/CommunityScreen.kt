@@ -188,9 +188,21 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                 } catch (firstError: androidx.credentials.exceptions.GetCredentialCancellationException) {
                                     val detail = firstError.localizedMessage.orEmpty()
                                     if (detail.contains("Account reauth failed", ignoreCase = true)) {
-                                        Log.w("PawlyGoogleSignIn", "Cached Google account reauth failed; clearing credential state and retrying once.", firstError)
-                                        credentialManager.clearCredentialState(ClearCredentialStateRequest())
-                                        credentialManager.getCredential(context, request)
+                                        Log.i("PawlyGoogleSignIn", "Cached Google account session needs reauthentication; clearing provider state and opening the account chooser.")
+                                        runCatching {
+                                            credentialManager.clearCredentialState(ClearCredentialStateRequest())
+                                        }.onFailure {
+                                            Log.w("PawlyGoogleSignIn", "Could not clear the cached Google credential state.", it)
+                                        }
+                                        val chooserOption = GetGoogleIdOption.Builder()
+                                            .setServerClientId(webClientId)
+                                            .setFilterByAuthorizedAccounts(false)
+                                            .setAutoSelectEnabled(false)
+                                            .build()
+                                        val chooserRequest = GetCredentialRequest.Builder()
+                                            .addCredentialOption(chooserOption)
+                                            .build()
+                                        credentialManager.getCredential(context, chooserRequest)
                                     } else {
                                         throw firstError
                                     }
@@ -225,6 +237,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                             } catch (e: Exception) {
                                 val exceptionName = e.javaClass.simpleName
                                 val exceptionMessage = e.localizedMessage.orEmpty()
+                                val accountReauthFailed = exceptionMessage.contains("Account reauth failed", ignoreCase = true)
                                 val cancelled = exceptionName.contains("Cancellation", ignoreCase = true) ||
                                     exceptionMessage.contains("cancelled by the user", ignoreCase = true)
                                 val noCredential = exceptionName.contains("NoCredential", ignoreCase = true) ||
@@ -236,6 +249,8 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                 Log.e("PawlyGoogleSignIn", "Google credential flow failed: ${e.javaClass.name}: $exceptionMessage", e)
 
                                 error = when {
+                                    accountReauthFailed ->
+                                        "Google necesita volver a validar la sesión guardada y no pudo hacerlo. He limpiado la sesión del proveedor e intentado abrir el selector de cuentas. Si sigue fallando, actualiza Google Play services y quita y vuelve a añadir la cuenta desde Ajustes > Contraseñas y cuentas."
                                     noCredential ->
                                         "Credential Manager no pudo ofrecer una cuenta de Google. Comprueba en Ajustes > Contraseñas y cuentas que la cuenta esté añadida al dispositivo, y que Google Play services esté actualizado. Si el selector sí muestra la cuenta pero el acceso falla, revisa en Firebase la SHA-1 de esta variante y descarga de nuevo app/google-services.json con el cliente OAuth Web actualizado."
                                     cancelled ->
