@@ -26,6 +26,35 @@ class FirebaseCommunityRepository private constructor(
     val currentEmail: String? get() = auth.currentUser?.email
     val isEmailVerified: Boolean get() = auth.currentUser?.isEmailVerified == true
 
+    /** Loads the signed-in user's private Home pet selection, if one has been saved. */
+    suspend fun loadHomePetState(): Pair<String, Set<String>>? {
+        val uid = requireUid()
+        val snapshot = db.collection("users").document(uid)
+            .collection("privateData").document("home").get().await()
+        if (!snapshot.exists()) return null
+        val name = snapshot.getString("dogName")?.trim().orEmpty()
+        if (name.isBlank()) return null
+        val profiles = ((snapshot.get("dogProfiles") as? List<*>)?.filterIsInstance<String>()
+            ?.map { it.trim() }?.filter { it.isNotBlank() }?.toSet() ?: emptySet()) + name
+        return name to profiles
+    }
+
+    /** Saves the Home pet names privately so the selection follows the account across devices. */
+    suspend fun saveHomePetState(name: String, profiles: Set<String>) {
+        val uid = requireUid()
+        val cleanName = name.trim()
+        require(cleanName.isNotBlank() && cleanName.length <= 40) { "El nombre debe tener entre 1 y 40 caracteres." }
+        val cleanProfiles = (listOf(cleanName) + profiles.map { it.trim() })
+            .filter { it.isNotBlank() }.distinct()
+        require(cleanProfiles.size <= 100) { "Puedes guardar como máximo 100 perfiles de mascota." }
+        db.collection("users").document(uid).collection("privateData").document("home")
+            .set(mapOf(
+                "dogName" to cleanName,
+                "dogProfiles" to cleanProfiles,
+                "updatedAt" to FieldValue.serverTimestamp()
+            )).await()
+    }
+
     companion object {
         fun create(context: Context): FirebaseCommunityRepository? = runCatching {
             val app = FirebaseApp.initializeApp(context.applicationContext) ?: return null
