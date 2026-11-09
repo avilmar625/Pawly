@@ -102,6 +102,7 @@ internal fun PawlyApp(
     if (signedIn) {
         PawlyMainApp(
             storageScope = repository.currentUid,
+            cloudRepository = repository,
             darkMode = darkMode,
             accent = accent,
             designStyle = designStyle,
@@ -121,6 +122,7 @@ internal fun PawlyApp(
 @Composable
 private fun PawlyMainApp(
     storageScope: String? = null,
+    cloudRepository: FirebaseCommunityRepository? = null,
     darkMode: Boolean = false,
     accent: String = "forest",
     designStyle: String = "simple",
@@ -142,6 +144,8 @@ private fun PawlyMainApp(
     var profileDraft by remember { mutableStateOf("") }
     var dogName by remember(preferences) { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
     var dogProfiles by remember(preferences) { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
+    var homePetCloudReady by remember(preferences, storageScope) { mutableStateOf(false) }
+    var profileSyncStatus by remember(preferences, storageScope) { mutableStateOf("") }
     var dogPhotoPath by remember(preferences) { mutableStateOf(preferences.getString("dog_photo_path", null)) }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) runCatching {
@@ -179,6 +183,49 @@ private fun PawlyMainApp(
 
     LaunchedEffect(preferences, dogName) { preferences.edit().putString("dog_name", dogName).apply() }
     LaunchedEffect(preferences, dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
+    LaunchedEffect(preferences, storageScope, cloudRepository) {
+        val cloud = cloudRepository
+        if (cloud == null || storageScope.isNullOrBlank()) return@LaunchedEffect
+
+        val localName = preferences.getString("dog_name", "Nala")?.trim()?.takeIf { it.isNotBlank() } ?: "Nala"
+        val localProfiles = (preferences.getStringSet("dog_profiles", setOf(localName))?.toSet().orEmpty() + localName)
+            .map { it.trim() }.filter { it.isNotBlank() }.toSet().ifEmpty { setOf(localName) }
+        val remoteResult = runCatching { cloud.loadHomePetState() }
+        if (remoteResult.isFailure) {
+            profileSyncStatus = "No se pudo cargar el perfil de mascota. Revisa la conexión y las reglas de Firestore."
+            return@LaunchedEffect
+        }
+
+        val remote = remoteResult.getOrNull()
+        if (remote != null) {
+            dogName = remote.first
+            dogProfiles = remote.second
+            homePetCloudReady = true
+        } else if (localName != "Nala" || localProfiles.any { it != "Nala" }) {
+            // Migrate an existing custom name from this device without letting a new
+            // install's default "Nala" overwrite an older device's saved profile.
+            runCatching { cloud.saveHomePetState(localName, localProfiles) }
+                .onSuccess {
+                    dogName = localName
+                    dogProfiles = localProfiles
+                    homePetCloudReady = true
+                    profileSyncStatus = "Perfil de mascota guardado en tu cuenta."
+                }
+                .onFailure {
+                    profileSyncStatus = "No se pudo sincronizar: ${it.localizedMessage ?: "revisa las reglas de Firestore"}"
+                }
+        }
+    }
+    LaunchedEffect(cloudRepository, storageScope, homePetCloudReady, dogName, dogProfiles) {
+        val cloud = cloudRepository
+        if (!homePetCloudReady || cloud == null || storageScope.isNullOrBlank()) return@LaunchedEffect
+        profileSyncStatus = "Sincronizando perfil de mascota…"
+        runCatching { cloud.saveHomePetState(dogName, dogProfiles) }
+            .onSuccess { profileSyncStatus = "Perfil de mascota sincronizado con tu cuenta." }
+            .onFailure {
+                profileSyncStatus = "No se pudo sincronizar: ${it.localizedMessage ?: "revisa las reglas de Firestore"}"
+            }
+    }
     LaunchedEffect(preferences, dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
     LaunchedEffect(preferences, walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
     LaunchedEffect(preferences, medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
@@ -347,22 +394,30 @@ private fun PawlyMainApp(
                 if (cleaned.isNotEmpty()) {
                     dogProfiles = (dogProfiles - dogName) + cleaned
                     dogName = cleaned
+                    homePetCloudReady = true
                 }
                 showProfileEditor = false
             },
             onGallery = { galleryPicker.launch("image/*") },
             onCamera = { cameraCapture.launch(null) },
             hasPhoto = dogPhoto != null,
+            syncStatus = profileSyncStatus,
             profiles = dogProfiles,
-            onSelectProfile = { dogName = it; showProfileEditor = false },
+            onSelectProfile = { dogName = it; homePetCloudReady = true; showProfileEditor = false },
             onAddProfile = {
                 val cleaned = profileDraft.trim()
-                if (cleaned.isNotEmpty()) { dogProfiles = dogProfiles + cleaned; dogName = cleaned; showProfileEditor = false }
+                if (cleaned.isNotEmpty()) {
+                    dogProfiles = dogProfiles + cleaned
+                    dogName = cleaned
+                    homePetCloudReady = true
+                    showProfileEditor = false
+                }
             },
             onDeleteProfile = { name ->
                 if (dogProfiles.size > 1) {
                     dogProfiles = dogProfiles - name
                     if (dogName == name) dogName = dogProfiles.firstOrNull() ?: "Nala"
+                    homePetCloudReady = true
                 }
             }
         )
