@@ -382,15 +382,26 @@ service cloud.firestore {
 
     match /conversations/{conversationId} {
       allow create: if verified()
-        && request.resource.data.keys().hasOnly(['participants', 'participantNames', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['participants', 'participantNames', 'participantPhotos', 'updatedAt'])
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
+        && request.resource.data.participantPhotos is map
+        && request.resource.data.participantPhotos.keys().hasAll(request.resource.data.participants)
+        && request.resource.data.participantPhotos.keys().hasOnly(request.resource.data.participants)
         && request.resource.data.participants[0] is string
         && request.resource.data.participants[1] is string
         && request.resource.data.participants[0] < request.resource.data.participants[1]
         && request.resource.data.participants[0] != request.resource.data.participants[1]
         && conversationId == request.resource.data.participants[0] + '_' + request.resource.data.participants[1]
         && request.auth.uid in request.resource.data.participants
+        && request.resource.data.participantPhotos[request.resource.data.participants[0]] is string
+        && request.resource.data.participantPhotos[request.resource.data.participants[0]].size() <= 2048
+        && (request.resource.data.participantPhotos[request.resource.data.participants[0]].size() == 0
+          || request.resource.data.participantPhotos[request.resource.data.participants[0]].matches('^https://.+$'))
+        && request.resource.data.participantPhotos[request.resource.data.participants[1]] is string
+        && request.resource.data.participantPhotos[request.resource.data.participants[1]].size() <= 2048
+        && (request.resource.data.participantPhotos[request.resource.data.participants[1]].size() == 0
+          || request.resource.data.participantPhotos[request.resource.data.participants[1]].matches('^https://.+$'))
         && !blockedEitherWay(request.resource.data.participants[0] == request.auth.uid ? request.resource.data.participants[1] : request.resource.data.participants[0]);
       // The client reads the deterministic conversation ID before creating it.
       // Permit checking a missing conversation only when the caller UID is encoded in its ID.
