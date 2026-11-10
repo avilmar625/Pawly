@@ -152,7 +152,7 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
         items(conversations, key = { it.id }) { c ->
             Surface(onClick = { onOpen(c) }, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
                 Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Avatar("", c.otherUserName)
+                    Avatar(c.otherUserPhoto, c.otherUserName)
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(c.otherUserName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -195,7 +195,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 2.dp) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver") }
-                Avatar("", conversation.otherUserName, 36)
+                Avatar(conversation.otherUserPhoto, conversation.otherUserName, 36)
                 Spacer(Modifier.width(10.dp))
                 Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium)
             }
@@ -239,13 +239,29 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                 val selectedIsVideo = attachmentIsVideo
                 sending = true
                 scope.launch {
+                    var clearedDraft = false
+                    var clearedAttachment = false
                     runCatching {
                         val imageUrl = selected?.takeIf { !selectedIsVideo }?.let { repo.uploadImage(it, "message-photos") }.orEmpty()
                         val videoUrl = selected?.takeIf { selectedIsVideo }?.let { repo.uploadVideo(it, "message-videos") }.orEmpty()
+                        // Clear the composer just before the single Firestore batch. Its local
+                        // snapshot appears immediately, so text messages feel responsive.
+                        if (draft == messageText) {
+                            draft = ""
+                            clearedDraft = true
+                        }
+                        if (selected != null && attachment == selected) {
+                            attachment = null
+                            clearedAttachment = true
+                        }
                         repo.sendMessage(conversation.id, messageText, imageUrl, videoUrl)
-                        draft = ""
-                        attachment = null
+                        error = null
                     }.onFailure { failure ->
+                        if (clearedDraft && draft.isBlank()) draft = messageText
+                        if (clearedAttachment && attachment == null) {
+                            attachment = selected
+                            attachmentIsVideo = selectedIsVideo
+                        }
                         Log.e("PawlyCommunity", "Send message failed", failure)
                         error = failure.toPawlyMessage("No se pudo enviar el mensaje.")
                     }
