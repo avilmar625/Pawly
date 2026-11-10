@@ -65,7 +65,9 @@ class SharedPetRepository(
             "Esta persona ya tiene acceso al perfil."
         }
         val duplicate = db.collection("petInvitations").whereEqualTo("sharedPetId", shareId)
-            .whereEqualTo("inviteeUid", inviteeUid).whereEqualTo("status", "pending").limit(1).get().await()
+            .whereEqualTo("ownerUid", ownerUid)
+            .whereEqualTo("inviteeUid", inviteeUid)
+            .whereEqualTo("status", "pending").limit(1).get().await()
         check(duplicate.isEmpty) { "Ya hay una invitación pendiente para esta persona." }
         val ownerProfile = db.collection("users").document(ownerUid).get().await()
         db.collection("petInvitations").document(UUID.randomUUID().toString()).set(mapOf(
@@ -138,6 +140,7 @@ class SharedPetRepository(
         ref.collection("members").document(memberUid).delete().await()
         val accepted = db.collection("petInvitations")
             .whereEqualTo("sharedPetId", ref.id)
+            .whereEqualTo("ownerUid", uid())
             .whereEqualTo("inviteeUid", memberUid)
             .whereEqualTo("status", "accepted").get().await()
         accepted.documents.forEach { invite ->
