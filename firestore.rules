@@ -23,9 +23,28 @@ service cloud.firestore {
       allow list: if false;
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['uid'])
-        && request.resource.data.uid == request.auth.uid;
+        && request.resource.data.uid == request.auth.uid
+        && existsAfter(/databases/$(database)/documents/usernameReservations/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/usernameReservations/$(request.auth.uid)).data.username == username;
       allow update: if false;
-      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow delete: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && !existsAfter(/databases/$(database)/documents/usernameReservations/$(request.auth.uid));
+    }
+
+    match /usernameReservations/{uid} {
+      allow get: if owner(uid);
+      allow list: if false;
+      allow create: if owner(uid)
+        && request.resource.data.keys().hasOnly(['username'])
+        && request.resource.data.username is string
+        && request.resource.data.username.matches('^[a-z0-9_.]{3,24}$')
+        && existsAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username))
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.username)).data.uid == uid;
+      allow update: if false;
+      allow delete: if owner(uid)
+        && !existsAfter(/databases/$(database)/documents/usernames/$(resource.data.username))
+        && !existsAfter(/databases/$(database)/documents/users/$(uid));
     }
 
     match /users/{uid} {
@@ -35,13 +54,16 @@ service cloud.firestore {
         && request.resource.data.uid == uid
         && request.resource.data.username is string
         && request.resource.data.usernameLower is string
-        && get(/databases/$(database)/documents/usernames/$(request.resource.data.usernameLower)).data.uid == uid;
+        && request.resource.data.isPublic == false
+        && get(/databases/$(database)/documents/usernames/$(request.resource.data.usernameLower)).data.uid == uid
+        && exists(/databases/$(database)/documents/usernameReservations/$(uid))
+        && get(/databases/$(database)/documents/usernameReservations/$(uid)).data.username == request.resource.data.usernameLower;
       allow update: if (owner(uid)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.username == resource.data.username
         && request.resource.data.usernameLower == resource.data.usernameLower
         && (!('moderationStatus' in resource.data) || resource.data.moderationStatus != 'restricted' || request.resource.data.isPublic == false)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles', 'followersCount', 'followingCount']))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles']))
         || admin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPublic', 'moderationStatus'])
         || verified()
@@ -194,7 +216,9 @@ service cloud.firestore {
             && existsAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId))
             && getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.inviteeUid == request.auth.uid
             && getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.sharedPetId == sharedPetId
-            && getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.status == 'accepted')
+            && getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.status == 'accepted'
+            && request.resource.data.role == getAfter(/databases/$(database)/documents/petInvitations/$(request.resource.data.invitationId)).data.role
+            && request.resource.data.role in ['editor', 'reader'])
         );
         allow delete: if verified()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)).data.ownerUid == request.auth.uid
@@ -320,7 +344,19 @@ service cloud.firestore {
             && verified()
             && !blockedEitherWay(resource.data.authorId)
             && request.resource.data.likedBy is list
-            && request.resource.data.likeCount == request.resource.data.likedBy.size())
+            && resource.data.likedBy is list
+            && request.resource.data.likeCount == request.resource.data.likedBy.size()
+            && (
+              (request.resource.data.likedBy.size() == resource.data.likedBy.size() + 1
+                && request.auth.uid in request.resource.data.likedBy
+                && !(request.auth.uid in resource.data.likedBy)
+                && request.resource.data.likedBy.hasAll(resource.data.likedBy))
+              ||
+              (request.resource.data.likedBy.size() + 1 == resource.data.likedBy.size()
+                && request.auth.uid in resource.data.likedBy
+                && !(request.auth.uid in request.resource.data.likedBy)
+                && resource.data.likedBy.hasAll(request.resource.data.likedBy))
+            ))
           ||
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'lastCommentId'])
             && verified()
@@ -346,8 +382,14 @@ service cloud.firestore {
 
     match /conversations/{conversationId} {
       allow create: if verified()
+        && request.resource.data.keys().hasOnly(['participants', 'participantNames', 'updatedAt'])
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
+        && request.resource.data.participants[0] is string
+        && request.resource.data.participants[1] is string
+        && request.resource.data.participants[0] < request.resource.data.participants[1]
+        && request.resource.data.participants[0] != request.resource.data.participants[1]
+        && conversationId == request.resource.data.participants[0] + '_' + request.resource.data.participants[1]
         && request.auth.uid in request.resource.data.participants
         && !blockedEitherWay(request.resource.data.participants[0] == request.auth.uid ? request.resource.data.participants[1] : request.resource.data.participants[0]);
       // The client reads the deterministic conversation ID before creating it.
