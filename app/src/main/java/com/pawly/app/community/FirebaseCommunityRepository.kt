@@ -26,6 +26,14 @@ class FirebaseCommunityRepository private constructor(
     val currentEmail: String? get() = auth.currentUser?.email
     val isEmailVerified: Boolean get() = auth.currentUser?.isEmailVerified == true
 
+    // Short-lived in-memory snapshots let Compose draw the profile immediately while
+    // background refreshes read the latest Firestore values.
+    private var cachedMyProfileState: PawlyUser? = null
+    private var cachedMyDogsState: List<PawlyDog>? = null
+
+    fun cachedMyProfile(): PawlyUser? = cachedMyProfileState
+    fun cachedMyDogs(): List<PawlyDog>? = cachedMyDogsState
+
     /** Loads the signed-in user's private Home pet selection, if one has been saved. */
     suspend fun loadHomePetState(): Pair<String, Set<String>>? {
         val uid = requireUid()
@@ -74,12 +82,20 @@ class FirebaseCommunityRepository private constructor(
         val result = auth.createUserWithEmailAndPassword(cleanEmail, password).await()
         val uid = result.user?.uid ?: error("No se pudo crear la cuenta.")
         val usernameRef = db.collection("usernames").document(normalized)
+        val reservationRef = db.collection("usernameReservations").document(uid)
+        val userRef = db.collection("users").document(uid)
         try {
             db.runTransaction { transaction ->
                 check(!transaction.get(usernameRef).exists()) { "Ese nombre de usuario ya está ocupado." }
+                check(!transaction.get(reservationRef).exists()) { "La cuenta ya tiene un nombre reservado." }
                 transaction.set(usernameRef, mapOf("uid" to uid))
+                transaction.set(reservationRef, mapOf("username" to normalized))
             }.await()
-            db.collection("users").document(uid).set(
+            val profile = PawlyUser(
+                uid = uid, username = cleanName, usernameLower = normalized,
+                displayName = cleanName, isPublic = false
+            )
+            userRef.set(
                 mapOf(
                     "uid" to uid,
                     "username" to cleanName,
@@ -87,22 +103,32 @@ class FirebaseCommunityRepository private constructor(
                     "displayName" to cleanName,
                     "bio" to "",
                     "photoUrl" to "",
-                    "isPublic" to true,
+                    "isPublic" to false,
                     "followersCount" to 0,
                     "followingCount" to 0,
                     "dogProfiles" to emptyList<Map<String, Any>>(),
                     "createdAt" to FieldValue.serverTimestamp()
                 )
             ).await()
+            cachedMyProfileState = profile
+            cachedMyDogsState = emptyList()
             result.user?.sendEmailVerification()?.await()
         } catch (error: Exception) {
-            runCatching { usernameRef.delete().await() }
+            runCatching {
+                val cleanup = db.batch()
+                cleanup.delete(userRef)
+                cleanup.delete(usernameRef)
+                cleanup.delete(reservationRef)
+                cleanup.commit().await()
+            }
             runCatching { result.user?.delete()?.await() }
+            cachedMyProfileState = null
+            cachedMyDogsState = null
             throw error
         }
     }
 
-    suspend fun signIn(email: String, password: String) {
+        suspend fun signIn(email: String, password: String) {
         val cleanEmail = CommunityInputRules.validateEmail(email)
         require(password.isNotEmpty()) { "Escribe tu contraseña." }
         auth.signInWithEmailAndPassword(cleanEmail, password).await()
@@ -164,24 +190,30 @@ class FirebaseCommunityRepository private constructor(
             }
         }
         auth.signOut()
+        cachedMyProfileState = null
+        cachedMyDogsState = null
     }
 
     suspend fun updateProfile(displayName: String, bio: String, isPublic: Boolean) {
         require(displayName.trim().isNotBlank()) { "El nombre público no puede estar vacío." }
         val uid = ensureMyProfile().uid
+        val cleanName = displayName.trim().take(50)
+        val cleanBio = bio.trim().take(240)
         db.collection("users").document(uid).update(
-            mapOf("displayName" to displayName.trim().take(50), "bio" to bio.trim().take(240), "isPublic" to isPublic)
+            mapOf("displayName" to cleanName, "bio" to cleanBio, "isPublic" to isPublic)
         ).await()
+        cachedMyProfileState = cachedMyProfileState?.copy(displayName = cleanName, bio = cleanBio, isPublic = isPublic)
     }
 
     suspend fun updateProfilePhoto(uri: Uri): String {
         val uid = ensureMyProfile().uid
         val url = uploadImage(uri, "profile-photos")
         db.collection("users").document(uid).update("photoUrl", url).await()
+        cachedMyProfileState = cachedMyProfileState?.copy(photoUrl = url)
         return url
     }
 
-    suspend fun uploadImage(uri: Uri, folder: String): String {
+        suspend fun uploadImage(uri: Uri, folder: String): String {
         val uid = requireVerifiedUid()
         return CloudinaryImageUploader(appContext).upload(uri, folder, uid)
     }
@@ -216,6 +248,7 @@ class FirebaseCommunityRepository private constructor(
             if (index >= 0) current[index] = dogData else current.add(dogData)
             transaction.update(ref, "dogProfiles", current)
         }.await()
+        cachedMyDogsState = null
     }
 
     suspend fun deleteDog(dogId: String) {
@@ -227,14 +260,24 @@ class FirebaseCommunityRepository private constructor(
             check(current.any { it["id"] == dogId }) { "No se ha encontrado ese perfil de perro." }
             transaction.update(ref, "dogProfiles", current.filterNot { it["id"] == dogId })
         }.await()
+        cachedMyDogsState = cachedMyDogsState?.filterNot { it.id == dogId }
     }
 
     suspend fun getMyProfile(): PawlyUser? = ensureMyProfile()
 
-    suspend fun getMyDogs(): List<PawlyDog> {
+    suspend fun refreshMyProfile(): PawlyUser {
+        val uid = requireUid()
+        val profile = db.collection("users").document(uid).get().await().toPawlyUser()
+            ?: ensureMyProfile()
+        cachedMyProfileState = profile
+        return profile
+    }
+
+    suspend fun getMyDogs(forceRefresh: Boolean = false): List<PawlyDog> {
+        if (!forceRefresh) cachedMyDogsState?.let { return it }
         val uid = ensureMyProfile().uid
         val data = db.collection("users").document(uid).get().await().get("dogProfiles") as? List<Map<String, Any>>
-        return data.orEmpty().map { map ->
+        val dogs = data.orEmpty().map { map ->
             PawlyDog(
                 id = map["id"] as? String ?: "",
                 name = map["name"] as? String ?: "",
@@ -246,9 +289,11 @@ class FirebaseCommunityRepository private constructor(
                 species = map["species"] as? String ?: "Perro"
             )
         }
+        cachedMyDogsState = dogs
+        return dogs
     }
 
-    fun listenFollowingIds(onData: (Set<String>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
+        fun listenFollowingIds(onData: (Set<String>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
         val uid = requireUid()
         return db.collection("users").document(uid).collection("following")
             .addSnapshotListener { snapshot, error ->
@@ -612,27 +657,21 @@ class FirebaseCommunityRepository private constructor(
         require(imageUrl.length <= 2048 && videoUrl.length <= 2048) { "La dirección del archivo multimedia no es válida." }
         require(imageUrl.isBlank() || videoUrl.isBlank()) { "Adjunta una fotografía o un vídeo, no ambos." }
         val ref = db.collection("conversations").document(conversationId)
-        val conversationSnapshot = ref.get().await()
-        val participants = conversationSnapshot.get("participants") as? List<String> ?: emptyList()
-        check(uid in participants && participants.size == 2) { "No formas parte de esta conversación." }
-        val otherUid = participants.first { it != uid }
-        val blockedByMe = db.collection("users").document(uid).collection("blocked").document(otherUid).get().await().exists()
-        val blockedMe = db.collection("users").document(otherUid).collection("blocked").document(uid).get().await().exists()
-        check(!blockedByMe && !blockedMe) { "No puedes enviar mensajes a esta cuenta." }
         val messageRef = ref.collection("messages").document()
         val preview = clean.ifBlank { if (videoUrl.isNotBlank()) "🎥 Vídeo" else "📷 Fotografía" }.take(120)
-        db.runTransaction { tx ->
-            val conversation = tx.get(ref)
-            check(uid in (conversation.get("participants") as? List<String>).orEmpty()) { "No formas parte de esta conversación." }
-            tx.set(messageRef, mapOf(
-                "senderId" to uid, "text" to clean.take(2000), "imageUrl" to imageUrl, "videoUrl" to videoUrl,
-                "readBy" to listOf(uid), "createdAt" to FieldValue.serverTimestamp()
-            ))
-            tx.update(ref, mapOf("lastMessage" to preview, "updatedAt" to FieldValue.serverTimestamp()))
-        }.await()
+
+        // Rules validate conversation membership, verification and both block lists.
+        // A single atomic batch avoids several sequential network reads before sending.
+        val batch = db.batch()
+        batch.set(messageRef, mapOf(
+            "senderId" to uid, "text" to clean.take(2000), "imageUrl" to imageUrl, "videoUrl" to videoUrl,
+            "readBy" to listOf(uid), "createdAt" to FieldValue.serverTimestamp()
+        ))
+        batch.update(ref, mapOf("lastMessage" to preview, "updatedAt" to FieldValue.serverTimestamp()))
+        batch.commit().await()
     }
 
-    suspend fun markConversationRead(conversationId: String) {
+        suspend fun markConversationRead(conversationId: String) {
         val uid = requireUid()
         val conversation = db.collection("conversations").document(conversationId).get().await()
         val participants = conversation.get("participants") as? List<String> ?: emptyList()
@@ -659,53 +698,77 @@ class FirebaseCommunityRepository private constructor(
         val user = auth.currentUser ?: error("Inicia sesión para utilizar la comunidad.")
         val uid = user.uid
         val userRef = db.collection("users").document(uid)
-        userRef.get().await().toPawlyUser()?.let { return it }
+        val existingProfile = userRef.get().await().toPawlyUser()
+        if (existingProfile != null) {
+            cachedMyProfileState = existingProfile
+            // Repair the username claim for accounts created before reservation claims
+            // were introduced. Failure here should not lock an existing account out.
+            runCatching {
+                val normalized = existingProfile.usernameLower.ifBlank { existingProfile.username.lowercase() }
+                check(normalized.matches(Regex("^[a-z0-9_.]{3,24}$"))) { "El nombre de usuario guardado no es válido." }
+                val usernameRef = db.collection("usernames").document(normalized)
+                val reservationRef = db.collection("usernameReservations").document(uid)
+                db.runTransaction { transaction ->
+                    val usernameDoc = transaction.get(usernameRef)
+                    val reservation = transaction.get(reservationRef)
+                    check(usernameDoc.exists() && usernameDoc.getString("uid") == uid) {
+                        "No se puede validar el nombre de usuario guardado."
+                    }
+                    if (reservation.exists()) {
+                        check(reservation.getString("username") == normalized) { "La reserva de usuario no coincide." }
+                    } else {
+                        transaction.set(reservationRef, mapOf("username" to normalized))
+                    }
+                }.await()
+            }
+            return existingProfile
+        }
 
         val cleanUid = uid.lowercase().filter { it in 'a'..'z' || it in '0'..'9' }.ifBlank { "account" }
-        val emailPrefix = user.email?.substringBefore("@")
-            ?.lowercase()
-            ?.replace(Regex("[^a-z0-9_.]"), "")
-            ?.take(16)
-            .orEmpty()
         val usernameCandidates = (
-            listOf(emailPrefix, "pawly_" + cleanUid.takeLast(8), "pawly_" + cleanUid.take(16)) +
+            listOf("pawly_" + cleanUid.takeLast(8), "pawly_" + cleanUid.take(16)) +
                 (1..12).map { "pawly_" + cleanUid.take(10) + "_" + it }
             )
-            .filter { it.length in 3..24 && Regex("^[A-Za-z0-9_.]{3,24}$").matches(it) }
+            .filter { it.length in 3..24 && Regex("^[a-z0-9_.]{3,24}$").matches(it) }
             .distinct()
         check(usernameCandidates.isNotEmpty()) { "No se pudo preparar un nombre de usuario." }
 
-        // Reserve the username in its own committed write so the user-create rule can
-        // verify it with get(), then create the user document.
+        val reservationRef = db.collection("usernameReservations").document(uid)
         val username = db.runTransaction { transaction ->
-            val reservations = usernameCandidates.map { candidate ->
-                candidate to transaction.get(db.collection("usernames").document(candidate.lowercase()))
+            val existingReservation = transaction.get(reservationRef)
+            if (existingReservation.exists()) {
+                val reserved = existingReservation.getString("username")
+                    ?: error("La reserva de usuario está incompleta.")
+                val usernameDoc = transaction.get(db.collection("usernames").document(reserved))
+                check(usernameDoc.exists() && usernameDoc.getString("uid") == uid) {
+                    "La reserva de usuario no coincide con la cuenta."
+                }
+                return@runTransaction reserved
             }
-            val selection = reservations.firstOrNull {
-                it.second.exists() && it.second.getString("uid") == uid
-            } ?: reservations.firstOrNull { !it.second.exists() }
+            val candidates = usernameCandidates.map { candidate ->
+                candidate to transaction.get(db.collection("usernames").document(candidate))
+            }
+            val selected = candidates.firstOrNull { it.second.exists() && it.second.getString("uid") == uid }
+                ?: candidates.firstOrNull { !it.second.exists() }
                 ?: error("No se ha encontrado un nombre de usuario libre.")
-            if (!selection.second.exists()) {
-                transaction.set(
-                    db.collection("usernames").document(selection.first.lowercase()),
-                    mapOf("uid" to uid)
-                )
+            val normalized = selected.first
+            if (!selected.second.exists()) {
+                transaction.set(db.collection("usernames").document(normalized), mapOf("uid" to uid))
             }
-            selection.first
+            transaction.set(reservationRef, mapOf("username" to normalized))
+            normalized
         }.await()
 
-        val usernameRef = db.collection("usernames").document(username.lowercase())
-        val displayName = user.displayName?.trim()?.takeIf { it.isNotBlank() }?.take(50)
-            ?: emailPrefix.takeIf { it.isNotBlank() }?.take(50)
-            ?: username
+        // New accounts start private and do not import a Google name, email prefix or
+        // Google photo into the public-facing profile.
         val profileData = mapOf(
             "uid" to uid,
             "username" to username,
-            "usernameLower" to username.lowercase(),
-            "displayName" to displayName,
+            "usernameLower" to username,
+            "displayName" to username,
             "bio" to "",
-            "photoUrl" to (user.photoUrl?.toString() ?: ""),
-            "isPublic" to true,
+            "photoUrl" to "",
+            "isPublic" to false,
             "followersCount" to 0,
             "followingCount" to 0,
             "dogProfiles" to emptyList<Map<String, Any>>(),
@@ -716,30 +779,25 @@ class FirebaseCommunityRepository private constructor(
         } catch (writeError: Exception) {
             val concurrentProfile = runCatching { userRef.get().await().toPawlyUser() }.getOrNull()
             if (concurrentProfile != null) {
-                if (concurrentProfile.usernameLower != username.lowercase()) {
-                    runCatching { usernameRef.delete().await() }
-                }
+                cachedMyProfileState = concurrentProfile
                 return concurrentProfile
-            }
-            runCatching {
-                val reservation = usernameRef.get().await()
-                if (reservation.getString("uid") == uid) usernameRef.delete().await()
             }
             throw writeError
         }
-        return PawlyUser(
-            uid = uid,
-            username = username,
-            usernameLower = username.lowercase(),
-            displayName = displayName,
-            photoUrl = user.photoUrl?.toString().orEmpty()
+        val profile = PawlyUser(
+            uid = uid, username = username, usernameLower = username,
+            displayName = username, isPublic = false
         )
+        cachedMyProfileState = profile
+        cachedMyDogsState = emptyList()
+        return profile
     }
 
-    private suspend fun requireVerifiedUid(): String {
+        private suspend fun requireVerifiedUid(): String {
         val user = auth.currentUser ?: error("Inicia sesión para utilizar la comunidad.")
-        // Refresh both the FirebaseUser and its ID token so Firestore rules see the
-        // latest email_verified claim after the user verifies their email.
+        // Avoid round trips for already verified accounts. Firestore rules remain the
+        // final authority if the cached token is stale.
+        if (user.isEmailVerified) return user.uid
         user.reload().await()
         val token = user.getIdToken(true).await()
         val verifiedClaim = token.claims["email_verified"] as? Boolean == true
@@ -758,7 +816,7 @@ class FirebaseCommunityRepository private constructor(
             displayName = getString("displayName") ?: getString("username") ?: "",
             bio = getString("bio") ?: "",
             photoUrl = getString("photoUrl") ?: "",
-            isPublic = getBoolean("isPublic") ?: true,
+            isPublic = getBoolean("isPublic") ?: false,
             followersCount = getLong("followersCount") ?: 0,
             followingCount = getLong("followingCount") ?: 0
         )
