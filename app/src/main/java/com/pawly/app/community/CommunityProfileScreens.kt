@@ -41,12 +41,12 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var profile by remember { mutableStateOf<PawlyUser?>(null) }
-    var dogs by remember { mutableStateOf(emptyList<PawlyDog>()) }
+    var profile by remember(repo) { mutableStateOf(repo.cachedMyProfile()) }
+    var dogs by remember(repo) { mutableStateOf(repo.cachedMyDogs().orEmpty()) }
     var blockedUsers by remember { mutableStateOf(emptyList<PawlyBlockedUser>()) }
-    var name by remember { mutableStateOf("") }
-    var bio by remember { mutableStateOf("") }
-    var isPublic by remember { mutableStateOf(true) }
+    var name by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.displayName.orEmpty()) }
+    var bio by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.bio.orEmpty()) }
+    var isPublic by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.isPublic ?: false) }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { avatarUri = it }
     var editDog by remember { mutableStateOf<PawlyDog?>(null) }
@@ -56,9 +56,24 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
     var busy by remember { mutableStateOf(false) }
     var confirmAccountDeletion by remember { mutableStateOf(false) }
     var accountDeletionSubmitted by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        runCatching { profile = repo.getMyProfile(); dogs = repo.getMyDogs(); name = profile?.displayName.orEmpty(); bio = profile?.bio.orEmpty(); isPublic = profile?.isPublic ?: true }
-            .onFailure { error = it.localizedMessage }
+    LaunchedEffect(repo) {
+        // Paint the in-memory snapshot first; refresh both records in the background.
+        repo.cachedMyProfile()?.let {
+            profile = it
+            name = it.displayName
+            bio = it.bio
+            isPublic = it.isPublic
+        }
+        repo.cachedMyDogs()?.let { dogs = it }
+        runCatching {
+            val freshProfile = repo.refreshMyProfile()
+            val freshDogs = repo.getMyDogs(forceRefresh = true)
+            profile = freshProfile
+            dogs = freshDogs
+            name = freshProfile.displayName
+            bio = freshProfile.bio
+            isPublic = freshProfile.isPublic
+        }.onFailure { error = it.localizedMessage }
     }
     DisposableEffect(repo) {
         val listener = repo.listenBlockedUsers({ blockedUsers = it }, { error = it })
