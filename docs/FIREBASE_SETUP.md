@@ -10,7 +10,7 @@ Esta guía describe la configuración de servicios para las versiones Android de
 - **Cloudinary:** alojamiento y entrega CDN de fotos y vídeos.
 - **Almacenamiento local Android:** preferencias, recordatorios locales y partes de la experiencia que aún no se sincronizan.
 
-No se utiliza Firebase Storage. No hace falta activar Blaze ni vincular una tarjeta para seguir esta arquitectura. Firebase Storage exige actualmente el plan Blaze; por eso las fotos y vídeos se alojan en Cloudinary.
+No se utiliza Firebase Storage. El uso básico de Firestore y FCM no exige Blaze; las notificaciones automáticas con Cloud Functions sí requieren vincular facturación. Firebase Storage también exige Blaze; por eso las fotos y vídeos se alojan en Cloudinary.
 
 ---
 
