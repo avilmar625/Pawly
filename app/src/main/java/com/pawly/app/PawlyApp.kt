@@ -61,7 +61,6 @@ internal enum class Tab(val label: String) {
 
 @Composable
 internal fun PawlyApp(
-    openMessagesSignal: Int = 0,
     darkMode: Boolean = false,
     accent: String = "forest",
     designStyle: String = "simple",
@@ -76,7 +75,6 @@ internal fun PawlyApp(
 
     if (localMode) {
         PawlyMainApp(
-            openMessagesSignal = openMessagesSignal,
             darkMode = darkMode,
             accent = accent,
             designStyle = designStyle,
@@ -103,7 +101,6 @@ internal fun PawlyApp(
 
     if (signedIn) {
         PawlyMainApp(
-            openMessagesSignal = openMessagesSignal,
             storageScope = repository.currentUid,
             cloudRepository = repository,
             darkMode = darkMode,
@@ -124,7 +121,6 @@ internal fun PawlyApp(
 
 @Composable
 private fun PawlyMainApp(
-    openMessagesSignal: Int = 0,
     storageScope: String? = null,
     cloudRepository: FirebaseCommunityRepository? = null,
     darkMode: Boolean = false,
@@ -141,9 +137,6 @@ private fun PawlyMainApp(
     var cloudinaryVideoPreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_video_preset", BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).orEmpty()) }
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
-    LaunchedEffect(openMessagesSignal) {
-        if (openMessagesSignal > 0) selected = Tab.COMMUNITY
-    }
     var showAbout by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     val elegantDesign = designStyle == "elegant"
@@ -351,7 +344,7 @@ private fun PawlyMainApp(
                     entries = diaryEntries,
                     onEntriesChange = { diaryEntries = it }
                 )
-                Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign, openMessagesSignal = openMessagesSignal)
+                Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
                 Tab.MORE -> MoreHubScreen(
                     onLearn = { selected = Tab.LEARN },
                     onDiary = { selected = Tab.DIARY },
