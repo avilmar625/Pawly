@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -11,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.Task
+import com.pawly.app.MainActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -59,10 +61,14 @@ class MyMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: message.data["title"] ?: "Pawly"
         val body = message.notification?.body ?: message.data["body"] ?: return
-        showNotification(title, body, message.messageId?.hashCode() ?: System.currentTimeMillis().toInt())
+        val conversationId = message.data["conversationId"].orEmpty()
+        val notificationId = conversationId.takeIf { it.isNotBlank() }?.hashCode()
+            ?: message.messageId?.hashCode()
+            ?: System.currentTimeMillis().toInt()
+        showNotification(title, body, conversationId, notificationId)
     }
 
-    private fun showNotification(title: String, body: String, notificationId: Int) {
+    private fun showNotification(title: String, body: String, conversationId: String, notificationId: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
@@ -79,15 +85,16 @@ class MyMessagingService : FirebaseMessagingService() {
             manager.createNotificationChannel(channel)
         }
 
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val pendingIntent = launchIntent?.let {
-            PendingIntent.getActivity(
-                this,
-                0,
-                it,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+        val openMessagesIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(MainActivity.EXTRA_OPEN_COMMUNITY_MESSAGES, true)
         }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            conversationId.hashCode(),
+            openMessagesIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -95,6 +102,8 @@ class MyMessagingService : FirebaseMessagingService() {
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setOnlyAlertOnce(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
