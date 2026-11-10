@@ -10,6 +10,12 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/users/$(request.auth.uid)/blocked/$(uid))
       );
     }
+    function getFollowersCount(data) {
+      return ('followersCount' in data && data.followersCount is number) ? data.followersCount : 0;
+    }
+    function getFollowingCount(data) {
+      return ('followingCount' in data && data.followingCount is number) ? data.followingCount : 0;
+    }
     function admin() { return signedIn() && request.auth.token.admin == true; }
 
     match /usernames/{username} {
@@ -41,10 +47,10 @@ service cloud.firestore {
         || verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount'])
         && (
-          (request.resource.data.followersCount == resource.data.followersCount + 1
+          (request.resource.data.followersCount == getFollowersCount(resource.data) + 1
             && existsAfter(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid)))
           ||
-          (request.resource.data.followersCount == resource.data.followersCount - 1
+          (request.resource.data.followersCount == getFollowersCount(resource.data) - 1
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid)))
         )
         || verified()
@@ -54,22 +60,22 @@ service cloud.firestore {
         && request.resource.data.lastFollowingChangeUid.size() > 0
         && request.resource.data.lastFollowingChangeUid.size() <= 128
         && (
-          (request.resource.data.followingCount == resource.data.followingCount + 1
+          (request.resource.data.followingCount == getFollowingCount(resource.data) + 1
             && !exists(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid))
             && existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid)))
           ||
-          (request.resource.data.followingCount == resource.data.followingCount - 1
+          (request.resource.data.followingCount == getFollowingCount(resource.data) - 1
             && exists(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid))
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid)))
         )
         || verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount'])
-        && (request.resource.data.followersCount == resource.data.followersCount
-          || (request.resource.data.followersCount == resource.data.followersCount - 1
+        && (request.resource.data.followersCount == getFollowersCount(resource.data)
+          || (request.resource.data.followersCount == getFollowersCount(resource.data) - 1
             && exists(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid))
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid))))
-        && (request.resource.data.followingCount == resource.data.followingCount
-          || (request.resource.data.followingCount == resource.data.followingCount - 1
+        && (request.resource.data.followingCount == getFollowingCount(resource.data)
+          || (request.resource.data.followingCount == getFollowingCount(resource.data) - 1
             && exists(/databases/$(database)/documents/users/$(uid)/following/$(request.auth.uid))
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.auth.uid))));
       allow delete: if owner(uid);
@@ -81,7 +87,7 @@ service cloud.firestore {
         allow update: if false;
       }
       match /followers/{followerUid} {
-        allow read: if owner(uid);
+        allow read: if owner(uid) || (signedIn() && request.auth.uid == followerUid);
         allow create: if verified() && request.auth.uid == followerUid && request.resource.data.uid == followerUid && !blockedEitherWay(uid);
         allow delete: if owner(uid) || (signedIn() && request.auth.uid == followerUid);
         allow update: if false;
