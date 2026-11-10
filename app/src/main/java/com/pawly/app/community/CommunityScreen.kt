@@ -51,7 +51,7 @@ private enum class CommunityPage(val label: String) {
 }
 
 @Composable
-internal fun CommunityScreen(elegantDesign: Boolean = false) {
+internal fun CommunityScreen(elegantDesign: Boolean = false, openMessagesSignal: Int = 0) {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
@@ -60,7 +60,7 @@ internal fun CommunityScreen(elegantDesign: Boolean = false) {
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!, elegantDesign) { uid = repository.currentUid }
+    else CommunityHub(repository, uid!!, elegantDesign, openMessagesSignal) { uid = repository.currentUid }
 }
 
 
@@ -297,7 +297,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 
 
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, onSignOut: () -> Unit) {
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, openMessagesSignal: Int = 0, onSignOut: () -> Unit) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
@@ -313,6 +313,13 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     var admin by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    LaunchedEffect(openMessagesSignal) {
+        if (openMessagesSignal > 0) {
+            page = CommunityPage.MESSAGES
+            chat = null
+            selectedUser = null
+        }
+    }
     var notificationsAllowed by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
