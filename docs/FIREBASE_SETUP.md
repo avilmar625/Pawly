@@ -10,7 +10,7 @@ Esta guía describe la configuración de servicios para las versiones Android de
 - **Cloudinary:** alojamiento y entrega CDN de fotos y vídeos.
 - **Almacenamiento local Android:** preferencias, recordatorios locales y partes de la experiencia que aún no se sincronizan.
 
-No se utiliza Firebase Storage. El uso básico de Firestore y FCM no exige Blaze; las notificaciones automáticas con Cloud Functions sí requieren vincular facturación. Firebase Storage también exige Blaze; por eso las fotos y vídeos se alojan en Cloudinary.
+No se utiliza Firebase Storage. No hace falta activar Blaze ni vincular una tarjeta para seguir esta arquitectura. Firebase Storage exige actualmente el plan Blaze; por eso las fotos y vídeos se alojan en Cloudinary.
 
 ---
 
@@ -153,29 +153,9 @@ Firestore almacena las URL HTTPS y los metadatos; los bytes no se guardan en Fir
 
 ## 7. Firebase Cloud Messaging (notificaciones)
 
-Pawly registra el token FCM del dispositivo en `users/{uid}/fcmTokens`. En `cambios46` también se incluye una Cloud Function de confianza: cuando se crea un mensaje en una conversación, busca los dispositivos del destinatario y manda un aviso. La notificación no incluye el texto privado; muestra el nombre de quien escribe y si ha enviado una foto o un vídeo. Al tocarla se abre directamente Comunidad → Mensajes.
+Pawly registra el token FCM del dispositivo y declara el servicio Android que puede recibir mensajes. **Eso no significa que la app ya envíe notificaciones push a otros usuarios.**
 
-### Desplegar las notificaciones
-
-El envío no se activa por subir la app ni por publicar reglas. Hay que desplegar el backend una vez:
-
-1. Instala Node.js 22 y una versión reciente de Firebase CLI.
-2. En la carpeta raíz del repositorio, inicia sesión y selecciona el proyecto correcto con `firebase use`.
-3. Instala las dependencias de la función:
-   ```bash
-   cd functions
-   npm install
-   cd ..
-   ```
-4. Comprueba otra vez el proyecto activo con `firebase use` y despliega:
-   ```bash
-   firebase deploy --only functions:notifyOnNewChatMessage
-   ```
-5. En Android, permite las notificaciones cuando Pawly lo solicite. En Android 13 o posterior, si se denegaron, actívalas también desde Ajustes del sistema → Aplicaciones → Pawly → Notificaciones.
-
-**Plan y coste:** Cloud Functions requiere que el proyecto use el plan Blaze con una cuenta de facturación vinculada. Firebase Cloud Messaging no tiene coste por mensaje, y Cloud Functions incluye cuotas sin coste en Blaze, pero el uso por encima de las cuotas se factura. Antes de desplegar, revisa el [plan y las cuotas actuales de Firebase](https://firebase.google.com/pricing/) y configura alertas de presupuesto. El código ya está preparado, pero este cambio no modifica el plan ni despliega nada en tu proyecto.
-
-Para probarlo, usa dos dispositivos o emuladores con cuentas distintas: deja uno fuera de Pawly o en otra pantalla, envía un mensaje desde el otro y toca la notificación. Comprueba también el permiso del sistema y que ambos usuarios hayan abierto Comunidad al menos una vez para registrar sus tokens.
+El envío requiere un emisor de confianza (por ejemplo, Cloud Functions o un servidor propio) que utilice credenciales de servidor fuera del APK. No se debe llamar a la API de envío con una clave privada desde Android. En la arquitectura sin backend de pago, el chat se actualiza en tiempo real mientras la aplicación está conectada; las notificaciones push automáticas entre usuarios quedan pendientes.
 
 ## 8. Compilar y probar
 
@@ -204,11 +184,11 @@ No uses información veterinaria real durante las pruebas iniciales. Comprueba t
 
 - Las cargas unsigned de Cloudinary no autentican al usuario y las URLs son públicas para quien las conozca.
 - No hay backend propio que firme subidas, aplique moderación o elimine archivos de Cloudinary.
-- Los avisos push entre usuarios funcionan después de desplegar `notifyOnNewChatMessage` en un proyecto Firebase con Cloud Functions habilitado.
+- No hay envío automático de push entre usuarios; solo registro/recepción FCM.
 - La solicitud de eliminación de cuenta no borra automáticamente todas las subcolecciones y archivos multimedia.
 - No hay cifrado de extremo a extremo para chat ni multimedia.
 - Algunas preferencias, recordatorios y estados diarios permanecen locales.
 - App Check y su enforcement no deben activarse hasta integrar el SDK, probar debug/release y verificar que no bloquean a usuarios legítimos.
 - Política de privacidad, términos, soporte, moderación operativa y proceso de eliminación deben completarse antes de publicar la app.
 
-**No actives Firebase Storage para esta configuración.** Cloudinary sigue alojando las fotos y los vídeos. El envío automático de mensajes sí usa Cloud Functions; si quieres activarlo, revisa las cuotas y el presupuesto y cambia el proyecto a Blaze desde Firebase Console antes de desplegar. No se cambia el plan automáticamente.
+**No actives Firebase Storage ni Blaze para esta configuración.** Si en el futuro se decide añadir un backend o almacenamiento privado, primero se revisarán costes, cuotas y medidas de seguridad, y se pedirá aprobación expresa antes de cambiar el plan.
