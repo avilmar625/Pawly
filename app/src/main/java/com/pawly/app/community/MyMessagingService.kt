@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -12,7 +11,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.tasks.Task
-import com.pawly.app.MainActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -21,8 +19,8 @@ import com.google.firebase.messaging.RemoteMessage
 import java.security.MessageDigest
 
 /**
- * Stores the current device token and displays privacy-safe FCM message notifications.
- * The notification sender is deployed separately as a trusted Firebase Cloud Function.
+ * Stores the current device token under the signed-in user's private Firestore subcollection.
+ * A trusted backend (for example, a Cloud Function) is still required to send push messages.
  */
 internal object FcmTokenStore {
     private fun documentId(token: String): String =
@@ -61,14 +59,10 @@ class MyMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: message.data["title"] ?: "Pawly"
         val body = message.notification?.body ?: message.data["body"] ?: return
-        val conversationId = message.data["conversationId"].orEmpty()
-        val notificationId = conversationId.takeIf { it.isNotBlank() }?.hashCode()
-            ?: message.messageId?.hashCode()
-            ?: System.currentTimeMillis().toInt()
-        showNotification(title, body, conversationId, notificationId)
+        showNotification(title, body, message.messageId?.hashCode() ?: System.currentTimeMillis().toInt())
     }
 
-    private fun showNotification(title: String, body: String, conversationId: String, notificationId: Int) {
+    private fun showNotification(title: String, body: String, notificationId: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
@@ -77,24 +71,23 @@ class MyMessagingService : FirebaseMessagingService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Mensajes de Pawly",
+                "Notificaciones de Pawly",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Avisos de nuevos mensajes privados en Pawly"
+                description = "Avisos de mensajes y actividad de la comunidad Pawly"
             }
             manager.createNotificationChannel(channel)
         }
 
-        val openMessagesIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra(MainActivity.EXTRA_OPEN_COMMUNITY_MESSAGES, true)
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val pendingIntent = launchIntent?.let {
+            PendingIntent.getActivity(
+                this,
+                0,
+                it,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            conversationId.hashCode(),
-            openMessagesIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -102,7 +95,6 @@ class MyMessagingService : FirebaseMessagingService() {
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
@@ -114,6 +106,6 @@ class MyMessagingService : FirebaseMessagingService() {
 
     private companion object {
         const val TAG = "PawlyMessaging"
-        const val CHANNEL_ID = "pawly_messages_v1"
+        const val CHANNEL_ID = "pawly_community"
     }
 }
