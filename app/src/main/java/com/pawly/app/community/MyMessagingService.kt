@@ -103,7 +103,6 @@ class MyMessagingService : FirebaseMessagingService() {
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .setOnlyAlertOnce(true)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
