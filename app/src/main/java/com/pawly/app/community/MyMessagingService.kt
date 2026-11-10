@@ -21,8 +21,8 @@ import com.google.firebase.messaging.RemoteMessage
 import java.security.MessageDigest
 
 /**
- * Stores the current device token under the signed-in user's private Firestore subcollection.
- * A trusted backend (for example, a Cloud Function) is still required to send push messages.
+ * Stores the current device token and displays privacy-safe FCM message notifications.
+ * The notification sender is deployed separately as a trusted Firebase Cloud Function.
  */
 internal object FcmTokenStore {
     private fun documentId(token: String): String =
@@ -77,10 +77,10 @@ class MyMessagingService : FirebaseMessagingService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Notificaciones de Pawly",
+                "Mensajes de Pawly",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Avisos de mensajes y actividad de la comunidad Pawly"
+                description = "Avisos de nuevos mensajes privados en Pawly"
             }
             manager.createNotificationChannel(channel)
         }
@@ -114,6 +114,6 @@ class MyMessagingService : FirebaseMessagingService() {
 
     private companion object {
         const val TAG = "PawlyMessaging"
-        const val CHANNEL_ID = "pawly_community"
+        const val CHANNEL_ID = "pawly_messages_v1"
     }
 }
