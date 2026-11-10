@@ -51,7 +51,7 @@ private enum class CommunityPage(val label: String) {
 }
 
 @Composable
-internal fun CommunityScreen(elegantDesign: Boolean = false, openMessagesSignal: Int = 0) {
+internal fun CommunityScreen(elegantDesign: Boolean = false) {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
@@ -60,7 +60,7 @@ internal fun CommunityScreen(elegantDesign: Boolean = false, openMessagesSignal:
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!, elegantDesign, openMessagesSignal) { uid = repository.currentUid }
+    else CommunityHub(repository, uid!!, elegantDesign) { uid = repository.currentUid }
 }
 
 
@@ -297,7 +297,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 
 
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, openMessagesSignal: Int = 0, onSignOut: () -> Unit) {
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, onSignOut: () -> Unit) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
@@ -313,13 +313,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     var admin by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    LaunchedEffect(openMessagesSignal) {
-        if (openMessagesSignal > 0) {
-            page = CommunityPage.MESSAGES
-            chat = null
-            selectedUser = null
-        }
-    }
     var notificationsAllowed by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -405,8 +398,8 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
                 Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("No te pierdas los mensajes nuevos", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                        Text("Recibe un aviso aunque no estés dentro de Pawly.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        Text("No te pierdas los avisos de Pawly", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        Text("Activa las notificaciones para recibir avisos cuando estén disponibles.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     }
                     TextButton(onClick = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
                         Text("Activar")
