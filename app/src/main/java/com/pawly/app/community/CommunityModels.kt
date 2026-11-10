@@ -7,7 +7,7 @@ data class PawlyUser(
     val displayName: String = "",
     val bio: String = "",
     val photoUrl: String = "",
-    val isPublic: Boolean = true,
+    val isPublic: Boolean = false,
     val followersCount: Long = 0,
     val followingCount: Long = 0
 )
@@ -53,7 +53,8 @@ data class PawlyConversation(
     val otherUserId: String = "",
     val otherUserName: String = "",
     val lastMessage: String = "",
-    val updatedAt: Long = 0
+    val updatedAt: Long = 0,
+    val otherUserPhoto: String = ""
 )
 
 data class PawlyMessage(
