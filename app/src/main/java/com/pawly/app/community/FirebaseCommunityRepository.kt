@@ -595,6 +595,10 @@ class FirebaseCommunityRepository private constructor(
                             me to (myProfile?.displayName ?: "Yo"),
                             otherUid to (other?.displayName ?: "Usuario")
                         ),
+                        "participantPhotos" to mapOf(
+                            me to myProfile?.photoUrl.orEmpty(),
+                            otherUid to other?.photoUrl.orEmpty()
+                        ),
                         "updatedAt" to FieldValue.serverTimestamp()
                     )
                 )
@@ -615,7 +619,16 @@ class FirebaseCommunityRepository private constructor(
                     val participants = doc.get("participants") as? List<String> ?: emptyList()
                     val other = participants.firstOrNull { it != uid } ?: ""
                     val names = doc.get("participantNames") as? Map<*, *> ?: emptyMap<Any, Any>()
-                    PawlyConversation(doc.id, participants, other, names[other] as? String ?: "Usuario", doc.getString("lastMessage") ?: "", doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0)
+                    val photos = doc.get("participantPhotos") as? Map<*, *> ?: emptyMap<Any, Any>()
+                    PawlyConversation(
+                        id = doc.id,
+                        participants = participants,
+                        otherUserId = other,
+                        otherUserName = names[other] as? String ?: "Usuario",
+                        lastMessage = doc.getString("lastMessage") ?: "",
+                        updatedAt = doc.getTimestamp("updatedAt")?.toDate()?.time ?: 0,
+                        otherUserPhoto = photos[other] as? String ?: ""
+                    )
                 }.sortedByDescending { it.updatedAt }
                 emit()
             }
