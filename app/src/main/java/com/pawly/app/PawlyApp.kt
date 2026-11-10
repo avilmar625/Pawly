@@ -1,5 +1,6 @@
 package com.pawly.app
 
+import com.pawly.app.care.data.PetShareInvitation
 import com.google.firebase.auth.FirebaseAuth
 import android.os.Bundle
 import android.content.Intent
@@ -137,6 +138,7 @@ private fun PawlyMainApp(
     var cloudinaryVideoPreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_video_preset", BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).orEmpty()) }
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var selected by remember { mutableStateOf(Tab.HOME) }
+    var selectedSharedPet by remember { mutableStateOf<PetShareInvitation?>(null) }
     var showAbout by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     val elegantDesign = designStyle == "elegant"
@@ -325,19 +327,40 @@ private fun PawlyMainApp(
                     elegantDesign = elegantDesign
                 )
                 Tab.LEARN -> LearningHubScreen(dogName = dogName, elegantDesign = elegantDesign)
-                Tab.HEALTH -> PetCareHubScreen(
-                    petName = dogName,
-                    elegantDesign = elegantDesign,
-                    petId = dogName,
-                    storageScope = storageScope,
-                    medicineDone = medicineDone,
-                    onMedicineToggle = { medicineDone = it },
-                    dates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { (key, _) -> key.removePrefix("$dogName|") },
-                    onDateChange = { key, value ->
-                        val fullKey = "$dogName|$key"
-                        healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
+                Tab.HEALTH -> {
+                    val sharedPet = selectedSharedPet
+                    if (sharedPet != null) {
+                        val sharedPetId = sharedPet.sharedPetId.removePrefix("${sharedPet.ownerUid}_")
+                        PetCareHubScreen(
+                            petName = sharedPet.petName,
+                            petId = sharedPetId,
+                            storageScope = storageScope,
+                            medicineDone = medicineDone,
+                            onMedicineToggle = { medicineDone = it },
+                            dates = emptyMap(),
+                            onDateChange = { _, _ -> },
+                            elegantDesign = elegantDesign,
+                            sharedPetOwnerUid = sharedPet.ownerUid,
+                            onCloseSharedPet = { selectedSharedPet = null }
+                        )
+                    } else {
+                        PetCareHubScreen(
+                            petName = dogName,
+                            elegantDesign = elegantDesign,
+                            petId = dogName,
+                            storageScope = storageScope,
+                            medicineDone = medicineDone,
+                            onMedicineToggle = { medicineDone = it },
+                            dates = healthDates.filterKeys { it.startsWith("$dogName|") }
+                                .mapKeys { (key, _) -> key.removePrefix("$dogName|") },
+                            onDateChange = { key, value ->
+                                val fullKey = "$dogName|$key"
+                                healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
+                            },
+                            onOpenSharedPet = { selectedSharedPet = it }
+                        )
                     }
-                )
+                }
                 Tab.DIARY -> DiaryScreen(
                     dogName = dogName,
                     elegantDesign = elegantDesign,
