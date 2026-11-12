@@ -84,12 +84,12 @@ object PetCarePdfExporter {
             "Descripción: " + description.ifBlank { "Sin descripción registrada" }
         )
         sections += entries.sortedByDescending { it.date }.map { entry ->
-            listOf(entry.title, "\${entry.type} · \${entry.date}", entry.detail.ifBlank { "Sin notas adicionales." })
+            listOf(entry.title, "${entry.type} · ${entry.date}", entry.detail.ifBlank { "Sin notas adicionales." })
         }
         sections += tasks.map { task ->
             listOf(
                 task.title,
-                "\${task.frequency} · Responsable: \${task.responsible.ifBlank { "Sin asignar" }}",
+                "${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}",
                 if (task.completed) "Estado: marcada como realizada." else "Estado: pendiente."
             )
         }
