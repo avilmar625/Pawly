@@ -470,8 +470,9 @@ internal object PawlyI18n {
             "Salud" to "Salut", "Cuidados" to "Cures",
             "Elegir fecha" to "Tria una data", "Elegir hora" to "Tria una hora",
             "Fecha" to "Data", "Hora" to "Hora", "La fecha y hora deben ser futuras." to "La data i l'hora han de ser futures.",
+            "No se pudo cargar el mapa. Comprueba tu conexión." to "No s'ha pogut carregar el mapa. Comprova la connexió.",
             "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "Encara no hi ha esdeveniments amb ubicació exacta; el mapa mostra Madrid com a referència.",
-            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "El mapa mostra els esdeveniments amb ubicació exacta. Obre cada esdeveniment per veure'n el marcador."
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "El mapa mostra la zona i el primer marcador; obre cada esdeveniment per veure'n la ubicació exacta."
         ),
         "fr" to mapOf(
             "Todo" to "Tout", "Todos" to "Tous", "Historias" to "Histoires", "Adopción" to "Adoption",
@@ -480,8 +481,9 @@ internal object PawlyI18n {
             "Salud" to "Santé", "Cuidados" to "Soins",
             "Elegir fecha" to "Choisir une date", "Elegir hora" to "Choisir une heure",
             "Fecha" to "Date", "Hora" to "Heure", "La fecha y hora deben ser futuras." to "La date et l'heure doivent être dans le futur.",
+            "No se pudo cargar el mapa. Comprueba tu conexión." to "Impossible de charger la carte. Vérifiez votre connexion.",
             "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "Aucun événement n'a encore de position exacte ; la carte affiche Madrid à titre indicatif.",
-            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "La carte affiche les événements avec une position exacte. Ouvrez un événement pour voir son repère."
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "La carte montre la zone et le premier repère ; ouvrez chaque événement pour voir sa position exacte."
         ),
         "en" to mapOf(
             "Todo" to "All", "Todos" to "All", "Historias" to "Stories", "Adopción" to "Adoption",
@@ -490,8 +492,9 @@ internal object PawlyI18n {
             "Salud" to "Health", "Cuidados" to "Care",
             "Elegir fecha" to "Choose date", "Elegir hora" to "Choose time",
             "Fecha" to "Date", "Hora" to "Time", "La fecha y hora deben ser futuras." to "Choose a future date and time.",
+            "No se pudo cargar el mapa. Comprueba tu conexión." to "Couldn't load the map. Check your connection.",
             "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "No events have an exact location yet; the map is centered on Madrid as a reference.",
-            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "The map shows events with exact locations. Open an event to view its marker."
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "The map shows the area and first marker; open each event to view its exact location."
         ),
         "eu" to mapOf(
             "Todo" to "Dena", "Todos" to "Guztiak", "Historias" to "Istorioak", "Adopción" to "Adopzioa",
@@ -500,8 +503,9 @@ internal object PawlyI18n {
             "Salud" to "Osasuna", "Cuidados" to "Zaintzak",
             "Elegir fecha" to "Aukeratu data", "Elegir hora" to "Aukeratu ordua",
             "Fecha" to "Data", "Hora" to "Ordua", "La fecha y hora deben ser futuras." to "Aukeratu etorkizuneko data eta ordua.",
+            "No se pudo cargar el mapa. Comprueba tu conexión." to "Ezin izan da mapa kargatu. Egiaztatu konexioa.",
             "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "Oraindik ez dago kokapen zehatza duen ekitaldirik; mapak Madril erakusten du erreferentzia gisa.",
-            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "Mapak kokapen zehatza duten ekitaldiak erakusten ditu. Ireki ekitaldi bat haren marka ikusteko."
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "Mapak eremua eta lehen marka erakusten ditu; ireki ekitaldi bakoitza haren kokapen zehatza ikusteko."
         )
     )
 
