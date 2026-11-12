@@ -183,6 +183,17 @@ internal object PawlyI18n {
     )
 
     private fun dynamicText(value: String, language: String): String? {
+        val healthPrefix = "Vacunas, revisiones y cuidados de "
+        val healthSuffix = " en un solo lugar."
+        if (value.startsWith(healthPrefix) && value.endsWith(healthSuffix)) {
+            val pet = value.removePrefix(healthPrefix).removeSuffix(healthSuffix)
+            return when (language) {
+                "en" -> "Vaccinations, check-ups and care for " + pet + ", all in one place."
+                "ca" -> "Vacunes, revisions i cures de " + pet + ", tot en un sol lloc."
+                "fr" -> "Vaccins, contrôles et soins de " + pet + ", tout au même endroit."
+                else -> null
+            }
+        }
         val prefixes = when (language) {
             "en" -> listOf(
                 "Perfil compartido · " to "Shared profile · ",
