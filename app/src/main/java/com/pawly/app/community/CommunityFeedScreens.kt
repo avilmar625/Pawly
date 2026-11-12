@@ -99,7 +99,7 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                 }
             }
             if (post.text.isNotBlank()) Text(post.text, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(horizontal = 15.dp, vertical = 4.dp))
-            if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación", Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 340.dp))
+            if (post.imageUrl.isNotBlank()) PawlyRemoteImage(post.imageUrl, "Fotografía de la publicación", Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 340.dp))
             if (post.videoUrl.isNotBlank()) PawlyVideoPlayer(post.videoUrl, Modifier.fillMaxWidth().height(240.dp))
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = { onLike(post) }) {
