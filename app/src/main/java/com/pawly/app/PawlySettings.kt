@@ -52,13 +52,13 @@ internal fun PawlySettingsDialog(
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(19.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text(t("Estilo de diseño"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    Text("Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(t("Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(18.dp)) {
                         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(if (designStyle == "elegant") "Vista elegante activada" else "Vista simple activada", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                                Text(if (designStyle == "elegant") "Fotografías, portadas y tarjetas con más personalidad." else "Interfaz ligera, directa y con menos elementos visuales.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(t(if (designStyle == "elegant") "Vista elegante activada" else "Vista simple activada"), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                                Text(t(if (designStyle == "elegant") "Fotografías, portadas y tarjetas con más personalidad." else "Interfaz ligera, directa y con menos elementos visuales."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -67,7 +67,7 @@ internal fun PawlySettingsDialog(
                             modifier = Modifier.weight(1f),
                             selected = designStyle == "simple",
                             title = t("Simple"),
-                            subtitle = "Limpio y directo",
+                            subtitle = t("Limpio y directo"),
                             icon = Icons.Filled.Tune,
                             onClick = { onDesignStyleChange("simple") }
                         )
@@ -75,7 +75,7 @@ internal fun PawlySettingsDialog(
                             modifier = Modifier.weight(1f),
                             selected = designStyle == "elegant",
                             title = t("Elegante"),
-                            subtitle = "Fotos y color",
+                            subtitle = t("Fotos y color"),
                             icon = Icons.Filled.AutoAwesome,
                             onClick = { onDesignStyleChange("elegant") }
                         )
@@ -105,16 +105,16 @@ internal fun PawlySettingsDialog(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(t("Idioma preferido"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("es" to t("Español"), "ca" to t("Català"), "fr" to t("Français")).forEach { (key, label) ->
+                        listOf("es" to t("Español"), "ca" to t("Català"), "fr" to t("Français"), "en" to t("English")).forEach { (key, label) ->
                             FilterChip(selected = language == key, onClick = { onLanguageChange(key) }, label = { Text(label) })
                         }
                     }
-                    Text("El idioma se aplica a la navegación y a las secciones compatibles. Algunas pantallas antiguas aún pueden conservar textos en español.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(t("El idioma se aplica a la navegación y a las secciones compatibles. Algunas pantallas antiguas aún pueden conservar textos en español."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Servicios multimedia · Cloudinary", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    Text("Configura aquí las subidas de fotos y vídeos sin tener que recompilar la aplicación. Estos datos son nombres de configuración, no incluyas el API Secret.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(t("Servicios multimedia · Cloudinary"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(t("Configura aquí las subidas de fotos y vídeos sin tener que recompilar la aplicación. Estos datos son nombres de configuración, no incluyas el API Secret."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = cloudName,
                         onValueChange = { cloudName = it.trim(); cloudinaryFeedback = null },
@@ -125,34 +125,34 @@ internal fun PawlySettingsDialog(
                     OutlinedTextField(
                         value = imagePreset,
                         onValueChange = { imagePreset = it.trim(); cloudinaryFeedback = null },
-                        label = { Text("Preset unsigned de imágenes") },
+                        label = { Text(t("Preset unsigned de imágenes")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(
                         value = videoPreset,
                         onValueChange = { videoPreset = it.trim(); cloudinaryFeedback = null },
-                        label = { Text("Preset unsigned de vídeos") },
+                        label = { Text(t("Preset unsigned de vídeos")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
                     Button(
                         onClick = {
                             if (!cloudName.matches(Regex("[A-Za-z0-9_-]+")) || imagePreset.isBlank() || videoPreset.isBlank()) {
-                                cloudinaryFeedback = "Introduce un Cloud name válido y los dos presets."
+                                cloudinaryFeedback = t("Introduce un Cloud name válido y los dos presets.")
                             } else {
                                 onSaveCloudinary(cloudName, imagePreset, videoPreset)
-                                cloudinaryFeedback = "Configuración guardada. Ya puedes volver a intentar la subida."
+                                cloudinaryFeedback = t("Configuración guardada. Ya puedes volver a intentar la subida.")
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Guardar configuración multimedia") }
+                    ) { Text(t("Guardar configuración multimedia")) }
                     if (cloudinaryFeedback != null) {
                         Text(cloudinaryFeedback!!, color = if (cloudinaryFeedback!!.startsWith("Configuración")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
-                    Text("Crea los presets como Unsigned en Cloudinary. No pegues aquí una API Key ni un API Secret.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(t("Crea los presets como Unsigned en Cloudinary. No pegues aquí una API Key ni un API Secret."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("Tus ajustes se guardan en este dispositivo.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(t("Tus ajustes se guardan en este dispositivo."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(t("Listo")) } },
