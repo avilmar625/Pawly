@@ -67,14 +67,18 @@ internal fun PawlyEventsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
+    val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
+    val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
+    val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
+    val defaultPublishErrorMessage = tr("No se pudo publicar el evento.")
     LaunchedEffect(repository) {
         runCatching { repository.loadEvents() }
             .onSuccess { events = it; error = null }
             .onFailure {
                 val detail = it.localizedMessage.orEmpty()
                 error = if (detail.contains("PERMISSION_DENIED", ignoreCase = true)) {
-                    tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
-                } else detail.ifBlank { tr("No se pudieron cargar los eventos.") }
+                    loadPermissionDeniedMessage
+                } else detail.ifBlank { defaultLoadErrorMessage }
             }
         loading = false
     }
@@ -225,8 +229,8 @@ internal fun PawlyEventsScreen(
                     .onFailure {
                         val detail = it.localizedMessage.orEmpty()
                         createError = if (detail.contains("PERMISSION_DENIED", ignoreCase = true)) {
-                            tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
-                        } else detail.ifBlank { "No se pudo publicar el evento." }
+                            publishPermissionDeniedMessage
+                        } else detail.ifBlank { defaultPublishErrorMessage }
                     }
             }
         }
