@@ -34,7 +34,8 @@ internal fun PawlySettingsDialog(
     cloudinaryVideoPreset: String,
     onSaveCloudinary: (String, String, String) -> Unit,
     onDismiss: () -> Unit
-) {
+ ) {
+    fun t(value: String) = PawlyI18n.text(value, language)
     var cloudName by remember(cloudinaryCloudName) { mutableStateOf(cloudinaryCloudName) }
     var imagePreset by remember(cloudinaryImagePreset) { mutableStateOf(cloudinaryImagePreset) }
     var videoPreset by remember(cloudinaryVideoPreset) { mutableStateOf(cloudinaryVideoPreset) }
@@ -43,14 +44,14 @@ internal fun PawlySettingsDialog(
         onDismissRequest = onDismiss,
         title = {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("Ajustes", fontWeight = FontWeight.ExtraBold)
-                Text("Haz Pawly tuya", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(t("Ajustes"), fontWeight = FontWeight.ExtraBold)
+                Text(t("Haz Pawly tuya"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         },
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(19.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("Estilo de diseño", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(t("Estilo de diseño"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Text("Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(18.dp)) {
                         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -65,7 +66,7 @@ internal fun PawlySettingsDialog(
                         DesignStyleCard(
                             modifier = Modifier.weight(1f),
                             selected = designStyle == "simple",
-                            title = "Simple",
+                            title = t("Simple"),
                             subtitle = "Limpio y directo",
                             icon = Icons.Filled.Tune,
                             onClick = { onDesignStyleChange("simple") }
@@ -73,7 +74,7 @@ internal fun PawlySettingsDialog(
                         DesignStyleCard(
                             modifier = Modifier.weight(1f),
                             selected = designStyle == "elegant",
-                            title = "Elegante",
+                            title = t("Elegante"),
                             subtitle = "Fotos y color",
                             icon = Icons.Filled.AutoAwesome,
                             onClick = { onDesignStyleChange("elegant") }
@@ -82,17 +83,17 @@ internal fun PawlySettingsDialog(
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Apariencia", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(t("Apariencia"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
-                            Text("Modo oscuro")
-                            Text("Reduce el brillo de la interfaz", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(t("Modo oscuro"))
+                            Text(t("Reduce el brillo de la interfaz"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Switch(checked = darkMode, onCheckedChange = onDarkModeChange)
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Color de Pawly", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(t("Color de Pawly"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
                         listOf("forest" to Color(0xFF173F35), "ocean" to Color(0xFF176B87), "berry" to Color(0xFF805080), "sunset" to Color(0xFFB65D3C)).forEach { (key, color) ->
                             Box(Modifier.size(42.dp).background(color, CircleShape).clickable { onAccentChange(key) }, contentAlignment = Alignment.Center) {
@@ -102,13 +103,13 @@ internal fun PawlySettingsDialog(
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Idioma preferido", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(t("Idioma preferido"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("es" to "Español", "en" to "English", "ca" to "Català").forEach { (key, label) ->
+                        listOf("es" to t("Español"), "ca" to t("Català"), "fr" to t("Français")).forEach { (key, label) ->
                             FilterChip(selected = language == key, onClick = { onLanguageChange(key) }, label = { Text(label) })
                         }
                     }
-                    Text("La traducción integral de todas las pantallas se incorporará progresivamente; por ahora la interfaz principal sigue en español.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("El idioma se aplica a la navegación y a las secciones compatibles. Algunas pantallas antiguas aún pueden conservar textos en español.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -154,7 +155,7 @@ internal fun PawlySettingsDialog(
                 Text("Tus ajustes se guardan en este dispositivo.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Listo") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(t("Listo")) } },
         shape = RoundedCornerShape(26.dp)
     )
 }
