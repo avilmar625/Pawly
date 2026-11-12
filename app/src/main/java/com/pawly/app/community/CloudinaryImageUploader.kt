@@ -32,8 +32,8 @@ internal class CloudinaryImageUploader(private val context: Context) {
 
     suspend fun upload(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
         val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
-        val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null) ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
-        val uploadPreset = (servicePreferences.getString("cloudinary_image_preset", null) ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).trim()
+        val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
+        val uploadPreset = (servicePreferences.getString("cloudinary_image_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
             "Configura Cloudinary en Más → Ajustes → Servicios multimedia (o en local.properties antes de compilar) para subir fotografías."
         }
@@ -72,7 +72,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
     suspend fun uploadVideo(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
         val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
         val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null) ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
-        val uploadPreset = (servicePreferences.getString("cloudinary_video_preset", null) ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).trim()
+        val uploadPreset = (servicePreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
             "Configura Cloudinary en Más → Ajustes → Servicios multimedia (o en local.properties antes de compilar) para subir vídeos."
         }
