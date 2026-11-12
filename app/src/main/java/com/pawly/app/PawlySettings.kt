@@ -2,6 +2,7 @@ package com.pawly.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -104,12 +105,12 @@ internal fun PawlySettingsDialog(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(t("Idioma preferido"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("es" to t("Español"), "ca" to t("Català"), "fr" to t("Français"), "en" to t("English")).forEach { (key, label) ->
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("es" to t("Español"), "en" to t("English"), "ca" to t("Català"), "eu" to t("Euskera"), "fr" to t("Français")).forEach { (key, label) ->
                             FilterChip(selected = language == key, onClick = { onLanguageChange(key) }, label = { Text(label) })
                         }
                     }
-                    Text(t("El idioma se aplica a la navegación y a las secciones compatibles. Algunas pantallas antiguas aún pueden conservar textos en español."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(t("El idioma elegido se aplica en toda la aplicación."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
