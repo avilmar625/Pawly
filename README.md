@@ -259,3 +259,14 @@ Limitaciones: Cloudinary unsigned entrega URLs públicas para quien las conozca;
 - La guía de Cloudinary explica formatos admitidos, límites aplicados por el cliente, privacidad de las URL y los riesgos de presets unsigned.
 - La configuración real sigue siendo local: `app/google-services.json` y `local.properties`. No se suben al repositorio.
 - Esta rama no crea ni modifica proyectos en las consolas de Firebase/Cloudinary y no activa facturación.
+
+
+## Plataforma integral y servicios profesionales (cambios49)
+
+La sección **Más** reúne accesos a servicios profesionales, Comunidad y avisos de mascotas perdidas/encontradas, Diario, Aprender y Ajustes. Salud sigue siendo un destino principal independiente para evitar duplicidades.
+
+El directorio inicial de **Servicios profesionales** permite buscar adiestradores, etólogos, veterinarios, urgencias, peluquerías, paseadores, cuidadores, residencias, fisioterapeutas, especialistas en nutrición y tiendas. La búsqueda se abre en Google Maps o en la web, con filtros por especialidad y zona. Los resultados son externos: Pawly no verifica automáticamente a los proveedores, ni gestiona todavía reservas, pagos, disponibilidad o valoraciones. Antes de contratar hay que comprobar credenciales, identidad, condiciones y precios.
+
+La sección de avisos de mascotas perdidas/encontradas reutiliza las categorías de Comunidad ya existentes; no crea un sistema paralelo ni sustituye los servicios oficiales. Salud conserva el pasaporte, las rutinas, los recordatorios locales, la sincronización disponible por mascota y la exportación PDF. Los datos introducidos por la familia no se convierten por ello en documentación clínica oficial.
+
+Detalles y alcance de esta evolución: [docs/CHANGES49.md](docs/CHANGES49.md).

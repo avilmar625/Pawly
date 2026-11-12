@@ -125,3 +125,23 @@ Evitar que la navegación se convierta en seis pestañas inconexas. Unificar el 
 ## Principio de diseño
 
 Mantener la identidad visual actual de Pawly —verde bosque, tonos cálidos, tarjetas limpias, iconografía amable y jerarquía clara— pero con una interfaz más funcional que ornamental. Priorizar legibilidad, accesibilidad, rapidez y estados claros. La confianza debe notarse en los detalles, no en promesas grandilocuentes.
+
+
+## Evolución cambios49 — servicios profesionales y navegación integrada
+
+La rama `cambios49` incorpora una primera capa de descubrimiento de servicios profesionales desde Más: adiestramiento, etología, veterinaria, urgencias, peluquería, paseos, cuidadores, residencias, fisioterapia, nutrición y tiendas. La búsqueda se deriva a Google Maps o a la web con especialidad y zona. No se muestran fichas, precios, reseñas ni disponibilidad inventados y no se presenta esta fase como un marketplace con reservas o pagos.
+
+Los avisos de mascotas perdidas/encontradas se mantienen dentro de Comunidad para reutilizar las categorías, moderación y mensajería existentes. Salud permanece en la navegación principal y conserva el pasaporte, los cuidados, los recordatorios, la sincronización disponible y el PDF; no se duplica su acceso en Más.
+
+### Siguiente salto para servicios profesionales
+
+Para convertir el directorio en contratación real se necesita una fase de producto independiente: alta profesional, verificación de identidad y credenciales, fichas gestionadas por cada proveedor, disponibilidad, solicitud de cita, cancelaciones, notificaciones, moderación, soporte y marco legal. No se debe habilitar cobro ni publicar valoraciones sin una infraestructura que permita gestionarlos de forma fiable.
+
+### Criterios de calidad para las siguientes versiones
+
+- Mantener una única fuente de verdad para cada dato de mascota.
+- Separar los datos locales de los sincronizados y mostrar el estado real.
+- No presentar datos de demostración como servicios reales o profesionales verificados.
+- Mantener Salud como destino principal sin accesos duplicados.
+- Priorizar accesibilidad, legibilidad y estados vacíos útiles sobre decoración.
+- Probar en modo local, sesión Firebase, modo oscuro y dispositivos de tamaño reducido antes de integrar.
