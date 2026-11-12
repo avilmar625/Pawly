@@ -34,6 +34,25 @@ internal object PawlyI18n {
         "Nombre público" to "Public name", "Presentación" to "Bio", "Perfil público" to "Public profile", "Permite que te encuentren." to "Let other people find you.", "Guardar perfil" to "Save profile", "Cambiar foto de perfil" to "Change profile photo", "Fotografía seleccionada" to "Photo selected", "Servicios y experiencia" to "Services and experience", "Ciudad o zona de trabajo" to "City or service area",
         "Añadir" to "Add", "Mis mascotas" to "My pets", "Cuentas bloqueadas" to "Blocked accounts", "No has bloqueado a nadie." to "You haven't blocked anyone.", "Desbloquear" to "Unblock", "Perfil actualizado." to "Profile updated.", "Guardar…" to "Saving…"
     )
+
+    private val enExtra = mapOf(
+        "PROFESIONALES PARA SU BIENESTAR" to "PROFESSIONALS FOR THEIR WELLBEING",
+        "Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa." to "Explore services to care for, train and support your pet at every stage.",
+        "¿Qué servicio necesitáis?" to "What service do you need?", "Afina la búsqueda" to "Refine your search",
+        "Servicio o especialidad (opcional)" to "Service or speciality (optional)", "Ciudad o zona (opcional)" to "City or area (optional)",
+        "Buscar profesionales en el mapa" to "Find professionals on the map", "Buscar también en la web" to "Also search the web", "Antes de contratar" to "Before hiring",
+        "Adiestramiento" to "Dog training", "Etología" to "Animal behaviour", "Veterinarios" to "Veterinarians", "Urgencias" to "Emergency vets", "Peluquería" to "Grooming", "Paseadores" to "Dog walkers", "Cuidadores" to "Pet sitters", "Residencias" to "Boarding", "Fisioterapia" to "Physiotherapy", "Nutrición" to "Nutrition", "Tiendas" to "Pet shops", "Otros servicios" to "Other services",
+        "Educación amable, obediencia y habilidades" to "Kind training, obedience and skills", "Ayuda especializada para problemas de conducta" to "Specialist help with behavioural issues", "Clínicas generales y especialistas" to "General clinics and specialists", "Atención veterinaria urgente 24 horas" to "24-hour emergency veterinary care", "Higiene, baño y cuidado del pelaje" to "Hygiene, bathing and coat care", "Paseos y actividad adaptada" to "Walks and adapted exercise", "Cuidado a domicilio y visitas" to "Home care and visits", "Guardería y alojamiento" to "Day care and boarding", "Rehabilitación y movilidad" to "Rehabilitation and mobility", "Asesoramiento nutricional profesional" to "Professional nutrition advice", "Comercios y alimentación especializada" to "Pet shops and specialist food", "Otros profesionales para animales" to "Other pet professionals",
+        "He perdido a mi mascota" to "I've lost my pet", "Ayuda a encontrarla" to "Help find your pet", "Nombre de la mascota" to "Pet's name", "Zona donde se perdió" to "Area where the pet went missing", "Última vez vista" to "Last seen", "Descripción y señas" to "Description and identifying features", "Teléfono o forma de contacto (opcional)" to "Phone or contact method (optional)", "Añadir fotografía" to "Add a photo", "Publicar aviso de pérdida" to "Publish lost pet alert", "Volver" to "Back", "Aviso publicado" to "Alert published",
+        "Publicaremos un aviso en la categoría de animales perdidos de Comunidad para que otras personas puedan difundirlo." to "We'll publish an alert in the Community's lost pets category so others can share it.",
+        "Especie o raza (opcional)" to "Species or breed (optional)", "Fecha, hora y lugar aproximados" to "Approximate date, time and place", "Consejo: indica una zona concreta y una descripción reconocible. Si compartes un teléfono, recuerda que será visible públicamente en la publicación." to "Tip: provide a specific area and recognisable description. If you share a phone number, it will be visible publicly in the post.",
+        "PROFESIONALES PARA SU BIENESTAR" to "PROFESSIONALS FOR THEIR WELLBEING",
+        "La traducción integral de todas las pantallas se incorporará progresivamente; por ahora la interfaz principal sigue en español." to "Translations are being expanded across the app; some older screens may still show Spanish text.",
+        "No se ha podido cargar esta fotografía" to "This photo could not be loaded",
+        "Nombre público" to "Public name", "Presentación" to "Bio", "Perfil público" to "Public profile", "Permite que te encuentren." to "Let people find you.", "Guardar perfil" to "Save profile", "Cambiar foto de perfil" to "Change profile photo",
+        "Particular" to "Pet owner", "Profesional" to "Professional", "Especialidad o servicio" to "Speciality or service", "Ciudad o zona de trabajo" to "City or service area", "Servicios y experiencia" to "Services and experience", "Contacto profesional (opcional)" to "Professional contact (optional)"
+    )
+
     private val caExtra = mapOf(
         "Ayuda" to "Ajuda", "English" to "Anglès", "Ficha completa y PDF" to "Fitxa completa i PDF", "Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado." to "Inclou el perfil, el passaport sanitari i les rutines de cura.", "Guardar en el móvil" to "Desa al dispositiu", "Compartir PDF" to "Comparteix PDF",
         "Invita a un amigo" to "Convida un amic", "Comparte Pawly con otras personas amantes de los animales." to "Comparteix Pawly amb altres persones amants dels animals.", "Contacta con nosotros" to "Contacta amb nosaltres", "Envíanos una consulta, incidencia o sugerencia." to "Envia'ns una consulta, incidència o suggeriment.", "AYUDA Y CUENTA" to "AJUDA I COMPTE", "INFORMACIÓN LEGAL" to "INFORMACIÓ LEGAL", "Política de privacidad" to "Política de privacitat", "Consulta el borrador de privacidad de Pawly." to "Consulta l'esborrany de privacitat de Pawly.", "Términos y condiciones" to "Termes i condicions", "Consulta las condiciones de uso en preparación." to "Consulta les condicions d'ús en preparació.", "Salir de tu cuenta de Pawly en este dispositivo." to "Surt del teu compte de Pawly en aquest dispositiu.", "¿Cerrar sesión?" to "Vols tancar la sessió?", "Tendrás que volver a identificarte para acceder a tu cuenta." to "Hauràs de tornar a identificar-te per accedir al teu compte.",
@@ -47,7 +66,7 @@ internal object PawlyI18n {
     fun text(value: String, language: String): String = when (language) {
         "ca" -> ca[value] ?: caExtra[value] ?: value
         "fr" -> fr[value] ?: frExtra[value] ?: value
-        "en" -> en[value] ?: value
+        "en" -> en[value] ?: enExtra[value] ?: value
         else -> value
     }
 }
