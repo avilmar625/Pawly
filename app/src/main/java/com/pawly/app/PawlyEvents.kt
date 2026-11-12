@@ -4,6 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.webkit.WebView
 import androidx.compose.ui.viewinterop.AndroidView
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -66,6 +69,22 @@ internal fun PawlyEventsScreen(
     }
     val visible = events.filter { category == "Todos" || it.category == category }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp)) {
+        if (elegantDesign && !mapOnly) {
+            Box(Modifier.fillMaxWidth().height(128.dp).clip(RoundedCornerShape(24.dp))) {
+                AsyncImage(
+                    model = "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=1200&h=500&fit=crop",
+                    contentDescription = tr("Perros disfrutando juntos al aire libre"),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xC9152B22)))))
+                Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+                    Text(tr("PAWLY · PLANES BONITOS"), color = Color.White.copy(alpha = .85f), style = MaterialTheme.typography.labelSmall)
+                    Text(tr("Cada encuentro puede ser el comienzo de una amistad."), color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(if (mapOnly) tr("Explora cerca de ti") else tr("Planes para compartir"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
