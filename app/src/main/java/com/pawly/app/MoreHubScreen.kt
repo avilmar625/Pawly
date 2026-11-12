@@ -42,6 +42,7 @@ internal fun MoreHubScreen(
     onPrivacy: () -> Unit,
     onTerms: () -> Unit,
     onSignOut: () -> Unit,
+    showSignOut: Boolean = true,
     language: String = "es",
     elegantDesign: Boolean = false
 ) {
@@ -90,7 +91,7 @@ internal fun MoreHubScreen(
         SectionLabel(t("INFORMACIÓN LEGAL"))
         MoreDestinationCard(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy, Color(0xFF63758A), Color(0xFFEAF0F6))
         MoreDestinationCard(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms, Color(0xFF63758A), Color(0xFFEAF0F6))
-        MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true }, Color(0xFFB34F42), Color(0xFFFFE9E4))
+        if (showSignOut) MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true }, Color(0xFFB34F42), Color(0xFFFFE9E4))
         Text(t("La Comunidad y Salud siguen accesibles desde la navegación inferior para evitar accesos duplicados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 3.dp, vertical = 4.dp))
     }
     if (confirmSignOut) {
