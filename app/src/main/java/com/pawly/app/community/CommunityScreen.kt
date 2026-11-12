@@ -60,31 +60,31 @@ internal fun CommunityScreen(elegantDesign: Boolean = false) {
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!, elegantDesign) { uid = repository.currentUid }
+    else CommunityHub(repository, uid!!, elegantDesign)
 }
 
 
 @Composable
 internal fun FirebaseSetupPanel(onContinueOffline: () -> Unit) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("🐾", fontSize = 54.sp)
-        Text("La comunidad Pawly", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-        Text("Conecta con personas que comparten su vida con perros. Para activar cuentas, sincronización y fotografías hay que vincular el proyecto Firebase.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(tr("🐾"), fontSize = 54.sp)
+        Text(tr("La comunidad Pawly"), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+        Text(tr("Conecta con personas que comparten su vida con perros. Para activar cuentas, sincronización y fotografías hay que vincular el proyecto Firebase."), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(18.dp))
         Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Servicios que se activarán", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                Text("• Cuentas con correo y contraseña")
-                Text("• Perfiles públicos y perfiles de perros")
-                Text("• Muro, likes, comentarios y seguidores")
-                Text("• Mensajes privados en tiempo real")
-                Text("• Fotografías optimizadas con Cloudinary")
-                Text("Añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(tr("Servicios que se activarán"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(tr("• Cuentas con correo y contraseña"))
+                Text(tr("• Perfiles públicos y perfiles de perros"))
+                Text(tr("• Muro, likes, comentarios y seguidores"))
+                Text(tr("• Mensajes privados en tiempo real"))
+                Text(tr("• Fotografías optimizadas con Cloudinary"))
+                Text(tr("Añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
         Spacer(Modifier.height(14.dp))
         OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth()) {
-            Text("Continuar en modo local")
+            Text(tr("Continuar en modo local"))
         }
     }
 }
@@ -120,24 +120,24 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
             )
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD910251F)))))
             Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
-                Text("PAWLY COMMUNITY", color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                Text("Una comunidad para compartir más vida juntos.", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                Text(tr("PAWLY COMMUNITY"), color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                Text(tr("Una comunidad para compartir más vida juntos."), color = Color.White, style = MaterialTheme.typography.titleLarge)
             }
         }
         Spacer(Modifier.height(18.dp))
-        Text("TU COMUNIDAD PERRUNA", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+        Text(tr("TU COMUNIDAD PERRUNA"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
         Spacer(Modifier.height(8.dp))
         Text(if (register) "Crea tu cuenta" else "Qué alegría verte", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-        Text("Comparte aventuras, descubre perros y conoce a sus personas.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(tr("Comparte aventuras, descubre perros y conoce a sus personas."), color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(20.dp))
-        if (register) OutlinedTextField(username, { username = it }, label = { Text("Nombre de usuario") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        if (register) OutlinedTextField(username, { username = it }, label = { Text(tr("Nombre de usuario")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(
-            email, { email = it }, label = { Text("Correo electrónico") }, singleLine = true,
+            email, { email = it }, label = { Text(tr("Correo electrónico")) }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
         OutlinedTextField(
-            password, { password = it }, label = { Text("Contraseña (mín. 6 caracteres)") },
+            password, { password = it }, label = { Text(tr("Contraseña (mín. 6 caracteres)")) },
             visualTransformation = PasswordVisualTransformation(), singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
@@ -270,7 +270,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
             ) {
                 Icon(Icons.Default.AccountCircle, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Continuar con Google")
+                Text(tr("Continuar con Google"))
             }
         }
         if (status != null) Text(status!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
@@ -284,20 +284,20 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                 }
                     .onFailure { error = it.toPawlyMessage("No se pudo enviar el enlace de recuperación.") }
             }
-        }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("He olvidado mi contraseña", color = MaterialTheme.colorScheme.primary) }
+        }, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text(tr("He olvidado mi contraseña"), color = MaterialTheme.colorScheme.primary) }
         TextButton(onClick = { register = !register; error = null; status = null }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text(if (register) "Ya tengo una cuenta · Iniciar sesión" else "¿Primera vez en Pawly? Crear cuenta", color = MaterialTheme.colorScheme.primary)
         }
         OutlinedButton(onClick = onContinueOffline, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
-            Text("Continuar sin cuenta (modo local)")
+            Text(tr("Continuar sin cuenta (modo local)"))
         }
-        Text("Respeta la privacidad de otras personas y no compartas datos personales sensibles.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        Text(tr("Respeta la privacidad de otras personas y no compartas datos personales sensibles."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
     }
 }
 
 
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, onSignOut: () -> Unit) {
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
@@ -325,20 +325,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         notificationsAllowed = granted
         notice = if (granted) "Notificaciones activadas." else "Puedes activarlas más adelante desde los ajustes de Android."
     }
-    val signOut: () -> Unit = {
-        scope.launch {
-            // Clear Google's provider-side account selection state as well as Firebase Auth.
-            // This prevents Credential Manager from reusing a stale account reauthentication session.
-            runCatching {
-                CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
-            }.onFailure {
-                Log.w("PawlyGoogleSignIn", "Could not clear Google credential state during sign-out.", it)
-            }
-            runCatching { repo.signOut() }
-                .onFailure { notice = it.localizedMessage ?: "No se pudo cerrar la sesión correctamente." }
-            onSignOut()
-        }
-    }
     LaunchedEffect(repo, uid) {
         admin = runCatching { repo.isAdmin() }.getOrDefault(false)
         runCatching { repo.syncMessagingToken() }
@@ -361,12 +347,9 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
                 Row(Modifier.fillMaxSize().padding(start = 19.dp, end = 8.dp, top = 15.dp, bottom = 15.dp), verticalAlignment = Alignment.Bottom) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("PAWLY COMMUNITY", color = Color.White.copy(alpha = .84f), fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
-                        Text("Comunidad", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                        Text("Aventuras que se comparten.", color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Surface(color = Color.White.copy(alpha = .17f), shape = CircleShape) {
-                        IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White) }
+                        Text(tr("PAWLY COMMUNITY"), color = Color.White.copy(alpha = .84f), fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
+                        Text(tr("Comunidad"), color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                        Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -380,29 +363,26 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("PAWLY COMMUNITY", color = Lime, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
-                    Text("Comunidad", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                    Text("Aventuras que se comparten.", color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.bodySmall)
-                }
-                Surface(color = Color.White.copy(alpha = .14f), shape = CircleShape) {
-                    IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White) }
+                    Text(tr("PAWLY COMMUNITY"), color = Lime, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
+                    Text(tr("Comunidad"), color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
-                FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) }, shape = RoundedCornerShape(50))
+                FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(tr(item.label), maxLines = 1) }, shape = RoundedCornerShape(50))
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
                 Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("No te pierdas los avisos de Pawly", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
-                        Text("Activa las notificaciones para recibir avisos cuando estén disponibles.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        Text(tr("No te pierdas los avisos de Pawly"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Activa las notificaciones para recibir avisos cuando estén disponibles."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     }
                     TextButton(onClick = { notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) }) {
-                        Text("Activar")
+                        Text(tr("Activar"))
                     }
                 }
             }
@@ -410,14 +390,14 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         if (!emailVerified) {
             Surface(color = Lime.copy(alpha = .45f), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
                 Column(Modifier.padding(10.dp)) {
-                    Text("Verifica tu correo para proteger tu cuenta.", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Verifica tu correo para proteger tu cuenta."), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                     Row {
                         TextButton(onClick = {
                             scope.launch { runCatching { repo.resendVerificationEmail(); notice = "Correo de verificación enviado." }.onFailure { notice = it.localizedMessage } }
-                        }) { Text("Reenviar correo") }
+                        }) { Text(tr("Reenviar correo")) }
                         TextButton(onClick = {
                             scope.launch { runCatching { repo.refreshAuthentication(); emailVerified = repo.isEmailVerified }.onFailure { notice = it.localizedMessage } }
-                        }) { Text("Ya lo he verificado") }
+                        }) { Text(tr("Ya lo he verificado")) }
                     }
                 }
             }
@@ -444,7 +424,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
-            page == CommunityPage.PROFILE -> MyCommunityProfile(repo, signOut)
+            page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
         }
     }
@@ -469,10 +449,10 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
 private fun BlockConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Bloquear esta cuenta") },
-        text = { Text("Dejarás de ver sus publicaciones en tu muro y no podréis iniciar ni continuar conversaciones. Puedes desbloquearla más adelante desde la sección «Cuentas bloqueadas» de tu perfil.") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Bloquear") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        title = { Text(tr("Bloquear esta cuenta")) },
+        text = { Text(tr("Dejarás de ver sus publicaciones en tu muro y no podréis iniciar ni continuar conversaciones. Puedes desbloquearla más adelante desde la sección «Cuentas bloqueadas» de tu perfil.")) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(tr("Bloquear")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
     )
 }
 

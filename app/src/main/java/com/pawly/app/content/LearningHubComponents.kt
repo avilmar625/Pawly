@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import com.pawly.app.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,7 +45,7 @@ internal fun NewsSearch(value: String, onValueChange: (String) -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        placeholder = { Text("Buscar noticias o temas") },
+        placeholder = { Text(tr("Buscar noticias o temas")) },
         shape = RoundedCornerShape(16.dp)
     )
 }
@@ -61,7 +63,7 @@ internal fun NewsResults(
 ) {
     if (showRefresh) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("Últimas publicaciones", modifier = Modifier.weight(1f), color = Forest, fontWeight = FontWeight.Bold)
+            Text(tr("Últimas publicaciones"), modifier = Modifier.weight(1f), color = Forest, fontWeight = FontWeight.Bold)
             IconButton(onClick = onRefresh, enabled = !loading) {
                 Icon(Icons.Default.Refresh, contentDescription = "Actualizar noticias", tint = Forest)
             }
@@ -71,17 +73,17 @@ internal fun NewsResults(
         Row(Modifier.fillMaxWidth().padding(vertical = 18.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
             Spacer(Modifier.width(10.dp))
-            Text("Buscando noticias…", color = Muted)
+            Text(tr("Buscando noticias…"), color = Muted)
         }
     } else if (error != null) {
         Surface(color = Peach.copy(alpha = .35f), shape = RoundedCornerShape(16.dp)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(error, color = Ink)
-                OutlinedButton(onClick = onRefresh) { Text("Volver a intentar") }
+                OutlinedButton(onClick = onRefresh) { Text(tr("Volver a intentar")) }
             }
         }
     } else if (articles.isEmpty()) {
-        Text("No hay resultados para esta búsqueda. Prueba con otras palabras o actualiza.", color = Muted, style = MaterialTheme.typography.bodyMedium)
+        Text(tr("No hay resultados para esta búsqueda. Prueba con otras palabras o actualiza."), color = Muted, style = MaterialTheme.typography.bodyMedium)
     } else {
         articles.forEach { article ->
             NewsArticleCard(article, article.id in savedIds, onToggleSave = { onToggleSave(article.id) }, onOpen = { onOpen(article.url) })
@@ -103,7 +105,7 @@ internal fun NewsArticleCard(article: DogNewsArticle, saved: Boolean, onToggleSa
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onOpen) {
-                    Text("Leer en la fuente")
+                    Text(tr("Leer en la fuente"))
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(15.dp))
                 }
@@ -169,7 +171,7 @@ internal fun GuideCard(guide: LearningGuide) {
                 HorizontalDivider(color = Line)
                 guide.points.forEachIndexed { index, point ->
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.Top) {
-                        Text("${index + 1}.", color = ForestLight, fontWeight = FontWeight.Bold)
+                        Text(tr("${index + 1}."), color = ForestLight, fontWeight = FontWeight.Bold)
                         Text(point, color = Ink, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     }
                 }
@@ -185,10 +187,10 @@ internal fun GuideCard(guide: LearningGuide) {
 internal fun NearbyShelterCard(onClick: () -> Unit) {
     Surface(onClick = onClick, color = Lime.copy(alpha = .48f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("📍", fontSize = 27.sp)
+            Text(tr("📍"), fontSize = 27.sp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("Buscar protectoras cerca de ti", color = Forest, fontWeight = FontWeight.Bold)
-                Text("Abre el mapa y consulta centros y asociaciones de tu zona.", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text(tr("Buscar protectoras cerca de ti"), color = Forest, fontWeight = FontWeight.Bold)
+                Text(tr("Abre el mapa y consulta centros y asociaciones de tu zona."), color = Muted, style = MaterialTheme.typography.bodySmall)
             }
             Icon(Icons.Default.OpenInNew, contentDescription = "Abrir mapa", tint = Forest)
         }

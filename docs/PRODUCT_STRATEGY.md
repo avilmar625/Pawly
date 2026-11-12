@@ -145,3 +145,16 @@ Para convertir el directorio en contratación real se necesita una fase de produ
 - Mantener Salud como destino principal sin accesos duplicados.
 - Priorizar accesibilidad, legibilidad y estados vacíos útiles sobre decoración.
 - Probar en modo local, sesión Firebase, modo oscuro y dispositivos de tamaño reducido antes de integrar.
+
+
+## Cambios51 — identidad de cuenta y perfiles profesionales
+
+La cuenta debe poder ser particular o profesional. El perfil particular prioriza la relación con sus mascotas y la comunidad. El profesional debe incluir categoría, área de servicio, presentación, contacto laboral y portfolio. La etiqueta profesional no implica verificación. La verificación debe ser un proceso explícito con documentación, revisión, fecha y renovación; nunca una insignia automática.
+
+El directorio debe evolucionar para combinar dos fuentes claramente diferenciadas: proveedores externos localizados en Maps y perfiles profesionales Pawly que hayan elegido ser públicos. Los perfiles Pawly deben identificarse como tales y permitir abrir su perfil, consultar servicios y contactar. La contratación, agenda, pagos, reseñas verificadas y cancelaciones pertenecen a una fase posterior con backend y soporte.
+
+La sección Más debe actuar como centro de cuenta y ayuda: invitar, contacto, documentos legales, ajustes y cierre de sesión. El cierre de sesión no debe depender de Comunidad. El soporte y la información legal requieren una dirección de contacto real y datos del responsable antes de una beta pública.
+
+La internacionalización debe cubrir todos los textos propios de interfaz (incluidos errores, diálogos, accesibilidad y estados vacíos) y probar el cambio en caliente. Los textos de proveedores externos pueden conservar el idioma de origen y deben distinguirse de la interfaz traducida.
+
+La ficha exportable debe ofrecer guardar localmente y compartir, con selección explícita del destino. Debe incluir solo datos de la mascota que la persona tenga permiso para consultar, e identificar el documento como resumen generado por Pawly, no como certificado veterinario oficial.

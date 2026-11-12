@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import com.pawly.app.tr
+
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -112,16 +114,16 @@ internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) 
                 )
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
                 Column(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("PAWLY · APRENDER Y DESCUBRIR", color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
-                    Text("Un mundo mejor para ellos.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    Text(tr("PAWLY · APRENDER Y DESCUBRIR"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
+                    Text(tr("Un mundo mejor para ellos."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 }
             }
         }
         if (!elegantDesign) {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("PAWLY · APRENDER Y DESCUBRIR", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
-                Text("Un mundo mejor para ellos.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
-                Text("Actualidad, ideas, educación y recursos para compartir más vida juntos.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text(tr("PAWLY · APRENDER Y DESCUBRIR"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
+                Text(tr("Un mundo mejor para ellos."), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface)
+                Text(tr("Actualidad, ideas, educación y recursos para compartir más vida juntos."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
         }
 
@@ -132,19 +134,19 @@ internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) 
         ) {
             Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Aprender también es cuidar", color = Lime, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("Pequeños cambios pueden mejorar su día a día.", color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleMedium)
-                    Text("Fuentes externas y guías prácticas, reunidas en Pawly.", color = androidx.compose.ui.graphics.Color.White.copy(alpha = .75f), style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Aprender también es cuidar"), color = Lime, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(tr("Pequeños cambios pueden mejorar su día a día."), color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.titleMedium)
+                    Text(tr("Fuentes externas y guías prácticas, reunidas en Pawly."), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .75f), style = MaterialTheme.typography.bodySmall)
                 }
-                Text("🐾", fontSize = 42.sp)
+                Text(tr("🐾"), fontSize = 42.sp)
             }
         }
 
         if (dogProfile != null) {
             Surface(color = Paper, shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("Una selección para ${dogProfile!!.name}", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("Basada en la edad y las características que has guardado en su ficha.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Una selección para ${dogProfile!!.name}"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text(tr("Basada en la edad y las características que has guardado en su ficha."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     recommendedGuides.forEach { GuideCard(it) }
                 }
             }
@@ -181,7 +183,7 @@ internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) 
                     if (article != null) savedArticles = if (id in savedArticles) savedArticles - id else savedArticles + (id to article)
                 }, onRefresh = { refreshKey++ }, onOpen = { url -> runCatching { uriHandler.openUri(url) } })
                 SectionLabel("Entidades y directorios")
-                Text("Consulta sus canales oficiales para conocer animales disponibles, requisitos y formas de colaborar.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(tr("Consulta sus canales oficiales para conocer animales disponibles, requisitos y formas de colaborar."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 PawlyLearningLibrary.organisations.filter { it.tag in setOf("Adopción", "Protección", "Directorio") }.forEach {
                     ContentLinkCard(it) { runCatching { uriHandler.openUri(it.url) } }
                 }
@@ -216,7 +218,7 @@ internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) 
             PawlyContentSection.SAVED -> {
                 NewsSectionHeader("Tus noticias guardadas", "Artículos que has marcado para leer más tarde. Se conservan en este dispositivo.")
                 if (savedArticles.isEmpty()) {
-                    Text("Todavía no has guardado ninguna noticia. Usa el icono de marcador en cualquier artículo.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Todavía no has guardado ninguna noticia. Usa el icono de marcador en cualquier artículo."), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     NewsResults(
                         articles = savedArticles.values.sortedByDescending { it.publishedAtMillis },
