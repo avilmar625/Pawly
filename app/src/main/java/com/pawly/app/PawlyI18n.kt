@@ -103,10 +103,47 @@ internal object PawlyI18n {
         "¿Qué aventura habéis vivido?" to "Quelle aventure avez-vous vécue ?", "Comparte una foto o una historia" to "Partagez une photo ou une histoire", "Todos" to "Tout le monde", "Siguiendo" to "Abonnements", "Denunciar publicación" to "Signaler la publication", "Tipo de publicación" to "Type de publication", "Nombre de la mascota (opcional)" to "Nom de l’animal (facultatif)", "Foto" to "Photo", "Vídeo" to "Vidéo", "Comentarios" to "Commentaires", "Escribe un comentario" to "Écrire un commentaire", "Enviar" to "Envoyer", "Visto" to "Vu", "Escribe un mensaje…" to "Écrire un message…"
     )
 
+
+    private val miscCa = mapOf(
+        "Muro" to "Mur", "Personas" to "Persones", "Mensajes" to "Missatges", "Mi perfil" to "El meu perfil", "Moderar" to "Moderar",
+        "PAWLY · AYUDA" to "PAWLY · AJUDA", "PAWLY · SERVICIOS" to "PAWLY · SERVEIS", "Para publicar un aviso necesitas conectar Pawly con Firebase e iniciar sesión." to "Per publicar un avís, cal connectar Pawly amb Firebase i iniciar sessió.",
+        "Fecha, hora y lugar aproximados" to "Data, hora i lloc aproximats", "Color, tamaño, collar, microchip (no publiques el número completo), comportamiento…" to "Color, mida, collar, microxip (no publiquis el número complet), comportament…", "Ej. Málaga, Teatinos…" to "Ex. Màlaga, Teatinos…",
+        "Buscar opciones en Maps" to "Cerca opcions a Maps", "Cerca de la ubicación obtenida" to "A prop de la ubicació actual", "Buscar planes o lugares…" to "Cerca plans o llocs…", "Ej. veterinario 24 horas, parque canino…" to "Ex. veterinari 24 hores, parc caní…",
+        "Nombre público" to "Nom públic", "Presentación" to "Presentació", "Perfil público" to "Perfil públic", "Permite que te encuentren." to "Permet que et trobin.", "Guardar perfil" to "Desa el perfil", "Cambiar foto de perfil" to "Canvia la foto del perfil",
+        "Tipo de cuenta" to "Tipus de compte", "Particular" to "Particular", "Profesional" to "Professional", "Perfil profesional" to "Perfil professional", "Especialidad o servicio" to "Especialitat o servei", "Ciudad o zona de trabajo" to "Ciutat o zona de treball", "Servicios y experiencia" to "Serveis i experiència", "Contacto profesional (opcional)" to "Contacte professional (opcional)",
+        "¿Cerrar sesión?" to "Vols tancar la sessió?", "Tendrás que volver a identificarte para acceder a tu cuenta." to "Hauràs de tornar a identificar-te per accedir al teu compte.", "Cancelar" to "Cancel·la", "Cerrar sesión" to "Tanca la sessió",
+        "Mis mascotas" to "Les meves mascotes", "Añadir" to "Afegeix", "Cuentas bloqueadas" to "Comptes bloquejats", "No has bloqueado a nadie." to "No has bloquejat ningú.", "Desbloquear" to "Desbloqueja", "Privacidad y cuenta" to "Privacitat i compte",
+        "Tipo de mascota" to "Tipus de mascota", "Nombre" to "Nom", "Raza" to "Raça", "Edad" to "Edat", "Descripción" to "Descripció", "Características separadas por comas" to "Característiques separades per comes", "Eliminar" to "Elimina", "Conservar" to "Conserva",
+        "Buscar personas" to "Cerca persones", "Escribe al menos dos caracteres." to "Escriu almenys dos caràcters.", "Volver" to "Torna", "Mensaje" to "Missatge", "Denunciar perfil" to "Denuncia el perfil", "Bloquear usuario" to "Bloqueja l'usuari", "Sus compañeros" to "Les seves mascotes", "Publicaciones" to "Publicacions", "Todavía no ha compartido publicaciones." to "Encara no ha compartit publicacions."
+    )
+    private val miscFr = mapOf(
+        "Muro" to "Fil", "Personas" to "Personnes", "Mensajes" to "Messages", "Mi perfil" to "Mon profil", "Moderar" to "Modérer",
+        "PAWLY · AYUDA" to "PAWLY · AIDE", "PAWLY · SERVICIOS" to "PAWLY · SERVICES", "Para publicar un aviso necesitas conectar Pawly con Firebase e iniciar sesión." to "Pour publier une annonce, connectez Pawly à Firebase et connectez-vous.",
+        "Fecha, hora y lugar aproximados" to "Date, heure et lieu approximatifs", "Color, tamaño, collar, microchip (no publiques el número completo), comportamiento…" to "Couleur, taille, collier, puce (ne publiez pas le numéro complet), comportement…", "Ej. Málaga, Teatinos…" to "Ex. Málaga, Teatinos…",
+        "Buscar opciones en Maps" to "Rechercher des options dans Maps", "Cerca de la ubicación obtenida" to "Près de votre position", "Buscar planes o lugares…" to "Rechercher des activités ou des lieux…", "Ej. veterinario 24 horas, parque canino…" to "Ex. vétérinaire 24 h/24, parc canin…",
+        "Nombre público" to "Nom public", "Presentación" to "Présentation", "Perfil público" to "Profil public", "Permite que te encuentren." to "Permet aux autres de vous trouver.", "Guardar perfil" to "Enregistrer le profil", "Cambiar foto de perfil" to "Changer la photo de profil",
+        "Tipo de cuenta" to "Type de compte", "Particular" to "Particulier", "Profesional" to "Professionnel", "Perfil profesional" to "Profil professionnel", "Especialidad o servicio" to "Spécialité ou service", "Ciudad o zona de trabajo" to "Ville ou zone d’activité", "Servicios y experiencia" to "Services et expérience", "Contacto profesional (opcional)" to "Contact professionnel (facultatif)",
+        "¿Cerrar sesión?" to "Se déconnecter ?", "Tendrás que volver a identificarte para acceder a tu cuenta." to "Vous devrez vous reconnecter pour accéder à votre compte.", "Cancelar" to "Annuler", "Cerrar sesión" to "Se déconnecter",
+        "Mis mascotas" to "Mes animaux", "Añadir" to "Ajouter", "Cuentas bloqueadas" to "Comptes bloqués", "No has bloqueado a nadie." to "Vous n’avez bloqué personne.", "Desbloquear" to "Débloquer", "Privacidad y cuenta" to "Confidentialité et compte",
+        "Tipo de mascota" to "Type d’animal", "Nombre" to "Nom", "Raza" to "Race", "Edad" to "Âge", "Descripción" to "Description", "Características separadas por comas" to "Caractéristiques séparées par des virgules", "Eliminar" to "Supprimer", "Conservar" to "Conserver",
+        "Buscar personas" to "Rechercher des personnes", "Escribe al menos dos caracteres." to "Saisissez au moins deux caractères.", "Volver" to "Retour", "Mensaje" to "Message", "Denunciar perfil" to "Signaler le profil", "Bloquear usuario" to "Bloquer l’utilisateur", "Sus compañeros" to "Ses animaux", "Publicaciones" to "Publications", "Todavía no ha compartido publicaciones." to "Aucune publication pour le moment."
+    )
+    private val miscEn = mapOf(
+        "Muro" to "Feed", "Personas" to "People", "Mensajes" to "Messages", "Mi perfil" to "My profile", "Moderar" to "Moderation",
+        "PAWLY · AYUDA" to "PAWLY · HELP", "PAWLY · SERVICIOS" to "PAWLY · SERVICES", "Para publicar un aviso necesitas conectar Pawly con Firebase e iniciar sesión." to "To publish an alert, connect Pawly to Firebase and sign in.",
+        "Fecha, hora y lugar aproximados" to "Approximate date, time and place", "Color, tamaño, collar, microchip (no publiques el número completo), comportamiento…" to "Colour, size, collar, microchip (do not publish the full number), behaviour…", "Ej. Málaga, Teatinos…" to "E.g. Málaga, Teatinos…",
+        "Buscar opciones en Maps" to "Search options in Maps", "Cerca de la ubicación obtenida" to "Near your current location", "Buscar planes o lugares…" to "Search for plans or places…", "Ej. veterinario 24 horas, parque canino…" to "E.g. 24-hour vet, dog park…",
+        "Nombre público" to "Public name", "Presentación" to "Bio", "Perfil público" to "Public profile", "Permite que te encuentren." to "Let people find you.", "Guardar perfil" to "Save profile", "Cambiar foto de perfil" to "Change profile photo",
+        "¿Cerrar sesión?" to "Sign out?", "Tendrás que volver a identificarte para acceder a tu cuenta." to "You will need to sign in again to access your account.", "Cancelar" to "Cancel", "Cerrar sesión" to "Sign out",
+        "Mis mascotas" to "My pets", "Añadir" to "Add", "Cuentas bloqueadas" to "Blocked accounts", "No has bloqueado a nadie." to "You haven't blocked anyone.", "Desbloquear" to "Unblock", "Privacidad y cuenta" to "Privacy and account",
+        "Tipo de mascota" to "Pet type", "Nombre" to "Name", "Raza" to "Breed", "Edad" to "Age", "Descripción" to "Description", "Características separadas por comas" to "Traits separated by commas", "Eliminar" to "Delete", "Conservar" to "Keep",
+        "Buscar personas" to "Find people", "Escribe al menos dos caracteres." to "Type at least two characters.", "Volver" to "Back", "Mensaje" to "Message", "Denunciar perfil" to "Report profile", "Bloquear usuario" to "Block user", "Sus compañeros" to "Their pets", "Publicaciones" to "Posts", "Todavía no ha compartido publicaciones." to "No posts shared yet."
+    )
+
     fun text(value: String, language: String): String = when (language) {
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: value
+        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: value
+        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: value
+        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: value
         else -> value
     }
 }
