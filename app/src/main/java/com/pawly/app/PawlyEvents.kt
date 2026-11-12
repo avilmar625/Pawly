@@ -220,7 +220,7 @@ private fun CreatePawlyEventDialog(
                 OutlinedTextField(title, { title = it }, label = { Text(tr("Nombre del evento")) }, singleLine = true)
                 OutlinedTextField(description, { description = it }, label = { Text(tr("Descripción")) }, minLines = 2)
                 OutlinedTextField(location, { location = it }, label = { Text(tr("Lugar o dirección")) }, singleLine = true)
-                OutlinedTextField(date, { date = it }, label = { Text(tr("Fecha y hora")) }, singleLine = true, placeholder = { Text("DD/MM/AAAA · HH:mm") })
+                OutlinedTextField(date, { date = it }, label = { Text(tr("Fecha y hora")) }, singleLine = true, placeholder = { Text(tr("DD/MM/AAAA · HH:mm")) })
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
