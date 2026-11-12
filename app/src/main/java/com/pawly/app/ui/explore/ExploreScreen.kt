@@ -151,7 +151,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(27.dp))) {
                     AsyncImage(
                         model = "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1200&h=700&fit=crop",
-                        contentDescription = "Paisaje de montaña para descubrir con tu perro",
+                        contentDescription = tr("Paisaje de montaña para descubrir con tu perro"),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
@@ -178,10 +178,10 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             ) {
                 Icon(Icons.Filled.MyLocation, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(if (currentCoordinates == null) "Usar mi ubicación" else "Actualizar ubicación")
+                Text(tr(if (currentCoordinates == null) "Usar mi ubicación" else "Actualizar ubicación"))
             }
             currentAddress?.let { address ->
-                Text(address, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(tr(address), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -229,7 +229,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                             val mapsApp = Intent(Intent.ACTION_VIEW, geo).setPackage("com.google.android.apps.maps")
                             if (mapsApp.resolveActivity(context.packageManager) != null) context.startActivity(mapsApp)
                             else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/$encoded/@$point,14z")))
-                        }) { Text(label) }
+                        }) { Text(tr(label)) }
                     }
                 }
             }
@@ -257,7 +257,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     FilterChip(
                         selected = filter == item,
                         onClick = { filter = item },
-                        label = { Text(item, fontSize = 11.sp) },
+                        label = { Text(tr(item), fontSize = 11.sp) },
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -301,11 +301,11 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         AlertDialog(
             onDismissRequest = { selectedPlace = null },
             icon = { Text(place.emoji, fontSize = 30.sp) },
-            title = { Text(place.name, fontWeight = FontWeight.Bold) },
+            title = { Text(tr(place.name), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(place.detail, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                    Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr(place.detail), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Text(tr(place.description), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(tr("Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
@@ -325,7 +325,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     TextButton(onClick = { onToggleSave(place.name) }) {
                         Icon(if (place.name in savedPlaces) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, null)
                         Spacer(Modifier.width(5.dp))
-                        Text(if (place.name in savedPlaces) "Guardado" else "Guardar idea")
+                        Text(tr(if (place.name in savedPlaces) "Guardado" else "Guardar idea"))
                     }
                     TextButton(onClick = { selectedPlace = null }) { Text(tr("Cerrar")) }
                 }
@@ -347,7 +347,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
             Box(Modifier.fillMaxWidth().height(178.dp)) {
                 AsyncImage(
                     model = place.imageUrl,
-                    contentDescription = place.name,
+                    contentDescription = tr(place.name),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
@@ -377,7 +377,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                 ) {
                     Icon(
                         if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
-                        contentDescription = if (saved) "Quitar de guardados" else "Guardar idea",
+                        contentDescription = tr(if (saved) "Quitar de guardados" else "Guardar idea"),
                         tint = Forest
                     )
                 }
@@ -385,8 +385,8 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                     Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(horizontal = 17.dp, vertical = 15.dp),
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Text(place.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                    Text(place.detail, color = Color.White.copy(alpha = .9f), fontSize = 12.sp)
+                    Text(tr(place.name), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(tr(place.detail), color = Color.White.copy(alpha = .9f), fontSize = 12.sp)
                 }
             }
             Row(
@@ -401,7 +401,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                     lineHeight = 17.sp
                 )
                 Spacer(Modifier.width(8.dp))
-                Icon(Icons.Filled.ArrowForward, contentDescription = "Ver idea", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Filled.ArrowForward, contentDescription = tr("Ver idea"), tint = MaterialTheme.colorScheme.primary)
             }
         }
     }
