@@ -31,6 +31,16 @@ class PawlyI18nTest {
         )
     }
     @Test
+    fun translatesBasqueAndNewCommunityNavigation() {
+        assertEquals("Hasiera", PawlyI18n.text("Inicio", "eu"))
+        assertEquals("Ekitaldiak", PawlyI18n.text("Eventos", "eu"))
+        assertEquals("Events", PawlyI18n.text("Eventos", "en"))
+        assertEquals("Esdeveniments", PawlyI18n.text("Eventos", "ca"))
+        assertEquals("Événements", PawlyI18n.text("Eventos", "fr"))
+        assertEquals("Frantsesa", PawlyI18n.text("Français", "eu"))
+    }
+
+    @Test
     fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
         assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
         assertEquals("Texto nuevo", PawlyI18n.text("Texto nuevo", "en"))
