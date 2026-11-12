@@ -102,16 +102,33 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
                         Column(Modifier.weight(1f)) { Text("Perfil público", fontWeight = FontWeight.SemiBold); Text("Permite que te encuentren.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                         Switch(isPublic, { isPublic = it })
                     }
+                    Text("Tipo de cuenta", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = accountType == "personal", onClick = { accountType = "personal" }, label = { Text("Particular") }, leadingIcon = { Icon(Icons.Default.Pets, null) })
+                        FilterChip(selected = accountType == "professional", onClick = { accountType = "professional" }, label = { Text("Profesional") }, leadingIcon = { Icon(Icons.Default.WorkspacePremium, null) })
+                    }
+                    if (accountType == "professional") {
+                        Text("Perfil profesional", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text("Estos datos aparecerán en tu perfil público si activas la visibilidad. La insignia indica el tipo de cuenta, no una verificación de credenciales.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        OutlinedTextField(professionalCategory, { professionalCategory = it }, label = { Text("Especialidad o servicio") }, placeholder = { Text("Adiestramiento, veterinaria, peluquería…") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(professionalLocation, { professionalLocation = it }, label = { Text("Ciudad o zona de trabajo") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(professionalDescription, { professionalDescription = it }, label = { Text("Servicios y experiencia") }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5)
+                        OutlinedTextField(professionalContact, { professionalContact = it }, label = { Text("Contacto profesional (opcional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                    }
                     Button(onClick = {
                         busy = true
                         scope.launch { runCatching {
-                            repo.updateProfile(name, bio, isPublic)
+                            repo.updateProfile(name, bio, isPublic, accountType, professionalCategory, professionalLocation, professionalDescription, professionalContact)
                             if (avatarUri != null) {
                                 val url = repo.updateProfilePhoto(avatarUri!!)
                                 profile = profile?.copy(photoUrl = url)
                                 avatarUri = null
                             }
-                            profile = profile?.copy(displayName = name, bio = bio, isPublic = isPublic)
+                            profile = profile?.copy(
+                                displayName = name, bio = bio, isPublic = isPublic, accountType = accountType,
+                                professionalCategory = professionalCategory, professionalLocation = professionalLocation,
+                                professionalDescription = professionalDescription, professionalContact = professionalContact
+                            )
                             status = "Perfil actualizado."
                         }.onFailure { error = it.localizedMessage }; busy = false }
                     }, enabled = !busy && name.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(if (busy) "Guardando…" else "Guardar perfil") }
@@ -159,7 +176,6 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
                 }
             }
         }
-        item { OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Logout, null); Text("Cerrar sesión") } }
         item { Text("Comparte solo la información que quieras hacer pública. Evita direcciones y datos sensibles.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall) }
     }
     if (confirmAccountDeletion) {
