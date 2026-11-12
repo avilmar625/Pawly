@@ -138,7 +138,7 @@ internal fun HealthScreen(
                 }
             }
         }
-        item { SectionHeading("Próximos cuidados", "Programa avisos locales para no olvidarte") }
+        item { SectionHeading(tr("Próximos cuidados"), tr("Programa avisos locales para no olvidarte")) }
         if (reminderFeedback != null) item {
             Surface(color = Color(0xFFE8EFE2), shape = RoundedCornerShape(14.dp)) {
                 Text(tr(reminderFeedback!!), color = Forest, modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodySmall)
