@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import com.pawly.app.tr
+
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
@@ -69,33 +71,33 @@ internal fun ProfileDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Perfil de tu compañero", color = Forest) },
+        title = { Text(tr("Perfil de tu compañero"), color = Forest) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(value = name, onValueChange = onNameChange, label = { Text("Nombre") }, singleLine = true, shape = RoundedCornerShape(14.dp))
+                OutlinedTextField(value = name, onValueChange = onNameChange, label = { Text(tr("Nombre")) }, singleLine = true, shape = RoundedCornerShape(14.dp))
                 Text(if (hasPhoto) "Foto de perfil disponible" else "Añade una foto para reconocer a tu compañero", color = Muted, style = MaterialTheme.typography.bodySmall)
                 if (syncStatus.isNotBlank()) {
                     Text(syncStatus, color = ForestLight, style = MaterialTheme.typography.labelSmall)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onGallery) { Icon(Icons.Filled.PhotoLibrary, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Galería") }
-                    OutlinedButton(onClick = onCamera) { Icon(Icons.Filled.PhotoCamera, contentDescription = null); Spacer(Modifier.width(5.dp)); Text("Cámara") }
+                    OutlinedButton(onClick = onGallery) { Icon(Icons.Filled.PhotoLibrary, contentDescription = null); Spacer(Modifier.width(5.dp)); Text(tr("Galería")) }
+                    OutlinedButton(onClick = onCamera) { Icon(Icons.Filled.PhotoCamera, contentDescription = null); Spacer(Modifier.width(5.dp)); Text(tr("Cámara")) }
                 }
-                Text("Perfiles de perros", color = Forest, fontWeight = FontWeight.SemiBold)
+                Text(tr("Perfiles de perros"), color = Forest, fontWeight = FontWeight.SemiBold)
                 profiles.sorted().forEach { profile ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { onSelectProfile(profile) }, modifier = Modifier.weight(1f)) { Text(profile) }
                         if (profiles.size > 1) IconButton(onClick = { onDeleteProfile(profile) }) { Icon(Icons.Filled.DeleteOutline, contentDescription = "Eliminar perfil $profile") }
                     }
                 }
-                OutlinedButton(onClick = onAddProfile) { Icon(Icons.Filled.Add, contentDescription = null); Text("Añadir con el nombre escrito") }
+                OutlinedButton(onClick = onAddProfile) { Icon(Icons.Filled.Add, contentDescription = null); Text(tr("Añadir con el nombre escrito")) }
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave, enabled = name.isNotBlank()) { Text("Guardar", color = Forest) }
+            TextButton(onClick = onSave, enabled = name.isNotBlank()) { Text(tr("Guardar"), color = Forest) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar", color = Muted) }
+            TextButton(onClick = onDismiss) { Text(tr("Cancelar"), color = Muted) }
         },
         containerColor = Paper
     )
@@ -106,21 +108,21 @@ internal fun AboutDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Paper,
-        icon = { Text("🐾", fontSize = 34.sp) },
-        title = { Text("Pawly", color = Forest, fontWeight = FontWeight.Bold) },
+        icon = { Text(tr("🐾"), fontSize = 34.sp) },
+        title = { Text(tr("Pawly"), color = Forest, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Más aventuras. Más recuerdos. Más vida juntos.", color = Ink)
+                Text(tr("Más aventuras. Más recuerdos. Más vida juntos."), color = Ink)
                 Spacer(Modifier.height(5.dp))
-                Text("Creadores", color = ForestLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Text("Alex Vilarrubla Martín", fontWeight = FontWeight.SemiBold)
-                Text("Maialen Cruz Tudanca", fontWeight = FontWeight.SemiBold)
+                Text(tr("Creadores"), color = ForestLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text(tr("Alex Vilarrubla Martín"), fontWeight = FontWeight.SemiBold)
+                Text(tr("Maialen Cruz Tudanca"), fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(5.dp))
-                Text("Versión inicial 1.0.0 · Proyecto en desarrollo", color = Muted, fontSize = 11.sp)
+                Text(tr("Versión inicial 1.0.0 · Proyecto en desarrollo"), color = Muted, fontSize = 11.sp)
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cerrar", color = Forest) }
+            TextButton(onClick = onDismiss) { Text(tr("Cerrar"), color = Forest) }
         }
     )
 }
