@@ -290,13 +290,17 @@ private fun PawlyMainApp(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                            Text(
-                                tab.label,
-                                color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 9.sp,
-                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                maxLines = 1
-                            )
+                            // Keep the bottom navigation compact: the selected destination
+                            // retains its label while the other destinations use icon-only items.
+                            if (active) {
+                                Text(
+                                    tab.label,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
