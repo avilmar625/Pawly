@@ -265,6 +265,7 @@ private fun PawlyMainApp(
         preferences.edit().putString("diary_entries", json.toString()).apply()
     }
 
+    CompositionLocalProvider(LocalPawlyLanguage provides language) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -482,6 +483,7 @@ private fun PawlyMainApp(
                 )
             }
         }
+    }
     }
 
     if (showAbout) {
