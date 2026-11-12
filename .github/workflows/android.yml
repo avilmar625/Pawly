@@ -42,7 +42,8 @@ jobs:
         run: yes | sdkmanager --licenses
 
       - name: Install stable Android SDK for CI
-        run: sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
+        run: |
+          sdkmanager "platforms;android-37.0" "build-tools;37.0.0"
           # Android 17 currently ships as android-37.0; AGP resolves compileSdk 37 via android-37.
           test -d "$ANDROID_HOME/platforms/android-37.0"
           ln -sfn android-37.0 "$ANDROID_HOME/platforms/android-37"
