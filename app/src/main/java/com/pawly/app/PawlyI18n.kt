@@ -249,6 +249,18 @@ internal object PawlyI18n {
                 else -> null
             }
         }
+        val sharedInvitation = Regex("^(.+?) quiere compartir contigo el perfil de (.+)\\.$").matchEntire(value)
+        if (sharedInvitation != null) {
+            val person = sharedInvitation.groupValues[1]
+            val pet = sharedInvitation.groupValues[2]
+            return when (language) {
+                "en" -> "$person wants to share $pet's profile with you."
+                "ca" -> "$person vol compartir amb tu el perfil de $pet."
+                "fr" -> "$person souhaite partager avec vous le profil de $pet."
+                "eu" -> "$person erabiltzaileak $pet-ren profila zurekin partekatu nahi du."
+                else -> null
+            }
+        }
         val prefixes = when (language) {
             "eu" -> listOf(
                 "Perfil compartido · " to "Partekatutako profila · ",
