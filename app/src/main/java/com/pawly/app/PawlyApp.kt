@@ -434,7 +434,7 @@ private fun PawlyMainApp(
                         val invite = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_SUBJECT, "Descubre Pawly")
-                            putExtra(Intent.EXTRA_TEXT, "¡Estoy usando Pawly para cuidar y compartir la vida con nuestras mascotas! Descubre el proyecto: https://github.com/avilmar625/Pawly")
+                            putExtra(Intent.EXTRA_TEXT, "¡Estoy probando Pawly, una aplicación para cuidar, organizar y compartir la vida con nuestras mascotas! Cuando esté disponible para descargar, te pasaré el enlace.")
                         }
                         context.startActivity(Intent.createChooser(invite, "Invitar a un amigo"))
                     },
@@ -466,6 +466,7 @@ private fun PawlyMainApp(
                                 .onFailure { profileSyncStatus = "No se pudo cerrar la sesión: " + (it.localizedMessage ?: "error desconocido") }
                         }
                     },
+                    showSignOut = cloudRepository != null,
                     language = language,
                     elegantDesign = elegantDesign
                 )
