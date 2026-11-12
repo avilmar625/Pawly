@@ -462,6 +462,49 @@ internal object PawlyI18n {
         )
     )
 
+    private val lateUi = mapOf(
+        "ca" to mapOf(
+            "Todo" to "Tot", "Todos" to "Tots", "Historias" to "Històries", "Adopción" to "Adopció",
+            "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, salut i rutines en un sol lloc.",
+            "Pasaporte sanitario" to "Passaport sanitari", "Pasaporte de bienestar" to "Passaport de benestar",
+            "Salud" to "Salut", "Cuidados" to "Cures",
+            "Elegir fecha" to "Tria una data", "Elegir hora" to "Tria una hora",
+            "Fecha" to "Data", "Hora" to "Hora", "La fecha y hora deben ser futuras." to "La data i l'hora han de ser futures.",
+            "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "Encara no hi ha esdeveniments amb ubicació exacta; el mapa mostra Madrid com a referència.",
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "El mapa mostra els esdeveniments amb ubicació exacta. Obre cada esdeveniment per veure'n el marcador."
+        ),
+        "fr" to mapOf(
+            "Todo" to "Tout", "Todos" to "Tous", "Historias" to "Histoires", "Adopción" to "Adoption",
+            "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, santé et routines au même endroit.",
+            "Pasaporte sanitario" to "Carnet de santé", "Pasaporte de bienestar" to "Carnet de bien-être",
+            "Salud" to "Santé", "Cuidados" to "Soins",
+            "Elegir fecha" to "Choisir une date", "Elegir hora" to "Choisir une heure",
+            "Fecha" to "Date", "Hora" to "Heure", "La fecha y hora deben ser futuras." to "La date et l'heure doivent être dans le futur.",
+            "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "Aucun événement n'a encore de position exacte ; la carte affiche Madrid à titre indicatif.",
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "La carte affiche les événements avec une position exacte. Ouvrez un événement pour voir son repère."
+        ),
+        "en" to mapOf(
+            "Todo" to "All", "Todos" to "All", "Historias" to "Stories", "Adopción" to "Adoption",
+            "Agenda" to "Calendar", "Agenda, salud y rutinas en un solo lugar." to "Calendar, health and routines in one place.",
+            "Pasaporte sanitario" to "Health passport", "Pasaporte de bienestar" to "Wellbeing passport",
+            "Salud" to "Health", "Cuidados" to "Care",
+            "Elegir fecha" to "Choose date", "Elegir hora" to "Choose time",
+            "Fecha" to "Date", "Hora" to "Time", "La fecha y hora deben ser futuras." to "Choose a future date and time.",
+            "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "No events have an exact location yet; the map is centered on Madrid as a reference.",
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "The map shows events with exact locations. Open an event to view its marker."
+        ),
+        "eu" to mapOf(
+            "Todo" to "Dena", "Todos" to "Guztiak", "Historias" to "Istorioak", "Adopción" to "Adopzioa",
+            "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, osasuna eta errutinak leku berean.",
+            "Pasaporte sanitario" to "Osasun-pasaportea", "Pasaporte de bienestar" to "Ongizate-pasaportea",
+            "Salud" to "Osasuna", "Cuidados" to "Zaintzak",
+            "Elegir fecha" to "Aukeratu data", "Elegir hora" to "Aukeratu ordua",
+            "Fecha" to "Data", "Hora" to "Ordua", "La fecha y hora deben ser futuras." to "Aukeratu etorkizuneko data eta ordua.",
+            "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia." to "Oraindik ez dago kokapen zehatza duen ekitaldirik; mapak Madril erakusten du erreferentzia gisa.",
+            "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador." to "Mapak kokapen zehatza duten ekitaldiak erakusten ditu. Ireki ekitaldi bat haren marka ikusteko."
+        )
+    )
+
     private fun dynamicText(value: String, language: String): String? {
         val healthPrefix = "Vacunas, revisiones y cuidados de "
         val healthSuffix = " en un solo lugar."
@@ -576,10 +619,10 @@ internal object PawlyI18n {
     }
 
     fun text(value: String, language: String): String = when (language) {
-        "eu" -> euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: dynamicText(value, language) ?: value
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "eu" -> euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: lateUi["eu"]?.get(value) ?: dynamicText(value, language) ?: value
+        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: lateUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: lateUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: lateUi[language]?.get(value) ?: dynamicText(value, language) ?: value
         else -> value
     }
 }
