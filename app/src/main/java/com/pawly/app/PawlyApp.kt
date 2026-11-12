@@ -153,8 +153,14 @@ private fun PawlyMainApp(
                 context.contentResolver.openOutputStream(uri)?.use { output ->
                     source.inputStream().use { input -> input.copyTo(output) }
                 } ?: error("No se pudo abrir el destino para guardar el PDF.")
-            }.onSuccess { profileSyncStatus = "Ficha PDF guardada en el dispositivo." }
-                .onFailure { profileSyncStatus = "No se pudo guardar el PDF: " + (it.localizedMessage ?: "error desconocido") }
+            }.onSuccess {
+                    profileSyncStatus = "Ficha PDF guardada en el dispositivo."
+                    android.widget.Toast.makeText(context, PawlyI18n.text(profileSyncStatus, language), android.widget.Toast.LENGTH_LONG).show()
+                }
+                .onFailure {
+                    profileSyncStatus = "No se pudo guardar el PDF: " + (it.localizedMessage ?: "error desconocido")
+                    android.widget.Toast.makeText(context, profileSyncStatus, android.widget.Toast.LENGTH_LONG).show()
+                }
         }
         pendingPdfFile = null
     }
