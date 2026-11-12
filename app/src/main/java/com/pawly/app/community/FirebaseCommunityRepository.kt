@@ -106,6 +106,11 @@ class FirebaseCommunityRepository private constructor(
                     "isPublic" to false,
                     "followersCount" to 0,
                     "followingCount" to 0,
+                    "accountType" to "personal",
+                    "professionalCategory" to "",
+                    "professionalLocation" to "",
+                    "professionalDescription" to "",
+                    "professionalContact" to "",
                     "dogProfiles" to emptyList<Map<String, Any>>(),
                     "createdAt" to FieldValue.serverTimestamp()
                 )
