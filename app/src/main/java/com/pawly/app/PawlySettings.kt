@@ -118,7 +118,7 @@ internal fun PawlySettingsDialog(
                     OutlinedTextField(
                         value = cloudName,
                         onValueChange = { cloudName = it.trim(); cloudinaryFeedback = null },
-                        label = { Text("Cloud name") },
+                        label = { Text(t("Cloud name")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
