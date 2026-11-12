@@ -74,6 +74,7 @@ internal fun PawlyEventsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var createError by remember { mutableStateOf<String?>(null) }
+    var mapLoadFailed by remember { mutableStateOf(false) }
     var category by remember { mutableStateOf("Todos") }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
@@ -152,7 +153,18 @@ internal fun PawlyEventsScreen(
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        webViewClient = WebViewClient()
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                                mapLoadFailed = false
+                            }
+                            override fun onReceivedError(
+                                view: WebView,
+                                request: android.webkit.WebResourceRequest,
+                                error: android.webkit.WebResourceError
+                            ) {
+                                if (request.isForMainFrame) mapLoadFailed = true
+                            }
+                        }
                         setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                     }
                 },
@@ -163,6 +175,19 @@ internal fun PawlyEventsScreen(
                     }
                 }
             )
+            if (mapLoadFailed) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        tr("No se pudo cargar el mapa. Comprueba tu conexión."),
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    TextButton(onClick = {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mapUrl))) }
+                    }) { Text(tr("Abrir el mapa en el navegador")) }
+                }
+            }
             Text(
                 tr(if (mapPoints.isEmpty()) "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia."
                 else "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador."),
