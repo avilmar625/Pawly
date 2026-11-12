@@ -58,6 +58,48 @@ object PetCarePdfExporter {
         share(context, file, "Plan de cuidados de $petName")
     }
 
+    /**
+     * One shareable document with the pet's profile, complete health passport
+     * and care routines. All information is read locally; nothing is uploaded.
+     */
+    fun shareCompletePetReport(
+        context: Context,
+        petName: String,
+        breed: String,
+        age: String,
+        description: String,
+        entries: List<PassportEntry>,
+        tasks: List<CareTask>
+    ) {
+        val sections = mutableListOf<List<String>>()
+        sections += listOf(
+            "Ficha de la mascota",
+            "Nombre: $petName",
+            "Especie o raza: " + breed.ifBlank { "No indicado" },
+            "Edad: " + age.ifBlank { "No indicada" },
+            "Descripción: " + description.ifBlank { "Sin descripción registrada" }
+        )
+        sections += entries.sortedByDescending { it.date }.map { entry ->
+            listOf(entry.title, "${entry.type} · ${entry.date}", entry.detail.ifBlank { "Sin notas adicionales." })
+        }
+        sections += tasks.map { task ->
+            listOf(
+                task.title,
+                "${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}",
+                if (task.completed) "Estado: marcada como realizada." else "Estado: pendiente."
+            )
+        }
+        val file = createReport(
+            context = context,
+            petName = petName,
+            title = "Ficha completa de la mascota",
+            subtitle = "Perfil, historial sanitario y plan de cuidados",
+            sections = sections,
+            emptyMessage = "Aún no hay datos adicionales registrados en Salud."
+        )
+        share(context, file, "Ficha completa de $petName")
+    }
+
     private fun share(context: Context, file: File, chooserTitle: String) {
         val uri = FileProvider.getUriForFile(
             context,

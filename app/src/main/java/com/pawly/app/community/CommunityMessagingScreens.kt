@@ -206,7 +206,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                     Column(horizontalAlignment = if (item.senderId == uid) Alignment.End else Alignment.Start) {
                         Surface(color = if (item.senderId == uid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = if (item.senderId == uid) 5.dp else 18.dp, bottomStart = if (item.senderId == uid) 18.dp else 5.dp), shadowElevation = 1.dp) {
                             Column(Modifier.widthIn(max = 300.dp).padding(horizontal = 13.dp, vertical = 11.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                if (item.imageUrl.isNotBlank()) AsyncImage(model = item.imageUrl, contentDescription = "Fotografía enviada", modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp)))
+                                if (item.imageUrl.isNotBlank()) PawlyRemoteImage(item.imageUrl, "Fotografía enviada", Modifier.fillMaxWidth().heightIn(max = 220.dp).clip(RoundedCornerShape(10.dp)))
                                 if (item.videoUrl.isNotBlank()) PawlyVideoPlayer(item.videoUrl, Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(10.dp)))
                                 if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
