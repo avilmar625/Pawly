@@ -401,7 +401,7 @@ private fun PawlyMainApp(
                     onSettings = { showSettings = true },
                     onProfessionals = { selected = Tab.SERVICES },
                     onLostPet = { selected = Tab.LOST },
-                    onExportPetPdf = {
+                    onSharePetPdf = {
                         coroutineScope.launch {
                             runCatching {
                                 val entries = PetCareLocalStore.loadEntries(context, dogName, storageScope)
@@ -409,9 +409,60 @@ private fun PawlyMainApp(
                                 val profile = cloudRepository?.getMyDogs()?.firstOrNull { it.name.equals(dogName, ignoreCase = true) }
                                 PetCarePdfExporter.shareCompletePetReport(
                                     context, dogName, profile?.breed.orEmpty(), profile?.age.orEmpty(),
-                                    profile?.description.orEmpty(), entries, tasks
+                                    profile?.description.orEmpty(), entries, tasks, profile?.species.orEmpty(), profile?.traits.orEmpty()
                                 )
-                            }.onFailure { profileSyncStatus = "No se pudo generar el informe: ${it.localizedMessage ?: "error desconocido"}" }
+                            }.onFailure { profileSyncStatus = "No se pudo generar el informe: " + (it.localizedMessage ?: "error desconocido") }
+                        }
+                    },
+                    onSavePetPdf = {
+                        coroutineScope.launch {
+                            runCatching {
+                                val entries = PetCareLocalStore.loadEntries(context, dogName, storageScope)
+                                val tasks = PetCareLocalStore.loadTasks(context, dogName, storageScope)
+                                val profile = cloudRepository?.getMyDogs()?.firstOrNull { it.name.equals(dogName, ignoreCase = true) }
+                                pendingPdfFile = PetCarePdfExporter.createCompletePetReport(
+                                    context, dogName, profile?.breed.orEmpty(), profile?.age.orEmpty(),
+                                    profile?.description.orEmpty(), entries, tasks, profile?.species.orEmpty(), profile?.traits.orEmpty()
+                                )
+                                val safeName = dogName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "mascota" }
+                                pdfSaveLauncher.launch("pawly-" + safeName + ".pdf")
+                            }.onFailure { profileSyncStatus = "No se pudo generar el informe: " + (it.localizedMessage ?: "error desconocido") }
+                        }
+                    },
+                    onInviteFriend = {
+                        val invite = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Descubre Pawly")
+                            putExtra(Intent.EXTRA_TEXT, "¡Estoy usando Pawly para cuidar y compartir la vida con nuestras mascotas! Descubre el proyecto: https://github.com/avilmar625/Pawly")
+                        }
+                        context.startActivity(Intent.createChooser(invite, "Invitar a un amigo"))
+                    },
+                    onContact = {
+                        val contact = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
+                            putExtra(Intent.EXTRA_SUBJECT, "Consulta sobre Pawly")
+                            putExtra(Intent.EXTRA_TEXT, "Hola, equipo de Pawly:\n\n")
+                        }
+                        runCatching { context.startActivity(Intent.createChooser(contact, "Contactar con Pawly")) }
+                            .onFailure {
+                                val fallback = Intent(Intent.ACTION_SEND).apply {
+                                    type = "message/rfc822"
+                                    putExtra(Intent.EXTRA_SUBJECT, "Consulta sobre Pawly")
+                                    putExtra(Intent.EXTRA_TEXT, "Hola, equipo de Pawly:\n\n")
+                                }
+                                context.startActivity(Intent.createChooser(fallback, "Contactar con Pawly"))
+                            }
+                    },
+                    onPrivacy = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios51/docs/PRIVACY_POLICY_DRAFT.md")))
+                    },
+                    onTerms = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios51/docs/TERMS_OF_SERVICE_DRAFT.md")))
+                    },
+                    onSignOut = {
+                        coroutineScope.launch {
+                            runCatching { CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest()) }
+                            runCatching { cloudRepository?.signOut() }
+                                .onFailure { profileSyncStatus = "No se pudo cerrar la sesión: " + (it.localizedMessage ?: "error desconocido") }
                         }
                     },
                     language = language,
