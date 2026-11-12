@@ -131,7 +131,7 @@ internal fun ProfessionalServicesScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Column(Modifier.fillMaxWidth().padding(19.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("PROFESIONALES PARA SU BIENESTAR", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
+                Text(t("PROFESIONALES PARA SU BIENESTAR"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
                 Text("Encontrad a la persona adecuada.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text("Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
@@ -159,8 +159,8 @@ internal fun ProfessionalServicesScreen(
                         ) {
                             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Icon(category.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                                Text(category.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                                Text(category.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, minLines = 2)
+                                Text(t(category.title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
+                                Text(t(category.description), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, minLines = 2)
                             }
                         }
                     }
@@ -179,7 +179,7 @@ internal fun ProfessionalServicesScreen(
                     Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text(t("Afina la búsqueda"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
-                Text(selected.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(t(selected.description), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(
                     value = search,
                     onValueChange = { search = it },
