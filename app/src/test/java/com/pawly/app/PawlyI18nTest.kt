@@ -42,6 +42,13 @@ class PawlyI18nTest {
         assertEquals("Sortu ekitaldia", PawlyI18n.text("Crear evento", "eu"))
         assertEquals("Interesatzen zait", PawlyI18n.text("Me interesa", "eu"))
         assertEquals("Ekitaldi guztiak", PawlyI18n.text("Todos los eventos", "eu"))
+        assertEquals("Deskribapena", PawlyI18n.text("Descripción", "eu"))
+        assertEquals("Argitaratu", PawlyI18n.text("Publicar", "eu"))
+        assertEquals("Latitude", PawlyI18n.text("Latitud", "eu"))
+        assertEquals("Longitude", PawlyI18n.text("Longitud", "eu"))
+        assertEquals("Couldn't publish the event.", PawlyI18n.text("No se pudo publicar el evento.", "en"))
+        assertEquals("No s'ha pogut publicar l'esdeveniment.", PawlyI18n.text("No se pudo publicar el evento.", "ca"))
+        assertEquals("Impossible de publier l’événement.", PawlyI18n.text("No se pudo publicar el evento.", "fr"))
     }
 
     @Test
