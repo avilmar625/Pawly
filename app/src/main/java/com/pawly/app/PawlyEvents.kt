@@ -3,6 +3,10 @@ package com.pawly.app
 import android.content.Intent
 import android.net.Uri
 import android.webkit.WebView
+import android.webkit.JavascriptInterface
+import android.os.Handler
+import android.os.Looper
+import java.util.Locale
 import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -41,8 +45,8 @@ data class PawlyEvent(
     val category: String,
     val location: String,
     val dateText: String,
-    val latitude: Double,
-    val longitude: Double,
+    val latitude: Double?,
+    val longitude: Double?,
     val organizerName: String,
     val organizerUid: String,
     val interestedCount: Long,
@@ -61,6 +65,7 @@ internal fun PawlyEventsScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
     LaunchedEffect(repository) {
         runCatching { repository.loadEvents() }
@@ -91,7 +96,7 @@ internal fun PawlyEventsScreen(
                 Text(if (mapOnly) tr("Explora cerca de ti") else tr("Planes para compartir"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
                 Text(tr("Encuentros reales para personas y mascotas."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            if (!mapOnly) FilledTonalIconButton(onClick = { showCreate = true }) { Icon(Icons.Default.Add, contentDescription = tr("Crear evento")) }
+            if (!mapOnly) FilledTonalIconButton(onClick = { createError = null; showCreate = true }) { Icon(Icons.Default.Add, contentDescription = tr("Crear evento")) }
         }
         Spacer(Modifier.height(12.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -101,9 +106,9 @@ internal fun PawlyEventsScreen(
         }
         Spacer(Modifier.height(8.dp))
         if (mapOnly) {
-            val mapPoints = visible.filter { it.latitude != 0.0 || it.longitude != 0.0 }
-            val centerLat = mapPoints.map { it.latitude }.average().takeIf { it.isFinite() } ?: 36.7213
-            val centerLon = mapPoints.map { it.longitude }.average().takeIf { it.isFinite() } ?: -4.4214
+            val mapPoints = visible.filter { it.latitude != null && it.longitude != null }
+            val centerLat = mapPoints.mapNotNull { it.latitude }.average().takeIf { it.isFinite() } ?: 40.4168
+            val centerLon = mapPoints.mapNotNull { it.longitude }.average().takeIf { it.isFinite() } ?: -3.7038
             val markers = mapPoints.joinToString(",") { event ->
                 "{lat:${event.latitude},lon:${event.longitude},title:${org.json.JSONObject.quote(event.title)},place:${org.json.JSONObject.quote(event.location)}}"
             }
@@ -132,7 +137,12 @@ internal fun PawlyEventsScreen(
                     web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
                 }
             )
-            Text(tr("Los marcadores corresponden a lugares de eventos publicados por la comunidad."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                tr(if (mapPoints.isEmpty()) "Todavía no hay eventos con ubicación exacta."
+                else "Los marcadores corresponden a lugares de eventos publicados por la comunidad."),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(Modifier.height(6.dp))
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -143,7 +153,7 @@ internal fun PawlyEventsScreen(
                     Icon(Icons.Default.Pets, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp))
                     Text(tr("Todavía no hay eventos publicados"), fontWeight = FontWeight.Bold)
                     Text(tr("Sé de las primeras personas en proponer un plan bonito."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    if (!mapOnly) Button(onClick = { showCreate = true }) { Text(tr("Crear el primer evento")) }
+                    if (!mapOnly) Button(onClick = { createError = null; showCreate = true }) { Text(tr("Crear el primer evento")) }
                 }
             }
         }
@@ -169,10 +179,14 @@ internal fun PawlyEventsScreen(
                         Text("${tr("Organiza")} ${event.organizerName} · ${event.interestedCount} ${tr("personas interesadas")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = {
-                                val url = "https://www.openstreetmap.org/?mlat=${event.latitude}&mlon=${event.longitude}#map=16/${event.latitude}/${event.longitude}"
+                                val url = if (event.latitude != null && event.longitude != null) {
+                                    "https://www.openstreetmap.org/?mlat=${event.latitude}&mlon=${event.longitude}#map=16/${event.latitude}/${event.longitude}"
+                                } else {
+                                    "https://www.openstreetmap.org/search?query=${Uri.encode(event.location)}"
+                                }
                                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                             }, modifier = Modifier.weight(1f)) {
-                                Icon(Icons.Default.Map, null, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(5.dp)); Text(tr("Ver mapa"))
+                                Icon(Icons.Default.Map, null, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(5.dp)); Text(tr(if (event.latitude != null && event.longitude != null) "Ver mapa" else "Buscar lugar"))
                             }
                             Button(onClick = {
                                 scope.launch {
@@ -192,12 +206,23 @@ internal fun PawlyEventsScreen(
         }
     }
     if (showCreate) CreatePawlyEventDialog(
+        error = createError,
         onDismiss = { showCreate = false },
         onPublish = { title, description, categoryValue, location, date, lat, lon ->
             scope.launch {
                 runCatching { repository.createEvent(title, description, categoryValue, location, date, lat, lon) }
-                    .onSuccess { events = repository.loadEvents(); showCreate = false; error = null }
-                    .onFailure { error = it.localizedMessage ?: "No se pudo publicar el evento." }
+                    .onSuccess {
+                        runCatching { repository.loadEvents() }.onSuccess { events = it }
+                        showCreate = false
+                        createError = null
+                        error = null
+                    }
+                    .onFailure {
+                        val detail = it.localizedMessage.orEmpty()
+                        createError = if (detail.contains("PERMISSION_DENIED", ignoreCase = true)) {
+                            "Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado."
+                        } else detail.ifBlank { "No se pudo publicar el evento." }
+                    }
             }
         }
     )
@@ -205,8 +230,9 @@ internal fun PawlyEventsScreen(
 
 @Composable
 private fun CreatePawlyEventDialog(
+    error: String?,
     onDismiss: () -> Unit,
-    onPublish: (String, String, String, String, String, Double, Double) -> Unit
+    onPublish: (String, String, String, String, String, Double?, Double?) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -215,6 +241,13 @@ private fun CreatePawlyEventDialog(
     var category by remember { mutableStateOf("Quedada") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
+    var showMapPicker by remember { mutableStateOf(false) }
+    val parsedLatitude = latitude.toDoubleOrNull()
+    val parsedLongitude = longitude.toDoubleOrNull()
+    val coordinatesValid = (latitude.isBlank() && longitude.isBlank()) ||
+        (parsedLatitude != null && parsedLongitude != null &&
+            parsedLatitude in -90.0..90.0 && parsedLongitude in -180.0..180.0)
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Crear evento")) },
@@ -224,31 +257,122 @@ private fun CreatePawlyEventDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(tr("Comparte un plan real con la comunidad."), style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(title, { title = it }, label = { Text(tr("Nombre del evento")) }, singleLine = true)
-                OutlinedTextField(description, { description = it }, label = { Text(tr("Descripción")) }, minLines = 2)
-                OutlinedTextField(location, { location = it }, label = { Text(tr("Lugar o dirección")) }, singleLine = true)
-                OutlinedTextField(date, { date = it }, label = { Text(tr("Fecha y hora")) }, singleLine = true, placeholder = { Text(tr("DD/MM/AAAA · HH:mm")) })
+                OutlinedTextField(title, { title = it.take(90) }, label = { Text(tr("Nombre del evento")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(description, { description = it.take(1200) }, label = { Text(tr("Descripción")) }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(location, { location = it.take(160) }, label = { Text(tr("Lugar o dirección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(date, { date = it.take(80) }, label = { Text(tr("Fecha y hora")) }, singleLine = true, placeholder = { Text(tr("DD/MM/AAAA · HH:mm")) }, modifier = Modifier.fillMaxWidth())
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
                     listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
-                        FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value)) })
+                        FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value), maxLines = 1) })
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(latitude, { latitude = it }, label = { Text(tr("Latitud")) }, modifier = Modifier.weight(1f), singleLine = true)
-                    OutlinedTextField(longitude, { longitude = it }, label = { Text(tr("Longitud")) }, modifier = Modifier.weight(1f), singleLine = true)
+                OutlinedButton(onClick = { showMapPicker = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Map, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(tr(if (parsedLatitude != null && parsedLongitude != null) "Cambiar punto en el mapa" else "Elegir punto en el mapa (opcional)"))
                 }
-                Text(tr("Puedes obtener las coordenadas desde el punto del evento en OpenStreetMap."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (parsedLatitude != null && parsedLongitude != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            String.format(Locale.US, "%.5f, %.5f", parsedLatitude, parsedLongitude),
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = { latitude = ""; longitude = "" }) { Text(tr("Quitar ubicación")) }
+                    }
+                } else {
+                    Text(tr("La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto."),
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (error != null) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
             Button(
-                enabled = title.isNotBlank() && description.isNotBlank() && location.isNotBlank() && date.isNotBlank() &&
-                    (latitude.toDoubleOrNull() ?: 999.0) in -90.0..90.0 &&
-                    (longitude.toDoubleOrNull() ?: 999.0) in -180.0..180.0,
-                onClick = { onPublish(title, description, category, location, date, latitude.toDouble(), longitude.toDouble()) }
+                enabled = title.trim().length >= 4 && description.trim().length >= 10 &&
+                    location.trim().length >= 3 && date.trim().length >= 4 && coordinatesValid,
+                onClick = { onPublish(title, description, category, location, date, parsedLatitude, parsedLongitude) }
             ) { Text(tr("Publicar")) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
     )
+
+    if (showMapPicker) {
+        EventLocationPickerDialog(
+            initialLatitude = parsedLatitude,
+            initialLongitude = parsedLongitude,
+            onDismiss = { showMapPicker = false },
+            onSelected = { lat, lon ->
+                latitude = String.format(Locale.US, "%.6f", lat)
+                longitude = String.format(Locale.US, "%.6f", lon)
+                showMapPicker = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun EventLocationPickerDialog(
+    initialLatitude: Double?,
+    initialLongitude: Double?,
+    onDismiss: () -> Unit,
+    onSelected: (Double, Double) -> Unit
+) {
+    val bridge = remember(onSelected) { PawlyEventMapBridge(onSelected) }
+    val centerLatitude = initialLatitude ?: 40.4168
+    val centerLongitude = initialLongitude ?: -3.7038
+    val zoom = if (initialLatitude != null && initialLongitude != null) 14 else 5
+    val hasInitialMarker = initialLatitude != null && initialLongitude != null
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Marca el lugar del evento")) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(tr("Toca el mapa para colocar el marcador. Puedes moverlo antes de confirmar."),
+                    style = MaterialTheme.typography.bodySmall)
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth().height(310.dp).clip(RoundedCornerShape(16.dp)),
+                    factory = { viewContext ->
+                        WebView(viewContext).apply {
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = false
+                            settings.allowFileAccess = false
+                            settings.allowContentAccess = false
+                            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                            addJavascriptInterface(bridge, "PawlyEventMap")
+                            setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
+                            val markerScript = if (hasInitialMarker) "L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
+                            val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                                "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>" +
+                                "<style>html,body,#map{height:100%;margin:0}</style>" +
+                                "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script></head><body><div id='map'></div><script>" +
+                                "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
+                                "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
+                                "let marker=null;$markerScript" +
+                                "map.on('click',function(e){if(marker)map.removeLayer(marker);marker=L.marker(e.latlng).addTo(map);window.PawlyEventMap.select(e.latlng.lat,e.latlng.lng);});" +
+                                "</script></body></html>"
+                            loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
+                        }
+                    }
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Listo")) } },
+        dismissButton = {}
+    )
+}
+
+private class PawlyEventMapBridge(
+    private val onSelected: (Double, Double) -> Unit
+) {
+    @JavascriptInterface
+    fun select(latitude: Double, longitude: Double) {
+        if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return
+        Handler(Looper.getMainLooper()).post { onSelected(latitude, longitude) }
+    }
 }
