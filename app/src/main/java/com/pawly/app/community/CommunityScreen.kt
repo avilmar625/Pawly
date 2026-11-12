@@ -47,7 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class CommunityPage(val label: String) {
-    FEED("Muro"), SEARCH("Personas"), MESSAGES("Mensajes"), PROFILE("Mi perfil"), MODERATION("Moderar")
+    FEED("Muro"), SEARCH("Personas"), EVENTS("Eventos"), MAP("Mapa"), MESSAGES("Mensajes"), PROFILE("Mi perfil"), MODERATION("Moderar")
 }
 
 @Composable
@@ -300,6 +300,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
+    var suggestedUsers by remember { mutableStateOf(emptyList<PawlyUser>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedUser by remember { mutableStateOf<String?>(null) }
@@ -326,6 +327,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         notice = if (granted) "Notificaciones activadas." else "Puedes activarlas más adelante desde los ajustes de Android."
     }
     LaunchedEffect(repo, uid) {
+        suggestedUsers = runCatching { repo.getSuggestedUsers() }.getOrDefault(emptyList())
         admin = runCatching { repo.isAdmin() }.getOrDefault(false)
         runCatching { repo.syncMessagingToken() }
             .onFailure { notice = it.localizedMessage ?: "No se pudo registrar este dispositivo para notificaciones." }
@@ -419,10 +421,29 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
-            page == CommunityPage.FEED -> FeedScreen(posts, followingIds, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
-                scope.launch { runCatching { repo.toggleLike(post.id) }.onFailure { notice = it.localizedMessage } }
-            }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
+            page == CommunityPage.FEED -> Column(Modifier.fillMaxSize()) {
+                if (suggestedUsers.isNotEmpty()) {
+                    SuggestedProfilesRow(
+                        users = suggestedUsers,
+                        onOpen = { selectedUser = it },
+                        onFollow = { user ->
+                            scope.launch {
+                                runCatching { repo.follow(user.uid, true) }
+                                    .onSuccess { suggestedUsers = suggestedUsers.filterNot { it.uid == user.uid }; notice = tr("Ahora sigues a esta persona.") }
+                                    .onFailure { notice = it.localizedMessage ?: tr("No se pudo seguir a esta persona.") }
+                            }
+                        }
+                    )
+                }
+                Box(Modifier.weight(1f)) {
+                    FeedScreen(posts, followingIds, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
+                        scope.launch { runCatching { repo.toggleLike(post.id) }.onFailure { notice = it.localizedMessage } }
+                    }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
+                }
+            }
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
+            page == CommunityPage.EVENTS -> PawlyEventsScreen(repository = repo, elegantDesign = elegantDesign)
+            page == CommunityPage.MAP -> PawlyEventsScreen(repository = repo, mapOnly = true, elegantDesign = elegantDesign)
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
@@ -444,6 +465,37 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     }
 }
 
+
+
+@Composable
+private fun SuggestedProfilesRow(
+    users: List<PawlyUser>,
+    onOpen: (String) -> Unit,
+    onFollow: (PawlyUser) -> Unit
+) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 8.dp)) {
+        Column {
+            Text(tr("Personas que podrías conocer"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(tr("Más vidas perrunas para descubrir."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            users.forEach { user ->
+                Surface(modifier = Modifier.width(174.dp).clickable { onOpen(user.uid) }, shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        if (user.photoUrl.isNotBlank()) AsyncImage(model = user.photoUrl, contentDescription = null, modifier = Modifier.size(54.dp).clip(CircleShape))
+                        else Surface(modifier = Modifier.size(54.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                            Box(contentAlignment = Alignment.Center) { Text(user.displayName.take(1).uppercase(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
+                        }
+                        Text(user.displayName.ifBlank { user.username }, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Text("@${user.username}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        if (user.accountType == "professional") Text(tr("Perfil profesional"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Button(onClick = { onFollow(user) }, modifier = Modifier.fillMaxWidth()) { Text(tr("Seguir")) }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun BlockConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
