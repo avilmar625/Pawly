@@ -54,7 +54,7 @@ internal fun Avatar(url: String, label: String, size: Int = 44) {
 internal fun EmptyCommunityCard(title: String, subtitle: String) {
     Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("🐾", fontSize = 32.sp)
+            Text(tr("🐾"), fontSize = 32.sp)
             Text(title, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
             Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
