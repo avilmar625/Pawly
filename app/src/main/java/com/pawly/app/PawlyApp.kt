@@ -4,6 +4,8 @@ import com.pawly.app.care.data.PetShareInvitation
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.export.PetCarePdfExporter
 import com.google.firebase.auth.FirebaseAuth
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
@@ -142,6 +144,19 @@ private fun PawlyMainApp(
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var language by remember(preferences) { mutableStateOf(preferences.getString("language", "es") ?: "es") }
     val coroutineScope = rememberCoroutineScope()
+    var pendingPdfFile by remember { mutableStateOf<File?>(null) }
+    val pdfSaveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        val source = pendingPdfFile
+        if (uri != null && source != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    source.inputStream().use { input -> input.copyTo(output) }
+                } ?: error("No se pudo abrir el destino para guardar el PDF.")
+            }.onSuccess { profileSyncStatus = "Ficha PDF guardada en el dispositivo." }
+                .onFailure { profileSyncStatus = "No se pudo guardar el PDF: \${it.localizedMessage ?: "error desconocido"}" }
+        }
+        pendingPdfFile = null
+    }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var selectedSharedPet by remember { mutableStateOf<PetShareInvitation?>(null) }
     var showAbout by remember { mutableStateOf(false) }
