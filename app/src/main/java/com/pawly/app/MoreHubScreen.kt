@@ -63,18 +63,17 @@ internal fun MoreHubScreen(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(t("TU ESPACIO PAWLY"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
                 Text(t("Todo lo vuestro,\nen un mismo lugar."), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(t("Herramientas, ayuda y recuerdos para acompañaros cada día."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text(t("Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
         }
         Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
             Box(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)))) {
                 Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(t("¿Necesitáis ayuda profesional?"), color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                        Text(t("Encontrad a la persona adecuada."), color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = onProfessionals, contentPadding = PaddingValues(0.dp)) { Text(t("Explorar profesionales  →"), color = Color.White, fontWeight = FontWeight.Bold) }
+                        Text(t("Recursos para cuidar y disfrutar juntos"), color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                        Text(t("Profesionales, salud, aprendizaje, recuerdos y herramientas de Pawly en un solo lugar."), color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
                     }
-                    Icon(Icons.Filled.WorkspacePremium, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp))
+                    Icon(Icons.Filled.Pets, contentDescription = null, tint = Color.White, modifier = Modifier.size(38.dp))
                 }
             }
         }
