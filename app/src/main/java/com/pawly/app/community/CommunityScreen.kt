@@ -429,8 +429,8 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                         onFollow = { user ->
                             scope.launch {
                                 runCatching { repo.follow(user.uid, true) }
-                                    .onSuccess { suggestedUsers = suggestedUsers.filterNot { it.uid == user.uid }; notice = tr("Ahora sigues a esta persona.") }
-                                    .onFailure { notice = it.localizedMessage ?: tr("No se pudo seguir a esta persona.") }
+                                    .onSuccess { suggestedUsers = suggestedUsers.filterNot { it.uid == user.uid }; notice = "Ahora sigues a esta persona." }
+                                    .onFailure { notice = it.localizedMessage ?: "No se pudo seguir a esta persona." }
                             }
                         }
                     )

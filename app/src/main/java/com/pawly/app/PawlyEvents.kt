@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -33,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-internal data class PawlyEvent(
+data class PawlyEvent(
     val id: String,
     val title: String,
     val description: String,
@@ -179,7 +180,7 @@ internal fun PawlyEventsScreen(
                                         .onSuccess {
                                             events = events.map { if (it.id == event.id) it.copy(interestedByMe = !it.interestedByMe, interestedCount = (it.interestedCount + if (it.interestedByMe) -1 else 1).coerceAtLeast(0)) else it }
                                         }
-                                        .onFailure { error = it.localizedMessage ?: tr("No se pudo actualizar tu participación.") }
+                                        .onFailure { error = it.localizedMessage ?: "No se pudo actualizar tu participación." }
                                 }
                             }, modifier = Modifier.weight(1f)) {
                                 Text(if (event.interestedByMe) tr("Me interesa ✓") else tr("Me interesa"))
@@ -196,7 +197,7 @@ internal fun PawlyEventsScreen(
             scope.launch {
                 runCatching { repository.createEvent(title, description, categoryValue, location, date, lat, lon) }
                     .onSuccess { events = repository.loadEvents(); showCreate = false; error = null }
-                    .onFailure { error = it.localizedMessage ?: tr("No se pudo publicar el evento.") }
+                    .onFailure { error = it.localizedMessage ?: "No se pudo publicar el evento." }
             }
         }
     )
