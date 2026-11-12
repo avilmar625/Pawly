@@ -92,9 +92,11 @@ internal object ProfessionalDirectorySearch {
 @Composable
 internal fun ProfessionalServicesScreen(
     onBack: () -> Unit,
-    elegantDesign: Boolean = false
+    elegantDesign: Boolean = false,
+    language: String = "es"
 ) {
     val context = LocalContext.current
+    fun t(value: String) = PawlyI18n.text(value, language)
     var selectedId by remember { mutableStateOf("training") }
     var search by remember { mutableStateOf("") }
     var area by remember { mutableStateOf("") }
@@ -117,7 +119,7 @@ internal fun ProfessionalServicesScreen(
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("‹  Volver") }
+            TextButton(onClick = onBack) { Text("‹  " + t("Volver")) }
             Spacer(Modifier.weight(1f))
             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape) {
                 Text("PAWLY · SERVICIOS", modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -142,7 +144,11 @@ internal fun ProfessionalServicesScreen(
                     pair.forEach { category ->
                         val active = selectedId == category.id
                         Surface(
-                            onClick = { selectedId = category.id; search = "" },
+                            onClick = {
+                                selectedId = category.id
+                                search = ""
+                                openSearch(ProfessionalDirectorySearch.buildQuery(category, "", area))
+                            },
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(17.dp),
                             color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
@@ -171,7 +177,7 @@ internal fun ProfessionalServicesScreen(
             Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Filled.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text("Afina la búsqueda", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(t("Afina la búsqueda"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
                 Text(selected.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(
@@ -179,7 +185,7 @@ internal fun ProfessionalServicesScreen(
                     onValueChange = { search = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    label = { Text("Servicio o especialidad (opcional)") },
+                    label = { Text(t("Servicio o especialidad (opcional)")) },
                     placeholder = { Text(selected.searchTerm) },
                     shape = RoundedCornerShape(14.dp)
                 )
@@ -188,7 +194,7 @@ internal fun ProfessionalServicesScreen(
                     onValueChange = { area = it },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    label = { Text("Ciudad o zona (opcional)") },
+                    label = { Text(t("Ciudad o zona (opcional)")) },
                     placeholder = { Text("Ej. Málaga, Teatinos…") },
                     shape = RoundedCornerShape(14.dp)
                 )
@@ -198,12 +204,12 @@ internal fun ProfessionalServicesScreen(
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Icon(Icons.Filled.Search, contentDescription = null)
-                    Text("  Buscar profesionales en el mapa")
+                    Text("  " + t("Buscar profesionales en el mapa"))
                 }
                 TextButton(
                     onClick = { openSearch(ProfessionalDirectorySearch.buildQuery(selected, search, area).replace(" en ", " ")) },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
-                ) { Text("Buscar también en la web") }
+                ) { Text(t("Buscar también en la web")) }
             }
         }
 
@@ -212,7 +218,7 @@ internal fun ProfessionalServicesScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
         ) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Antes de contratar", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(t("Antes de contratar"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 ProfessionalCheck("Comprueba titulación, experiencia y especialización.")
                 ProfessionalCheck("Pregunta por el método de trabajo y evita técnicas basadas en miedo o dolor.")
                 ProfessionalCheck("Solicita precio, condiciones, seguro y qué incluye el servicio.")
@@ -225,7 +231,7 @@ internal fun ProfessionalServicesScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall
         )
-        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text("Volver a Más") }
+        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text(t("Volver") + " a Más") }
         Spacer(Modifier.height(12.dp))
     }
 }
