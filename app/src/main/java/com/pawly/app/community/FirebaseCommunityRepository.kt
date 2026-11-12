@@ -547,6 +547,87 @@ class FirebaseCommunityRepository private constructor(
             }
     }
 
+    /** Public, non-location-sensitive suggestions for the signed-in community member. */
+    suspend fun getSuggestedUsers(limit: Long = 12): List<PawlyUser> {
+        val me = requireUid()
+        val blocked = db.collection("users").document(me).collection("blocked")
+            .get().await().documents.map { it.id }.toSet()
+        val followed = db.collection("users").document(me).collection("following")
+            .get().await().documents.map { it.id }.toSet()
+        return db.collection("users").whereEqualTo("isPublic", true)
+            .limit((limit + followed.size + blocked.size + 1).coerceAtMost(60))
+            .get().await().documents.mapNotNull { it.toPawlyUser() }
+            .filter { it.uid != me && it.uid !in blocked && it.uid !in followed && it.isPublic }
+            .take(limit.toInt())
+    }
+
+    /** Loads public community events; coordinates belong to the event venue, never to a person. */
+    suspend fun loadEvents(): List<PawlyEvent> {
+        val me = requireUid()
+        val snapshot = db.collection("events").orderBy("createdAt", Query.Direction.DESCENDING).limit(60).get().await()
+        return snapshot.documents.map { doc ->
+            val interested = doc.reference.collection("interested").document(me).get().await().exists()
+            PawlyEvent(
+                id = doc.id,
+                title = doc.getString("title") ?: "",
+                description = doc.getString("description") ?: "",
+                category = doc.getString("category") ?: "Quedada",
+                location = doc.getString("location") ?: "",
+                dateText = doc.getString("dateText") ?: "",
+                latitude = doc.getDouble("latitude") ?: 0.0,
+                longitude = doc.getDouble("longitude") ?: 0.0,
+                organizerName = doc.getString("organizerName") ?: "Comunidad Pawly",
+                organizerUid = doc.getString("organizerUid") ?: "",
+                interestedCount = doc.getLong("interestedCount") ?: 0,
+                interestedByMe = interested
+            )
+        }
+    }
+
+    suspend fun createEvent(
+        title: String, description: String, category: String, location: String,
+        dateText: String, latitude: Double, longitude: Double
+    ) {
+        val uid = requireVerifiedUid()
+        val profile = getMyProfile() ?: error("Completa primero tu perfil.")
+        val cleanTitle = title.trim()
+        val cleanDescription = description.trim()
+        val cleanLocation = location.trim()
+        val cleanDate = dateText.trim()
+        require(cleanTitle.length in 4..90) { "El título debe tener entre 4 y 90 caracteres." }
+        require(cleanDescription.length in 10..1200) { "La descripción debe tener entre 10 y 1200 caracteres." }
+        require(cleanLocation.length in 3..160) { "Indica un lugar para el evento." }
+        require(cleanDate.length in 4..80) { "Indica la fecha y hora del evento." }
+        require(category in setOf("Quedada", "Ruta", "Taller", "Adopción")) { "Selecciona una categoría válida." }
+        require(latitude in -90.0..90.0 && longitude in -180.0..180.0) { "Las coordenadas no son válidas." }
+        db.collection("events").add(mapOf(
+            "title" to cleanTitle, "description" to cleanDescription,
+            "category" to category, "location" to cleanLocation, "dateText" to cleanDate,
+            "latitude" to latitude, "longitude" to longitude,
+            "organizerUid" to uid, "organizerName" to profile.displayName.ifBlank { profile.username },
+            "interestedCount" to 0, "createdAt" to FieldValue.serverTimestamp()
+        )).await()
+    }
+
+    suspend fun toggleEventInterest(eventId: String) {
+        val uid = requireVerifiedUid()
+        val event = db.collection("events").document(eventId)
+        val interest = event.collection("interested").document(uid)
+        db.runTransaction { tx ->
+            val eventSnapshot = tx.get(event)
+            check(eventSnapshot.exists()) { "El evento ya no está disponible." }
+            val interestSnapshot = tx.get(interest)
+            val current = eventSnapshot.getLong("interestedCount") ?: 0
+            if (interestSnapshot.exists()) {
+                tx.delete(interest)
+                tx.update(event, "interestedCount", (current - 1).coerceAtLeast(0))
+            } else {
+                tx.set(interest, mapOf("uid" to uid, "createdAt" to FieldValue.serverTimestamp()))
+                tx.update(event, "interestedCount", current + 1)
+            }
+        }.await()
+    }
+
     suspend fun isAdmin(): Boolean {
         val user = auth.currentUser ?: return false
         return user.getIdToken(true).await().claims["admin"] == true
