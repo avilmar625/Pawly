@@ -574,8 +574,8 @@ class FirebaseCommunityRepository private constructor(
                 category = doc.getString("category") ?: "Quedada",
                 location = doc.getString("location") ?: "",
                 dateText = doc.getString("dateText") ?: "",
-                latitude = doc.getDouble("latitude") ?: 0.0,
-                longitude = doc.getDouble("longitude") ?: 0.0,
+                latitude = doc.getDouble("latitude"),
+                longitude = doc.getDouble("longitude"),
                 organizerName = doc.getString("organizerName") ?: "Comunidad Pawly",
                 organizerUid = doc.getString("organizerUid") ?: "",
                 interestedCount = doc.getLong("interestedCount") ?: 0,
@@ -586,7 +586,7 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun createEvent(
         title: String, description: String, category: String, location: String,
-        dateText: String, latitude: Double, longitude: Double
+        dateText: String, latitude: Double?, longitude: Double?
     ) {
         val uid = requireVerifiedUid()
         val profile = getMyProfile() ?: error("Completa primero tu perfil.")
@@ -599,14 +599,21 @@ class FirebaseCommunityRepository private constructor(
         require(cleanLocation.length in 3..160) { "Indica un lugar para el evento." }
         require(cleanDate.length in 4..80) { "Indica la fecha y hora del evento." }
         require(category in setOf("Quedada", "Ruta", "Taller", "Adopción")) { "Selecciona una categoría válida." }
-        require(latitude in -90.0..90.0 && longitude in -180.0..180.0) { "Las coordenadas no son válidas." }
-        db.collection("events").add(mapOf(
+        require((latitude == null && longitude == null) ||
+            (latitude != null && longitude != null && latitude in -90.0..90.0 && longitude in -180.0..180.0)) {
+            "Selecciona un punto válido en el mapa o elimina sus coordenadas."
+        }
+        val eventData = mutableMapOf<String, Any>(
             "title" to cleanTitle, "description" to cleanDescription,
             "category" to category, "location" to cleanLocation, "dateText" to cleanDate,
-            "latitude" to latitude, "longitude" to longitude,
             "organizerUid" to uid, "organizerName" to profile.displayName.ifBlank { profile.username },
             "interestedCount" to 0, "createdAt" to FieldValue.serverTimestamp()
-        )).await()
+        )
+        if (latitude != null && longitude != null) {
+            eventData["latitude"] = latitude
+            eventData["longitude"] = longitude
+        }
+        db.collection("events").add(eventData).await()
     }
 
     suspend fun toggleEventInterest(eventId: String) {
