@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import com.pawly.app.tr
+
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
@@ -118,23 +120,23 @@ internal fun DiaryScreen(
                 )
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC10251F)))))
                 Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
-                    Text("VUESTROS RECUERDOS", color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                    Text("Cada paseo merece un recuerdo.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                    Text(tr("VUESTROS RECUERDOS"), color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                    Text(tr("Cada paseo merece un recuerdo."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                 }
             }
-            Text("Un álbum personal para volver a vuestros mejores momentos.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Text(tr("Un álbum personal para volver a vuestros mejores momentos."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                    Text("UN RECUERDO NUEVO", color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(tr("UN RECUERDO NUEVO"), color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it },
                         enabled = canEditSharedDiary,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("¿Qué habéis hecho hoy?", color = Color.White.copy(alpha = .6f)) },
+                        placeholder = { Text(tr("¿Qué habéis hecho hoy?"), color = Color.White.copy(alpha = .6f)) },
                         shape = RoundedCornerShape(15.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
@@ -158,7 +160,7 @@ internal fun DiaryScreen(
                     ) {
                         Icon(Icons.Filled.Add, contentDescription = null)
                         Spacer(Modifier.width(5.dp))
-                        Text("Guardar recuerdo")
+                        Text(tr("Guardar recuerdo"))
                     }
                 }
             }
@@ -170,8 +172,8 @@ internal fun DiaryScreen(
                 Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
                     Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Filled.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp))
-                        Text("Aquí empieza vuestra historia", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        Text("Guarda el primer recuerdo y vuelve a él cuando quieras.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(tr("Aquí empieza vuestra historia"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(tr("Guarda el primer recuerdo y vuelve a él cuando quieras."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
@@ -180,7 +182,7 @@ internal fun DiaryScreen(
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(49.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) {
-                        Text("🐾", fontSize = 24.sp)
+                        Text(tr("🐾"), fontSize = 24.sp)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {

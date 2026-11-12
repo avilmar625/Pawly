@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import com.pawly.app.tr
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -58,7 +60,7 @@ internal fun HomeScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(dateLabel.uppercase(Locale("es", "ES")), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.25.sp)
-                    Text("Qué bien tenerte por aquí", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Qué bien tenerte por aquí"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Surface(
                     onClick = onAbout,
@@ -75,8 +77,8 @@ internal fun HomeScreen(
         item { HomePetHero(dogName, dogPhoto, dogPhotoUrl, onEditProfile, elegantDesign) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text("Un día bonito\ncon $firstName.", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text("Cuidados, recuerdos y nuevas aventuras. Todo vuestro, en un mismo lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text(tr("Un día bonito\ncon $firstName."), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
+                Text(tr("Cuidados, recuerdos y nuevas aventuras. Todo vuestro, en un mismo lugar."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
         }
         item {
@@ -106,11 +108,11 @@ internal fun HomeScreen(
                 Column(Modifier.fillMaxWidth().padding(17.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text("Vuestro día, paso a paso", style = MaterialTheme.typography.titleLarge)
+                            Text(tr("Vuestro día, paso a paso"), style = MaterialTheme.typography.titleLarge)
                             Text(if (completed == 2) "¡Todo hecho! Os lo habéis ganado." else "Pequeños gestos, grandes cuidados.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                         Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(14.dp)) {
-                            Text("$completed/2", modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(tr("$completed/2"), modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                     LinearProgressIndicator(
@@ -145,10 +147,10 @@ internal fun HomeScreen(
             Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("Salid a descubrir", style = MaterialTheme.typography.titleLarge)
-                        Text("Hay un mundo de planes por compartir.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(tr("Salid a descubrir"), style = MaterialTheme.typography.titleLarge)
+                        Text(tr("Hay un mundo de planes por compartir."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     }
-                    TextButton(onClick = onExplore) { Text("Ver todo") }
+                    TextButton(onClick = onExplore) { Text(tr("Ver todo")) }
                 }
                 HomeExploreCard(onClick = onExplore)
             }
@@ -213,13 +215,13 @@ private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit:
             }
             Text(name.ifBlank { "Tu compañero" }, color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("El protagonista de cada aventura", color = Color.White.copy(alpha = .92f), fontSize = 12.sp)
+                Text(tr("El protagonista de cada aventura"), color = Color.White.copy(alpha = .92f), fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
                 Surface(color = Color.White.copy(alpha = .2f), shape = RoundedCornerShape(50)) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(13.dp))
                         Spacer(Modifier.width(5.dp))
-                        Text("Editar perfil", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(tr("Editar perfil"), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -292,10 +294,10 @@ private fun HomeExploreCard(onClick: () -> Unit) {
     ) {
         Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Una aventura os espera", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("Encuentra rutas, playas y rincones dog-friendly para vuestra próxima escapada.", color = Color.White.copy(alpha = .82f), fontSize = 12.sp, lineHeight = 17.sp)
+                Text(tr("Una aventura os espera"), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Encuentra rutas, playas y rincones dog-friendly para vuestra próxima escapada."), color = Color.White.copy(alpha = .82f), fontSize = 12.sp, lineHeight = 17.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("EXPLORAR LUGARES", color = Color(0xFFDDEBAF), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = .8.sp)
+                    Text(tr("EXPLORAR LUGARES"), color = Color(0xFFDDEBAF), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = .8.sp)
                     Spacer(Modifier.width(5.dp))
                     Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = Color(0xFFDDEBAF), modifier = Modifier.size(14.dp))
                 }
@@ -320,8 +322,8 @@ private fun HomeLearnCard(onClick: () -> Unit) {
                 Icon(Icons.Filled.MenuBook, contentDescription = null, tint = Color(0xFF8B7443), modifier = Modifier.size(23.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text("Un minuto para aprender", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("Consejos e ideas para cuidar mejor.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                Text(tr("Un minuto para aprender"), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(tr("Consejos e ideas para cuidar mejor."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
             Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         }

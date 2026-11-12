@@ -62,21 +62,25 @@ object PetCarePdfExporter {
      * One shareable document with the pet's profile, complete health passport
      * and care routines. All information is read locally; nothing is uploaded.
      */
-    fun shareCompletePetReport(
+    fun createCompletePetReport(
         context: Context,
         petName: String,
         breed: String,
         age: String,
         description: String,
         entries: List<PassportEntry>,
-        tasks: List<CareTask>
-    ) {
+        tasks: List<CareTask>,
+        species: String = "",
+        traits: List<String> = emptyList()
+    ): File {
         val sections = mutableListOf<List<String>>()
         sections += listOf(
             "Ficha de la mascota",
             "Nombre: $petName",
-            "Especie o raza: " + breed.ifBlank { "No indicado" },
+            "Especie: " + species.ifBlank { "No indicada" },
+            "Raza: " + breed.ifBlank { "No indicada" },
             "Edad: " + age.ifBlank { "No indicada" },
+            "Características: " + traits.joinToString(", ").ifBlank { "No indicadas" },
             "Descripción: " + description.ifBlank { "Sin descripción registrada" }
         )
         sections += entries.sortedByDescending { it.date }.map { entry ->
@@ -89,7 +93,7 @@ object PetCarePdfExporter {
                 if (task.completed) "Estado: marcada como realizada." else "Estado: pendiente."
             )
         }
-        val file = createReport(
+        return createReport(
             context = context,
             petName = petName,
             title = "Ficha completa de la mascota",
@@ -97,6 +101,20 @@ object PetCarePdfExporter {
             sections = sections,
             emptyMessage = "Aún no hay datos adicionales registrados en Salud."
         )
+    }
+
+    fun shareCompletePetReport(
+        context: Context,
+        petName: String,
+        breed: String,
+        age: String,
+        description: String,
+        entries: List<PassportEntry>,
+        tasks: List<CareTask>,
+        species: String = "",
+        traits: List<String> = emptyList()
+    ) {
+        val file = createCompletePetReport(context, petName, breed, age, description, entries, tasks, species, traits)
         share(context, file, "Ficha completa de $petName")
     }
 

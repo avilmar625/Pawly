@@ -122,7 +122,7 @@ internal fun ProfessionalServicesScreen(
             TextButton(onClick = onBack) { Text("‹  " + t("Volver")) }
             Spacer(Modifier.weight(1f))
             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape) {
-                Text("PAWLY · SERVICIOS", modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(tr("PAWLY · SERVICIOS"), modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -132,12 +132,12 @@ internal fun ProfessionalServicesScreen(
         ) {
             Column(Modifier.fillMaxWidth().padding(19.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(t("PROFESIONALES PARA SU BIENESTAR"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
-                Text("Encontrad a la persona adecuada.", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text("Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(tr("Encontrad a la persona adecuada."), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(tr("Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa."), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
 
-        Text("¿Qué servicio necesitáis?", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(tr("¿Qué servicio necesitáis?"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
             ProfessionalDirectorySearch.categories.chunked(2).forEach { pair ->
                 Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -195,7 +195,7 @@ internal fun ProfessionalServicesScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text(t("Ciudad o zona (opcional)")) },
-                    placeholder = { Text("Ej. Málaga, Teatinos…") },
+                    placeholder = { Text(tr("Ej. Málaga, Teatinos…")) },
                     shape = RoundedCornerShape(14.dp)
                 )
                 Button(
@@ -239,7 +239,7 @@ internal fun ProfessionalServicesScreen(
 @Composable
 private fun ProfessionalCheck(text: String) {
     Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("•", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Text(tr("•"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
     }
 }

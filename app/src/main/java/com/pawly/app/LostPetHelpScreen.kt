@@ -78,7 +78,7 @@ internal fun LostPetHelpScreen(
             TextButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null); Text("  ${t("Volver")}") }
             Spacer(Modifier.weight(1f))
             Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(30.dp)) {
-                Text("PAWLY · AYUDA", modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                Text(tr("PAWLY · AYUDA"), modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
         }
         Card(
@@ -92,19 +92,19 @@ internal fun LostPetHelpScreen(
             }
         }
         if (repository == null) {
-            Text("Para publicar un aviso necesitas conectar Pawly con Firebase e iniciar sesión.", color = MaterialTheme.colorScheme.error)
+            Text(tr("Para publicar un aviso necesitas conectar Pawly con Firebase e iniciar sesión."), color = MaterialTheme.colorScheme.error)
         }
         OutlinedTextField(petName, { petName = it }, label = { Text(t("Nombre de la mascota")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-        OutlinedTextField(breed, { breed = it }, label = { Text("Especie o raza (opcional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        OutlinedTextField(breed, { breed = it }, label = { Text(tr("Especie o raza (opcional)")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(area, { area = it }, label = { Text(t("Zona donde se perdió")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.LocationOn, null) })
-        OutlinedTextField(lastSeen, { lastSeen = it }, label = { Text(t("Última vez vista")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Fecha, hora y lugar aproximados") })
-        OutlinedTextField(description, { description = it }, label = { Text(t("Descripción y señas")) }, modifier = Modifier.fillMaxWidth(), minLines = 3, placeholder = { Text("Color, tamaño, collar, microchip (no publiques el número completo), comportamiento…") })
+        OutlinedTextField(lastSeen, { lastSeen = it }, label = { Text(t("Última vez vista")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text(tr("Fecha, hora y lugar aproximados")) })
+        OutlinedTextField(description, { description = it }, label = { Text(t("Descripción y señas")) }, modifier = Modifier.fillMaxWidth(), minLines = 3, placeholder = { Text(tr("Color, tamaño, collar, microchip (no publiques el número completo), comportamiento…")) })
         OutlinedTextField(contact, { contact = it }, label = { Text(t("Teléfono o forma de contacto (opcional)")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.CameraAlt, null); Text("  ${t("Añadir fotografía")}")
         }
         photo?.let { AsyncImage(model = it, contentDescription = "Fotografía seleccionada", modifier = Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(18.dp))) }
-        Text("Consejo: indica una zona concreta y una descripción reconocible. Si compartes un teléfono, recuerda que será visible públicamente en la publicación.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(tr("Consejo: indica una zona concreta y una descripción reconocible. Si compartes un teléfono, recuerda que será visible públicamente en la publicación."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         Button(
             onClick = {

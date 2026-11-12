@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import com.pawly.app.tr
+
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
@@ -155,15 +157,15 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     )
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD910251F)))))
                     Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("AVENTURAS POR COMPARTIR", color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
-                        Text("El mundo es mejor cuando vais juntos.", color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                        Text(tr("AVENTURAS POR COMPARTIR"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
+                        Text(tr("El mundo es mejor cuando vais juntos."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                     }
                 }
                 Spacer(Modifier.height(2.dp))
             }
-            Text("EXPLORA", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
-            Text("El mundo es mejor\ncuando vais juntos.", style = MaterialTheme.typography.headlineLarge)
-            Text("Ideas para vuestra próxima aventura.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Text(tr("EXPLORA"), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
+            Text(tr("El mundo es mejor\ncuando vais juntos."), style = MaterialTheme.typography.headlineLarge)
+            Text(tr("Ideas para vuestra próxima aventura."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
             FilledTonalButton(
                 onClick = {
@@ -183,14 +185,14 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             }
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Busca un lugar real", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Text("Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Busca un lugar real"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                    Text(tr("Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = mapSearchQuery,
                         onValueChange = { mapSearchQuery = it },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        placeholder = { Text("Ej. veterinario 24 horas, parque canino…") },
+                        placeholder = { Text(tr("Ej. veterinario 24 horas, parque canino…")) },
                         leadingIcon = { Icon(Icons.Default.Search, null) },
                         shape = RoundedCornerShape(13.dp)
                     )
@@ -211,7 +213,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     ) {
                         Icon(Icons.Default.Map, null)
                         Spacer(Modifier.width(7.dp))
-                        Text("Buscar en el mapa")
+                        Text(tr("Buscar en el mapa"))
                     }
                 }
             }
@@ -219,7 +221,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 val point = "$latitude,$longitude"
                 val searches = listOf("Parques caninos" to "parques para perros", "Protectoras" to "protectoras de animales", "Veterinarios" to "veterinarios", "Urgencias veterinarias" to "urgencias veterinarias 24 horas", "Playas caninas" to "playas para perros", "Restaurantes dog-friendly" to "restaurantes que admiten perros", "Alojamientos" to "alojamientos que admiten perros", "Rutas" to "rutas de senderismo aptas para perros")
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Cerca de la ubicación obtenida", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text(tr("Cerca de la ubicación obtenida"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                     searches.forEach { (label, term) ->
                         TextButton(onClick = {
                             val encoded = Uri.encode(term)
@@ -237,7 +239,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Buscar planes o lugares…") },
+                placeholder = { Text(tr("Buscar planes o lugares…")) },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 shape = RoundedCornerShape(16.dp),
                 singleLine = true,
@@ -269,9 +271,9 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
                 Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("VUESTROS FAVORITOS", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                        Text("${savedPlaces.size} lugares guardados", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text("Guarda ideas para otro día.", color = Color.White.copy(alpha = .72f), fontSize = 11.sp)
+                        Text(tr("VUESTROS FAVORITOS"), color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text(tr("${savedPlaces.size} lugares guardados"), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(tr("Guarda ideas para otro día."), color = Color.White.copy(alpha = .72f), fontSize = 11.sp)
                     }
                     Icon(Icons.Filled.Bookmark, contentDescription = null, tint = Lime, modifier = Modifier.size(32.dp))
                 }
@@ -279,13 +281,13 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         }
         item { SectionHeading("Ideas para vuestra próxima salida", "Guarda categorías e inicia búsquedas reales cuando quieras") }
         if (visible.isEmpty()) {
-            item { Text("No hay resultados. Prueba con otra búsqueda.", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
+            item { Text(tr("No hay resultados. Prueba con otra búsqueda."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
         }
         items(visible) { place ->
             PlaceCard(place = place, saved = place.name in savedPlaces, onOpen = { selectedPlace = place }, onSave = { onToggleSave(place.name) })
         }
         item {
-            Text("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Text(tr("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
     selectedPlace?.let { place ->
@@ -304,7 +306,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(place.detail, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                     Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             confirmButton = {
@@ -316,7 +318,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     } else "https://www.google.com/maps/search/$encoded"
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     selectedPlace = null
-                }) { Text("Buscar opciones en Maps") }
+                }) { Text(tr("Buscar opciones en Maps")) }
             },
             dismissButton = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -325,7 +327,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                         Spacer(Modifier.width(5.dp))
                         Text(if (place.name in savedPlaces) "Guardado" else "Guardar idea")
                     }
-                    TextButton(onClick = { selectedPlace = null }) { Text("Cerrar") }
+                    TextButton(onClick = { selectedPlace = null }) { Text(tr("Cerrar")) }
                 }
             }
         )

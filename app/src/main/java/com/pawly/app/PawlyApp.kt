@@ -4,6 +4,8 @@ import com.pawly.app.care.data.PetShareInvitation
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.export.PetCarePdfExporter
 import com.google.firebase.auth.FirebaseAuth
+import androidx.credentials.ClearCredentialStateRequest
+import androidx.credentials.CredentialManager
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
@@ -141,7 +143,27 @@ private fun PawlyMainApp(
     var cloudinaryVideoPreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET) }
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var language by remember(preferences) { mutableStateOf(preferences.getString("language", "es") ?: "es") }
+    var profileSyncStatus by remember(preferences, storageScope) { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
+    var pendingPdfFile by remember { mutableStateOf<File?>(null) }
+    val pdfSaveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        val source = pendingPdfFile
+        if (uri != null && source != null) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    source.inputStream().use { input -> input.copyTo(output) }
+                } ?: error("No se pudo abrir el destino para guardar el PDF.")
+            }.onSuccess {
+                    profileSyncStatus = "Ficha PDF guardada en el dispositivo."
+                    android.widget.Toast.makeText(context, PawlyI18n.text(profileSyncStatus, language), android.widget.Toast.LENGTH_LONG).show()
+                }
+                .onFailure {
+                    profileSyncStatus = "No se pudo guardar el PDF: " + (it.localizedMessage ?: "error desconocido")
+                    android.widget.Toast.makeText(context, profileSyncStatus, android.widget.Toast.LENGTH_LONG).show()
+                }
+        }
+        pendingPdfFile = null
+    }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var selectedSharedPet by remember { mutableStateOf<PetShareInvitation?>(null) }
     var showAbout by remember { mutableStateOf(false) }
@@ -152,7 +174,6 @@ private fun PawlyMainApp(
     var dogName by remember(preferences) { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
     var dogProfiles by remember(preferences) { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var homePetCloudReady by remember(preferences, storageScope) { mutableStateOf(false) }
-    var profileSyncStatus by remember(preferences, storageScope) { mutableStateOf("") }
     var dogPhotoPath by remember(preferences) { mutableStateOf(preferences.getString("dog_photo_path", null)) }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) runCatching {
@@ -250,6 +271,7 @@ private fun PawlyMainApp(
         preferences.edit().putString("diary_entries", json.toString()).apply()
     }
 
+    CompositionLocalProvider(LocalPawlyLanguage provides language) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -267,6 +289,14 @@ private fun PawlyMainApp(
                     listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
                         val label = PawlyI18n.text(tab.label, language)
                         val active = selected == tab || (tab == Tab.MORE && selected == Tab.SERVICES)
+                        val tabTint = when (tab) {
+                            Tab.HOME -> Color(0xFF26836B)
+                            Tab.EXPLORE -> Color(0xFF3979B8)
+                            Tab.HEALTH -> Color(0xFFD45E70)
+                            Tab.COMMUNITY -> Color(0xFF8962B3)
+                            Tab.MORE -> Color(0xFFB47A37)
+                            else -> MaterialTheme.colorScheme.primary
+                        }
                         val tabIcon = when (tab) {
                             Tab.HOME -> Icons.Filled.Home
                             Tab.EXPLORE -> Icons.Filled.Explore
@@ -288,13 +318,13 @@ private fun PawlyMainApp(
                             Box(
                                 Modifier.width(42.dp).height(29.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
+                                    .background(if (active) tabTint.copy(alpha = .14f) else Color.Transparent),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     tabIcon,
                                     contentDescription = label,
-                                    tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = tabTint,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -303,7 +333,7 @@ private fun PawlyMainApp(
                             if (active) {
                                 Text(
                                     label,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = tabTint,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
@@ -386,7 +416,7 @@ private fun PawlyMainApp(
                     onSettings = { showSettings = true },
                     onProfessionals = { selected = Tab.SERVICES },
                     onLostPet = { selected = Tab.LOST },
-                    onExportPetPdf = {
+                    onSharePetPdf = {
                         coroutineScope.launch {
                             runCatching {
                                 val entries = PetCareLocalStore.loadEntries(context, dogName, storageScope)
@@ -394,11 +424,63 @@ private fun PawlyMainApp(
                                 val profile = cloudRepository?.getMyDogs()?.firstOrNull { it.name.equals(dogName, ignoreCase = true) }
                                 PetCarePdfExporter.shareCompletePetReport(
                                     context, dogName, profile?.breed.orEmpty(), profile?.age.orEmpty(),
-                                    profile?.description.orEmpty(), entries, tasks
+                                    profile?.description.orEmpty(), entries, tasks, profile?.species.orEmpty(), profile?.traits.orEmpty()
                                 )
-                            }.onFailure { profileSyncStatus = "No se pudo generar el informe: ${it.localizedMessage ?: "error desconocido"}" }
+                            }.onFailure { profileSyncStatus = "No se pudo generar el informe: " + (it.localizedMessage ?: "error desconocido") }
                         }
                     },
+                    onSavePetPdf = {
+                        coroutineScope.launch {
+                            runCatching {
+                                val entries = PetCareLocalStore.loadEntries(context, dogName, storageScope)
+                                val tasks = PetCareLocalStore.loadTasks(context, dogName, storageScope)
+                                val profile = cloudRepository?.getMyDogs()?.firstOrNull { it.name.equals(dogName, ignoreCase = true) }
+                                pendingPdfFile = PetCarePdfExporter.createCompletePetReport(
+                                    context, dogName, profile?.breed.orEmpty(), profile?.age.orEmpty(),
+                                    profile?.description.orEmpty(), entries, tasks, profile?.species.orEmpty(), profile?.traits.orEmpty()
+                                )
+                                val safeName = dogName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "mascota" }
+                                pdfSaveLauncher.launch("pawly-" + safeName + ".pdf")
+                            }.onFailure { profileSyncStatus = "No se pudo generar el informe: " + (it.localizedMessage ?: "error desconocido") }
+                        }
+                    },
+                    onInviteFriend = {
+                        val invite = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, PawlyI18n.text("Descubre Pawly", language))
+                            putExtra(Intent.EXTRA_TEXT, PawlyI18n.text("¡Estoy probando Pawly, una aplicación para cuidar, organizar y compartir la vida con nuestras mascotas! Cuando esté disponible para descargar, te pasaré el enlace.", language))
+                        }
+                        context.startActivity(Intent.createChooser(invite, PawlyI18n.text("Invita a un amigo", language)))
+                    },
+                    onContact = {
+                        val contact = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
+                            putExtra(Intent.EXTRA_SUBJECT, PawlyI18n.text("Consulta sobre Pawly", language))
+                            putExtra(Intent.EXTRA_TEXT, PawlyI18n.text("Hola, equipo de Pawly:\n\n", language))
+                        }
+                        runCatching { context.startActivity(Intent.createChooser(contact, PawlyI18n.text("Contacta con nosotros", language))) }
+                            .onFailure {
+                                val fallback = Intent(Intent.ACTION_SEND).apply {
+                                    type = "message/rfc822"
+                                    putExtra(Intent.EXTRA_SUBJECT, "Consulta sobre Pawly")
+                                    putExtra(Intent.EXTRA_TEXT, "Hola, equipo de Pawly:\n\n")
+                                }
+                                context.startActivity(Intent.createChooser(fallback, PawlyI18n.text("Contacta con nosotros", language)))
+                            }
+                    },
+                    onPrivacy = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios51/docs/PRIVACY_POLICY_DRAFT.md")))
+                    },
+                    onTerms = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios51/docs/TERMS_OF_SERVICE_DRAFT.md")))
+                    },
+                    onSignOut = {
+                        coroutineScope.launch {
+                            runCatching { CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest()) }
+                            runCatching { cloudRepository?.signOut() }
+                                .onFailure { profileSyncStatus = "No se pudo cerrar la sesión: " + (it.localizedMessage ?: "error desconocido") }
+                        }
+                    },
+                    showSignOut = cloudRepository != null,
                     language = language,
                     elegantDesign = elegantDesign
                 )
@@ -484,5 +566,6 @@ private fun PawlyMainApp(
                 }
             }
         )
+    }
     }
 }

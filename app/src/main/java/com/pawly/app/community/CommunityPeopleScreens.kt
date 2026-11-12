@@ -51,10 +51,10 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
         try { users = repo.searchUsers(query); error = null } catch (e: Exception) { error = e.localizedMessage } finally { loading = false }
     }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text("Buscar personas") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
+        OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text(tr("Buscar personas")) }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
-        if (query.length < 2) Text("Escribe al menos dos caracteres.", color = Muted)
+        if (query.length < 2) Text(tr("Escribe al menos dos caracteres."), color = Muted)
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(users, key = { it.uid }) { user ->
                 Surface(onClick = { onOpenUser(user.uid) }, color = Paper, shape = RoundedCornerShape(16.dp)) {
@@ -92,13 +92,25 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
         onDispose { listener.remove() }
     }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        TextButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null); Text("Volver") }
+        TextButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null); Text(tr("Volver")) }
         if (user == null) { Text(error ?: "Cargando perfil…", color = Muted); return@Column }
         Surface(color = Paper, shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Avatar(user!!.photoUrl, user!!.displayName, 72)
                 Text(user!!.displayName, style = MaterialTheme.typography.titleLarge, color = Forest)
                 Text("@" + user!!.username, color = Muted)
+                if (user!!.accountType == "professional") {
+                    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(top = 8.dp)) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.WorkspacePremium, null, tint = MaterialTheme.colorScheme.tertiary)
+                            Spacer(Modifier.width(6.dp))
+                            Text(tr("Perfil profesional") + " · " + user!!.professionalCategory, color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    if (user!!.professionalLocation.isNotBlank()) Text(tr("Zona: ") + user!!.professionalLocation, color = Muted, style = MaterialTheme.typography.bodySmall)
+                    if (user!!.professionalDescription.isNotBlank()) Text(user!!.professionalDescription, color = Ink, modifier = Modifier.padding(8.dp))
+                    if (user!!.professionalContact.isNotBlank()) Text(tr("Contacto: ") + user!!.professionalContact, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                }
                 if (user!!.bio.isNotBlank()) Text(user!!.bio, color = Ink, modifier = Modifier.padding(8.dp))
                 Text(user!!.followersCount.toString() + " seguidores · " + user!!.followingCount + " siguiendo", color = Muted, style = MaterialTheme.typography.bodySmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -120,15 +132,15 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                             }
                         }, enabled = !busy) { Text(if (following) "Dejar de seguir" else "Seguir") }
                         Spacer(Modifier.width(6.dp))
-                        OutlinedButton(onClick = { onMessage(uid) }) { Icon(Icons.Default.Chat, null); Text("Mensaje") }
+                        OutlinedButton(onClick = { onMessage(uid) }) { Icon(Icons.Default.Chat, null); Text(tr("Mensaje")) }
                     }
                     var menu by remember { mutableStateOf(false) }
                     Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreHoriz, "Más opciones") }
                         DropdownMenu(menu, { menu = false }) {
                             if (uid != repo.currentUid) {
-                                DropdownMenuItem(text = { Text("Denunciar perfil") }, onClick = { menu = false; onReport(uid to "user") })
-                                DropdownMenuItem(text = { Text("Bloquear usuario") }, onClick = { menu = false; onBlock(uid) })
+                                DropdownMenuItem(text = { Text(tr("Denunciar perfil")) }, onClick = { menu = false; onReport(uid to "user") })
+                                DropdownMenuItem(text = { Text(tr("Bloquear usuario")) }, onClick = { menu = false; onBlock(uid) })
                             }
                         }
                     }
@@ -139,11 +151,11 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
             Text(error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 6.dp))
         }
         Spacer(Modifier.height(12.dp))
-        Text("Sus compañeros", color = Forest, fontWeight = FontWeight.Bold)
+        Text(tr("Sus compañeros"), color = Forest, fontWeight = FontWeight.Bold)
         LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(dogs, key = { it.id }) { DogProfileCard(it) }
-            item { Text("Publicaciones", color = Forest, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp)) }
-            if (userPosts.isEmpty()) item { Text("Todavía no ha compartido publicaciones.", color = Muted) }
+            item { Text(tr("Publicaciones"), color = Forest, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp)) }
+            if (userPosts.isEmpty()) item { Text(tr("Todavía no ha compartido publicaciones."), color = Muted) }
             items(userPosts, key = { "post-" + it.id }) { post ->
                 Surface(color = Paper, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp)) {

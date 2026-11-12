@@ -106,6 +106,11 @@ class FirebaseCommunityRepository private constructor(
                     "isPublic" to false,
                     "followersCount" to 0,
                     "followingCount" to 0,
+                    "accountType" to "personal",
+                    "professionalCategory" to "",
+                    "professionalLocation" to "",
+                    "professionalDescription" to "",
+                    "professionalContact" to "",
                     "dogProfiles" to emptyList<Map<String, Any>>(),
                     "createdAt" to FieldValue.serverTimestamp()
                 )
@@ -194,17 +199,34 @@ class FirebaseCommunityRepository private constructor(
         cachedMyDogsState = null
     }
 
-    suspend fun updateProfile(displayName: String, bio: String, isPublic: Boolean) {
+    suspend fun updateProfile(
+        displayName: String, bio: String, isPublic: Boolean,
+        accountType: String = "personal", professionalCategory: String = "",
+        professionalLocation: String = "", professionalDescription: String = "",
+        professionalContact: String = ""
+    ) {
         require(displayName.trim().isNotBlank()) { "El nombre público no puede estar vacío." }
+        require(accountType in setOf("personal", "professional")) { "Selecciona un tipo de perfil válido." }
+        if (accountType == "professional") require(professionalCategory.isNotBlank()) { "Selecciona tu especialidad profesional." }
         val uid = ensureMyProfile().uid
         val cleanName = displayName.trim().take(50)
         val cleanBio = bio.trim().take(240)
-        db.collection("users").document(uid).update(
-            mapOf("displayName" to cleanName, "bio" to cleanBio, "isPublic" to isPublic)
-        ).await()
-        cachedMyProfileState = cachedMyProfileState?.copy(displayName = cleanName, bio = cleanBio, isPublic = isPublic)
+        val cleanCategory = professionalCategory.trim().take(60)
+        val cleanLocation = professionalLocation.trim().take(100)
+        val cleanDescription = professionalDescription.trim().take(500)
+        val cleanContact = professionalContact.trim().take(120)
+        db.collection("users").document(uid).update(mapOf(
+            "displayName" to cleanName, "bio" to cleanBio, "isPublic" to isPublic,
+            "accountType" to accountType, "professionalCategory" to cleanCategory,
+            "professionalLocation" to cleanLocation, "professionalDescription" to cleanDescription,
+            "professionalContact" to cleanContact
+        )).await()
+        cachedMyProfileState = cachedMyProfileState?.copy(
+            displayName = cleanName, bio = cleanBio, isPublic = isPublic, accountType = accountType,
+            professionalCategory = cleanCategory, professionalLocation = cleanLocation,
+            professionalDescription = cleanDescription, professionalContact = cleanContact
+        )
     }
-
     suspend fun updateProfilePhoto(uri: Uri): String {
         val uid = ensureMyProfile().uid
         val url = uploadImage(uri, "profile-photos")
@@ -784,6 +806,11 @@ class FirebaseCommunityRepository private constructor(
             "isPublic" to false,
             "followersCount" to 0,
             "followingCount" to 0,
+            "accountType" to "personal",
+            "professionalCategory" to "",
+            "professionalLocation" to "",
+            "professionalDescription" to "",
+            "professionalContact" to "",
             "dogProfiles" to emptyList<Map<String, Any>>(),
             "createdAt" to FieldValue.serverTimestamp()
         )
@@ -831,7 +858,12 @@ class FirebaseCommunityRepository private constructor(
             photoUrl = getString("photoUrl") ?: "",
             isPublic = getBoolean("isPublic") ?: false,
             followersCount = getLong("followersCount") ?: 0,
-            followingCount = getLong("followingCount") ?: 0
+            followingCount = getLong("followingCount") ?: 0,
+            accountType = getString("accountType")?.takeIf { it in setOf("personal", "professional") } ?: "personal",
+            professionalCategory = getString("professionalCategory") ?: "",
+            professionalLocation = getString("professionalLocation") ?: "",
+            professionalDescription = getString("professionalDescription") ?: "",
+            professionalContact = getString("professionalContact") ?: ""
         )
     }
 }

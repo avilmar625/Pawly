@@ -21,7 +21,7 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 
 ## Exportación y uso compartido
 
-- **Informes PDF:** el pasaporte sanitario y el plan de cuidados se pueden generar localmente y compartir mediante el selector del sistema Android. Los documentos incluyen una nota de uso responsable y no sustituyen a la documentación veterinaria oficial.
+- **Informes PDF:** la ficha combinada de la mascota, el pasaporte sanitario y el plan de cuidados se pueden generar localmente, guardar en el dispositivo mediante el selector de documentos de Android o compartir mediante el selector del sistema. Los documentos incluyen una nota de uso responsable y no sustituyen a la documentación veterinaria oficial.
 - **Privacidad:** los PDF se generan en la caché privada de la aplicación y se comparten únicamente cuando el usuario elige una aplicación o destinatario.
 
 ## Organización del código
@@ -71,8 +71,8 @@ La rama `cambios25` inicia una capa de preferencias globales accesible desde el 
 
 - Modo oscuro (base de tema Material 3).
 - Cuatro paletas de acento: bosque, océano, baya y atardecer.
-- Preferencia de idioma guardada localmente: español, inglés o catalán. **La traducción integral de las pantallas existentes aún no está completada**; la selección queda como preferencia para la siguiente fase de internacionalización.
-- Los ajustes de apariencia se conservan en el dispositivo y no se envían a Firebase.
+- Preferencia de idioma guardada localmente: español, catalán, francés e inglés. Se ha incorporado un catálogo compartido y se han traducido las pantallas principales; pueden quedar textos externos, mensajes del backend o cadenas dinámicas heredadas en su idioma original.
+- Los ajustes de apariencia e idioma se conservan en el dispositivo y no se envían a Firebase.
 
 El acceso social ya incluye correo/contraseña y Google mediante Android Credential Manager + Firebase Authentication, además de recuperación de contraseña por correo. Google requiere OAuth configurado y el `google-services.json` local. No se muestran proveedores ficticios: Apple y teléfono quedan pendientes de configuración y desarrollo específico.
 
@@ -270,3 +270,13 @@ El directorio inicial de **Servicios profesionales** permite buscar adiestradore
 La sección de avisos de mascotas perdidas/encontradas reutiliza las categorías de Comunidad ya existentes; no crea un sistema paralelo ni sustituye los servicios oficiales. Salud conserva el pasaporte, las rutinas, los recordatorios locales, la sincronización disponible por mascota y la exportación PDF. Los datos introducidos por la familia no se convierten por ello en documentación clínica oficial.
 
 Detalles y alcance de esta evolución: [docs/CHANGES49.md](docs/CHANGES49.md).
+
+## Perfiles, idiomas y cuenta (cambios51)
+
+- **Perfiles particulares y profesionales:** la cuenta puede identificarse como particular o profesional. El perfil profesional incluye especialidad, zona, descripción y contacto opcional, visibles cuando el perfil es público. La etiqueta no verifica credenciales y los perfiles aún no aparecen como fichas propias en el directorio ni ofrecen reservas o pagos.
+- **Más:** invita a un amigo, contacto por correo, enlaces a los borradores de privacidad y condiciones, y cierre de sesión con confirmación. El logout ya no aparece en Comunidad.
+- **Idiomas:** español, catalán, francés e inglés, con un contexto compartido que actualiza las pantallas principales sin reiniciar la app. Aún puede haber contenido externo o mensajes dinámicos que no se traduzcan.
+- **PDF:** guardar en el dispositivo o compartir la ficha completa con datos de perfil, pasaporte sanitario y rutinas.
+- **Legal y soporte:** los documentos de privacidad y términos siguen siendo borradores. El correo oficial de soporte y los datos del responsable deben completarse antes de una publicación.
+
+Detalles: [docs/CHANGES51.md](docs/CHANGES51.md).

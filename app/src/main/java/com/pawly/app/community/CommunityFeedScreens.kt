@@ -51,8 +51,8 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
                     Icon(Icons.Default.AddAPhoto, null, tint = Lime)
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("¿Qué aventura habéis vivido?", color = Color.White, fontWeight = FontWeight.Bold)
-                        Text("Comparte una foto o una historia", color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.bodySmall)
+                        Text(tr("¿Qué aventura habéis vivido?"), color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(tr("Comparte una foto o una historia"), color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.bodySmall)
                     }
                     Icon(Icons.Default.ArrowForward, null, tint = Color.White)
                 }
@@ -60,8 +60,8 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text("Todos") })
-                FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text("Siguiendo") })
+                FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text(tr("Todos")) })
+                FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text(tr("Siguiendo")) })
             }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 categoryOptions.forEach { (value, label) -> FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) }) }
@@ -93,8 +93,8 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Más opciones", tint = Muted) }
                     DropdownMenu(menu, { menu = false }) {
-                        DropdownMenuItem(text = { Text("Denunciar publicación") }, onClick = { menu = false; onReport(post.id to "post") })
-                        DropdownMenuItem(text = { Text("Bloquear usuario") }, onClick = { menu = false; onBlock(post.authorId) })
+                        DropdownMenuItem(text = { Text(tr("Denunciar publicación")) }, onClick = { menu = false; onReport(post.id to "post") })
+                        DropdownMenuItem(text = { Text(tr("Bloquear usuario")) }, onClick = { menu = false; onBlock(post.authorId) })
                     }
                 }
             }
