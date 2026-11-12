@@ -484,5 +484,45 @@ service cloud.firestore {
         && request.resource.data.reason.size() <= 500;
       allow read, update, delete: if admin();
     }
+    // Public events are tied to their venue, not to the private location of a person.
+    match /events/{eventId} {
+      allow get, list: if signedIn();
+      allow create: if verified()
+        && request.resource.data.keys().hasOnly(['title', 'description', 'category', 'location', 'dateText', 'latitude', 'longitude', 'organizerUid', 'organizerName', 'interestedCount', 'createdAt'])
+        && request.resource.data.title is string && request.resource.data.title.size() >= 4 && request.resource.data.title.size() <= 90
+        && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 1200
+        && request.resource.data.category in ['Quedada', 'Ruta', 'Taller', 'Adopción']
+        && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 160
+        && request.resource.data.dateText is string && request.resource.data.dateText.size() >= 4 && request.resource.data.dateText.size() <= 80
+        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && request.resource.data.organizerUid == request.auth.uid
+        && request.resource.data.organizerName is string && request.resource.data.organizerName.size() <= 60
+        && request.resource.data.interestedCount == 0
+        && request.resource.data.createdAt == request.time;
+      allow update: if verified()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['interestedCount'])
+        && request.resource.data.interestedCount is int
+        && (
+          (request.resource.data.interestedCount == resource.data.interestedCount + 1
+            && existsAfter(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid)))
+          ||
+          (request.resource.data.interestedCount == resource.data.interestedCount - 1
+            && request.resource.data.interestedCount >= 0
+            && !existsAfter(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid)))
+        );
+      allow delete: if verified() && resource.data.organizerUid == request.auth.uid;
+
+      match /interested/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/events/$(eventId)).data.organizerUid == request.auth.uid);
+        allow create: if verified() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+          && request.resource.data.uid == uid
+          && request.resource.data.createdAt == request.time;
+        allow delete: if verified() && request.auth.uid == uid;
+        allow update: if false;
+      }
+    }
+
   }
 }
