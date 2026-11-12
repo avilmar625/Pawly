@@ -453,7 +453,7 @@ private fun PawlyMainApp(
                         context.startActivity(Intent.createChooser(invite, PawlyI18n.text("Invita a un amigo", language)))
                     },
                     onContact = {
-                        val contact = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
+                        val contact = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:alexvilarrubla619@gmail.com")).apply {
                             putExtra(Intent.EXTRA_SUBJECT, PawlyI18n.text("Consulta sobre Pawly", language))
                             putExtra(Intent.EXTRA_TEXT, PawlyI18n.text("Hola, equipo de Pawly:\n\n", language))
                         }
@@ -468,10 +468,10 @@ private fun PawlyMainApp(
                             }
                     },
                     onPrivacy = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios51/docs/PRIVACY_POLICY_DRAFT.md")))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios52-final/docs/PRIVACY_POLICY_DRAFT.md")))
                     },
                     onTerms = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios51/docs/TERMS_OF_SERVICE_DRAFT.md")))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios52-final/docs/TERMS_OF_SERVICE_DRAFT.md")))
                     },
                     onSignOut = {
                         coroutineScope.launch {
