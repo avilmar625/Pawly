@@ -38,6 +38,10 @@ class PawlyI18nTest {
         assertEquals("Esdeveniments", PawlyI18n.text("Eventos", "ca"))
         assertEquals("Événements", PawlyI18n.text("Eventos", "fr"))
         assertEquals("Frantsesa", PawlyI18n.text("Français", "eu"))
+        assertEquals("Mapa", PawlyI18n.text("Mapa", "eu"))
+        assertEquals("Sortu ekitaldia", PawlyI18n.text("Crear evento", "eu"))
+        assertEquals("Interesatzen zait", PawlyI18n.text("Me interesa", "eu"))
+        assertEquals("Ekitaldi guztiak", PawlyI18n.text("Todos los eventos", "eu"))
     }
 
     @Test
