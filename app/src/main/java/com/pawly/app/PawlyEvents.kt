@@ -70,7 +70,12 @@ internal fun PawlyEventsScreen(
     LaunchedEffect(repository) {
         runCatching { repository.loadEvents() }
             .onSuccess { events = it; error = null }
-            .onFailure { error = it.localizedMessage ?: "No se pudieron cargar los eventos." }
+            .onFailure {
+                val detail = it.localizedMessage.orEmpty()
+                error = if (detail.contains("PERMISSION_DENIED", ignoreCase = true)) {
+                    tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
+                } else detail.ifBlank { tr("No se pudieron cargar los eventos.") }
+            }
         loading = false
     }
     val visible = events.filter { category == "Todos" || it.category == category }
@@ -220,7 +225,7 @@ internal fun PawlyEventsScreen(
                     .onFailure {
                         val detail = it.localizedMessage.orEmpty()
                         createError = if (detail.contains("PERMISSION_DENIED", ignoreCase = true)) {
-                            "Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado."
+                            tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
                         } else detail.ifBlank { "No se pudo publicar el evento." }
                     }
             }
@@ -346,7 +351,7 @@ private fun EventLocationPickerDialog(
                             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                             addJavascriptInterface(bridge, "PawlyEventMap")
                             setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
-                            val markerScript = if (hasInitialMarker) "L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
+                            val markerScript = if (hasInitialMarker) "marker=L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
                             val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
                                 "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>" +
                                 "<style>html,body,#map{height:100%;margin:0}</style>" +
