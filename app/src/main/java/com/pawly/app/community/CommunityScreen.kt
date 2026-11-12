@@ -161,8 +161,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             else Text(if (register) "Crear cuenta" else "Iniciar sesión")
         }
-        if (!register) {
-            OutlinedButton(
+        OutlinedButton(
                 onClick = {
                     error = null
                     status = null
@@ -270,9 +269,8 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
             ) {
                 Icon(Icons.Default.AccountCircle, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(tr("Continuar con Google"))
+                Text(tr(if (register) "Crear cuenta con Google" else "Continuar con Google"))
             }
-        }
         if (status != null) Text(status!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
         if (!register) TextButton(onClick = {
             error = null; status = null
