@@ -265,6 +265,7 @@ private fun PawlyMainApp(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
+                        val label = PawlyI18n.text(tab.label, language)
                         val active = selected == tab || (tab == Tab.MORE && selected == Tab.SERVICES)
                         val tabIcon = when (tab) {
                             Tab.HOME -> Icons.Filled.Home
@@ -292,7 +293,7 @@ private fun PawlyMainApp(
                             ) {
                                 Icon(
                                     tabIcon,
-                                    contentDescription = tab.label,
+                                    contentDescription = label,
                                     tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -301,7 +302,7 @@ private fun PawlyMainApp(
                             // retains its label while the other destinations use icon-only items.
                             if (active) {
                                 Text(
-                                    tab.label,
+                                    label,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
