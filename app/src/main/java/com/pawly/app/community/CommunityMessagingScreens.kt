@@ -63,20 +63,20 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
         title = { Text(if (category == "LOST") "Aviso de mascota perdida" else if (category == "FOUND") "Aviso de mascota encontrada" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") },
         text = {
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Tipo de publicación", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
+                Text(tr("Tipo de publicación"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("STORY" to "Historia", "ADOPTION" to "Adopción", "LOST" to "Perdido", "FOUND" to "Encontrado", "FOSTER" to "Acogida").forEach { (value, label) ->
                         FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label) })
                     }
                 }
                 OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado de la mascota"; "ADOPTION" -> "Especie, edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-                OutlinedTextField(dog, { dog = it }, label = { Text("Nombre de la mascota (opcional)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(dog, { dog = it }, label = { Text(tr("Nombre de la mascota (opcional)")) }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.AddAPhoto, null); Text("Foto")
+                        Icon(Icons.Default.AddAPhoto, null); Text(tr("Foto"))
                     }
                     OutlinedButton(onClick = { videoPicker.launch("video/*") }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.Videocam, null); Text("Vídeo")
+                        Icon(Icons.Default.Videocam, null); Text(tr("Vídeo"))
                     }
                 }
                 if (mediaUri != null) {
@@ -84,11 +84,11 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
                         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(if (mediaIsVideo) Icons.Default.Videocam else Icons.Default.Image, null, tint = MaterialTheme.colorScheme.primary)
                             Text(if (mediaIsVideo) "Vídeo seleccionado · máximo 40 MB" else "Fotografía seleccionada · se optimizará al subirla", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-                            TextButton(onClick = { mediaUri = null }) { Text("Quitar") }
+                            TextButton(onClick = { mediaUri = null }) { Text(tr("Quitar")) }
                         }
                     }
                 }
-                if (category != "STORY") Text("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (category != "STORY") Text(tr("Por seguridad, indica solo una zona aproximada. No publiques direcciones particulares, teléfonos ni datos personales; coordina los detalles por mensaje privado."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
             }
         },
@@ -106,7 +106,7 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
                 }
             }) { Text(if (busy) "Subiendo y publicando…" else "Publicar") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
     )
 }
 
@@ -120,7 +120,7 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
         val listener = repo.listenComments(post.id, { comments = it }, { error = it })
         onDispose { listener.remove() }
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Comentarios") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(tr("Comentarios")) }, text = {
         Column(Modifier.heightIn(max = 420.dp)) {
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 items(comments, key = { it.id }) { comment ->
@@ -131,10 +131,10 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
                 }
             }
             if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
-            OutlinedTextField(draft, { draft = it }, label = { Text("Escribe un comentario") }, modifier = Modifier.fillMaxWidth())
-            Button(onClick = { scope.launch { runCatching { repo.addComment(post.id, draft); draft = "" }.onFailure { error = it.localizedMessage } } }, enabled = draft.isNotBlank(), modifier = Modifier.align(Alignment.End)) { Text("Enviar") }
+            OutlinedTextField(draft, { draft = it }, label = { Text(tr("Escribe un comentario")) }, modifier = Modifier.fillMaxWidth())
+            Button(onClick = { scope.launch { runCatching { repo.addComment(post.id, draft); draft = "" }.onFailure { error = it.localizedMessage } } }, enabled = draft.isNotBlank(), modifier = Modifier.align(Alignment.End)) { Text(tr("Enviar")) }
         }
-    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } })
+    }, confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } })
 }
 
 
@@ -211,7 +211,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                                 if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
-                        if (item.senderId == uid && item.readBy.any { it != uid }) Text("Visto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (item.senderId == uid && item.readBy.any { it != uid }) Text(tr("Visto"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -225,14 +225,14 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                         Text(if (attachmentIsVideo) "Vídeo listo" else "Fotografía lista", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(if (attachmentIsVideo) "Máximo 40 MB" else "Se optimizará antes de enviarla", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    TextButton(onClick = { attachment = null }) { Text("Quitar") }
+                    TextButton(onClick = { attachment = null }) { Text(tr("Quitar")) }
                 }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) { Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = MaterialTheme.colorScheme.primary) }
             IconButton(onClick = { videoPicker.launch("video/*") }, enabled = !sending) { Icon(Icons.Default.Videocam, "Adjuntar vídeo", tint = MaterialTheme.colorScheme.primary) }
-            OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp), placeholder = { Text("Escribe un mensaje…") }, maxLines = 3)
+            OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp), placeholder = { Text(tr("Escribe un mensaje…")) }, maxLines = 3)
             IconButton(onClick = {
                 val messageText = draft
                 val selected = attachment
