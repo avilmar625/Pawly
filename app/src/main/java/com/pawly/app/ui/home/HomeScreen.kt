@@ -160,7 +160,7 @@ internal fun HomeScreen(
         item { HomeLearnCard(onClick = onLearn) }
         item {
             Text(
-                "HECHO PARA COMPARTIR MÁS VIDA JUNTOS",
+                tr("HECHO PARA COMPARTIR MÁS VIDA JUNTOS"),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.SemiBold,
