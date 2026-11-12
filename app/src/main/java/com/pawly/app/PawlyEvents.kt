@@ -111,7 +111,10 @@ internal fun PawlyEventsScreen(
                 factory = { view ->
                     WebView(view).apply {
                         settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
+                        settings.domStorageEnabled = false
+                        settings.allowFileAccess = false
+                        settings.allowContentAccess = false
+                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                     }
                 },
@@ -215,7 +218,10 @@ private fun CreatePawlyEventDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Crear evento")) },
         text = {
-            Column(Modifier.heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Text(tr("Comparte un plan real con la comunidad."), style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(title, { title = it }, label = { Text(tr("Nombre del evento")) }, singleLine = true)
                 OutlinedTextField(description, { description = it }, label = { Text(tr("Descripción")) }, minLines = 2)
