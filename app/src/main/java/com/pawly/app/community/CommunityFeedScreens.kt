@@ -64,7 +64,7 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
                 FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text(tr("Siguiendo")) })
             }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                categoryOptions.forEach { (value, label) -> FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) }) }
+                categoryOptions.forEach { (value, label) -> FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(tr(label)) }) }
             }
         }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
@@ -88,7 +88,18 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f).clickable { onOpenUser(post.authorId) }) {
                     Text(post.authorName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
-                    Text((if (post.dogName.isBlank()) "Una historia Pawly" else "Con " + post.dogName) + " · " + when (post.category) { "ADOPTION" -> "Adopción"; "LOST" -> "Perdido"; "FOUND" -> "Encontrado"; "FOSTER" -> "Acogida"; else -> "Comunidad" }, color = if (post.category == "LOST") Color(0xFFB44E43) else ForestLight, style = MaterialTheme.typography.labelSmall)
+                    Text(
+                        (if (post.dogName.isBlank()) tr("Una historia Pawly") else "${tr("Con")} ${post.dogName}") +
+                            " · " + tr(when (post.category) {
+                                "ADOPTION" -> "Adopción"
+                                "LOST" -> "Perdido"
+                                "FOUND" -> "Encontrado"
+                                "FOSTER" -> "Acogida"
+                                else -> "Comunidad"
+                            }),
+                        color = if (post.category == "LOST") Color(0xFFB44E43) else ForestLight,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Más opciones", tint = Muted) }
@@ -108,7 +119,7 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                 }
                 TextButton(onClick = { onComments(post) }) {
                     Icon(Icons.Default.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.primary)
-                    Text(" " + post.commentCount + " comentarios", color = MaterialTheme.colorScheme.onSurface)
+                    Text(" " + tr("${post.commentCount} comentarios"), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
