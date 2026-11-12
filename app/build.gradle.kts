@@ -44,12 +44,13 @@ fun buildConfigString(name: String, fallbackName: String? = null): String {
 
 android {
     namespace = "com.pawly.app"
-    compileSdk = 36
+    // Keep the compile SDK configurable for CI while defaulting to the current dependency requirement.
+    compileSdk = providers.gradleProperty("pawlyCompileSdk").orNull?.toInt() ?: 37
 
     defaultConfig {
         applicationId = "com.pawly.app"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = providers.gradleProperty("pawlyTargetSdk").orNull?.toInt() ?: 36
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", buildConfigString("CLOUDINARY_CLOUD_NAME"))
