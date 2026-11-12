@@ -78,18 +78,18 @@ internal fun MoreHubScreen(
                 }
             }
         }
-        MoreSectionLabel(t("CUIDADO Y COMUNIDAD"))
+        MoreMoreSectionLabel(t("CUIDADO Y COMUNIDAD"))
         MoreDestinationCard(Icons.Filled.WorkspacePremium, t("Servicios profesionales"), t("Adiestradores, etólogos, veterinarios, paseadores y cuidadores."), onProfessionals, Color(0xFF247A67), Color(0xFFE2F3EC))
         MoreDestinationCard(Icons.Filled.Help, t("He perdido a mi mascota"), t("Ayuda a encontrarla y difunde un aviso."), onLostPet, Color(0xFFB34F42), Color(0xFFFFE9E4))
-        SectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
+        MoreSectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
         PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
         MoreDestinationCard(Icons.Filled.AutoStories, t("Diario de recuerdos"), t("Guarda momentos, pequeñas historias y fotografías."), onDiary, Color(0xFF8C5AA7), Color(0xFFF2E9F8))
         MoreDestinationCard(Icons.Filled.MenuBook, t("Aprender"), t("Artículos, consejos y recursos para su bienestar."), onLearn, Color(0xFF3674A8), Color(0xFFE6F1FB))
-        SectionLabel(t("AYUDA Y CUENTA"))
+        MoreSectionLabel(t("AYUDA Y CUENTA"))
         MoreDestinationCard(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend, Color(0xFFB16C27), Color(0xFFFFF0DB))
         MoreDestinationCard(Icons.Filled.MailOutline, t("Contacta con nosotros"), t("Envíanos una consulta, incidencia o sugerencia."), onContact, Color(0xFF397A83), Color(0xFFE3F3F4))
         MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
-        SectionLabel(t("INFORMACIÓN LEGAL"))
+        MoreSectionLabel(t("INFORMACIÓN LEGAL"))
         MoreDestinationCard(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy, Color(0xFF63758A), Color(0xFFEAF0F6))
         MoreDestinationCard(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms, Color(0xFF63758A), Color(0xFFEAF0F6))
         if (showSignOut) MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true }, Color(0xFFB34F42), Color(0xFFFFE9E4))
@@ -107,7 +107,7 @@ internal fun MoreHubScreen(
 }
 
 @Composable
-private fun SectionLabel(label: String) {
+private fun MoreSectionLabel(label: String) {
     Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
 }
 
