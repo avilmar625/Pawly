@@ -3,10 +3,16 @@ package com.pawly.app
 import android.content.Intent
 import android.net.Uri
 import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.webkit.JavascriptInterface
 import android.os.Handler
 import android.os.Looper
 import java.util.Locale
+import java.util.Calendar
+import java.util.Date
+import java.text.DateFormat
 import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -118,37 +124,46 @@ internal fun PawlyEventsScreen(
             val mapPoints = visible.filter { it.latitude != null && it.longitude != null }
             val centerLat = mapPoints.mapNotNull { it.latitude }.average().takeIf { it.isFinite() } ?: 40.4168
             val centerLon = mapPoints.mapNotNull { it.longitude }.average().takeIf { it.isFinite() } ?: -3.7038
-            val markers = mapPoints.joinToString(",") { event ->
-                "{lat:${event.latitude},lon:${event.longitude},title:${org.json.JSONObject.quote(event.title)},place:${org.json.JSONObject.quote(event.location)}}"
+            val minLatitude = mapPoints.minOfOrNull { it.latitude!! } ?: centerLat
+            val maxLatitude = mapPoints.maxOfOrNull { it.latitude!! } ?: centerLat
+            val minLongitude = mapPoints.minOfOrNull { it.longitude!! } ?: centerLon
+            val maxLongitude = mapPoints.maxOfOrNull { it.longitude!! } ?: centerLon
+            val latitudePadding = ((maxLatitude - minLatitude).coerceAtLeast(0.04)) * 0.2
+            val longitudePadding = ((maxLongitude - minLongitude).coerceAtLeast(0.04)) * 0.2
+            val south = (minLatitude - latitudePadding).coerceAtLeast(-85.0)
+            val north = (maxLatitude + latitudePadding).coerceAtMost(85.0)
+            val west = (minLongitude - longitudePadding).coerceAtLeast(-180.0)
+            val east = (maxLongitude + longitudePadding).coerceAtMost(180.0)
+            val mapUrlBuilder = Uri.parse("https://www.openstreetmap.org/export/embed.html").buildUpon()
+                .appendQueryParameter("bbox", "$west,$south,$east,$north")
+                .appendQueryParameter("layer", "mapnik")
+            mapPoints.firstOrNull()?.let { point ->
+                mapUrlBuilder.appendQueryParameter("marker", "${point.latitude},${point.longitude}")
             }
+            val mapUrl = mapUrlBuilder.build().toString()
             AndroidView(
-                modifier = Modifier.fillMaxWidth().height(235.dp).clip(RoundedCornerShape(22.dp)),
+                modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(22.dp)),
                 factory = { view ->
                     WebView(view).apply {
                         settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = false
+                        settings.domStorageEnabled = true
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                        webViewClient = WebViewClient()
                         setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                     }
                 },
                 update = { web ->
-                    val zoom = if (mapPoints.isEmpty()) 11 else 12
-                    val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>" +
-                        "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
-                        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script></head><body><div id='map'></div><script>" +
-                        "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);" +
-                        "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
-                        "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
-                        "if(points.length>1){map.fitBounds(points.map(p=>[p.lat,p.lon]),{padding:[24,24]});}</script></body></html>"
-                    web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
+                    if (web.tag != mapUrl) {
+                        web.tag = mapUrl
+                        web.loadUrl(mapUrl)
+                    }
                 }
             )
             Text(
-                tr(if (mapPoints.isEmpty()) "Todavía no hay eventos con ubicación exacta."
-                else "Los marcadores corresponden a lugares de eventos publicados por la comunidad."),
+                tr(if (mapPoints.isEmpty()) "Aún no hay eventos con ubicación exacta; el mapa muestra Madrid como referencia."
+                else "El mapa encuadra los eventos con ubicación exacta. Abre cada evento para ver su marcador."),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -246,7 +261,11 @@ private fun CreatePawlyEventDialog(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val language = LocalPawlyLanguage.current
+    var selectedEventDateMillis by remember { mutableStateOf<Long?>(null) }
+    var selectedEventHour by remember { mutableStateOf(-1) }
+    var selectedEventMinute by remember { mutableStateOf(-1) }
     var category by remember { mutableStateOf("Quedada") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
@@ -256,6 +275,29 @@ private fun CreatePawlyEventDialog(
     val coordinatesValid = (latitude.isBlank() && longitude.isBlank()) ||
         (parsedLatitude != null && parsedLongitude != null &&
             parsedLatitude in -90.0..90.0 && parsedLongitude in -180.0..180.0)
+
+    val eventDateTimeMillis = if (selectedEventDateMillis != null && selectedEventHour >= 0 && selectedEventMinute >= 0) {
+        Calendar.getInstance().apply {
+            timeInMillis = selectedEventDateMillis!!
+            set(Calendar.HOUR_OF_DAY, selectedEventHour)
+            set(Calendar.MINUTE, selectedEventMinute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    } else null
+    val dateText = eventDateTimeMillis?.let {
+        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, PawlyI18n.locale(language)).format(Date(it))
+    }.orEmpty()
+    val dateLabel = selectedEventDateMillis?.let {
+        DateFormat.getDateInstance(DateFormat.MEDIUM, PawlyI18n.locale(language)).format(Date(it))
+    } ?: tr("Elegir fecha")
+    val timeLabel = if (selectedEventHour >= 0 && selectedEventMinute >= 0) {
+        Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, selectedEventHour)
+            set(Calendar.MINUTE, selectedEventMinute)
+        }.let { DateFormat.getTimeInstance(DateFormat.SHORT, PawlyI18n.locale(language)).format(it.time) }
+    } else tr("Elegir hora")
+    val eventDateIsFuture = eventDateTimeMillis?.let { it > System.currentTimeMillis() } == true
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -269,7 +311,73 @@ private fun CreatePawlyEventDialog(
                 OutlinedTextField(title, { title = it.take(90) }, label = { Text(tr("Nombre del evento")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(description, { description = it.take(1200) }, label = { Text(tr("Descripción")) }, minLines = 2, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(location, { location = it.take(160) }, label = { Text(tr("Lugar o dirección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(date, { date = it.take(80) }, label = { Text(tr("Fecha y hora")) }, singleLine = true, placeholder = { Text(tr("DD/MM/AAAA · HH:mm")) }, modifier = Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            val initial = Calendar.getInstance().apply {
+                                selectedEventDateMillis?.let { timeInMillis = it }
+                            }
+                            val startOfToday = Calendar.getInstance().apply {
+                                set(Calendar.HOUR_OF_DAY, 0)
+                                set(Calendar.MINUTE, 0)
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }.timeInMillis
+                            DatePickerDialog(
+                                context,
+                                { _, year, month, day ->
+                                    selectedEventDateMillis = Calendar.getInstance().apply {
+                                        set(Calendar.DAY_OF_MONTH, 1)
+                                        set(Calendar.YEAR, year)
+                                        set(Calendar.MONTH, month)
+                                        set(Calendar.DAY_OF_MONTH, day)
+                                        set(Calendar.HOUR_OF_DAY, 0)
+                                        set(Calendar.MINUTE, 0)
+                                        set(Calendar.SECOND, 0)
+                                        set(Calendar.MILLISECOND, 0)
+                                    }.timeInMillis
+                                },
+                                initial.get(Calendar.YEAR),
+                                initial.get(Calendar.MONTH),
+                                initial.get(Calendar.DAY_OF_MONTH)
+                            ).apply { datePicker.minDate = startOfToday }.show()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(tr("Fecha"), style = MaterialTheme.typography.labelSmall)
+                            Text(dateLabel, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val initial = Calendar.getInstance().apply {
+                                selectedEventDateMillis?.let { timeInMillis = it }
+                                if (selectedEventHour >= 0) set(Calendar.HOUR_OF_DAY, selectedEventHour)
+                                if (selectedEventMinute >= 0) set(Calendar.MINUTE, selectedEventMinute)
+                            }
+                            TimePickerDialog(
+                                context,
+                                { _, hour, minute ->
+                                    selectedEventHour = hour
+                                    selectedEventMinute = minute
+                                },
+                                initial.get(Calendar.HOUR_OF_DAY),
+                                initial.get(Calendar.MINUTE),
+                                true
+                            ).show()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(tr("Hora"), style = MaterialTheme.typography.labelSmall)
+                            Text(timeLabel, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                if (eventDateTimeMillis != null && !eventDateIsFuture) {
+                    Text(tr("La fecha y hora deben ser futuras."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                }
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -304,8 +412,8 @@ private fun CreatePawlyEventDialog(
         confirmButton = {
             Button(
                 enabled = title.trim().length >= 4 && description.trim().length >= 10 &&
-                    location.trim().length >= 3 && date.trim().length >= 4 && coordinatesValid,
-                onClick = { onPublish(title, description, category, location, date, parsedLatitude, parsedLongitude) }
+                    location.trim().length >= 3 && dateText.isNotBlank() && eventDateIsFuture && coordinatesValid,
+                onClick = { onPublish(title, description, category, location, dateText, parsedLatitude, parsedLongitude) }
             ) { Text(tr("Publicar")) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
