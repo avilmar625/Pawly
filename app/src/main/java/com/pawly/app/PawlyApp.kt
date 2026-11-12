@@ -143,6 +143,7 @@ private fun PawlyMainApp(
     var cloudinaryVideoPreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET) }
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var language by remember(preferences) { mutableStateOf(preferences.getString("language", "es") ?: "es") }
+    var profileSyncStatus by remember(preferences, storageScope) { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
     var pendingPdfFile by remember { mutableStateOf<File?>(null) }
     val pdfSaveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
@@ -167,7 +168,6 @@ private fun PawlyMainApp(
     var dogName by remember(preferences) { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
     var dogProfiles by remember(preferences) { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var homePetCloudReady by remember(preferences, storageScope) { mutableStateOf(false) }
-    var profileSyncStatus by remember(preferences, storageScope) { mutableStateOf("") }
     var dogPhotoPath by remember(preferences) { mutableStateOf(preferences.getString("dog_photo_path", null)) }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) runCatching {
