@@ -472,7 +472,7 @@ private fun EventLocationPickerDialog(
                                 "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\">" +
                                 "<style>html,body,#map{height:100%;margin:0}</style>" +
                                 "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\"></script></head><body><div id='map'></div><script>" +
-                                "let attempts=0;function initPawlyMap(){if(!window.L){if(attempts++<40){setTimeout(initPawlyMap,125);return;}document.getElementById('map').innerHTML='<div style=\\"padding:16px\\">'+$mapUnavailableScript+'</div>';return;}" +
+                                "let attempts=0;function initPawlyMap(){if(!window.L){if(attempts++<40){setTimeout(initPawlyMap,125);return;}document.getElementById('map').innerHTML='<div style=\"padding:16px\">'+$mapUnavailableScript+'</div>';return;}" +
                                 "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
                                 "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
                                 "let marker=null;$markerScript" +
