@@ -171,7 +171,10 @@ internal fun PawlyEventsScreen(
                 update = { web ->
                     if (web.tag != mapUrl) {
                         web.tag = mapUrl
-                        web.loadUrl(mapUrl)
+                        val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                            "<style>html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden}iframe{display:block;width:100%;height:100%;border:0}</style>" +
+                            "</head><body><iframe title='OpenStreetMap' src='$mapUrl' allowfullscreen></iframe></body></html>"
+                        web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
                     }
                 }
             )
@@ -293,6 +296,7 @@ private fun CreatePawlyEventDialog(
     var selectedEventDateMillis by remember { mutableStateOf<Long?>(null) }
     var selectedEventHour by remember { mutableStateOf(-1) }
     var selectedEventMinute by remember { mutableStateOf(-1) }
+    var validationError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Quedada") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
@@ -433,14 +437,26 @@ private fun CreatePawlyEventDialog(
                     Text(tr("La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto."),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (validationError != null) Text(validationError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (error != null) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
             Button(
-                enabled = title.trim().length >= 4 && description.trim().length >= 10 &&
-                    location.trim().length >= 3 && dateText.isNotBlank() && eventDateIsFuture && coordinatesValid,
-                onClick = { onPublish(title, description, category, location, dateText, parsedLatitude, parsedLongitude) }
+                onClick = {
+                    validationError = when {
+                        title.trim().length < 4 -> tr("Escribe un título de al menos 4 caracteres.")
+                        description.trim().length < 10 -> tr("Añade una descripción de al menos 10 caracteres.")
+                        location.trim().length < 3 -> tr("Indica el lugar o la dirección del evento.")
+                        eventDateTimeMillis == null -> tr("Selecciona una fecha y una hora.")
+                        !eventDateIsFuture -> tr("La fecha y hora deben ser futuras.")
+                        !coordinatesValid -> tr("Quita o corrige el marcador del mapa.")
+                        else -> null
+                    }
+                    if (validationError == null) {
+                        onPublish(title, description, category, location, dateText, parsedLatitude, parsedLongitude)
+                    }
+                }
             ) { Text(tr("Publicar")) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
@@ -472,7 +488,16 @@ private fun EventLocationPickerDialog(
     val centerLongitude = initialLongitude ?: -3.7038
     val zoom = if (initialLatitude != null && initialLongitude != null) 14 else 5
     val hasInitialMarker = initialLatitude != null && initialLongitude != null
-    val mapUnavailableScript = org.json.JSONObject.quote(tr("No se pudo cargar el mapa. Comprueba tu conexión."))
+    val fallbackMapUrlBuilder = Uri.parse("https://www.openstreetmap.org/export/embed.html").buildUpon()
+        .appendQueryParameter(
+            "bbox",
+            "${centerLongitude - 0.05},${centerLatitude - 0.05},${centerLongitude + 0.05},${centerLatitude + 0.05}"
+        )
+        .appendQueryParameter("layer", "mapnik")
+    if (hasInitialMarker) fallbackMapUrlBuilder.appendQueryParameter("marker", "${centerLatitude},${centerLongitude}")
+    val fallbackMapHtmlScript = org.json.JSONObject.quote(
+        "<iframe title=\"OpenStreetMap\" src=\"${fallbackMapUrlBuilder.build()}\" style=\"width:100%;height:100%;border:0\"></iframe>"
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Marca el lugar del evento")) },
@@ -497,7 +522,7 @@ private fun EventLocationPickerDialog(
                                 "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\">" +
                                 "<style>html,body,#map{height:100%;margin:0}</style>" +
                                 "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\"></script></head><body><div id='map'></div><script>" +
-                                "let attempts=0;function initPawlyMap(){if(!window.L){if(attempts++<40){setTimeout(initPawlyMap,125);return;}document.getElementById('map').innerHTML='<div style=\"padding:16px\">'+$mapUnavailableScript+'</div>';return;}" +
+                                "let attempts=0;function initPawlyMap(){if(!window.L){if(attempts++<40){setTimeout(initPawlyMap,125);return;}document.getElementById('map').innerHTML=$fallbackMapHtmlScript;return;}" +
                                 "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
                                 "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
                                 "let marker=null;$markerScript" +
@@ -508,6 +533,8 @@ private fun EventLocationPickerDialog(
                         }
                     }
                 )
+                Text(tr("Si el mapa no permite colocar el marcador, puedes publicar usando solo la dirección."),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Listo")) } },
