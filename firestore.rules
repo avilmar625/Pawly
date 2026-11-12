@@ -63,7 +63,30 @@ service cloud.firestore {
         && request.resource.data.username == resource.data.username
         && request.resource.data.usernameLower == resource.data.usernameLower
         && (!('moderationStatus' in resource.data) || resource.data.moderationStatus != 'restricted' || request.resource.data.isPublic == false)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles']))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles',
+          'accountType', 'professionalCategory', 'professionalLocation',
+          'professionalDescription', 'professionalContact'
+        ])
+        && (!('accountType' in request.resource.data)
+          || request.resource.data.accountType in ['personal', 'professional'])
+        && (!('professionalCategory' in request.resource.data)
+          || (request.resource.data.professionalCategory is string
+            && request.resource.data.professionalCategory.size() <= 60))
+        && (!('professionalLocation' in request.resource.data)
+          || (request.resource.data.professionalLocation is string
+            && request.resource.data.professionalLocation.size() <= 100))
+        && (!('professionalDescription' in request.resource.data)
+          || (request.resource.data.professionalDescription is string
+            && request.resource.data.professionalDescription.size() <= 500))
+        && (!('professionalContact' in request.resource.data)
+          || (request.resource.data.professionalContact is string
+            && request.resource.data.professionalContact.size() <= 120))
+        && (!('accountType' in request.resource.data)
+          || request.resource.data.accountType != 'professional'
+          || ('professionalCategory' in request.resource.data
+            && request.resource.data.professionalCategory is string
+            && request.resource.data.professionalCategory.size() > 0)))
         || admin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPublic', 'moderationStatus'])
         || verified()
@@ -494,8 +517,12 @@ service cloud.firestore {
         && request.resource.data.category in ['Quedada', 'Ruta', 'Taller', 'Adopción']
         && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 160
         && request.resource.data.dateText is string && request.resource.data.dateText.size() >= 4 && request.resource.data.dateText.size() <= 80
-        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
-        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && ((!('latitude' in request.resource.data) && !('longitude' in request.resource.data))
+          || ('latitude' in request.resource.data && 'longitude' in request.resource.data
+            && request.resource.data.latitude is number
+            && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+            && request.resource.data.longitude is number
+            && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180))
         && request.resource.data.organizerUid == request.auth.uid
         && request.resource.data.organizerName is string && request.resource.data.organizerName.size() <= 60
         && request.resource.data.interestedCount == 0
