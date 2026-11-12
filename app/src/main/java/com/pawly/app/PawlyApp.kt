@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 internal enum class Tab(val label: String) {
-    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más")
+    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales")
 }
 
 @Composable
@@ -260,7 +260,7 @@ private fun PawlyMainApp(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
-                        val active = selected == tab
+                        val active = selected == tab || (tab == Tab.MORE && selected == Tab.SERVICES)
                         val tabIcon = when (tab) {
                             Tab.HOME -> Icons.Filled.Home
                             Tab.EXPLORE -> Icons.Filled.Explore
@@ -269,6 +269,7 @@ private fun PawlyMainApp(
                             Tab.DIARY -> Icons.Filled.AutoStories
                             Tab.COMMUNITY -> Icons.Filled.Groups
                             Tab.MORE -> Icons.Filled.MoreHoriz
+                            Tab.SERVICES -> Icons.Filled.WorkspacePremium
                         }
                         Column(
                             Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
@@ -376,6 +377,12 @@ private fun PawlyMainApp(
                     onLearn = { selected = Tab.LEARN },
                     onDiary = { selected = Tab.DIARY },
                     onSettings = { showSettings = true },
+                    onProfessionals = { selected = Tab.SERVICES },
+                    onCommunity = { selected = Tab.COMMUNITY },
+                    elegantDesign = elegantDesign
+                )
+                Tab.SERVICES -> ProfessionalServicesScreen(
+                    onBack = { selected = Tab.MORE },
                     elegantDesign = elegantDesign
                 )
             }
