@@ -276,9 +276,10 @@ internal object PawlyI18n {
     }
 
     fun text(value: String, language: String): String = when (language) {
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "eu" -> euUi[value] ?: value
+        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: dynamicText(value, language) ?: value
         else -> value
     }
 }
