@@ -283,6 +283,14 @@ private fun PawlyMainApp(
                     listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
                         val label = PawlyI18n.text(tab.label, language)
                         val active = selected == tab || (tab == Tab.MORE && selected == Tab.SERVICES)
+                        val tabTint = when (tab) {
+                            Tab.HOME -> Color(0xFF26836B)
+                            Tab.EXPLORE -> Color(0xFF3979B8)
+                            Tab.HEALTH -> Color(0xFFD45E70)
+                            Tab.COMMUNITY -> Color(0xFF8962B3)
+                            Tab.MORE -> Color(0xFFB47A37)
+                            else -> MaterialTheme.colorScheme.primary
+                        }
                         val tabIcon = when (tab) {
                             Tab.HOME -> Icons.Filled.Home
                             Tab.EXPLORE -> Icons.Filled.Explore
@@ -304,13 +312,13 @@ private fun PawlyMainApp(
                             Box(
                                 Modifier.width(42.dp).height(29.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
+                                    .background(if (active) tabTint.copy(alpha = .14f) else Color.Transparent),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     tabIcon,
                                     contentDescription = label,
-                                    tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    tint = tabTint,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -319,7 +327,7 @@ private fun PawlyMainApp(
                             if (active) {
                                 Text(
                                     label,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = tabTint,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
