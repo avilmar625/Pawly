@@ -99,6 +99,18 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                 Avatar(user!!.photoUrl, user!!.displayName, 72)
                 Text(user!!.displayName, style = MaterialTheme.typography.titleLarge, color = Forest)
                 Text("@" + user!!.username, color = Muted)
+                if (user!!.accountType == "professional") {
+                    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(top = 8.dp)) {
+                        Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.WorkspacePremium, null, tint = MaterialTheme.colorScheme.tertiary)
+                            Spacer(Modifier.width(6.dp))
+                            Text("Perfil profesional · " + user!!.professionalCategory, color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    if (user!!.professionalLocation.isNotBlank()) Text("Zona: " + user!!.professionalLocation, color = Muted, style = MaterialTheme.typography.bodySmall)
+                    if (user!!.professionalDescription.isNotBlank()) Text(user!!.professionalDescription, color = Ink, modifier = Modifier.padding(8.dp))
+                    if (user!!.professionalContact.isNotBlank()) Text("Contacto: " + user!!.professionalContact, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                }
                 if (user!!.bio.isNotBlank()) Text(user!!.bio, color = Ink, modifier = Modifier.padding(8.dp))
                 Text(user!!.followersCount.toString() + " seguidores · " + user!!.followingCount + " siguiendo", color = Muted, style = MaterialTheme.typography.bodySmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
