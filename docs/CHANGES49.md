@@ -49,4 +49,6 @@ La validación automatizada se ejecuta mediante el workflow Android del reposito
 
 ## Nota de alcance
 
+La búsqueda de profesionales está disponible desde el apartado Más y mantiene el mismo destino activo en la barra inferior mientras se navega por sus resultados externos.
+
 Esta rama mejora el descubrimiento y la experiencia de Pawly, pero no afirma haber implementado una contratación transaccional. Los enlaces a mapas o buscadores son una puerta de acceso a proveedores externos, no una recomendación ni verificación de Pawly.
