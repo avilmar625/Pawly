@@ -95,7 +95,7 @@ internal fun PawlyEventsScreen(
         Spacer(Modifier.height(12.dp))
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             listOf("Todos", "Quedada", "Ruta", "Taller", "Adopción").forEach { item ->
-                FilterChip(selected = category == item, onClick = { category = item }, label = { Text(tr(item)) })
+                FilterChip(selected = category == item, onClick = { category = item }, label = { Text(tr(if (item == "Todos") "Todos los eventos" else item)) })
             }
         }
         Spacer(Modifier.height(8.dp))
