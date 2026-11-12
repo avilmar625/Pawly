@@ -468,10 +468,10 @@ private fun PawlyMainApp(
                             }
                     },
                     onPrivacy = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios52-final/docs/PRIVACY_POLICY_DRAFT.md")))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios52/docs/PRIVACY_POLICY_DRAFT.md")))
                     },
                     onTerms = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios52-final/docs/TERMS_OF_SERVICE_DRAFT.md")))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios52/docs/TERMS_OF_SERVICE_DRAFT.md")))
                     },
                     onSignOut = {
                         coroutineScope.launch {
