@@ -166,10 +166,68 @@ internal object PawlyI18n {
         "Perfil de tu compañero" to "Profil de votre compagnon", "Galería" to "Galerie", "Cámara" to "Appareil photo", "Perfiles de perros" to "Profils des animaux", "Añadir con el nombre escrito" to "Ajouter avec le nom saisi", "Creadores" to "Créateurs", "Cerrar" to "Fermer"
     )
 
+    private fun dynamicText(value: String, language: String): String? {
+        val prefixes = when (language) {
+            "en" -> listOf(
+                "Perfil compartido · " to "Shared profile · ",
+                "Vacunas, revisiones y cuidados de " to "Vaccinations, check-ups and care for ",
+                "Una selección para " to "A selection for ",
+                "Eliminar perfil de " to "Delete profile for ",
+                "Compartir el perfil de " to "Share the profile of ",
+                "Zona: " to "Area: ",
+                "Contacto: " to "Contact: ",
+                "Un día bonito\ncon " to "A lovely day\nwith "
+            )
+            "ca" -> listOf(
+                "Perfil compartido · " to "Perfil compartit · ",
+                "Vacunas, revisiones y cuidados de " to "Vacunes, revisions i cures de ",
+                "Una selección para " to "Una selecció per a ",
+                "Eliminar perfil de " to "Elimina el perfil de ",
+                "Compartir el perfil de " to "Comparteix el perfil de ",
+                "Zona: " to "Zona: ",
+                "Contacto: " to "Contacte: ",
+                "Un día bonito\ncon " to "Un dia bonic\namb "
+            )
+            "fr" -> listOf(
+                "Perfil compartido · " to "Profil partagé · ",
+                "Vacunas, revisiones y cuidados de " to "Vaccins, contrôles et soins de ",
+                "Una selección para " to "Une sélection pour ",
+                "Eliminar perfil de " to "Supprimer le profil de ",
+                "Compartir el perfil de " to "Partager le profil de ",
+                "Zona: " to "Zone : ",
+                "Contacto: " to "Contact : ",
+                "Un día bonito\ncon " to "Une belle journée\navec "
+            )
+            else -> emptyList()
+        }
+        prefixes.firstOrNull { (source, _) -> value.startsWith(source) }?.let { (source, target) ->
+            return target + value.removePrefix(source)
+        }
+        return when (language) {
+            "en" -> when {
+                value.endsWith(" lugares guardados") -> value.removeSuffix(" lugares guardados") + " saved places"
+                Regex("^\\d+ registros$").matches(value) -> value.removeSuffix(" registros") + " records"
+                Regex("^\\d+ de \\d+ marcadas como hechas$").matches(value) -> value.replace(" de ", " of ").replace(" marcadas como hechas", " completed")
+                else -> null
+            }
+            "ca" -> when {
+                value.endsWith(" lugares guardados") -> value.removeSuffix(" lugares guardados") + " llocs desats"
+                Regex("^\\d+ registros$").matches(value) -> value.removeSuffix(" registros") + " registres"
+                else -> null
+            }
+            "fr" -> when {
+                value.endsWith(" lugares guardados") -> value.removeSuffix(" lugares guardados") + " lieux enregistrés"
+                Regex("^\\d+ registros$").matches(value) -> value.removeSuffix(" registros") + " entrées"
+                else -> null
+            }
+            else -> null
+        }
+    }
+
     fun text(value: String, language: String): String = when (language) {
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: value
+        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: dynamicText(value, language) ?: value
+        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: dynamicText(value, language) ?: value
+        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: dynamicText(value, language) ?: value
         else -> value
     }
 }
