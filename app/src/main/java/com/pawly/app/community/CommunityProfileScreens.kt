@@ -125,6 +125,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                     if (accountType == "professional") {
                         Text(tr("Perfil profesional"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Text(tr("Estos datos aparecerán en tu perfil público si activas la visibilidad. La insignia indica el tipo de cuenta, no una verificación de credenciales."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(tr("El contacto profesional será visible públicamente si tu perfil es público. Usa un correo o teléfono de trabajo, no datos personales que no quieras compartir."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(professionalCategory, { professionalCategory = it }, label = { Text(tr("Especialidad o servicio")) }, placeholder = { Text(tr("Adiestramiento, veterinaria, peluquería…")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(professionalLocation, { professionalLocation = it }, label = { Text(tr("Ciudad o zona de trabajo")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(professionalDescription, { professionalDescription = it }, label = { Text(tr("Servicios y experiencia")) }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5)
