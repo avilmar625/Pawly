@@ -144,6 +144,16 @@ internal fun PawlyEventsScreen(
                 mapUrlBuilder.appendQueryParameter("marker", "${point.latitude},${point.longitude}")
             }
             val mapUrl = mapUrlBuilder.build().toString()
+            val mapMarkersScript = mapPoints.joinToString(separator = "") { point ->
+                "L.marker([${point.latitude},${point.longitude}]).addTo(map).bindPopup(" +
+                    org.json.JSONObject.quote(point.title) + ");"
+            }
+            val mapMarkerBounds = mapPoints.joinToString(separator = ",") { point ->
+                "[${point.latitude},${point.longitude}]"
+            }
+            val fallbackMapHtmlScript = org.json.JSONObject.quote(
+                "<iframe title=\\"OpenStreetMap\\" src=\\"$mapUrl\\" style=\\"width:100%;height:100%;border:0\\"></iframe>"
+            )
             AndroidView(
                 modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(22.dp)),
                 factory = { view ->
@@ -171,19 +181,33 @@ internal fun PawlyEventsScreen(
                 update = { web ->
                     if (web.tag != mapUrl) {
                         web.tag = mapUrl
+                        val fitMarkersScript = if (mapPoints.size > 1) {
+                            "map.fitBounds(L.latLngBounds([$mapMarkerBounds]),{padding:[24,24],maxZoom:14});"
+                        } else ""
+                        val mapZoom = if (mapPoints.isEmpty()) 11 else 12
                         val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                            "<style>html,body{width:100%;height:100%;margin:0;padding:0;overflow:hidden}iframe{display:block;width:100%;height:100%;border:0}</style>" +
-                            "</head><body><iframe title='OpenStreetMap' src='$mapUrl' allowfullscreen></iframe></body></html>"
+                            "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\\">" +
+                            "<style>html,body,#map{width:100%;height:100%;margin:0;padding:0;overflow:hidden}</style>" +
+                            "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\\"></script></head><body><div id='map'></div><script>" +
+                            "let attempts=0;function initPawlyMap(){if(!window.L){if(attempts++<40){setTimeout(initPawlyMap,125);return;}document.getElementById('map').innerHTML=$fallbackMapHtmlScript;return;}" +
+                            "const map=L.map('map').setView([$centerLat,$centerLon],$mapZoom);" +
+                            "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
+                            "$mapMarkersScript$fitMarkersScript}" +
+                            "initPawlyMap();</script></body></html>"
                         web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
                     }
                 }
             )
             if (mapLoadFailed) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
                     Text(
                         tr("No se pudo cargar el mapa. Comprueba tu conexión."),
-                        modifier = Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(10.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
