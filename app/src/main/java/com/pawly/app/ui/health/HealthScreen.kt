@@ -66,6 +66,7 @@ internal fun HealthScreen(
     onDateChange: (String, String?) -> Unit
 ) {
     val context = LocalContext.current
+    val language = LocalPawlyLanguage.current
     var reminderFeedback by remember { mutableStateOf<String?>(null) }
     var pendingReminder by remember { mutableStateOf<Pair<String, String>?>(null) }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -75,7 +76,7 @@ internal fun HealthScreen(
             val (careName, value) = pending
             if (granted && CareReminderScheduler.schedule(context, dogName, careName, value)) {
                 onDateChange(careName, value)
-                reminderFeedback = "Aviso programado para ${formatCareDate(value)}."
+                reminderFeedback = "Aviso programado para ${formatCareDate(value, language)}."
             } else {
                 onDateChange(careName, value)
                 reminderFeedback = "Fecha guardada. Activa las notificaciones de Pawly para recibir el aviso."
@@ -108,7 +109,7 @@ internal fun HealthScreen(
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else if (CareReminderScheduler.schedule(context, dogName, key, value)) {
                     onDateChange(key, value)
-                    reminderFeedback = "Aviso programado para ${formatCareDate(value)}."
+                    reminderFeedback = "Aviso programado para ${formatCareDate(value, language)}."
                 } else {
                     reminderFeedback = "No se pudo programar el aviso. Inténtalo de nuevo."
                 }
@@ -140,17 +141,17 @@ internal fun HealthScreen(
         item { SectionHeading("Próximos cuidados", "Programa avisos locales para no olvidarte") }
         if (reminderFeedback != null) item {
             Surface(color = Color(0xFFE8EFE2), shape = RoundedCornerShape(14.dp)) {
-                Text(reminderFeedback!!, color = Forest, modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodySmall)
+                Text(tr(reminderFeedback!!), color = Forest, modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
-            HealthItem(Icons.Filled.Vaccines, "Vacunación", "Fecha orientativa de tu próxima cita", dates["Vacunación"]?.let(::formatCareDate) ?: "Añadir aviso", { selectDate("Vacunación") }, { CareReminderScheduler.cancel(context, dogName, "Vacunación"); onDateChange("Vacunación", null); reminderFeedback = "Aviso de vacunación eliminado." })
+            HealthItem(Icons.Filled.Vaccines, "Vacunación", "Fecha orientativa de tu próxima cita", dates["Vacunación"]?.let { formatCareDate(it, language) } ?: "Añadir aviso", { selectDate("Vacunación") }, { CareReminderScheduler.cancel(context, dogName, "Vacunación"); onDateChange("Vacunación", null); reminderFeedback = "Aviso de vacunación eliminado." })
         }
         item {
-            HealthItem(Icons.Filled.BugReport, "Desparasitación", "Sigue la pauta indicada por tu veterinario", dates["Desparasitación"]?.let(::formatCareDate) ?: "Añadir aviso", { selectDate("Desparasitación") }, { CareReminderScheduler.cancel(context, dogName, "Desparasitación"); onDateChange("Desparasitación", null); reminderFeedback = "Aviso de desparasitación eliminado." })
+            HealthItem(Icons.Filled.BugReport, "Desparasitación", "Sigue la pauta indicada por tu veterinario", dates["Desparasitación"]?.let { formatCareDate(it, language) } ?: "Añadir aviso", { selectDate("Desparasitación") }, { CareReminderScheduler.cancel(context, dogName, "Desparasitación"); onDateChange("Desparasitación", null); reminderFeedback = "Aviso de desparasitación eliminado." })
         }
         item {
-            HealthItem(Icons.Filled.MedicalServices, "Próxima revisión", "Organiza una cita con vuestro veterinario", dates["Próxima revisión"]?.let(::formatCareDate) ?: "Añadir aviso", { selectDate("Próxima revisión") }, { CareReminderScheduler.cancel(context, dogName, "Próxima revisión"); onDateChange("Próxima revisión", null); reminderFeedback = "Aviso de revisión eliminado." })
+            HealthItem(Icons.Filled.MedicalServices, "Próxima revisión", "Organiza una cita con vuestro veterinario", dates["Próxima revisión"]?.let { formatCareDate(it, language) } ?: "Añadir aviso", { selectDate("Próxima revisión") }, { CareReminderScheduler.cancel(context, dogName, "Próxima revisión"); onDateChange("Próxima revisión", null); reminderFeedback = "Aviso de revisión eliminado." })
         }
         item {
             TaskRow(
@@ -177,11 +178,11 @@ internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, t
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold)
-                Text(subtitle, color = Muted, fontSize = 11.sp)
+                Text(tr(title), fontWeight = FontWeight.SemiBold)
+                Text(tr(subtitle), color = Muted, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(date, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(tr(date), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 if (date != "Añadir aviso") TextButton(onClick = onClear, contentPadding = PaddingValues(0.dp)) { Text(tr("Quitar"), fontSize = 10.sp) }
             }
         }
@@ -189,11 +190,11 @@ internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, t
 }
 
 
-private fun formatCareDate(value: String): String {
+private fun formatCareDate(value: String, language: String): String {
     val parts = value.split("|")
     val date = runCatching {
         val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).parse(parts.first())
-        SimpleDateFormat("dd MMM yyyy", Locale("es", "ES")).format(parsed!!)
+        SimpleDateFormat("dd MMM yyyy", PawlyI18n.locale(language)).format(parsed!!)
     }.getOrDefault(parts.first())
     return if (parts.size > 1) "$date · ${parts[1]}" else date
 }
