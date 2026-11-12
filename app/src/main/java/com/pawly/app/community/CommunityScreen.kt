@@ -367,9 +367,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     Text("Comunidad", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                     Text("Aventuras que se comparten.", color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.bodySmall)
                 }
-                Surface(color = Color.White.copy(alpha = .14f), shape = CircleShape) {
-                    IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White) }
-                }
             }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
