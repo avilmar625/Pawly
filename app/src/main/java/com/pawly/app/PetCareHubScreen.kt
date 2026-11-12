@@ -73,8 +73,8 @@ internal fun PetCareHubScreen(
     Column(Modifier.fillMaxSize()) {
         if (sharedPetOwnerUid != null) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Perfil compartido · ${petName}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                TextButton(onClick = onCloseSharedPet) { Text("Volver a mi mascota") }
+                Text(tr("Perfil compartido · ${petName}"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                TextButton(onClick = onCloseSharedPet) { Text(tr("Volver a mi mascota")) }
             }
         }
         Column(
@@ -91,8 +91,8 @@ internal fun PetCareHubScreen(
                     )
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
                     Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("BIENESTAR Y CUIDADOS", color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-                        Text("Su salud, siempre en buenas manos.", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+                        Text(tr("BIENESTAR Y CUIDADOS"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                        Text(tr("Su salud, siempre en buenas manos."), color = Color.White, style = MaterialTheme.typography.headlineSmall)
                     }
                 }
             } else {
@@ -106,9 +106,9 @@ internal fun PetCareHubScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("SU BIENESTAR, SIEMPRE A MANO", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(tr("SU BIENESTAR, SIEMPRE A MANO"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                             Text("El cuidado de ${petName.ifBlank { "tu mascota" }}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            Text("Agenda, salud y rutinas en un solo lugar.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(tr("Agenda, salud y rutinas en un solo lugar."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.Default.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(42.dp))
                     }
@@ -208,9 +208,9 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Pets, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Pasaporte sanitario", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(tr("Pasaporte sanitario"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
-                    Text("Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria.", style = MaterialTheme.typography.bodyMedium)
+                    Text(tr("Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria."), style = MaterialTheme.typography.bodyMedium)
                     Text(syncMessage, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
@@ -219,15 +219,15 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Historial", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("${entries.size} registros", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Historial"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(tr("${entries.size} registros"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text("Añadir") }
+                    Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text(tr("Añadir")) }
                     TextButton(onClick = {
                         runCatching { PetCarePdfExporter.sharePassport(context, petName, entries) }
                             .onFailure { syncMessage = "No se pudo preparar el PDF" }
-                    }) { Text("Compartir PDF") }
+                    }) { Text(tr("Compartir PDF")) }
                 }
             }
         }
@@ -236,8 +236,8 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Default.Favorite, null, modifier = Modifier.size(34.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text("El historial empieza aquí", fontWeight = FontWeight.SemiBold)
-                        Text("Registra su primera vacuna, revisión o tratamiento para tenerlo todo localizado.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(tr("El historial empieza aquí"), fontWeight = FontWeight.SemiBold)
+                        Text(tr("Registra su primera vacuna, revisión o tratamiento para tenerlo todo localizado."), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -267,14 +267,14 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
             }
         }
         item {
-            Text("Este historial no sustituye a la cartilla oficial ni a la historia clínica de tu veterinario. Los documentos adjuntos y la exportación PDF se incorporarán en una fase posterior.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("Este historial no sustituye a la cartilla oficial ni a la historia clínica de tu veterinario. Los documentos adjuntos y la exportación PDF se incorporarán en una fase posterior."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
-            title = { Text("Nuevo registro") },
+            title = { Text(tr("Nuevo registro")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -282,9 +282,9 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                             FilterChip(selected = selectedType == type, onClick = { selectedType = type }, label = { Text(type) })
                         }
                     }
-                    OutlinedTextField(title, { title = it }, label = { Text("Nombre o concepto") }, singleLine = true)
-                    OutlinedTextField(date, { date = it }, label = { Text("Fecha (AAAA-MM-DD)") }, singleLine = true)
-                    OutlinedTextField(detail, { detail = it }, label = { Text("Notas, clínica o detalles") }, minLines = 2)
+                    OutlinedTextField(title, { title = it }, label = { Text(tr("Nombre o concepto")) }, singleLine = true)
+                    OutlinedTextField(date, { date = it }, label = { Text(tr("Fecha (AAAA-MM-DD)")) }, singleLine = true)
+                    OutlinedTextField(detail, { detail = it }, label = { Text(tr("Notas, clínica o detalles")) }, minLines = 2)
                 }
             },
             confirmButton = {
@@ -303,9 +303,9 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                         }
                         title = ""; detail = ""; date = LocalDate.now().toString(); selectedType = "Vacuna"; showAdd = false
                     }
-                }, enabled = canEdit && title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text("Guardar") }
+                }, enabled = canEdit && title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text(tr("Guardar")) }
             },
-            dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showAdd = false }) { Text(tr("Cancelar")) } }
         )
     }
 }
@@ -366,9 +366,9 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.People, null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Organización de cuidados", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(tr("Organización de cuidados"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
-                    Text("Anota las rutinas y quién suele encargarse para que la familia tenga un plan claro.", style = MaterialTheme.typography.bodyMedium)
+                    Text(tr("Anota las rutinas y quién suele encargarse para que la familia tenga un plan claro."), style = MaterialTheme.typography.bodyMedium)
                     Text(syncMessage, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                     if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
@@ -377,20 +377,20 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Rutinas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("${tasks.count { it.completed }} de ${tasks.size} marcadas como hechas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Rutinas"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(tr("${tasks.count { it.completed }} de ${tasks.size} marcadas como hechas"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Text("Añadir") }
+                    Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Text(tr("Añadir")) }
                     TextButton(onClick = {
                         runCatching { PetCarePdfExporter.shareCarePlan(context, petName, tasks) }
                             .onFailure { syncMessage = "No se pudo preparar el PDF" }
-                    }) { Text("Compartir PDF") }
+                    }) { Text(tr("Compartir PDF")) }
                 }
             }
         }
         if (tasks.isEmpty()) {
-            item { Text("Todavía no hay rutinas. Puedes añadir paseos, comidas, medicación o cualquier cuidado recurrente.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            item { Text(tr("Todavía no hay rutinas. Puedes añadir paseos, comidas, medicación o cualquier cuidado recurrente."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         items(tasks, key = { it.id }) { task ->
             Card {
@@ -435,11 +435,11 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
-            title = { Text("Añadir rutina") },
+            title = { Text(tr("Añadir rutina")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(title, { title = it }, label = { Text("Cuidado (paseo, comida…)") }, singleLine = true)
-                    OutlinedTextField(responsible, { responsible = it }, label = { Text("Responsable") }, singleLine = true)
+                    OutlinedTextField(title, { title = it }, label = { Text(tr("Cuidado (paseo, comida…)")) }, singleLine = true)
+                    OutlinedTextField(responsible, { responsible = it }, label = { Text(tr("Responsable")) }, singleLine = true)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("Diario", "Semanal", "Puntual").forEach { item ->
                             FilterChip(selected = frequency == item, onClick = { frequency = item }, label = { Text(item) })
@@ -462,9 +462,9 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                         }
                         title = ""; responsible = ""; frequency = "Diario"; showAdd = false
                     }
-                }, enabled = canEdit && title.isNotBlank()) { Text("Guardar") }
+                }, enabled = canEdit && title.isNotBlank()) { Text(tr("Guardar")) }
             },
-            dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancelar") } }
+            dismissButton = { TextButton(onClick = { showAdd = false }) { Text(tr("Cancelar")) } }
         )
     }
 }
