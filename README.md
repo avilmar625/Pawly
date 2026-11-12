@@ -39,6 +39,12 @@ La aplicación se organiza por áreas funcionales y responsabilidades para facil
 
 Esta separación es un primer paso de refactorización; la lógica de estado y persistencia todavía está en la capa de presentación y será extraída a ViewModels y repositorios en una fase posterior.
 
+## Arquitectura y preparación multiplataforma (cambios54)
+
+La rama `cambios54` inicia una refactorización compatible orientada a mantener Android nativo y preparar una futura app iOS nativa. Se añade el contrato `care/domain/PetCareRepository.kt` y la implementación Firebase de Salud lo adopta, separando la API de la persistencia concreta sin cambiar el comportamiento ni las rutas de Firestore. El plan de capas, las decisiones y las fases pendientes están documentados en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+**Importante:** cambios54 todavía no incorpora un módulo Kotlin Multiplatform ni una app iOS. Es una primera extracción de responsabilidades; la migración de ViewModels, el desacoplamiento del repositorio de Comunidad y la configuración KMP se realizarán de forma gradual, con pruebas de regresión y preservando los datos existentes.
+
 ## Comunidad (ramas cambios11 a cambios15)
 
 La rama `cambios11` incorpora la comunidad y `cambios12` continúa su estabilización. Incluye Firebase Authentication (correo/contraseña y Google), perfiles de personas y mascotas multi-especie, seguimiento, publicaciones, likes, comentarios, conversaciones, bloqueo y denuncias. Las pantallas están separadas por áreas (`CommunityFeedScreens`, `CommunityPeopleScreens`, `CommunityProfileScreens`, `CommunityMessagingScreens` y `CommunityModerationScreens`); modelos, validaciones, mensajes de error y carga de imágenes también tienen ficheros propios. Las fotografías se alojan en Cloudinary mediante un preset unsigned. Firebase Cloud Messaging registra los dispositivos, pero el envío automático de notificaciones requiere un backend de confianza. No requiere Firebase Storage ni el plan Blaze. Consulta [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
