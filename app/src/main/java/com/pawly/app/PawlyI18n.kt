@@ -465,6 +465,8 @@ internal object PawlyI18n {
     private val lateUi = mapOf(
         "ca" to mapOf(
             "Todo" to "Tot", "Todos" to "Tots", "Historias" to "Històries", "Adopción" to "Adopció",
+            "Perdidos" to "Perduts", "Encontrados" to "Trobats", "Perdido" to "Perdut", "Encontrado" to "Trobat", "Acogida" to "Acollida",
+            "Una historia Pawly" to "Una història Pawly", "Con" to "Amb",
             "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, salut i rutines en un sol lloc.",
             "Pasaporte sanitario" to "Passaport sanitari", "Pasaporte de bienestar" to "Passaport de benestar",
             "Salud" to "Salut", "Cuidados" to "Cures",
@@ -476,6 +478,8 @@ internal object PawlyI18n {
         ),
         "fr" to mapOf(
             "Todo" to "Tout", "Todos" to "Tous", "Historias" to "Histoires", "Adopción" to "Adoption",
+            "Perdidos" to "Perdus", "Encontrados" to "Retrouvés", "Perdido" to "Perdu", "Encontrado" to "Retrouvé", "Acogida" to "Accueil",
+            "Una historia Pawly" to "Une histoire Pawly", "Con" to "Avec",
             "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, santé et routines au même endroit.",
             "Pasaporte sanitario" to "Carnet de santé", "Pasaporte de bienestar" to "Carnet de bien-être",
             "Salud" to "Santé", "Cuidados" to "Soins",
@@ -487,6 +491,8 @@ internal object PawlyI18n {
         ),
         "en" to mapOf(
             "Todo" to "All", "Todos" to "All", "Historias" to "Stories", "Adopción" to "Adoption",
+            "Perdidos" to "Lost", "Encontrados" to "Found", "Perdido" to "Lost", "Encontrado" to "Found", "Acogida" to "Foster",
+            "Una historia Pawly" to "A Pawly story", "Con" to "With",
             "Agenda" to "Calendar", "Agenda, salud y rutinas en un solo lugar." to "Calendar, health and routines in one place.",
             "Pasaporte sanitario" to "Health passport", "Pasaporte de bienestar" to "Wellbeing passport",
             "Salud" to "Health", "Cuidados" to "Care",
@@ -498,6 +504,8 @@ internal object PawlyI18n {
         ),
         "eu" to mapOf(
             "Todo" to "Dena", "Todos" to "Guztiak", "Historias" to "Istorioak", "Adopción" to "Adopzioa",
+            "Perdidos" to "Galduak", "Encontrados" to "Aurkitutakoak", "Perdido" to "Galdua", "Encontrado" to "Aurkitua", "Acogida" to "Harrera",
+            "Una historia Pawly" to "Pawlyren istorio bat", "Con" to "rekin",
             "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, osasuna eta errutinak leku berean.",
             "Pasaporte sanitario" to "Osasun-pasaportea", "Pasaporte de bienestar" to "Ongizate-pasaportea",
             "Salud" to "Osasuna", "Cuidados" to "Zaintzak",
@@ -510,6 +518,14 @@ internal object PawlyI18n {
     )
 
     private fun dynamicText(value: String, language: String): String? {
+        val commentCount = Regex("^(\\d+) comentarios$").matchEntire(value)?.groupValues?.get(1)
+        if (commentCount != null) return when (language) {
+            "en" -> "$commentCount comments"
+            "ca" -> "$commentCount comentaris"
+            "fr" -> "$commentCount commentaires"
+            "eu" -> "$commentCount iruzkin"
+            else -> null
+        }
         val healthPrefix = "Vacunas, revisiones y cuidados de "
         val healthSuffix = " en un solo lugar."
         if (value.startsWith(healthPrefix) && value.endsWith(healthSuffix)) {
