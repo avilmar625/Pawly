@@ -89,7 +89,7 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                 Column(Modifier.weight(1f).clickable { onOpenUser(post.authorId) }) {
                     Text(post.authorName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     Text(
-                        (if (post.dogName.isBlank()) tr("Una historia Pawly") else "${tr("Con")} ${post.dogName}") +
+                        (if (post.dogName.isBlank()) tr("Una historia Pawly") else if (LocalPawlyLanguage.current == "eu") "${post.dogName}-rekin" else "${tr("Con")} ${post.dogName}") +
                             " · " + tr(when (post.category) {
                                 "ADOPTION" -> "Adopción"
                                 "LOST" -> "Perdido"
