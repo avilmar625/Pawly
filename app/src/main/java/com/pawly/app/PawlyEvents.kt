@@ -13,6 +13,7 @@ import java.util.Locale
 import java.util.Calendar
 import java.util.Date
 import java.text.DateFormat
+import java.text.SimpleDateFormat
 import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -66,6 +67,7 @@ internal fun PawlyEventsScreen(
     elegantDesign: Boolean = false
 ) {
     val context = LocalContext.current
+    val language = LocalPawlyLanguage.current
     val scope = rememberCoroutineScope()
     var events by remember { mutableStateOf(emptyList<PawlyEvent>()) }
     var loading by remember { mutableStateOf(true) }
@@ -192,7 +194,7 @@ internal fun PawlyEventsScreen(
                             Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(event.title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                                Text("${tr(event.category)} · ${event.dateText}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                Text("${tr(event.category)} · ${formatEventDate(event.dateText, language)}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                         Text(event.description, style = MaterialTheme.typography.bodyMedium)
@@ -286,7 +288,7 @@ private fun CreatePawlyEventDialog(
         }.timeInMillis
     } else null
     val dateText = eventDateTimeMillis?.let {
-        DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, PawlyI18n.locale(language)).format(Date(it))
+        SimpleDateFormat("yyyy-MM-dd|HH:mm", Locale.ROOT).format(Date(it))
     }.orEmpty()
     val dateLabel = selectedEventDateMillis?.let {
         DateFormat.getDateInstance(DateFormat.MEDIUM, PawlyI18n.locale(language)).format(Date(it))
@@ -445,6 +447,7 @@ private fun EventLocationPickerDialog(
     val centerLongitude = initialLongitude ?: -3.7038
     val zoom = if (initialLatitude != null && initialLongitude != null) 14 else 5
     val hasInitialMarker = initialLatitude != null && initialLongitude != null
+    val mapUnavailableScript = org.json.JSONObject.quote(tr("No se pudo cargar el mapa. Comprueba tu conexión."))
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Marca el lugar del evento")) },
@@ -461,17 +464,20 @@ private fun EventLocationPickerDialog(
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
                             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                            webViewClient = WebViewClient()
                             addJavascriptInterface(bridge, "PawlyEventMap")
                             setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                             val markerScript = if (hasInitialMarker) "marker=L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
                             val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                                "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>" +
+                                "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\">" +
                                 "<style>html,body,#map{height:100%;margin:0}</style>" +
-                                "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script></head><body><div id='map'></div><script>" +
+                                "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\"></script></head><body><div id='map'></div><script>" +
+                                "let attempts=0;function initPawlyMap(){if(!window.L){if(attempts++<40){setTimeout(initPawlyMap,125);return;}document.getElementById('map').innerHTML='<div style=\\"padding:16px\\">'+$mapUnavailableScript+'</div>';return;}" +
                                 "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
                                 "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
                                 "let marker=null;$markerScript" +
-                                "map.on('click',function(e){if(marker)map.removeLayer(marker);marker=L.marker(e.latlng).addTo(map);window.PawlyEventMap.select(e.latlng.lat,e.latlng.lng);});" +
+                                "map.on('click',function(e){if(marker)map.removeLayer(marker);marker=L.marker(e.latlng).addTo(map);window.PawlyEventMap.select(e.latlng.lat,e.latlng.lng);});}" +
+                                "initPawlyMap();" +
                                 "</script></body></html>"
                             loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
                         }
@@ -482,6 +488,13 @@ private fun EventLocationPickerDialog(
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Listo")) } },
         dismissButton = {}
     )
+}
+
+private fun formatEventDate(value: String, language: String): String {
+    val parsed = runCatching {
+        SimpleDateFormat("yyyy-MM-dd|HH:mm", Locale.ROOT).parse(value)
+    }.getOrNull() ?: return value
+    return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, PawlyI18n.locale(language)).format(parsed)
 }
 
 private class PawlyEventMapBridge(
