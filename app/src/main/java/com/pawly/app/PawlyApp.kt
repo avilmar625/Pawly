@@ -493,7 +493,6 @@ private fun PawlyMainApp(
             }
         }
     }
-    }
 
     if (showAbout) {
         AboutDialog(onDismiss = { showAbout = false })
@@ -561,5 +560,6 @@ private fun PawlyMainApp(
                 }
             }
         )
+    }
     }
 }
