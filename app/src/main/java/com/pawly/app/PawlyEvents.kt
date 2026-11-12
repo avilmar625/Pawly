@@ -162,7 +162,7 @@ internal fun PawlyEventsScreen(
                                 request: android.webkit.WebResourceRequest,
                                 error: android.webkit.WebResourceError
                             ) {
-                                if (request.isForMainFrame) mapLoadFailed = true
+                                if (request.isForMainFrame || request.url.toString().contains("/export/embed.html")) mapLoadFailed = true
                             }
                         }
                         setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
@@ -186,9 +186,6 @@ internal fun PawlyEventsScreen(
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.labelSmall
                     )
-                    TextButton(onClick = {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mapUrl))) }
-                    }) { Text(tr("Abrir el mapa en el navegador")) }
                 }
             }
             Text(
@@ -197,6 +194,9 @@ internal fun PawlyEventsScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            TextButton(onClick = {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(mapUrl))) }
+            }) { Text(tr("Abrir el mapa en el navegador")) }
             Spacer(Modifier.height(6.dp))
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -339,9 +339,9 @@ private fun CreatePawlyEventDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(tr("Comparte un plan real con la comunidad."), style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(title, { title = it.take(90) }, label = { Text(tr("Nombre del evento")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(description, { description = it.take(1200) }, label = { Text(tr("Descripción")) }, minLines = 2, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(location, { location = it.take(160) }, label = { Text(tr("Lugar o dirección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(title, { title = it.take(90); validationError = null }, label = { Text(tr("Nombre del evento")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(description, { description = it.take(1200); validationError = null }, label = { Text(tr("Descripción")) }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(location, { location = it.take(160); validationError = null }, label = { Text(tr("Lugar o dirección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = {
@@ -367,6 +367,7 @@ private fun CreatePawlyEventDialog(
                                         set(Calendar.SECOND, 0)
                                         set(Calendar.MILLISECOND, 0)
                                     }.timeInMillis
+                                    validationError = null
                                 },
                                 initial.get(Calendar.YEAR),
                                 initial.get(Calendar.MONTH),
@@ -392,6 +393,7 @@ private fun CreatePawlyEventDialog(
                                 { _, hour, minute ->
                                     selectedEventHour = hour
                                     selectedEventMinute = minute
+                                    validationError = null
                                 },
                                 initial.get(Calendar.HOUR_OF_DAY),
                                 initial.get(Calendar.MINUTE),
@@ -415,7 +417,7 @@ private fun CreatePawlyEventDialog(
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
-                        FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value), maxLines = 1) })
+                        FilterChip(selected = category == value, onClick = { category = value; validationError = null }, label = { Text(tr(value), maxLines = 1) })
                     }
                 }
                 OutlinedButton(onClick = { showMapPicker = true }, modifier = Modifier.fillMaxWidth()) {
@@ -431,7 +433,7 @@ private fun CreatePawlyEventDialog(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        TextButton(onClick = { latitude = ""; longitude = "" }) { Text(tr("Quitar ubicación")) }
+                        TextButton(onClick = { latitude = ""; longitude = ""; validationError = null }) { Text(tr("Quitar ubicación")) }
                     }
                 } else {
                     Text(tr("La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto."),
@@ -470,6 +472,7 @@ private fun CreatePawlyEventDialog(
             onSelected = { lat, lon ->
                 latitude = String.format(Locale.US, "%.6f", lat)
                 longitude = String.format(Locale.US, "%.6f", lon)
+                validationError = null
                 showMapPicker = false
             }
         )
