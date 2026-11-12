@@ -60,7 +60,7 @@ internal fun CommunityScreen(elegantDesign: Boolean = false) {
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!, elegantDesign) { uid = repository.currentUid }
+    else CommunityHub(repository, uid!!, elegantDesign)
 }
 
 
@@ -297,7 +297,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 
 
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, onSignOut: () -> Unit) {
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
@@ -371,7 +371,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
-                FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(item.label, maxLines = 1) }, shape = RoundedCornerShape(50))
+                FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(tr(item.label), maxLines = 1) }, shape = RoundedCornerShape(50))
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
