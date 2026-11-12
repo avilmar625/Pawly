@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -77,7 +78,7 @@ internal fun MoreHubScreen(
                 }
             }
         }
-        SectionLabel(t("CUIDADO Y COMUNIDAD"))
+        MoreSectionLabel(t("CUIDADO Y COMUNIDAD"))
         MoreDestinationCard(Icons.Filled.WorkspacePremium, t("Servicios profesionales"), t("Adiestradores, etólogos, veterinarios, paseadores y cuidadores."), onProfessionals, Color(0xFF247A67), Color(0xFFE2F3EC))
         MoreDestinationCard(Icons.Filled.Help, t("He perdido a mi mascota"), t("Ayuda a encontrarla y difunde un aviso."), onLostPet, Color(0xFFB34F42), Color(0xFFFFE9E4))
         SectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
