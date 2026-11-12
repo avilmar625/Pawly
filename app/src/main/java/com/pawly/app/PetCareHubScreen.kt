@@ -107,7 +107,7 @@ internal fun PetCareHubScreen(
                     ) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(tr("SU BIENESTAR, SIEMPRE A MANO"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                            Text("El cuidado de ${petName.ifBlank { "tu mascota" }}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            Text(tr("El cuidado de ${petName.ifBlank { "tu mascota" }}"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                             Text(tr("Agenda, salud y rutinas en un solo lugar."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.Default.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(42.dp))
@@ -249,7 +249,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(entry.title, fontWeight = FontWeight.SemiBold)
-                        Text(entry.type + " · " + entry.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        Text(tr(entry.type) + " · " + entry.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     TextButton(enabled = canEdit, onClick = {
@@ -414,7 +414,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(task.title, fontWeight = FontWeight.SemiBold)
-                        Text("${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${tr(task.frequency)} · ${tr("Responsable")}: ${tr(task.responsible.ifBlank { "Sin asignar" })}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     TextButton(enabled = canEdit, onClick = {
                         tasks = tasks.filterNot { it.id == task.id }
