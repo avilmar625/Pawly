@@ -154,7 +154,7 @@ private fun PawlyMainApp(
                     source.inputStream().use { input -> input.copyTo(output) }
                 } ?: error("No se pudo abrir el destino para guardar el PDF.")
             }.onSuccess { profileSyncStatus = "Ficha PDF guardada en el dispositivo." }
-                .onFailure { profileSyncStatus = "No se pudo guardar el PDF: \${it.localizedMessage ?: "error desconocido"}" }
+                .onFailure { profileSyncStatus = "No se pudo guardar el PDF: " + (it.localizedMessage ?: "error desconocido") }
         }
         pendingPdfFile = null
     }
