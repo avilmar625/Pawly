@@ -2,6 +2,7 @@ package com.pawly.app
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import java.util.Locale
 
 internal val LocalPawlyLanguage = compositionLocalOf { "es" }
 
@@ -237,6 +238,218 @@ internal object PawlyI18n {
         "fr" to mapOf("El idioma elegido se aplica en toda la aplicación." to "La langue choisie s’applique à toute l’application.", "Eventos" to "Événements", "Mapa" to "Carte", "Todos los eventos" to "Tous les événements", "Euskera" to "Basque", "Quedada" to "Rencontre", "Ruta" to "Randonnée", "Taller" to "Atelier", "Adopción" to "Adoption", "DD/MM/AAAA · HH:mm" to "JJ/MM/AAAA · HH:mm", "Planes para compartir" to "Des activités à partager", "Explora cerca de ti" to "Explorer près de chez vous", "Encuentros reales para personas y mascotas." to "De vraies rencontres pour les humains et les animaux.", "Todavía no hay eventos publicados" to "Aucun événement publié pour le moment", "Sé de las primeras personas en proponer un plan bonito." to "Soyez parmi les premiers à proposer une belle activité.", "Crear el primer evento" to "Créer le premier événement", "Crear evento" to "Créer un événement", "Comparte un plan real con la comunidad." to "Partagez une activité réelle avec la communauté.", "Nombre del evento" to "Nom de l’événement", "Lugar o dirección" to "Lieu ou adresse", "Fecha y hora" to "Date et heure", "Tipo de evento" to "Type d’événement", "Puedes obtener las coordenadas desde el punto del evento en OpenStreetMap." to "Vous pouvez obtenir les coordonnées depuis le point de l’événement sur OpenStreetMap.", "Organiza" to "Organisé par", "personas interesadas" to "personnes intéressées", "Ver mapa" to "Voir la carte", "Me interesa" to "Ça m’intéresse", "Me interesa ✓" to "Intéressé ✓", "Personas que podrías conocer" to "Des personnes à découvrir", "Más vidas perrunas para descubrir." to "D’autres vies animales à découvrir.", "Sugerencias" to "Suggestions", "Ahora sigues a esta persona." to "Vous suivez maintenant cette personne.", "No se pudo seguir a esta persona." to "Impossible de suivre cette personne.", "Seguir" to "Suivre", "Descripción" to "Description", "Latitud" to "Latitude", "Longitud" to "Longitude", "Publicar" to "Publier", "No se pudo actualizar tu participación." to "Impossible de mettre à jour votre participation.", "No se pudo publicar el evento." to "Impossible de publier l’événement.", "PAWLY · PLANES BONITOS" to "PAWLY · DE BEAUX MOMENTS", "Perros disfrutando juntos al aire libre" to "Des chiens qui profitent ensemble du plein air", "Cada encuentro puede ser el comienzo de una amistad." to "Chaque rencontre peut être le début d’une amitié.", "Los marcadores corresponden a lugares de eventos publicados por la comunidad." to "Les marqueurs indiquent les lieux des événements publiés par la communauté.")
     )
 
+    private val featureUi = mapOf(
+        "ca" to mapOf(
+            "Activa la ubicación del teléfono para buscar cerca." to "Activa la ubicació del telèfon per cercar a prop.",
+            "Buscando tu ubicación…" to "S'està cercant la teva ubicació…",
+            "No se pudo obtener la ubicación. Comprueba el GPS e inténtalo de nuevo." to "No s'ha pogut obtenir la ubicació. Comprova el GPS i torna-ho a provar.",
+            "El proveedor de ubicación está desactivado." to "El proveïdor d'ubicació està desactivat.",
+            "Permiso de ubicación denegado." to "S'ha denegat el permís d'ubicació.",
+            "No hay proveedor de ubicación disponible." to "No hi ha cap proveïdor d'ubicació disponible.",
+            "Activa el permiso de ubicación para buscar cerca." to "Activa el permís d'ubicació per cercar a prop.",
+            "Todo" to "Tot", "Naturaleza" to "Natura", "Playas" to "Platges", "Comer" to "Menjar", "Alojarse" to "Allotjar-se", "Rutas y senderos" to "Rutes i senders",
+            "Ideas para caminar juntos" to "Idees per caminar plegats", "Busca caminos, sombra y agua antes de salir." to "Busca camins, ombra i aigua abans de sortir.",
+            "Playas caninas" to "Platges per a gossos", "Consulta normas y temporada" to "Consulta les normes i la temporada",
+            "Las restricciones cambian según municipio y época del año." to "Les restriccions canvien segons el municipi i l'època de l'any.",
+            "Terrazas dog-friendly" to "Terrasses que admeten gossos", "Cafés y restaurantes" to "Cafès i restaurants",
+            "Comprueba siempre con el establecimiento antes de ir." to "Confirma-ho sempre amb l'establiment abans d'anar-hi.",
+            "Escapadas con perro" to "Escapades amb gos", "Alojamientos pet-friendly" to "Allotjaments que admeten mascotes",
+            "Revisa tamaño permitido, suplementos y condiciones." to "Revisa la mida permesa, els suplements i les condicions.",
+            "Paisaje de montaña para descubrir con tu perro" to "Paisatge de muntanya per descobrir amb el teu gos",
+            "Usar mi ubicación" to "Utilitza la meva ubicació", "Actualizar ubicación" to "Actualitza la ubicació",
+            "Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento." to "Pawly obre el mapa per consultar resultats actuals; confirma sempre les condicions amb l'establiment.",
+            "Parques caninos" to "Parcs per a gossos", "Protectoras" to "Protectores d'animals", "Veterinarios" to "Veterinaris",
+            "Urgencias veterinarias" to "Urgències veterinàries", "Restaurantes dog-friendly" to "Restaurants que admeten gossos",
+            "Alojamientos" to "Allotjaments", "Rutas" to "Rutes", "Ideas para vuestra próxima salida" to "Idees per a la vostra propera sortida",
+            "Guarda categorías e inicia búsquedas reales cuando quieras" to "Desa categories i inicia cerques reals quan vulguis.",
+            "Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir." to "Aquesta targeta és una idea de pla, no un establiment verificat. Consulta les normes, els horaris i les condicions abans de sortir.",
+            "Guardado" to "Desat", "Guardar idea" to "Desa la idea", "Quitar de guardados" to "Treu dels desats", "Ver idea" to "Mostra la idea",
+            "Fecha guardada. Activa las notificaciones de Pawly para recibir el aviso." to "Data desada. Activa les notificacions de Pawly per rebre l'avís.",
+            "Elige una fecha y hora futuras." to "Tria una data i una hora futures.", "No se pudo programar el aviso. Inténtalo de nuevo." to "No s'ha pogut programar l'avís. Torna-ho a provar.",
+            "Próximos cuidados" to "Properes cures", "Programa avisos locales para no olvidarte" to "Programa avisos locals per recordar-ho",
+            "Vacunación" to "Vacunació", "Fecha orientativa de tu próxima cita" to "Data orientativa de la propera cita", "Añadir aviso" to "Afegeix un avís",
+            "Aviso de vacunación eliminado." to "S'ha eliminat l'avís de vacunació.", "Desparasitación" to "Desparasitació",
+            "Sigue la pauta indicada por tu veterinario" to "Segueix la pauta indicada pel veterinari", "Aviso de desparasitación eliminado." to "S'ha eliminat l'avís de desparasitació.",
+            "Próxima revisión" to "Proper control", "Organiza una cita con vuestro veterinario" to "Organitzeu una visita amb el vostre veterinari",
+            "Aviso de revisión eliminado." to "S'ha eliminat l'avís del control.", "Recordatorio diario" to "Recordatori diari",
+            "Marca el cuidado cuando lo hayas completado" to "Marca la cura quan l'hagis completada.",
+            "Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional." to "Els avisos són notificacions locals aproximades; l'estalvi de bateria els pot endarrerir i es tornen a programar en obrir Pawly. El veterinari ha d'indicar les dates i pautes. Pawly no substitueix el consell professional.",
+            "Acerca de Pawly" to "Quant a Pawly", "¡Todo hecho! Os lo habéis ganado." to "Ja està tot fet! Us ho heu guanyat.",
+            "Pequeños gestos, grandes cuidados." to "Petits gestos, grans cures.", "rutinas de hoy" to "rutines d'avui", "recuerdos" to "records",
+            "Paseo y olfateo" to "Passeig i ensumada", "Un rato para explorar sin prisa" to "Una estona per explorar sense pressa",
+            "Revisar sus cuidados" to "Revisa les seves cures", "Comprueba lo que toca hoy" to "Comprova què toca avui",
+            "HECHO PARA COMPARTIR MÁS VIDA JUNTOS" to "FET PER COMPARTIR MÉS VIDA JUNTS",
+            "EL PROTAGONISTA DE VUESTRA HISTORIA" to "EL PROTAGONISTA DE LA VOSTRA HISTÒRIA",
+            "EL PROTAGONISTA DE ESTA HISTORIA" to "EL PROTAGONISTA D'AQUESTA HISTÒRIA",
+            "VUESTRO COMPAÑERO" to "EL VOSTRE COMPANY", "Tu compañero" to "El teu company",
+            "Recursos para cuidar y disfrutar juntos" to "Recursos per cuidar i gaudir plegats",
+            "Profesionales, salud, aprendizaje, recuerdos y herramientas de Pawly en un solo lugar." to "Professionals, salut, aprenentatge, records i eines de Pawly en un sol lloc.",
+            "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Ajuda professional, records, aprenentatge i recursos pràctics per a la vostra mascota.",
+            "Crear cuenta con Google" to "Crea un compte amb Google",
+            "Todavía no hay eventos con ubicación exacta." to "Encara no hi ha esdeveniments amb ubicació exacta.",
+            "Buscar lugar" to "Cerca el lloc", "Cambiar punto en el mapa" to "Canvia el punt al mapa", "Elegir punto en el mapa (opcional)" to "Tria un punt al mapa (opcional)",
+            "Quitar ubicación" to "Treu la ubicació", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "N'hi ha prou amb l'adreça per publicar; afegeix un marcador només si vols mostrar el punt exacte.",
+            "Marca el lugar del evento" to "Marca el lloc de l'esdeveniment",
+            "Toca el mapa para colocar el marcador. Puedes moverlo antes de confirmar." to "Toca el mapa per col·locar el marcador. El pots moure abans de confirmar."
+        ),
+        "fr" to mapOf(
+            "Activa la ubicación del teléfono para buscar cerca." to "Activez la localisation du téléphone pour chercher à proximité.",
+            "Buscando tu ubicación…" to "Recherche de votre position…",
+            "No se pudo obtener la ubicación. Comprueba el GPS e inténtalo de nuevo." to "Impossible d'obtenir la position. Vérifiez le GPS et réessayez.",
+            "El proveedor de ubicación está desactivado." to "Le service de localisation est désactivé.",
+            "Permiso de ubicación denegado." to "Autorisation de localisation refusée.",
+            "No hay proveedor de ubicación disponible." to "Aucun service de localisation n'est disponible.",
+            "Activa el permiso de ubicación para buscar cerca." to "Activez l'autorisation de localisation pour chercher à proximité.",
+            "Todo" to "Tout", "Naturaleza" to "Nature", "Playas" to "Plages", "Comer" to "Manger", "Alojarse" to "Séjourner", "Rutas y senderos" to "Itinéraires et sentiers",
+            "Ideas para caminar juntos" to "Des idées de promenades ensemble", "Busca caminos, sombra y agua antes de salir." to "Repérez les chemins, l'ombre et l'eau avant de partir.",
+            "Playas caninas" to "Plages autorisées aux chiens", "Consulta normas y temporada" to "Vérifiez les règles et la saison",
+            "Las restricciones cambian según municipio y época del año." to "Les restrictions varient selon la commune et la période de l'année.",
+            "Terrazas dog-friendly" to "Terrasses accueillant les chiens", "Cafés y restaurantes" to "Cafés et restaurants",
+            "Comprueba siempre con el establecimiento antes de ir." to "Vérifiez toujours auprès de l'établissement avant de vous déplacer.",
+            "Escapadas con perro" to "Escapades avec votre chien", "Alojamientos pet-friendly" to "Hébergements acceptant les animaux",
+            "Revisa tamaño permitido, suplementos y condiciones." to "Vérifiez la taille autorisée, les suppléments et les conditions.",
+            "Paisaje de montaña para descubrir con tu perro" to "Un paysage de montagne à découvrir avec votre chien",
+            "Usar mi ubicación" to "Utiliser ma position", "Actualizar ubicación" to "Actualiser la position",
+            "Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento." to "Pawly ouvre la carte pour afficher les résultats actuels ; vérifiez toujours les conditions auprès de l'établissement.",
+            "Parques caninos" to "Parcs canins", "Protectoras" to "Refuges pour animaux", "Veterinarios" to "Vétérinaires",
+            "Urgencias veterinarias" to "Urgences vétérinaires", "Restaurantes dog-friendly" to "Restaurants accueillant les chiens",
+            "Alojamientos" to "Hébergements", "Rutas" to "Itinéraires", "Ideas para vuestra próxima salida" to "Des idées pour votre prochaine sortie",
+            "Guarda categorías e inicia búsquedas reales cuando quieras" to "Enregistrez des catégories et lancez une vraie recherche quand vous le souhaitez.",
+            "Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir." to "Cette carte est une idée de sortie, pas un établissement vérifié. Vérifiez les règles, les horaires et les conditions avant de partir.",
+            "Guardado" to "Enregistré", "Guardar idea" to "Enregistrer l'idée", "Quitar de guardados" to "Retirer des favoris", "Ver idea" to "Voir l'idée",
+            "Fecha guardada. Activa las notificaciones de Pawly para recibir el aviso." to "Date enregistrée. Activez les notifications de Pawly pour recevoir le rappel.",
+            "Elige una fecha y hora futuras." to "Choisissez une date et une heure futures.", "No se pudo programar el aviso. Inténtalo de nuevo." to "Impossible de programmer le rappel. Réessayez.",
+            "Próximos cuidados" to "Soins à venir", "Programa avisos locales para no olvidarte" to "Programmez des rappels locaux pour ne rien oublier",
+            "Vacunación" to "Vaccination", "Fecha orientativa de tu próxima cita" to "Date indicative de votre prochain rendez-vous", "Añadir aviso" to "Ajouter un rappel",
+            "Aviso de vacunación eliminado." to "Rappel de vaccination supprimé.", "Desparasitación" to "Vermifugation",
+            "Sigue la pauta indicada por tu veterinario" to "Suivez les recommandations de votre vétérinaire", "Aviso de desparasitación eliminado." to "Rappel de vermifugation supprimé.",
+            "Próxima revisión" to "Prochain contrôle", "Organiza una cita con vuestro veterinario" to "Prenez rendez-vous avec votre vétérinaire",
+            "Aviso de revisión eliminado." to "Rappel de contrôle supprimé.", "Recordatorio diario" to "Rappel quotidien",
+            "Marca el cuidado cuando lo hayas completado" to "Cochez le soin une fois effectué.",
+            "Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional." to "Les rappels sont des notifications locales indicatives ; l'économie de batterie peut les retarder et ils sont reprogrammés à l'ouverture de Pawly. Les dates et traitements doivent être définis par votre vétérinaire. Pawly ne remplace pas un avis professionnel.",
+            "Acerca de Pawly" to "À propos de Pawly", "¡Todo hecho! Os lo habéis ganado." to "Tout est fait ! Vous l'avez bien mérité.",
+            "Pequeños gestos, grandes cuidados." to "De petits gestes, de grands soins.", "rutinas de hoy" to "routines du jour", "recuerdos" to "souvenirs",
+            "Paseo y olfateo" to "Promenade et flair", "Un rato para explorar sin prisa" to "Un moment pour explorer sans se presser",
+            "Revisar sus cuidados" to "Vérifier ses soins", "Comprueba lo que toca hoy" to "Vérifiez ce qui est prévu aujourd'hui",
+            "HECHO PARA COMPARTIR MÁS VIDA JUNTOS" to "FAIT POUR PARTAGER PLUS DE VIE ENSEMBLE",
+            "EL PROTAGONISTA DE VUESTRA HISTORIA" to "LE HÉROS DE VOTRE HISTOIRE", "EL PROTAGONISTA DE ESTA HISTORIA" to "LE HÉROS DE CETTE HISTOIRE",
+            "VUESTRO COMPAÑERO" to "VOTRE COMPAGNON", "Tu compañero" to "Votre compagnon",
+            "Recursos para cuidar y disfrutar juntos" to "Des ressources pour prendre soin et profiter ensemble",
+            "Profesionales, salud, aprendizaje, recuerdos y herramientas de Pawly en un solo lugar." to "Professionnels, santé, apprentissage, souvenirs et outils Pawly au même endroit.",
+            "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Des professionnels, des souvenirs, des conseils et des ressources pratiques pour votre animal.",
+            "Crear cuenta con Google" to "Créer un compte avec Google",
+            "Todavía no hay eventos con ubicación exacta." to "Aucun événement avec une position exacte pour le moment.",
+            "Buscar lugar" to "Chercher le lieu", "Cambiar punto en el mapa" to "Modifier le point sur la carte", "Elegir punto en el mapa (opcional)" to "Choisir un point sur la carte (facultatif)",
+            "Quitar ubicación" to "Retirer la position", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "L'adresse suffit pour publier ; ajoutez un repère seulement si vous souhaitez montrer le point exact.",
+            "Marca el lugar del evento" to "Marquez le lieu de l'événement",
+            "Toca el mapa para colocar el marcador. Puedes moverlo antes de confirmar." to "Touchez la carte pour placer le repère. Vous pouvez le déplacer avant de confirmer."
+        ),
+        "en" to mapOf(
+            "Activa la ubicación del teléfono para buscar cerca." to "Turn on your phone's location to search nearby.",
+            "Buscando tu ubicación…" to "Finding your location…",
+            "No se pudo obtener la ubicación. Comprueba el GPS e inténtalo de nuevo." to "Couldn't get your location. Check GPS and try again.",
+            "El proveedor de ubicación está desactivado." to "Location services are turned off.",
+            "Permiso de ubicación denegado." to "Location permission denied.",
+            "No hay proveedor de ubicación disponible." to "No location provider is available.",
+            "Activa el permiso de ubicación para buscar cerca." to "Allow location access to search nearby.",
+            "Todo" to "All", "Naturaleza" to "Nature", "Playas" to "Beaches", "Comer" to "Eat", "Alojarse" to "Stay", "Rutas y senderos" to "Routes and trails",
+            "Ideas para caminar juntos" to "Ideas for walks together", "Busca caminos, sombra y agua antes de salir." to "Look for paths, shade and water before heading out.",
+            "Playas caninas" to "Dog-friendly beaches", "Consulta normas y temporada" to "Check local rules and season",
+            "Las restricciones cambian según municipio y época del año." to "Restrictions vary by town and time of year.",
+            "Terrazas dog-friendly" to "Dog-friendly patios", "Cafés y restaurantes" to "Cafés and restaurants",
+            "Comprueba siempre con el establecimiento antes de ir." to "Always check with the venue before you go.",
+            "Escapadas con perro" to "Getaways with your dog", "Alojamientos pet-friendly" to "Pet-friendly stays",
+            "Revisa tamaño permitido, suplementos y condiciones." to "Check size limits, extra fees and conditions.",
+            "Paisaje de montaña para descubrir con tu perro" to "A mountain landscape to explore with your dog",
+            "Usar mi ubicación" to "Use my location", "Actualizar ubicación" to "Refresh location",
+            "Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento." to "Pawly opens the map to show current results; always confirm conditions with the venue.",
+            "Parques caninos" to "Dog parks", "Protectoras" to "Animal shelters", "Veterinarios" to "Veterinarians",
+            "Urgencias veterinarias" to "Emergency vets", "Restaurantes dog-friendly" to "Dog-friendly restaurants",
+            "Alojamientos" to "Places to stay", "Rutas" to "Trails", "Ideas para vuestra próxima salida" to "Ideas for your next outing",
+            "Guarda categorías e inicia búsquedas reales cuando quieras" to "Save categories and run a live search whenever you like.",
+            "Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir." to "This card is a plan idea, not a verified venue. Check local rules, hours and conditions before heading out.",
+            "Guardado" to "Saved", "Guardar idea" to "Save idea", "Quitar de guardados" to "Remove from saved", "Ver idea" to "View idea",
+            "Fecha guardada. Activa las notificaciones de Pawly para recibir el aviso." to "Date saved. Turn on Pawly notifications to receive the reminder.",
+            "Elige una fecha y hora futuras." to "Choose a future date and time.", "No se pudo programar el aviso. Inténtalo de nuevo." to "Couldn't schedule the reminder. Try again.",
+            "Próximos cuidados" to "Upcoming care", "Programa avisos locales para no olvidarte" to "Set local reminders so you don't forget",
+            "Vacunación" to "Vaccination", "Fecha orientativa de tu próxima cita" to "Approximate date of your next appointment", "Añadir aviso" to "Add reminder",
+            "Aviso de vacunación eliminado." to "Vaccination reminder removed.", "Desparasitación" to "Deworming",
+            "Sigue la pauta indicada por tu veterinario" to "Follow your veterinarian's schedule", "Aviso de desparasitación eliminado." to "Deworming reminder removed.",
+            "Próxima revisión" to "Next check-up", "Organiza una cita con vuestro veterinario" to "Schedule a visit with your veterinarian",
+            "Aviso de revisión eliminado." to "Check-up reminder removed.", "Recordatorio diario" to "Daily reminder",
+            "Marca el cuidado cuando lo hayas completado" to "Mark the care task when you've completed it.",
+            "Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional." to "Reminders are approximate local notifications; battery saving may delay them, and they are rescheduled when Pawly opens. Your veterinarian should set the dates and schedules. Pawly is not a substitute for professional advice.",
+            "Acerca de Pawly" to "About Pawly", "¡Todo hecho! Os lo habéis ganado." to "All done! You've earned it.",
+            "Pequeños gestos, grandes cuidados." to "Small gestures, great care.", "rutinas de hoy" to "today's routines", "recuerdos" to "memories",
+            "Paseo y olfateo" to "Walk and sniff", "Un rato para explorar sin prisa" to "A little time to explore at your own pace",
+            "Revisar sus cuidados" to "Review their care", "Comprueba lo que toca hoy" to "See what's due today",
+            "HECHO PARA COMPARTIR MÁS VIDA JUNTOS" to "MADE TO SHARE MORE LIFE TOGETHER",
+            "EL PROTAGONISTA DE VUESTRA HISTORIA" to "THE STAR OF YOUR STORY", "EL PROTAGONISTA DE ESTA HISTORIA" to "THE STAR OF THIS STORY",
+            "VUESTRO COMPAÑERO" to "YOUR COMPANION", "Tu compañero" to "Your companion",
+            "Recursos para cuidar y disfrutar juntos" to "Resources to care and enjoy life together",
+            "Profesionales, salud, aprendizaje, recuerdos y herramientas de Pawly en un solo lugar." to "Professionals, health, learning, memories and Pawly tools in one place.",
+            "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Professional help, memories, learning and practical resources for your pet.",
+            "Crear cuenta con Google" to "Create account with Google",
+            "Todavía no hay eventos con ubicación exacta." to "No events with an exact location yet.",
+            "Buscar lugar" to "Find place", "Cambiar punto en el mapa" to "Change map point", "Elegir punto en el mapa (opcional)" to "Choose a map point (optional)",
+            "Quitar ubicación" to "Remove location", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "An address is enough to publish; add a marker only if you want to show the exact point.",
+            "Marca el lugar del evento" to "Mark the event location",
+            "Toca el mapa para colocar el marcador. Puedes moverlo antes de confirmar." to "Tap the map to place the marker. You can move it before confirming."
+        ),
+        "eu" to mapOf(
+            "Activa la ubicación del teléfono para buscar cerca." to "Aktibatu telefonoaren kokapena inguruan bilatzeko.",
+            "Buscando tu ubicación…" to "Zure kokapena bilatzen…",
+            "No se pudo obtener la ubicación. Comprueba el GPS e inténtalo de nuevo." to "Ezin izan da kokapena lortu. Egiaztatu GPSa eta saiatu berriro.",
+            "El proveedor de ubicación está desactivado." to "Kokapen-zerbitzua desaktibatuta dago.",
+            "Permiso de ubicación denegado." to "Kokapen-baimena ukatu da.",
+            "No hay proveedor de ubicación disponible." to "Ez dago kokapen-hornitzailerik erabilgarri.",
+            "Activa el permiso de ubicación para buscar cerca." to "Aktibatu kokapen-baimena inguruan bilatzeko.",
+            "Todo" to "Dena", "Naturaleza" to "Natura", "Playas" to "Hondartzak", "Comer" to "Jateko", "Alojarse" to "Ostatua", "Rutas y senderos" to "Ibilbideak eta bidezidorrak",
+            "Ideas para caminar juntos" to "Elkarrekin ibiltzeko ideiak", "Busca caminos, sombra y agua antes de salir." to "Irten aurretik, bilatu bideak, itzala eta ura.",
+            "Playas caninas" to "Txakurrentzako hondartzak", "Consulta normas y temporada" to "Kontsultatu arauak eta denboraldia",
+            "Las restricciones cambian según municipio y época del año." to "Murrizketak udalerriaren eta urte-sasoiaren arabera aldatzen dira.",
+            "Terrazas dog-friendly" to "Txakurrak onartzen dituzten terrazak", "Cafés y restaurantes" to "Kafetegiak eta jatetxeak",
+            "Comprueba siempre con el establecimiento antes de ir." to "Joan aurretik, galdetu beti establezimenduan.",
+            "Escapadas con perro" to "Txakurrarekin irteerak", "Alojamientos pet-friendly" to "Animaliak onartzen dituzten ostatuak",
+            "Revisa tamaño permitido, suplementos y condiciones." to "Egiaztatu baimendutako tamaina, gehigarriak eta baldintzak.",
+            "Paisaje de montaña para descubrir con tu perro" to "Zure txakurrarekin ezagutzeko mendiko paisaia",
+            "Usar mi ubicación" to "Erabili nire kokapena", "Actualizar ubicación" to "Eguneratu kokapena",
+            "Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento." to "Pawlyk mapa irekitzen du emaitza eguneratuak ikusteko; egiaztatu beti baldintzak establezimenduarekin.",
+            "Parques caninos" to "Txakurrentzako parkeak", "Protectoras" to "Animalien babeslekuak", "Veterinarios" to "Albaitariak",
+            "Urgencias veterinarias" to "Albaitaritza-larrialdiak", "Restaurantes dog-friendly" to "Txakurrak onartzen dituzten jatetxeak",
+            "Alojamientos" to "Ostatuak", "Rutas" to "Ibilbideak", "Ideas para vuestra próxima salida" to "Hurrengo irteerarako ideiak",
+            "Guarda categorías e inicia búsquedas reales cuando quieras" to "Gorde kategoriak eta egin benetako bilaketak nahi duzunean.",
+            "Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir." to "Txartel hau irteera-ideia bat da, ez egiaztatutako establezimendu bat. Kontsultatu arauak, ordutegiak eta baldintzak irten aurretik.",
+            "Guardado" to "Gordeta", "Guardar idea" to "Gorde ideia", "Quitar de guardados" to "Kendu gordetatik", "Ver idea" to "Ikusi ideia",
+            "Fecha guardada. Activa las notificaciones de Pawly para recibir el aviso." to "Data gordeta. Aktibatu Pawlyren jakinarazpenak abisua jasotzeko.",
+            "Elige una fecha y hora futuras." to "Aukeratu etorkizuneko data eta ordua.", "No se pudo programar el aviso. Inténtalo de nuevo." to "Ezin izan da abisua programatu. Saiatu berriro.",
+            "Próximos cuidados" to "Hurrengo zaintzak", "Programa avisos locales para no olvidarte" to "Programatu tokiko abisuak ahaztu ez dezazun",
+            "Vacunación" to "Txertaketa", "Fecha orientativa de tu próxima cita" to "Hurrengo hitzorduaren gutxi gorabeherako data", "Añadir aviso" to "Gehitu abisua",
+            "Aviso de vacunación eliminado." to "Txertaketa-abisua ezabatu da.", "Desparasitación" to "Parasitoen aurkako tratamendua",
+            "Sigue la pauta indicada por tu veterinario" to "Jarraitu albaitariak adierazitako jarraibidea", "Aviso de desparasitación eliminado." to "Parasitoen aurkako abisua ezabatu da.",
+            "Próxima revisión" to "Hurrengo azterketa", "Organiza una cita con vuestro veterinario" to "Antolatu hitzordua zuen albaitariarekin",
+            "Aviso de revisión eliminado." to "Azterketa-abisua ezabatu da.", "Recordatorio diario" to "Eguneroko gogorarazlea",
+            "Marca el cuidado cuando lo hayas completado" to "Markatu zaintza amaitu duzunean.",
+            "Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional." to "Abisuak gutxi gorabeherako tokiko jakinarazpenak dira; bateria aurrezteak atzera ditzake eta Pawly irekitzean berriro programatzen dira. Albaitariak zehaztu behar ditu datak eta jarraibideak. Pawlyk ez du aholkularitza profesionala ordezkatzen.",
+            "Acerca de Pawly" to "Pawlyri buruz", "¡Todo hecho! Os lo habéis ganado." to "Dena eginda! Merezi duzue.",
+            "Pequeños gestos, grandes cuidados." to "Keinu txikiak, zaintza handiak.", "rutinas de hoy" to "gaurko errutinak", "recuerdos" to "oroitzapenak",
+            "Paseo y olfateo" to "Paseoa eta usaimena", "Un rato para explorar sin prisa" to "Lasai esploratzeko tarte bat",
+            "Revisar sus cuidados" to "Egiaztatu haren zaintzak", "Comprueba lo que toca hoy" to "Ikusi gaur zer dagokion",
+            "HECHO PARA COMPARTIR MÁS VIDA JUNTOS" to "ELKARREKIN BIZITZA GEHIAGO PARTEKATZEKO EGINA",
+            "EL PROTAGONISTA DE VUESTRA HISTORIA" to "ZUEN ISTORIOKO PROTAGONISTA", "EL PROTAGONISTA DE ESTA HISTORIA" to "ISTORIO HONETAKO PROTAGONISTA",
+            "VUESTRO COMPAÑERO" to "ZUEN LAGUNA", "Tu compañero" to "Zure laguna",
+            "Recursos para cuidar y disfrutar juntos" to "Elkarrekin zaintzeko eta gozatzeko baliabideak",
+            "Profesionales, salud, aprendizaje, recuerdos y herramientas de Pawly en un solo lugar." to "Profesionalak, osasuna, ikaskuntza, oroitzapenak eta Pawlyren tresnak leku berean.",
+            "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Laguntza profesionala, oroitzapenak, ikaskuntza eta zuen maskotarako baliabide praktikoak.",
+            "Crear cuenta con Google" to "Sortu kontua Google-rekin",
+            "Todavía no hay eventos con ubicación exacta." to "Oraindik ez dago kokapen zehatza duen ekitaldirik.",
+            "Buscar lugar" to "Bilatu lekua", "Cambiar punto en el mapa" to "Aldatu mapako puntua", "Elegir punto en el mapa (opcional)" to "Aukeratu mapako puntua (aukerakoa)",
+            "Quitar ubicación" to "Kendu kokapena", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "Helbidea nahikoa da argitaratzeko; gehitu marka puntua zehatza erakutsi nahi baduzu.",
+            "Marca el lugar del evento" to "Markatu ekitaldiaren lekua",
+            "Toca el mapa para colocar el marcador. Puedes moverlo antes de confirmar." to "Ukitu mapa marka jartzeko. Berretsi aurretik mugitu dezakezu."
+        )
+    )
+
     private fun dynamicText(value: String, language: String): String? {
         val healthPrefix = "Vacunas, revisiones y cuidados de "
         val healthSuffix = " en un solo lugar."
@@ -333,11 +546,19 @@ internal object PawlyI18n {
         }
     }
 
+    fun locale(language: String): Locale = when (language) {
+        "ca" -> Locale("ca", "ES")
+        "fr" -> Locale.FRANCE
+        "en" -> Locale.UK
+        "eu" -> Locale.forLanguageTag("eu-ES")
+        else -> Locale("es", "ES")
+    }
+
     fun text(value: String, language: String): String = when (language) {
-        "eu" -> euUi[value] ?: eventTranslations["eu"]?.get(value) ?: dynamicText(value, language) ?: value
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "eu" -> euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: dynamicText(value, language) ?: value
+        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
         else -> value
     }
 }
