@@ -50,8 +50,8 @@ internal fun ModerationScreen(repo: FirebaseCommunityRepository) {
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Text("Centro de moderación", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
-            Text("Los avisos quedan registrados para revisión del equipo.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text(tr("Centro de moderación"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            Text(tr("Los avisos quedan registrados para revisión del equipo."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
         if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primary) }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
@@ -69,16 +69,16 @@ internal fun ModerationScreen(repo: FirebaseCommunityRepository) {
                         if (report.targetType == "post") {
                             OutlinedButton(onClick = {
                                 scope.launch { runCatching { repo.removeReportedPost(report.targetId); repo.markReportReviewed(report.id); status = "Publicación eliminada y aviso revisado." }.onFailure { error = it.localizedMessage } }
-                            }) { Icon(Icons.Default.DeleteOutline, null); Text("Eliminar publicación") }
+                            }) { Icon(Icons.Default.DeleteOutline, null); Text(tr("Eliminar publicación")) }
                         }
                         if (report.targetType == "user") {
                             OutlinedButton(onClick = {
                                 scope.launch { runCatching { repo.hideReportedUser(report.targetId); repo.markReportReviewed(report.id); status = "Perfil restringido y aviso revisado." }.onFailure { error = it.localizedMessage } }
-                            }) { Icon(Icons.Default.VisibilityOff, null); Text("Restringir perfil") }
+                            }) { Icon(Icons.Default.VisibilityOff, null); Text(tr("Restringir perfil")) }
                         }
                         TextButton(onClick = {
                             scope.launch { runCatching { repo.markReportReviewed(report.id); status = "Aviso marcado como revisado." }.onFailure { error = it.localizedMessage } }
-                        }) { Text("Marcar revisado") }
+                        }) { Text(tr("Marcar revisado")) }
                     }
                 }
             }
@@ -93,9 +93,9 @@ internal fun ReportDialog(repo: FirebaseCommunityRepository, targetId: String, t
     var reason by remember { mutableStateOf("Contenido inapropiado") }
     var busy by remember { mutableStateOf(false) }
     val reasons = listOf("Contenido inapropiado", "Acoso o intimidación", "Spam o fraude", "Bienestar animal", "Suplantación de identidad", "Otro")
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Denunciar") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(tr("Denunciar")) }, text = {
         Column {
-            Text("Selecciona el motivo del aviso.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(tr("Selecciona el motivo del aviso."), color = MaterialTheme.colorScheme.onSurfaceVariant)
             reasons.forEach { item -> Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(reason == item, { reason = item }); Text(item) } }
         }
     }, confirmButton = {
@@ -103,6 +103,6 @@ internal fun ReportDialog(repo: FirebaseCommunityRepository, targetId: String, t
             busy = true
             scope.launch { runCatching { repo.report(targetId, type, reason); onDone() }.onFailure { busy = false } }
         }) { Text(if (busy) "Enviando…" else "Enviar denuncia") }
-    }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+    }, dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } })
 }
 
