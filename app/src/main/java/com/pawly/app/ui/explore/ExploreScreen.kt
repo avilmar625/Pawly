@@ -279,7 +279,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
             }
         }
-        item { SectionHeading("Ideas para vuestra próxima salida", "Guarda categorías e inicia búsquedas reales cuando quieras") }
+        item { SectionHeading(tr("Ideas para vuestra próxima salida"), tr("Guarda categorías e inicia búsquedas reales cuando quieras")) }
         if (visible.isEmpty()) {
             item { Text(tr("No hay resultados. Prueba con otra búsqueda."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
         }
@@ -362,7 +362,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                     shape = RoundedCornerShape(50)
                 ) {
                     Text(
-                        place.category.uppercase(),
+                        tr(place.category).uppercase(),
                         modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
                         color = Forest,
                         fontSize = 9.sp,
@@ -394,7 +394,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    place.description,
+                    tr(place.description),
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp,
