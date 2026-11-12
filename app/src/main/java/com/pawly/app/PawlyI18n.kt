@@ -469,7 +469,7 @@ internal object PawlyI18n {
             "Una historia Pawly" to "Una història Pawly", "Con" to "Amb",
             "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, salut i rutines en un sol lloc.",
             "Pasaporte sanitario" to "Passaport sanitari", "Pasaporte de bienestar" to "Passaport de benestar",
-            "Salud" to "Salut", "Cuidados" to "Cures",
+            "Salud" to "Salut", "Cuidados" to "Cures", "Responsable" to "Responsable", "Sin asignar" to "Sense assignar",
             "Elegir fecha" to "Tria una data", "Elegir hora" to "Tria una hora",
             "Fecha" to "Data", "Hora" to "Hora", "La fecha y hora deben ser futuras." to "La data i l'hora han de ser futures.",
             "No se pudo cargar el mapa. Comprueba tu conexión." to "No s'ha pogut carregar el mapa. Comprova la connexió.",
@@ -482,7 +482,7 @@ internal object PawlyI18n {
             "Una historia Pawly" to "Une histoire Pawly", "Con" to "Avec",
             "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, santé et routines au même endroit.",
             "Pasaporte sanitario" to "Carnet de santé", "Pasaporte de bienestar" to "Carnet de bien-être",
-            "Salud" to "Santé", "Cuidados" to "Soins",
+            "Salud" to "Santé", "Cuidados" to "Soins", "Responsable" to "Responsable", "Sin asignar" to "Non attribué",
             "Elegir fecha" to "Choisir une date", "Elegir hora" to "Choisir une heure",
             "Fecha" to "Date", "Hora" to "Heure", "La fecha y hora deben ser futuras." to "La date et l'heure doivent être dans le futur.",
             "No se pudo cargar el mapa. Comprueba tu conexión." to "Impossible de charger la carte. Vérifiez votre connexion.",
@@ -495,7 +495,7 @@ internal object PawlyI18n {
             "Una historia Pawly" to "A Pawly story", "Con" to "With",
             "Agenda" to "Calendar", "Agenda, salud y rutinas en un solo lugar." to "Calendar, health and routines in one place.",
             "Pasaporte sanitario" to "Health passport", "Pasaporte de bienestar" to "Wellbeing passport",
-            "Salud" to "Health", "Cuidados" to "Care",
+            "Salud" to "Health", "Cuidados" to "Care", "Responsable" to "Person responsible", "Sin asignar" to "Unassigned",
             "Elegir fecha" to "Choose date", "Elegir hora" to "Choose time",
             "Fecha" to "Date", "Hora" to "Time", "La fecha y hora deben ser futuras." to "Choose a future date and time.",
             "No se pudo cargar el mapa. Comprueba tu conexión." to "Couldn't load the map. Check your connection.",
@@ -508,7 +508,7 @@ internal object PawlyI18n {
             "Una historia Pawly" to "Pawlyren istorio bat", "Con" to "rekin",
             "Agenda" to "Agenda", "Agenda, salud y rutinas en un solo lugar." to "Agenda, osasuna eta errutinak leku berean.",
             "Pasaporte sanitario" to "Osasun-pasaportea", "Pasaporte de bienestar" to "Ongizate-pasaportea",
-            "Salud" to "Osasuna", "Cuidados" to "Zaintzak",
+            "Salud" to "Osasuna", "Cuidados" to "Zaintzak", "Responsable" to "Arduraduna", "Sin asignar" to "Esleitu gabe",
             "Elegir fecha" to "Aukeratu data", "Elegir hora" to "Aukeratu ordua",
             "Fecha" to "Data", "Hora" to "Ordua", "La fecha y hora deben ser futuras." to "Aukeratu etorkizuneko data eta ordua.",
             "No se pudo cargar el mapa. Comprueba tu conexión." to "Ezin izan da mapa kargatu. Egiaztatu konexioa.",
@@ -518,6 +518,27 @@ internal object PawlyI18n {
     )
 
     private fun dynamicText(value: String, language: String): String? {
+        val petCarePrefix = "El cuidado de "
+        if (value.startsWith(petCarePrefix)) {
+            val sourcePet = value.removePrefix(petCarePrefix)
+            val pet = when (sourcePet) {
+                "tu mascota" -> when (language) {
+                    "en" -> "your pet"
+                    "ca" -> "la teva mascota"
+                    "fr" -> "votre animal"
+                    "eu" -> "zure maskota"
+                    else -> sourcePet
+                }
+                else -> sourcePet
+            }
+            return when (language) {
+                "en" -> "Care for " + pet
+                "ca" -> "La cura de " + pet
+                "fr" -> "Les soins de " + pet
+                "eu" -> pet + "-ren zaintza"
+                else -> null
+            }
+        }
         val commentCount = Regex("^(\\d+) comentarios$").matchEntire(value)?.groupValues?.get(1)
         if (commentCount != null) return when (language) {
             "en" -> "$commentCount comments"
