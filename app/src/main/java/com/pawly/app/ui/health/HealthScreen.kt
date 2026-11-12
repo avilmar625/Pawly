@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import com.pawly.app.tr
+
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
@@ -119,9 +121,9 @@ internal fun HealthScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Text("BIENESTAR", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
-            Text("Cuidar también\nes querer.", style = MaterialTheme.typography.headlineLarge)
-            Text("Organiza su día a día con tranquilidad.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            Text(tr("BIENESTAR"), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
+            Text(tr("Cuidar también\nes querer."), style = MaterialTheme.typography.headlineLarge)
+            Text(tr("Organiza su día a día con tranquilidad."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         item {
             Surface(shape = RoundedCornerShape(23.dp), color = MaterialTheme.colorScheme.primaryContainer) {
@@ -129,8 +131,8 @@ internal fun HealthScreen(
                     Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                     Spacer(Modifier.width(13.dp))
                     Column {
-                        Text("Pasaporte de bienestar", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("Vacunas, revisiones y cuidados de $dogName en un solo lugar.", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 11.sp)
+                        Text(tr("Pasaporte de bienestar"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text(tr("Vacunas, revisiones y cuidados de $dogName en un solo lugar."), color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 11.sp)
                     }
                 }
             }
@@ -161,7 +163,7 @@ internal fun HealthScreen(
             )
         }
         item {
-            Text("Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Text(tr("Los avisos son notificaciones locales aproximadas; pueden retrasarse por el ahorro de batería y se vuelven a programar al abrir Pawly. Las fechas y pautas deben indicarlas tu veterinario. Pawly no sustituye el consejo profesional."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
@@ -180,7 +182,7 @@ internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, t
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(date, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                if (date != "Añadir aviso") TextButton(onClick = onClear, contentPadding = PaddingValues(0.dp)) { Text("Quitar", fontSize = 10.sp) }
+                if (date != "Añadir aviso") TextButton(onClick = onClear, contentPadding = PaddingValues(0.dp)) { Text(tr("Quitar"), fontSize = 10.sp) }
             }
         }
     }
