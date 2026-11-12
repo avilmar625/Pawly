@@ -9,7 +9,12 @@ data class PawlyUser(
     val photoUrl: String = "",
     val isPublic: Boolean = false,
     val followersCount: Long = 0,
-    val followingCount: Long = 0
+    val followingCount: Long = 0,
+    val accountType: String = "personal",
+    val professionalCategory: String = "",
+    val professionalLocation: String = "",
+    val professionalDescription: String = "",
+    val professionalContact: String = ""
 )
 
 data class PawlyDog(
