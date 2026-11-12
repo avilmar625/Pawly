@@ -26,7 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
 
@@ -47,8 +47,10 @@ internal fun HomeScreen(
     elegantDesign: Boolean = false
 ) {
     val completed = listOf(walkDone, medicineDone).count { it }
-    val dateLabel = SimpleDateFormat("EEEE, d 'de' MMMM", Locale("es", "ES"))
-        .format(Date()).replaceFirstChar { it.uppercase(Locale("es", "ES")) }
+    val language = LocalPawlyLanguage.current
+    val locale = PawlyI18n.locale(language)
+    val dateLabel = DateFormat.getDateInstance(DateFormat.FULL, locale)
+        .format(Date()).replaceFirstChar { it.uppercase(locale) }
     val firstName = dogName.ifBlank { "tu compañero" }
 
     LazyColumn(
@@ -59,7 +61,7 @@ internal fun HomeScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(dateLabel.uppercase(Locale("es", "ES")), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.25.sp)
+                    Text(dateLabel.uppercase(locale), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.25.sp)
                     Text(tr("Qué bien tenerte por aquí"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Surface(
@@ -69,7 +71,7 @@ internal fun HomeScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                 ) {
                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Pets, contentDescription = "Acerca de Pawly", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Filled.Pets, contentDescription = tr("Acerca de Pawly"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     }
                 }
             }
@@ -109,7 +111,7 @@ internal fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                             Text(tr("Vuestro día, paso a paso"), style = MaterialTheme.typography.titleLarge)
-                            Text(if (completed == 2) "¡Todo hecho! Os lo habéis ganado." else "Pequeños gestos, grandes cuidados.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(tr(if (completed == 2) "¡Todo hecho! Os lo habéis ganado." else "Pequeños gestos, grandes cuidados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                         Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(14.dp)) {
                             Text(tr("$completed/2"), modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -181,7 +183,7 @@ private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit:
         if (photo != null) {
             Image(
                 photo.asImageBitmap(),
-                contentDescription = "Foto de $name",
+                contentDescription = tr("Foto de $name"),
                 modifier = Modifier.fillMaxSize(),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
@@ -210,10 +212,10 @@ private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit:
             Surface(color = if (elegantDesign) Color(0xFFFFD7B8) else Color(0xFFDDEBAF), shape = RoundedCornerShape(50)) {
                 Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Icon(Icons.Filled.Pets, contentDescription = null, tint = Color(0xFF234638), modifier = Modifier.size(12.dp))
-                    Text(if (elegantDesign) "EL PROTAGONISTA DE VUESTRA HISTORIA" else "VUESTRO COMPAÑERO", color = Color(0xFF234638), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    Text(tr(if (elegantDesign) "EL PROTAGONISTA DE VUESTRA HISTORIA" else "VUESTRO COMPAÑERO"), color = Color(0xFF234638), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
                 }
             }
-            Text(name.ifBlank { "Tu compañero" }, color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold)
+            Text(tr(name.ifBlank { "Tu compañero" }), color = Color.White, fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.ExtraBold)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("El protagonista de cada aventura"), color = Color.White.copy(alpha = .92f), fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
@@ -249,7 +251,7 @@ private fun HomeStatCard(
             }
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(tr(label), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -274,8 +276,8 @@ private fun HomeRoutineRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(tr(title), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(tr(subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Checkbox(
             checked = checked,
@@ -358,8 +360,8 @@ internal fun TaskRow(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(tr(title), fontWeight = FontWeight.SemiBold, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
+                Text(tr(subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
         }
