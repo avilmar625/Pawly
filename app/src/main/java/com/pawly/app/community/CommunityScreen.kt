@@ -325,20 +325,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         notificationsAllowed = granted
         notice = if (granted) "Notificaciones activadas." else "Puedes activarlas más adelante desde los ajustes de Android."
     }
-    val signOut: () -> Unit = {
-        scope.launch {
-            // Clear Google's provider-side account selection state as well as Firebase Auth.
-            // This prevents Credential Manager from reusing a stale account reauthentication session.
-            runCatching {
-                CredentialManager.create(context).clearCredentialState(ClearCredentialStateRequest())
-            }.onFailure {
-                Log.w("PawlyGoogleSignIn", "Could not clear Google credential state during sign-out.", it)
-            }
-            runCatching { repo.signOut() }
-                .onFailure { notice = it.localizedMessage ?: "No se pudo cerrar la sesión correctamente." }
-            onSignOut()
-        }
-    }
     LaunchedEffect(repo, uid) {
         admin = runCatching { repo.isAdmin() }.getOrDefault(false)
         runCatching { repo.syncMessagingToken() }
@@ -364,9 +350,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                         Text("PAWLY COMMUNITY", color = Color.White.copy(alpha = .84f), fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
                         Text("Comunidad", color = Color.White, style = MaterialTheme.typography.headlineMedium)
                         Text("Aventuras que se comparten.", color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Surface(color = Color.White.copy(alpha = .17f), shape = CircleShape) {
-                        IconButton(onClick = signOut) { Icon(Icons.Default.Logout, "Cerrar sesión", tint = Color.White) }
                     }
                 }
             }
@@ -444,7 +427,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
-            page == CommunityPage.PROFILE -> MyCommunityProfile(repo, signOut)
+            page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
         }
     }
