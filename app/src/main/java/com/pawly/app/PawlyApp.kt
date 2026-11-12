@@ -447,24 +447,24 @@ private fun PawlyMainApp(
                     onInviteFriend = {
                         val invite = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "Descubre Pawly")
-                            putExtra(Intent.EXTRA_TEXT, "¡Estoy probando Pawly, una aplicación para cuidar, organizar y compartir la vida con nuestras mascotas! Cuando esté disponible para descargar, te pasaré el enlace.")
+                            putExtra(Intent.EXTRA_SUBJECT, PawlyI18n.text("Descubre Pawly", language))
+                            putExtra(Intent.EXTRA_TEXT, PawlyI18n.text("¡Estoy probando Pawly, una aplicación para cuidar, organizar y compartir la vida con nuestras mascotas! Cuando esté disponible para descargar, te pasaré el enlace.", language))
                         }
-                        context.startActivity(Intent.createChooser(invite, "Invitar a un amigo"))
+                        context.startActivity(Intent.createChooser(invite, PawlyI18n.text("Invita a un amigo", language)))
                     },
                     onContact = {
                         val contact = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).apply {
-                            putExtra(Intent.EXTRA_SUBJECT, "Consulta sobre Pawly")
-                            putExtra(Intent.EXTRA_TEXT, "Hola, equipo de Pawly:\n\n")
+                            putExtra(Intent.EXTRA_SUBJECT, PawlyI18n.text("Consulta sobre Pawly", language))
+                            putExtra(Intent.EXTRA_TEXT, PawlyI18n.text("Hola, equipo de Pawly:\n\n", language))
                         }
-                        runCatching { context.startActivity(Intent.createChooser(contact, "Contactar con Pawly")) }
+                        runCatching { context.startActivity(Intent.createChooser(contact, PawlyI18n.text("Contacta con nosotros", language))) }
                             .onFailure {
                                 val fallback = Intent(Intent.ACTION_SEND).apply {
                                     type = "message/rfc822"
                                     putExtra(Intent.EXTRA_SUBJECT, "Consulta sobre Pawly")
                                     putExtra(Intent.EXTRA_TEXT, "Hola, equipo de Pawly:\n\n")
                                 }
-                                context.startActivity(Intent.createChooser(fallback, "Contactar con Pawly"))
+                                context.startActivity(Intent.createChooser(fallback, PawlyI18n.text("Contacta con nosotros", language)))
                             }
                     },
                     onPrivacy = {
