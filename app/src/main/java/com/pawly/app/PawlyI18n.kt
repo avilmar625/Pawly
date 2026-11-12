@@ -1,5 +1,13 @@
 package com.pawly.app
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
+
+internal val LocalPawlyLanguage = compositionLocalOf { "es" }
+
+@Composable
+internal fun tr(value: String): String = PawlyI18n.text(value, LocalPawlyLanguage.current)
+
 /**
  * Small, explicit UI catalogue for the app shell and the newer Pawly modules.
  * Unknown keys intentionally fall back to Spanish instead of displaying blanks.
