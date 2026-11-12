@@ -24,6 +24,13 @@ class PawlyI18nTest {
     }
 
     @Test
+    fun translatesSharedPetInvitationDynamically() {
+        assertEquals(
+            "Alex wants to share Nala's profile with you.",
+            PawlyI18n.text("Alex quiere compartir contigo el perfil de Nala.", "en")
+        )
+    }
+    @Test
     fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
         assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
         assertEquals("Texto nuevo", PawlyI18n.text("Texto nuevo", "en"))
