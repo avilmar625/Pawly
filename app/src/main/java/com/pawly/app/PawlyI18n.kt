@@ -287,6 +287,9 @@ internal object PawlyI18n {
             "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Ajuda professional, records, aprenentatge i recursos pràctics per a la vostra mascota.",
             "Crear cuenta con Google" to "Crea un compte amb Google",
             "Todavía no hay eventos con ubicación exacta." to "Encara no hi ha esdeveniments amb ubicació exacta.",
+            "Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase." to "Firestore no permet llegir els esdeveniments. Publica les regles incloses a canvis55 des de la consola de Firebase.",
+            "Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado." to "Firebase ha rebutjat la publicació. Publica les regles de firestore.rules d'aquesta branca i comprova que el correu del compte estigui verificat.",
+            "No se pudieron cargar los eventos." to "No s'han pogut carregar els esdeveniments.",
             "Buscar lugar" to "Cerca el lloc", "Cambiar punto en el mapa" to "Canvia el punt al mapa", "Elegir punto en el mapa (opcional)" to "Tria un punt al mapa (opcional)",
             "Quitar ubicación" to "Treu la ubicació", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "N'hi ha prou amb l'adreça per publicar; afegeix un marcador només si vols mostrar el punt exacte.",
             "Marca el lugar del evento" to "Marca el lloc de l'esdeveniment",
@@ -339,6 +342,9 @@ internal object PawlyI18n {
             "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Des professionnels, des souvenirs, des conseils et des ressources pratiques pour votre animal.",
             "Crear cuenta con Google" to "Créer un compte avec Google",
             "Todavía no hay eventos con ubicación exacta." to "Aucun événement avec une position exacte pour le moment.",
+            "Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase." to "Firestore ne peut pas lire les événements. Publiez les règles de cambios55 dans la console Firebase.",
+            "Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado." to "Firebase a refusé la publication. Publiez les règles firestore.rules de cette branche et vérifiez l'adresse e-mail du compte.",
+            "No se pudieron cargar los eventos." to "Impossible de charger les événements.",
             "Buscar lugar" to "Chercher le lieu", "Cambiar punto en el mapa" to "Modifier le point sur la carte", "Elegir punto en el mapa (opcional)" to "Choisir un point sur la carte (facultatif)",
             "Quitar ubicación" to "Retirer la position", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "L'adresse suffit pour publier ; ajoutez un repère seulement si vous souhaitez montrer le point exact.",
             "Marca el lugar del evento" to "Marquez le lieu de l'événement",
@@ -391,6 +397,9 @@ internal object PawlyI18n {
             "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Professional help, memories, learning and practical resources for your pet.",
             "Crear cuenta con Google" to "Create account with Google",
             "Todavía no hay eventos con ubicación exacta." to "No events with an exact location yet.",
+            "Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase." to "Firestore can't read events. Publish the rules from cambios55 in the Firebase console.",
+            "Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado." to "Firebase rejected the event. Publish this branch's firestore.rules and make sure the account email is verified.",
+            "No se pudieron cargar los eventos." to "Couldn't load events.",
             "Buscar lugar" to "Find place", "Cambiar punto en el mapa" to "Change map point", "Elegir punto en el mapa (opcional)" to "Choose a map point (optional)",
             "Quitar ubicación" to "Remove location", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "An address is enough to publish; add a marker only if you want to show the exact point.",
             "Marca el lugar del evento" to "Mark the event location",
@@ -443,6 +452,9 @@ internal object PawlyI18n {
             "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota." to "Laguntza profesionala, oroitzapenak, ikaskuntza eta zuen maskotarako baliabide praktikoak.",
             "Crear cuenta con Google" to "Sortu kontua Google-rekin",
             "Todavía no hay eventos con ubicación exacta." to "Oraindik ez dago kokapen zehatza duen ekitaldirik.",
+            "Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase." to "Firestore-k ezin ditu ekitaldiak irakurri. Argitaratu cambios55 adarreko arauak Firebase kontsolan.",
+            "Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado." to "Firebase-k argitalpena ukatu du. Argitaratu adar honetako firestore.rules arauak eta egiaztatu kontuko helbide elektronikoa.",
+            "No se pudieron cargar los eventos." to "Ezin izan dira ekitaldiak kargatu.",
             "Buscar lugar" to "Bilatu lekua", "Cambiar punto en el mapa" to "Aldatu mapako puntua", "Elegir punto en el mapa (opcional)" to "Aukeratu mapako puntua (aukerakoa)",
             "Quitar ubicación" to "Kendu kokapena", "La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto." to "Helbidea nahikoa da argitaratzeko; gehitu marka puntua zehatza erakutsi nahi baduzu.",
             "Marca el lugar del evento" to "Markatu ekitaldiaren lekua",
@@ -459,6 +471,7 @@ internal object PawlyI18n {
                 "en" -> "Vaccinations, check-ups and care for " + pet + ", all in one place."
                 "ca" -> "Vacunes, revisions i cures de " + pet + ", tot en un sol lloc."
                 "fr" -> "Vaccins, contrôles et soins de " + pet + ", tout au même endroit."
+                "eu" -> pet + " txertoak, azterketak eta zaintzak leku berean."
                 else -> null
             }
         }
@@ -483,6 +496,8 @@ internal object PawlyI18n {
                 "Compartir el perfil de " to "Partekatu profila: ",
                 "Zona: " to "Eremua: ",
                 "Contacto: " to "Kontaktua: ",
+                "Foto de " to "Argazkia: ",
+                "Aviso programado para " to "Abisua honetarako programatuta: ",
                 "Un día bonito\\ncon " to "Egun polit bat\\n"
             )
             "en" -> listOf(
@@ -493,6 +508,8 @@ internal object PawlyI18n {
                 "Compartir el perfil de " to "Share the profile of ",
                 "Zona: " to "Area: ",
                 "Contacto: " to "Contact: ",
+                "Foto de " to "Photo of ",
+                "Aviso programado para " to "Reminder set for ",
                 "Un día bonito\ncon " to "A lovely day\nwith "
             )
             "ca" -> listOf(
@@ -503,6 +520,8 @@ internal object PawlyI18n {
                 "Compartir el perfil de " to "Comparteix el perfil de ",
                 "Zona: " to "Zona: ",
                 "Contacto: " to "Contacte: ",
+                "Foto de " to "Foto de ",
+                "Aviso programado para " to "Avís programat per a ",
                 "Un día bonito\ncon " to "Un dia bonic\namb "
             )
             "fr" -> listOf(
@@ -513,6 +532,8 @@ internal object PawlyI18n {
                 "Compartir el perfil de " to "Partager le profil de ",
                 "Zona: " to "Zone : ",
                 "Contacto: " to "Contact : ",
+                "Foto de " to "Photo de ",
+                "Aviso programado para " to "Rappel programmé pour ",
                 "Un día bonito\ncon " to "Une belle journée\navec "
             )
             else -> emptyList()
