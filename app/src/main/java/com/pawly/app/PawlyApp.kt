@@ -1,6 +1,8 @@
 package com.pawly.app
 
 import com.pawly.app.care.data.PetShareInvitation
+import com.pawly.app.care.data.PetCareLocalStore
+import com.pawly.app.care.export.PetCarePdfExporter
 import com.google.firebase.auth.FirebaseAuth
 import android.os.Bundle
 import android.content.Intent
@@ -21,6 +23,7 @@ import android.location.Geocoder
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -57,7 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 internal enum class Tab(val label: String) {
-    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales")
+    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda")
 }
 
 @Composable
@@ -137,6 +140,8 @@ private fun PawlyMainApp(
     var cloudinaryImagePreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_image_preset", BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).orEmpty()) }
     var cloudinaryVideoPreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_video_preset", BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).orEmpty()) }
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
+    var language by remember(preferences) { mutableStateOf(preferences.getString("language", "es") ?: "es") }
+    val coroutineScope = rememberCoroutineScope()
     var selected by remember { mutableStateOf(Tab.HOME) }
     var selectedSharedPet by remember { mutableStateOf<PetShareInvitation?>(null) }
     var showAbout by remember { mutableStateOf(false) }
@@ -270,6 +275,7 @@ private fun PawlyMainApp(
                             Tab.COMMUNITY -> Icons.Filled.Groups
                             Tab.MORE -> Icons.Filled.MoreHoriz
                             Tab.SERVICES -> Icons.Filled.WorkspacePremium
+                            Tab.LOST -> Icons.Filled.ReportProblem
                         }
                         Column(
                             Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
@@ -378,12 +384,34 @@ private fun PawlyMainApp(
                     onDiary = { selected = Tab.DIARY },
                     onSettings = { showSettings = true },
                     onProfessionals = { selected = Tab.SERVICES },
-                    onCommunity = { selected = Tab.COMMUNITY },
+                    onLostPet = { selected = Tab.LOST },
+                    onExportPetPdf = {
+                        coroutineScope.launch {
+                            runCatching {
+                                val entries = PetCareLocalStore.loadEntries(context, dogName, storageScope)
+                                val tasks = PetCareLocalStore.loadTasks(context, dogName, storageScope)
+                                val profile = cloudRepository?.getMyDogs()?.firstOrNull { it.name.equals(dogName, ignoreCase = true) }
+                                PetCarePdfExporter.shareCompletePetReport(
+                                    context, dogName, profile?.breed.orEmpty(), profile?.age.orEmpty(),
+                                    profile?.description.orEmpty(), entries, tasks
+                                )
+                            }.onFailure { profileSyncStatus = "No se pudo generar el informe: ${it.localizedMessage ?: "error desconocido"}" }
+                        }
+                    },
+                    language = language,
                     elegantDesign = elegantDesign
                 )
                 Tab.SERVICES -> ProfessionalServicesScreen(
                     onBack = { selected = Tab.MORE },
-                    elegantDesign = elegantDesign
+                    elegantDesign = elegantDesign,
+                    language = language
+                )
+                Tab.LOST -> LostPetHelpScreen(
+                    repository = cloudRepository,
+                    defaultPetName = dogName,
+                    language = language,
+                    onBack = { selected = Tab.MORE },
+                    onPublished = { selected = Tab.COMMUNITY }
                 )
             }
         }
@@ -396,12 +424,12 @@ private fun PawlyMainApp(
         PawlySettingsDialog(
             darkMode = darkMode,
             accent = accent,
-            language = preferences.getString("language", "es") ?: "es",
+            language = language,
             designStyle = designStyle,
             onDesignStyleChange = onDesignStyleChange,
             onDarkModeChange = onDarkModeChange,
             onAccentChange = onAccentChange,
-            onLanguageChange = { preferences.edit().putString("language", it).apply() },
+            onLanguageChange = { language = it; preferences.edit().putString("language", it).apply() },
             cloudinaryCloudName = cloudinaryCloudName,
             cloudinaryImagePreset = cloudinaryImagePreset,
             cloudinaryVideoPreset = cloudinaryVideoPreset,
