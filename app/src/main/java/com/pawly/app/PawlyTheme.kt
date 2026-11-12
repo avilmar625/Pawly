@@ -15,13 +15,13 @@ import androidx.compose.ui.unit.dp
 
 internal val Forest = Color(0xFF173F35)
 internal val ForestLight = Color(0xFF2D6655)
-internal val Cream = Color(0xFFF7F7F2)
-internal val Paper = Color(0xFFFFFFFF)
+internal val Cream = Color(0xFFFFF8F0)
+internal val Paper = Color(0xFFFFFEFB)
 internal val Ink = Color(0xFF202923)
-internal val Muted = Color(0xFF7C887F)
-internal val Lime = Color(0xFFD8E8A8)
-internal val Peach = Color(0xFFF4D7C5)
-internal val Line = Color(0xFFE5E9E3)
+internal val Muted = Color(0xFF817B70)
+internal val Lime = Color(0xFFE4EBC1)
+internal val Peach = Color(0xFFF3DCCF)
+internal val Line = Color(0xFFECE5DC)
 
 @Composable
 internal fun PawlyTheme(darkMode: Boolean = false, accent: String = "forest", content: @Composable () -> Unit) {
@@ -69,13 +69,13 @@ internal fun PawlyTheme(darkMode: Boolean = false, accent: String = "forest", co
             onPrimaryContainer = Color(0xFF17352B),
             secondary = secondary,
             onSecondary = Color.White,
-            secondaryContainer = Color(0xFFE9EFE9),
+            secondaryContainer = Color(0xFFF4E9DF),
             onSecondaryContainer = Color(0xFF263A30),
-            background = Color(0xFFF6F7F2),
+            background = Cream,
             onBackground = Color(0xFF202A23),
-            surface = Color(0xFFFFFEFC),
+            surface = Paper,
             onSurface = Color(0xFF202A23),
-            surfaceVariant = Color(0xFFF0F2ED),
+            surfaceVariant = Color(0xFFF5F0E9),
             onSurfaceVariant = Muted,
             outline = Color(0xFF87948A),
             outlineVariant = Line
