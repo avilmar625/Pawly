@@ -166,6 +166,22 @@ internal object PawlyI18n {
         "Perfil de tu compañero" to "Profil de votre compagnon", "Galería" to "Galerie", "Cámara" to "Appareil photo", "Perfiles de perros" to "Profils des animaux", "Añadir con el nombre escrito" to "Ajouter avec le nom saisi", "Creadores" to "Créateurs", "Cerrar" to "Fermer"
     )
 
+
+    private val accountExtra = mapOf(
+        "en" to mapOf(
+            "El contacto profesional será visible públicamente si tu perfil es público. Usa un correo o teléfono de trabajo, no datos personales que no quieras compartir." to "Your professional contact details will be public when your profile is public. Use a work email or phone number, not personal details you do not want to share.",
+            "Ficha PDF guardada en el dispositivo." to "Pet PDF saved to your device."
+        ),
+        "ca" to mapOf(
+            "El contacto profesional será visible públicamente si tu perfil es público. Usa un correo o teléfono de trabajo, no datos personales que no quieras compartir." to "El contacte professional serà públic si el teu perfil és públic. Fes servir un correu o telèfon de feina, no dades personals que no vulguis compartir.",
+            "Ficha PDF guardada en el dispositivo." to "Fitxa PDF desada al dispositiu."
+        ),
+        "fr" to mapOf(
+            "El contacto profesional será visible públicamente si tu perfil es público. Usa un correo o teléfono de trabajo, no datos personales que no quieras compartir." to "Vos coordonnées professionnelles seront publiques si votre profil l’est. Utilisez une adresse e-mail ou un numéro professionnel, pas des données personnelles que vous ne souhaitez pas partager.",
+            "Ficha PDF guardada en el dispositivo." to "Fiche PDF enregistrée sur l’appareil."
+        )
+    )
+
     private fun dynamicText(value: String, language: String): String? {
         val prefixes = when (language) {
             "en" -> listOf(
@@ -225,9 +241,9 @@ internal object PawlyI18n {
     }
 
     fun text(value: String, language: String): String = when (language) {
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: dynamicText(value, language) ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: dynamicText(value, language) ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: dynamicText(value, language) ?: value
+        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: dynamicText(value, language) ?: value
         else -> value
     }
 }
