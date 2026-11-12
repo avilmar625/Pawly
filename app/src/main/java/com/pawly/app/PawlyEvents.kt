@@ -141,19 +141,22 @@ internal fun PawlyEventsScreen(
                 .appendQueryParameter("bbox", "$west,$south,$east,$north")
                 .appendQueryParameter("layer", "mapnik")
             mapPoints.firstOrNull()?.let { point ->
-                mapUrlBuilder.appendQueryParameter("marker", "${point.latitude},${point.longitude}")
+                mapUrlBuilder.appendQueryParameter("marker", "${point.latitude!!},${point.longitude!!}")
             }
             val mapUrl = mapUrlBuilder.build().toString()
             val mapMarkersScript = mapPoints.joinToString(separator = "") { point ->
-                "L.marker([${point.latitude},${point.longitude}]).addTo(map).bindPopup(" +
+                "L.marker([${point.latitude!!},${point.longitude!!}]).addTo(map).bindPopup(" +
                     org.json.JSONObject.quote(point.title) + ");"
             }
             val mapMarkerBounds = mapPoints.joinToString(separator = ",") { point ->
-                "[${point.latitude},${point.longitude}]"
+                "[${point.latitude!!},${point.longitude!!}]"
             }
             val fallbackMapHtmlScript = org.json.JSONObject.quote(
-                "<iframe title=\\"OpenStreetMap\\" src=\\"$mapUrl\\" style=\\"width:100%;height:100%;border:0\\"></iframe>"
+                """<iframe title="OpenStreetMap" src="$mapUrl" style="width:100%;height:100%;border:0"></iframe>"""
             )
+            val mapContentKey = mapUrl + "|" + mapPoints.joinToString("|") {
+                "${it.id}:${it.latitude}:${it.longitude}:${it.title}"
+            }
             AndroidView(
                 modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(22.dp)),
                 factory = { view ->
@@ -179,8 +182,8 @@ internal fun PawlyEventsScreen(
                     }
                 },
                 update = { web ->
-                    if (web.tag != mapUrl) {
-                        web.tag = mapUrl
+                    if (web.tag != mapContentKey) {
+                        web.tag = mapContentKey
                         val fitMarkersScript = if (mapPoints.size > 1) {
                             "map.fitBounds(L.latLngBounds([$mapMarkerBounds]),{padding:[24,24],maxZoom:14});"
                         } else ""
