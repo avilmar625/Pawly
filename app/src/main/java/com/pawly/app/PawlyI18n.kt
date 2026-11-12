@@ -199,7 +199,7 @@ internal object PawlyI18n {
         "Organiza" to "Antolatzailea", "personas interesadas" to "pertsona interesatu", "Ver mapa" to "Ikusi mapa", "Me interesa" to "Interesatzen zait", "Me interesa ✓" to "Interesatzen zait ✓", "No se pudo actualizar tu participación." to "Ezin izan da zure parte-hartzea eguneratu.", "No se pudo publicar el evento." to "Ezin izan da ekitaldia argitaratu.", "No se pudieron cargar los eventos." to "Ezin izan dira ekitaldiak kargatu.",
         "Invita a un amigo" to "Gonbidatu lagun bat", "Contacta con nosotros" to "Jarri gurekin harremanetan", "Consulta sobre Pawly" to "Pawly-ri buruzko kontsulta",
         "Inicio" to "Hasiera", "Volver" to "Itzuli", "Guardar" to "Gorde", "Buscar personas" to "Bilatu pertsonak", "Perfil profesional" to "Profil profesionala",
-        "Qué bien tenerte por aquí" to "Pozten gara hemen zaudelako", "Cuidados, recuerdos y nuevas aventuras. Todo vuestro, en un mismo lugar." to "Zaintzak, oroitzapenak eta abentura berriak, dena leku berean.", "Vuestro día, paso a paso" to "Zuen eguna, urratsez urrats", "Salid a descubrir" to "Atera esploratzera", "Hay un mundo de planes por compartir." to "Elkarbanatzeko plan asko dago.", "El protagonista de cada aventura" to "Abentura bakoitzeko protagonista", "Editar perfil" to "Editatu profila", "Una aventura os espera" to "Abentura bat duzue zain", "Encuentra rutas, playas y rincones dog-friendly para vuestra próxima escapada." to "Aurkitu ibilbideak, hondartzak eta txakurrentzako tokiak hurrengo irteerarako.", "EXPLORAR LUGARES" to "LEKUAK ARakatu", "Un minuto para aprender" to "Minutu bat ikasteko", "Consejos e ideas para cuidar mejor." to "Aholkuak eta ideiak hobeto zaintzeko.",
+        "Qué bien tenerte por aquí" to "Pozten gara hemen zaudelako", "Cuidados, recuerdos y nuevas aventuras. Todo vuestro, en un mismo lugar." to "Zaintzak, oroitzapenak eta abentura berriak, dena leku berean.", "Vuestro día, paso a paso" to "Zuen eguna, urratsez urrats", "Salid a descubrir" to "Atera esploratzera", "Hay un mundo de planes por compartir." to "Elkarbanatzeko plan asko dago.", "El protagonista de cada aventura" to "Abentura bakoitzeko protagonista", "Editar perfil" to "Editatu profila", "Una aventura os espera" to "Abentura bat duzue zain", "Encuentra rutas, playas y rincones dog-friendly para vuestra próxima escapada." to "Aurkitu ibilbideak, hondartzak eta txakurrentzako tokiak hurrengo irteerarako.", "EXPLORAR LUGARES" to "LEKUAK ARAKATU", "Un minuto para aprender" to "Minutu bat ikasteko", "Consejos e ideas para cuidar mejor." to "Aholkuak eta ideiak hobeto zaintzeko.",
         "AVENTURAS POR COMPARTIR" to "ELKARBANATZEKO ABENTURAK", "El mundo es mejor cuando vais juntos." to "Mundua hobea da elkarrekin zoaztenean.", "EXPLORA" to "ARAKATU", "Ideas para vuestra próxima aventura." to "Ideiak hurrengo abenturarako.", "Busca un lugar real" to "Bilatu benetako leku bat", "Buscar en el mapa" to "Bilatu mapan", "VUESTROS FAVORITOS" to "GUSTUKOENAK", "Guarda ideas para otro día." to "Gorde ideiak beste egun baterako.", "No hay resultados. Prueba con otra búsqueda." to "Ez dago emaitzarik. Saiatu beste bilaketa batekin.",
         "VUESTROS RECUERDOS" to "ZUEN OROITZAPENAK", "Cada paseo merece un recuerdo." to "Ibilaldi bakoitzak oroitzapen bat merezi du.", "Un álbum personal para volver a vuestros mejores momentos." to "Album pertsonal bat zuen unerik onenetara itzultzeko.", "UN RECUERDO NUEVO" to "OROITZAPEN BERRI BAT", "¿Qué habéis hecho hoy?" to "Zer egin duzue gaur?", "Guardar recuerdo" to "Gorde oroitzapena", "Aquí empieza vuestra historia" to "Hemen hasten da zuen istorioa", "Guarda el primer recuerdo y vuelve a él cuando quieras." to "Gorde lehen oroitzapena eta itzuli nahi duzunean.",
         "BIENESTAR" to "ONGIZATEA", "Cuidar también\nes querer." to "Zaintzea ere\nmaitatzea da.", "Organiza su día a día con tranquilidad." to "Antolatu haren egunerokoa lasaitasunez.", "Pasaporte de bienestar" to "Ongizate-pasaportea", "Su salud, siempre en buenas manos." to "Haren osasuna, beti esku onetan.", "Agenda, salud y rutinas en un solo lugar." to "Agenda, osasuna eta ohiturak leku bakarrean.", "Pasaporte sanitario" to "Osasun-pasaportea", "Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria." to "Txertoen, tratamenduen eta bisiten historia. Gehitu beti albaitaritza-klinikak baieztatutako datuak.", "Historial" to "Historia", "El historial empieza aquí" to "Historia hemen hasten da", "Registra su primera vacuna, revisión o tratamiento para tenerlo todo localizado." to "Erregistratu lehen txertoa, azterketa edo tratamendua dena eskura izateko.", "Nuevo registro" to "Erregistro berria", "Nombre o concepto" to "Izena edo kontzeptua", "Fecha (AAAA-MM-DD)" to "Data (UUUU-HH-EE)", "Notas, clínica o detalles" to "Oharrak, klinika edo xehetasunak", "Organización de cuidados" to "Zaintzen antolaketa", "Anota las rutinas y quién suele encargarse para que la familia tenga un plan claro." to "Idatzi ohiturak eta nork egiten dituen familiak plan argia izan dezan.", "Rutinas" to "Ohiturak", "Todavía no hay rutinas. Puedes añadir paseos, comidas, medicación o cualquier cuidado recurrente." to "Oraindik ez dago ohiturarik. Gehitu paseoak, otorduak, botikak edo ohiko beste zaintza batzuk.", "Añadir rutina" to "Gehitu ohitura", "Cuidado (paseo, comida…)" to "Zaintza (paseoa, janaria…)", "Responsable" to "Arduraduna",
@@ -224,6 +224,16 @@ internal object PawlyI18n {
             }
         }
         val prefixes = when (language) {
+            "eu" -> listOf(
+                "Perfil compartido · " to "Partekatutako profila · ",
+                "Vacunas, revisiones y cuidados de " to "Txertoak, azterketak eta zaintzak: ",
+                "Una selección para " to "Hautaketa bat: ",
+                "Eliminar perfil de " to "Ezabatu profila: ",
+                "Compartir el perfil de " to "Partekatu profila: ",
+                "Zona: " to "Eremua: ",
+                "Contacto: " to "Kontaktua: ",
+                "Un día bonito\\ncon " to "Egun polit bat\\n"
+            )
             "en" -> listOf(
                 "Perfil compartido · " to "Shared profile · ",
                 "Vacunas, revisiones y cuidados de " to "Vaccinations, check-ups and care for ",
@@ -260,6 +270,11 @@ internal object PawlyI18n {
             return target + value.removePrefix(source)
         }
         return when (language) {
+            "eu" -> when {
+                value.endsWith(" lugares guardados") -> value.removeSuffix(" lugares guardados") + " leku gordeta"
+                Regex("^\\d+ registros$").matches(value) -> value.removeSuffix(" registros") + " erregistro"
+                else -> null
+            }
             "en" -> when {
                 value.endsWith(" lugares guardados") -> value.removeSuffix(" lugares guardados") + " saved places"
                 Regex("^\\d+ registros$").matches(value) -> value.removeSuffix(" registros") + " records"
