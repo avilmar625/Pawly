@@ -39,7 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: () -> Unit) {
+internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
     val scope = rememberCoroutineScope()
     var profile by remember(repo) { mutableStateOf(repo.cachedMyProfile()) }
     var dogs by remember(repo) { mutableStateOf(repo.cachedMyDogs().orEmpty()) }
@@ -47,6 +47,11 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
     var name by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.displayName.orEmpty()) }
     var bio by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.bio.orEmpty()) }
     var isPublic by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.isPublic ?: false) }
+    var accountType by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.accountType ?: "personal") }
+    var professionalCategory by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalCategory.orEmpty()) }
+    var professionalLocation by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalLocation.orEmpty()) }
+    var professionalDescription by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalDescription.orEmpty()) }
+    var professionalContact by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalContact.orEmpty()) }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { avatarUri = it }
     var editDog by remember { mutableStateOf<PawlyDog?>(null) }
@@ -63,6 +68,11 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
             name = it.displayName
             bio = it.bio
             isPublic = it.isPublic
+            accountType = it.accountType
+            professionalCategory = it.professionalCategory
+            professionalLocation = it.professionalLocation
+            professionalDescription = it.professionalDescription
+            professionalContact = it.professionalContact
         }
         repo.cachedMyDogs()?.let { dogs = it }
         runCatching {
@@ -73,6 +83,11 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onSignOut: ()
             name = freshProfile.displayName
             bio = freshProfile.bio
             isPublic = freshProfile.isPublic
+            accountType = freshProfile.accountType
+            professionalCategory = freshProfile.professionalCategory
+            professionalLocation = freshProfile.professionalLocation
+            professionalDescription = freshProfile.professionalDescription
+            professionalContact = freshProfile.professionalContact
         }.onFailure { error = it.localizedMessage }
     }
     DisposableEffect(repo) {
