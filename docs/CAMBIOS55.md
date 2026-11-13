@@ -27,7 +27,7 @@ Comprueba que `firebase use` muestra el proyecto correcto antes de desplegar. No
 ## Pendiente para una fase posterior
 
 - Alertas push de mascotas perdidas por proximidad y preferencias por radio. FCM ya registra tokens, pero el envío entre usuarios necesita un backend de confianza; no se debe exponer una clave de servidor en Android ni activar servicios de pago sin aprobación.
-- Centro de actividad con campana y notificaciones de likes, comentarios, seguidores y avisos.
+- Centro de actividad dentro de Comunidad: lista notificaciones de likes, comentarios y nuevos seguidores; permite marcarlas como leídas y muestra un contador rojo de pendientes. No son todavía notificaciones push del sistema.
 - Geolocalización aproximada de avisos de pérdida y filtro real por distancia (5/10/25/50 km). No se debe filtrar por una zona inventada ni publicar domicilios o coordenadas exactas.
 - Guardar lugares individuales, crear colecciones personalizadas y publicar lugares de la comunidad con moderación.
 - Búsqueda de contactos mediante agenda. Requiere permiso explícito y un diseño que no suba la agenda completa a Firestore.
