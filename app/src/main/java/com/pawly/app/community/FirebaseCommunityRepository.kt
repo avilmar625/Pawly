@@ -339,7 +339,6 @@ class FirebaseCommunityRepository private constructor(
         try {
             // Rules verify the underlying like, comment or follower relationship.
             // Deterministic IDs prevent replaying the same interaction as new alerts.
-            if (notification.get().await().exists()) return
             notification.set(mapOf(
                 "actorId" to actorUid,
                 "actorName" to safeActorName.take(80),
@@ -503,7 +502,7 @@ class FirebaseCommunityRepository private constructor(
             tx.update(ref, "likeCount", FieldValue.increment(if (liked) -1 else 1))
             !liked
         }.await()
-        if (added) createNotification(postOwner, "LIKE", "Le ha gustado tu publicación.", postId)
+        if (added) createNotification(postOwner, "LIKE", "Le ha gustado tu publicación.", postId, postId)
     }
 
     fun listenComments(postId: String, onData: (List<PawlyComment>) -> Unit, onError: (String) -> Unit): ListenerRegistration =
