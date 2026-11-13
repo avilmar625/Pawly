@@ -16,6 +16,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -38,12 +40,14 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error: String?, onCreate: () -> Unit, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
     var followingOnly by remember { mutableStateOf(false) }
     var categoryFilter by remember { mutableStateOf("ALL") }
+    var keyword by remember { mutableStateOf("") }
     val categoryOptions = listOf("ALL" to "Todo", "STORY" to "Historias", "ADOPTION" to "Adopción", "LOST" to "Perdidos", "FOUND" to "Encontrados", "FOSTER" to "Acogida")
-    val visiblePosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) }
+    val visiblePosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) && (keyword.isBlank() || listOf(it.text, it.dogName, it.authorName).any { value -> value.contains(keyword.trim(), ignoreCase = true) }) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item {
             Surface(onClick = onCreate, color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
@@ -63,8 +67,24 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
                 FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text(tr("Todos")) })
                 FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text(tr("Siguiendo")) })
             }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                categoryOptions.forEach { (value, label) -> FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) }) }
+            OutlinedTextField(
+                value = keyword,
+                onValueChange = { keyword = it.take(80) },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                singleLine = true,
+                placeholder = { Text(tr("Buscar publicaciones por palabra clave…")) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = { if (keyword.isNotBlank()) IconButton(onClick = { keyword = "" }) { Icon(Icons.Default.Close, contentDescription = tr("Borrar búsqueda")) } },
+                shape = RoundedCornerShape(14.dp)
+            )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                categoryOptions.forEach { (value, label) ->
+                    FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) })
+                }
             }
         }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
