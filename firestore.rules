@@ -565,13 +565,22 @@ service cloud.firestore {
 
     match /reports/{reportId} {
       allow create: if verified()
+        && request.resource.data.keys().hasOnly(['reporterId', 'targetId', 'targetType', 'reason', 'status', 'createdAt'])
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.targetId is string
         && request.resource.data.targetId.size() > 0
-        && request.resource.data.targetType in ['post', 'user']
+        && request.resource.data.targetType in ['post', 'user', 'event']
         && request.resource.data.reason is string
         && request.resource.data.reason.size() > 0
-        && request.resource.data.reason.size() <= 500;
+        && request.resource.data.reason.size() <= 500
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt == request.time
+        && ((request.resource.data.targetType == 'post'
+              && exists(/databases/$(database)/documents/posts/$(request.resource.data.targetId)))
+          || (request.resource.data.targetType == 'user'
+              && exists(/databases/$(database)/documents/users/$(request.resource.data.targetId)))
+          || (request.resource.data.targetType == 'event'
+              && exists(/databases/$(database)/documents/events/$(request.resource.data.targetId))));
       allow read, update, delete: if admin();
     }
     // Public events are tied to their venue, not to the private location of a person.
@@ -607,7 +616,7 @@ service cloud.firestore {
             && request.resource.data.interestedCount >= 0
             && !existsAfter(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid)))
         );
-      allow delete: if verified() && resource.data.organizerUid == request.auth.uid;
+      allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
         allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/events/$(eventId)).data.organizerUid == request.auth.uid);

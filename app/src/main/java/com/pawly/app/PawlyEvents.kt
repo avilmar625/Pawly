@@ -72,6 +72,7 @@ internal fun PawlyEventsScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var reportEventId by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
@@ -221,11 +222,23 @@ internal fun PawlyEventsScreen(
                                 Text(if (event.interestedByMe) tr("Me interesa ✓") else tr("Me interesa"))
                             }
                         }
+                        TextButton(onClick = { reportEventId = event.id }) {
+                            Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(5.dp))
+                            Text(tr("Denunciar evento"))
+                        }
                     }
                 }
             }
         }
     }
+    if (reportEventId != null) ReportDialog(
+        repo = repository,
+        targetId = reportEventId!!,
+        type = "event",
+        onDismiss = { reportEventId = null },
+        onDone = { reportEventId = null }
+    )
     if (showCreate) CreatePawlyEventDialog(
         error = createError,
         onDismiss = { showCreate = false },
