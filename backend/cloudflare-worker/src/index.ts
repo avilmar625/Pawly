@@ -457,6 +457,18 @@ async function deleteFirestoreDocument(env: Env, token: string, path: string): P
   if (!response.ok && response.status !== 404) throw new Error("No se pudo retirar el registro privado.");
 }
 
+async function handleContactDiscoveryStatus(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const accessToken = await googleAccessToken(env);
+    const record = await readDocument(env, accessToken, `users/${uid}/privateData/contactDiscovery`);
+    return json({ enabled: record?.fields?.enabled?.booleanValue === true });
+  } catch {
+    return json({ error: "No se pudo consultar la preferencia de contactos." }, 502);
+  }
+}
+
 async function handleContactDiscovery(request: Request, env: Env): Promise<Response> {
   const uid = await verifiedRequestUser(request, env);
   if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
@@ -665,6 +677,9 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/v1/lost-pet-alerts") {
       return handleLostPetAlert(request, env);
+    }
+    if (request.method === "GET" && url.pathname === "/v1/contact-discovery") {
+      return handleContactDiscoveryStatus(request, env);
     }
     if (request.method === "POST" && url.pathname === "/v1/contact-discovery") {
       return handleContactDiscovery(request, env);
