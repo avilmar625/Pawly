@@ -19,10 +19,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
-import java.util.Locale
 
 /**
  * Firebase-backed community data source. It is only created when google-services.json
