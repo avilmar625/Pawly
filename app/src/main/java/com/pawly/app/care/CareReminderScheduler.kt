@@ -118,11 +118,11 @@ internal class CareReminderReceiver : BroadcastReceiver() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
                 NotificationChannel(
-                    CHANNEL_ID, "Recordatorios de Pawly", NotificationManager.IMPORTANCE_DEFAULT
+                    CareReminderScheduler.CHANNEL_ID, "Recordatorios de Pawly", NotificationManager.IMPORTANCE_DEFAULT
                 ).apply { description = "Avisos locales de cuidados que has programado" }
             )
         }
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, CareReminderScheduler.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_paw)
             .setContentIntent(PendingIntent.getActivity(
                 context, 0,
