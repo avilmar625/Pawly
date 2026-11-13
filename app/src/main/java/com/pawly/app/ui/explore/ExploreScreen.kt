@@ -378,21 +378,27 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             )
         }
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                filters.forEach { item ->
-                    FilterChip(
-                        selected = filter == item,
-                        onClick = { filter = item },
-                        label = { Text(tr(item), fontSize = 12.sp, maxLines = 1) },
-                        shape = RoundedCornerShape(50),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = Color.White
+            var filterMenuExpanded by remember { mutableStateOf(false) }
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { filterMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 11.dp)
+                ) {
+                    Icon(Icons.Default.Tune, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(9.dp))
+                    Text(tr("Categoría: ") + tr(filter), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
+                    Icon(Icons.Default.ExpandMore, null)
+                }
+                DropdownMenu(expanded = filterMenuExpanded, onDismissRequest = { filterMenuExpanded = false }, modifier = Modifier.fillMaxWidth(.9f)) {
+                    filters.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(tr(option), fontWeight = if (filter == option) FontWeight.Bold else FontWeight.Normal) },
+                            leadingIcon = { if (filter == option) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                            onClick = { filter = option; filterMenuExpanded = false }
                         )
-                    )
+                    }
                 }
             }
         }
