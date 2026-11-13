@@ -4,7 +4,7 @@
 
 Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana con animales de compañía: perfiles multi-especie, cuidados, aprendizaje, lugares, recuerdos y comunidad.
 
-> Estado: proyecto en desarrollo activo. La comunidad utiliza Firebase Authentication y Firestore; la ficha/diario y los datos compartidos de mascotas tienen sincronización por mascota. Las fotos y vídeos de comunidad se alojan en Cloudinary. Las funciones aún locales o pendientes de backend se detallan en [la guía de configuración](docs/FIREBASE_SETUP.md). Para activar Firebase y multimedia hacen falta archivos locales y pasos de consola; no se incluyen credenciales en Git.
+> Estado: proyecto en desarrollo activo. La comunidad utiliza Firebase Authentication y Firestore; la ficha/diario y los datos compartidos de mascotas tienen sincronización por mascota. Las fotos y vídeos de comunidad se alojan en Cloudinary. Las funciones aún locales o pendientes de backend se detallan en [la guía de configuración](docs/FIREBASE_SETUP.md). Los mapas usan OpenStreetMap/osmdroid y requieren conexión para cargar teselas y lugares. Para activar Firebase y multimedia hacen falta archivos locales y pasos de consola; no se incluyen credenciales en Git.
 
 ## Creadores
 
@@ -14,7 +14,7 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 ## Funcionalidades actuales
 
 - **Inicio:** selector para varios perfiles, perfil editable con foto de cámara o galería, tareas cotidianas y resumen actualizado.
-- **Explorar:** búsqueda y filtros por categorías, con ideas genéricas y favoritos guardados en el dispositivo.
+- **Explorar:** búsqueda y filtros por categorías, lugares cercanos de OpenStreetMap y colecciones personales que se sincronizan con Firestore al iniciar sesión. Los favoritos rápidos siguen guardándose localmente.
 - **Salud:** fechas por mascota y recordatorios locales con fecha y hora para vacunas, desparasitación y revisiones. Android puede retrasar avisos por ahorro de batería; no ofrece pautas veterinarias.
 - **Diario:** recuerdos de texto persistentes, con recuento actualizado.
 - **Persistencia y sincronización:** la app conserva datos locales para uso sin conexión y sincroniza con Firebase las áreas conectadas cuando hay sesión y red. No todas las preferencias, recordatorios o marcas diarias se sincronizan.
