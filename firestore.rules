@@ -577,12 +577,14 @@ service cloud.firestore {
     match /events/{eventId} {
       allow get, list: if signedIn();
       allow create: if verified()
-        && request.resource.data.keys().hasOnly(['title', 'description', 'category', 'location', 'dateText', 'latitude', 'longitude', 'organizerUid', 'organizerName', 'interestedCount', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['title', 'description', 'category', 'location', 'dateText', 'startAt', 'timeZoneId', 'latitude', 'longitude', 'organizerUid', 'organizerName', 'interestedCount', 'createdAt'])
         && request.resource.data.title is string && request.resource.data.title.size() >= 4 && request.resource.data.title.size() <= 90
         && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 1200
         && request.resource.data.category in ['Quedada', 'Ruta', 'Taller', 'Adopción']
         && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 160
         && request.resource.data.dateText is string && request.resource.data.dateText.size() >= 4 && request.resource.data.dateText.size() <= 80
+        && request.resource.data.startAt is timestamp && request.resource.data.startAt > request.time
+        && request.resource.data.timeZoneId is string && request.resource.data.timeZoneId.size() <= 64
         && ((!('latitude' in request.resource.data) && !('longitude' in request.resource.data))
           || ('latitude' in request.resource.data && 'longitude' in request.resource.data
             && request.resource.data.latitude is number
