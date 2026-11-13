@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "jose";
+import { parseActivityRequest, type ActivityRequest } from "./activity-validation";
 
 interface Env {
   FIREBASE_PROJECT_ID: string;
@@ -7,13 +8,6 @@ interface Env {
 }
 
 type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
-
-interface ActivityRequest {
-  type: ActivityType;
-  recipientUid: string;
-  relatedId: string;
-  sourceEventId: string;
-}
 
 const firebaseKeys = createRemoteJWKSet(
   new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
@@ -263,19 +257,14 @@ async function handleActivityNotification(request: Request, env: Env): Promise<R
     return json({ error: "La sesión no es válida o ha caducado." }, 401);
   }
 
-  const contentLength = Number(request.headers.get("content-length") ?? "0");
-  if (contentLength > 4096) return json({ error: "Petición demasiado grande." }, 413);
-
-  let input: ActivityRequest;
+  let input: ActivityRequest | null;
   try {
-    const body = await request.json() as Record<string, unknown>;
-    if (
-      !["LIKE", "COMMENT", "FOLLOW"].includes(String(body.type)) ||
-      typeof body.recipientUid !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(body.recipientUid) ||
-      typeof body.relatedId !== "string" || (body.relatedId !== "" && !/^[A-Za-z0-9_-]{1,128}$/.test(body.relatedId)) ||
-      typeof body.sourceEventId !== "string" || (body.sourceEventId !== "" && !/^[A-Za-z0-9_-]{1,128}$/.test(body.sourceEventId))
-    ) return json({ error: "Datos de actividad no válidos." }, 400);
-    input = body as unknown as ActivityRequest;
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 4096) {
+      return json({ error: "Petición demasiado grande." }, 413);
+    }
+    input = parseActivityRequest(JSON.parse(rawBody));
+    if (!input) return json({ error: "Datos de actividad no válidos." }, 400);
   } catch {
     return json({ error: "El cuerpo de la petición no es JSON válido." }, 400);
   }
