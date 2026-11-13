@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "jose";
 import { isCurrentComment, parseActivityRequest, type ActivityRequest } from "./activity-validation";
+import { shouldSuppressDispatch } from "./dispatch-state";
 
 interface Env {
   FIREBASE_PROJECT_ID: string;
@@ -188,39 +189,129 @@ async function listDeviceTokens(env: Env, accessToken: string, uid: string): Pro
   return devices;
 }
 
+const DISPATCH_LEASE_MS = 5 * 60 * 1000;
+
+interface DispatchClaim {
+  duplicate: boolean;
+  path: string;
+  updateTime: string;
+}
+
 async function claimDispatch(
   env: Env,
   accessToken: string,
   actorUid: string,
   input: ActivityRequest
-): Promise<"created" | "duplicate"> {
+): Promise<DispatchClaim> {
   const material = new TextEncoder().encode([
     input.type, actorUid, input.recipientUid, input.relatedId, input.sourceEventId
   ].join("|"));
   const digest = await crypto.subtle.digest("SHA-256", material);
   const id = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  const response = await fetch(
-    `${firestoreRoot(env)}/pushDispatches?documentId=${id}`,
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "content-type": "application/json"
-      },
-      body: JSON.stringify({
-        fields: {
-          actorUid: { stringValue: actorUid },
-          recipientUid: { stringValue: input.recipientUid },
-          type: { stringValue: input.type },
-          createdAt: { timestampValue: new Date().toISOString() },
-          expiresAt: { timestampValue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() }
-        }
-      })
-    }
-  );
-  if (response.status === 409) return "duplicate";
-  if (!response.ok) throw new Error("No se pudo registrar el envío de forma segura.");
-  return "created";
+  const path = `pushDispatches/${id}`;
+  const now = Date.now();
+  const leaseUntil = new Date(now + DISPATCH_LEASE_MS).toISOString();
+  const created = await fetch(`${firestoreRoot(env)}/pushDispatches?documentId=${id}`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      fields: {
+        actorUid: { stringValue: actorUid },
+        recipientUid: { stringValue: input.recipientUid },
+        type: { stringValue: input.type },
+        status: { stringValue: "pending" },
+        attempt: { integerValue: "1" },
+        leaseUntil: { timestampValue: leaseUntil },
+        createdAt: { timestampValue: new Date(now).toISOString() },
+        updatedAt: { timestampValue: new Date(now).toISOString() },
+        expiresAt: { timestampValue: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString() }
+      }
+    })
+  });
+
+  if (created.ok) {
+    const document = await created.json() as { updateTime?: string };
+    if (!document.updateTime) throw new Error("Firestore no devolvió la versión del envío.");
+    return { duplicate: false, path, updateTime: document.updateTime };
+  }
+  if (created.status !== 409) throw new Error("No se pudo registrar el envío de forma segura.");
+
+  const existing = await readDocument(env, accessToken, path);
+  if (!existing) throw new Error("No se pudo recuperar el estado del envío.");
+  const status = decodeFirestoreString(existing.fields?.status);
+  const leaseValue = existing.fields?.leaseUntil?.timestampValue;
+  const leaseMillis = typeof leaseValue === "string" ? Date.parse(leaseValue) : Number.NaN;
+  // Legacy records without a status are treated as completed to avoid resending
+  // notifications that may already have been delivered by the previous version.
+  if (shouldSuppressDispatch(status, leaseMillis, now)) {
+    return { duplicate: true, path, updateTime: String(existing.updateTime ?? "") };
+  }
+
+  const updateTime = String(existing.updateTime ?? "");
+  if (!updateTime) return { duplicate: true, path, updateTime: "" };
+  const rawAttempt = existing.fields?.attempt?.integerValue;
+  const attempt = Number.parseInt(String(rawAttempt ?? "1"), 10);
+  const patchUrl = new URL(`${firestoreRoot(env)}/${encodeDocumentPath(path)}`);
+  for (const field of ["status", "attempt", "leaseUntil", "updatedAt"]) {
+    patchUrl.searchParams.append("updateMask.fieldPaths", field);
+  }
+  patchUrl.searchParams.set("currentDocument.updateTime", updateTime);
+  const reclaimed = await fetch(patchUrl.toString(), {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      fields: {
+        status: { stringValue: "pending" },
+        attempt: { integerValue: String(Number.isFinite(attempt) ? attempt + 1 : 2) },
+        leaseUntil: { timestampValue: leaseUntil },
+        updatedAt: { timestampValue: new Date(now).toISOString() }
+      }
+    })
+  });
+  if (reclaimed.status === 409 || reclaimed.status === 412) {
+    return { duplicate: true, path, updateTime };
+  }
+  if (!reclaimed.ok) throw new Error("No se pudo recuperar un envío pendiente.");
+  const document = await reclaimed.json() as { updateTime?: string };
+  if (!document.updateTime) throw new Error("Firestore no devolvió la nueva versión del envío.");
+  return { duplicate: false, path, updateTime: document.updateTime };
+}
+
+async function finishDispatch(
+  env: Env,
+  accessToken: string,
+  claim: DispatchClaim,
+  status: "sent" | "failed",
+  delivered: number
+): Promise<void> {
+  if (!claim.updateTime) return;
+  const url = new URL(`${firestoreRoot(env)}/${encodeDocumentPath(claim.path)}`);
+  for (const field of ["status", "delivered", "leaseUntil", "updatedAt"]) {
+    url.searchParams.append("updateMask.fieldPaths", field);
+  }
+  url.searchParams.set("currentDocument.updateTime", claim.updateTime);
+  const response = await fetch(url.toString(), {
+    method: "PATCH",
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({
+      fields: {
+        status: { stringValue: status },
+        delivered: { integerValue: String(delivered) },
+        leaseUntil: { timestampValue: new Date(0).toISOString() },
+        updatedAt: { timestampValue: new Date().toISOString() }
+      }
+    })
+  });
+  if (!response.ok) throw new Error("No se pudo actualizar el estado del envío.");
 }
 
 async function sendPush(
@@ -290,18 +381,30 @@ async function handleActivityNotification(request: Request, env: Env): Promise<R
     if (devices.length === 0) return json({ accepted: true, delivered: 0, reason: "Sin dispositivos registrados." });
 
     const claim = await claimDispatch(env, accessToken, actorUid, input);
-    if (claim === "duplicate") return json({ accepted: true, delivered: 0, duplicate: true });
+    if (claim.duplicate) return json({ accepted: true, delivered: 0, duplicate: true });
 
     const copy = notificationCopy(input.type, verified.actorName);
     let delivered = 0;
-    for (const device of devices) {
-      const result = await sendPush(env, accessToken, device.token, copy, input);
-      if (result === "sent") delivered++;
-      else {
-        await firestoreRequest(env, accessToken, `users/${input.recipientUid}/fcmTokens/${device.id}`, { method: "DELETE" });
+    try {
+      for (const device of devices) {
+        const result = await sendPush(env, accessToken, device.token, copy, input);
+        if (result === "sent") delivered++;
+        else {
+          await firestoreRequest(env, accessToken, `users/${input.recipientUid}/fcmTokens/${device.id}`, { method: "DELETE" });
+        }
       }
+      await finishDispatch(env, accessToken, claim, "sent", delivered);
+      return json({ accepted: true, delivered });
+    } catch (error) {
+      // A failed or abandoned dispatch becomes retryable. FCM is at-least-once:
+      // a retry after partial delivery may duplicate a push to an earlier device.
+      try {
+        await finishDispatch(env, accessToken, claim, "failed", delivered);
+      } catch {
+        // The five-minute lease still permits recovery if this update also fails.
+      }
+      throw error;
     }
-    return json({ accepted: true, delivered });
   } catch {
     return json({ error: "No se pudo procesar la notificación." }, 502);
   }

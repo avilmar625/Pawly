@@ -9,7 +9,7 @@ Backend inicial para notificaciones push de actividad. Está diseñado para el p
 - Comprueba bloqueos en ambos sentidos.
 - Obtiene los tokens FCM del destinatario mediante paginación acotada (hasta 500 dispositivos) y envía el mensaje mediante FCM HTTP v1.
 - Para comentarios, exige que el identificador coincida con el último comentario registrado en la publicación, además de comprobar autoría y existencia.
-- Registra un identificador idempotente en `pushDispatches` para evitar reenvíos repetidos.
+- Registra un identificador idempotente en `pushDispatches`, con estado, lease temporal y recuperación condicional de envíos fallidos o abandonados.
 - Elimina tokens FCM que FCM devuelve como no registrados.
 
 El cliente nunca recibe ni contiene la clave privada de la cuenta de servicio.
@@ -50,7 +50,8 @@ No incluir barras ni rutas al final. Después, volver a compilar Android. Si la 
 
 - El endpoint solo admite los tres tipos de interacción definidos; no acepta texto arbitrario ni tokens FCM aportados por el cliente.
 - Las reglas de Firestore siguen siendo obligatorias. El Worker no las sustituye.
-- El registro de idempotencia evita repetir el envío para la misma interacción.
+- Los envíos completados quedan marcados como `sent`; los fallidos se pueden reintentar y los procesos abandonados se recuperan al expirar un lease de cinco minutos. Los registros antiguos sin estado se tratan como completados para evitar duplicados tras la actualización. La entrega FCM es *at-least-once*: si un proceso falla después de entregar a algunos dispositivos pero antes de guardar el resultado, un reintento puede duplicar esa notificación.
+- Para limpiar automáticamente `pushDispatches` después de 30 días, configurar una política TTL de Firestore sobre el campo `expiresAt` de esa colección. Sin esa política, el campo por sí solo no elimina documentos.
 - El límite gratuito de Workers aplica a las peticiones y CPU; Firestore y FCM tienen sus propias cuotas.
 - No se incluye aquí el borrado de cuentas. No se debe presentar el borrado como automático hasta completar y probar la cascada de datos, medios Cloudinary y autenticación.
 - No se ha desplegado este Worker desde GitHub: el propietario de la cuenta debe configurar los secretos y ejecutar el despliegue.
