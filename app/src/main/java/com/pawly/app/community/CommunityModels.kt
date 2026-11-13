@@ -59,7 +59,8 @@ data class PawlyConversation(
     val otherUserName: String = "",
     val lastMessage: String = "",
     val updatedAt: Long = 0,
-    val otherUserPhoto: String = ""
+    val otherUserPhoto: String = "",
+    val unreadCount: Int = 0
 )
 
 data class PawlyMessage(
