@@ -371,10 +371,9 @@ private fun CreatePawlyEventDialog(
                 }
                 if (eventDateTimeMillis != null && !eventDateIsFuture) Text(tr("La fecha y hora deben ser futuras."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
                         FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value), maxLines = 1) })
