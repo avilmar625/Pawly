@@ -121,12 +121,27 @@ internal fun PawlyEventsScreen(
             if (!mapOnly) FilledTonalIconButton(onClick = { createError = null; showCreate = true }) { Icon(Icons.Default.Add, contentDescription = tr("Crear evento")) }
         }
         Spacer(Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(7.dp)
-        ) {
-            listOf("Todos", "Quedada", "Ruta", "Taller", "Adopción").forEach { item ->
-                FilterChip(selected = category == item, onClick = { category = item }, label = { Text(tr(if (item == "Todos") "Todos los eventos" else item), maxLines = 1) })
+        var eventCategoryMenuExpanded by remember { mutableStateOf(false) }
+        Box(Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { eventCategoryMenuExpanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Icon(Icons.Default.FilterList, null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(9.dp))
+                Text(tr("Tipo de evento: ") + tr(if (category == "Todos") "Todos los eventos" else category), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
+                Icon(Icons.Default.ExpandMore, null)
+            }
+            DropdownMenu(expanded = eventCategoryMenuExpanded, onDismissRequest = { eventCategoryMenuExpanded = false }, modifier = Modifier.fillMaxWidth(.9f)) {
+                listOf("Todos", "Quedada", "Ruta", "Taller", "Adopción").forEach { item ->
+                    DropdownMenuItem(
+                        text = { Text(tr(if (item == "Todos") "Todos los eventos" else item), fontWeight = if (category == item) FontWeight.Bold else FontWeight.Normal) },
+                        leadingIcon = { if (category == item) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                        onClick = { category = item; eventCategoryMenuExpanded = false }
+                    )
+                }
             }
         }
         Spacer(Modifier.height(8.dp))
