@@ -11,7 +11,6 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.pawly.app.MainActivity
 import com.pawly.app.R
-import java.util.Date
 
 /**
  * Schedules local care reminders and persists their source data so Android can
