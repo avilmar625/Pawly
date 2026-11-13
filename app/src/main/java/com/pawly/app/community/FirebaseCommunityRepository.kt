@@ -242,7 +242,8 @@ class FirebaseCommunityRepository private constructor(
             "displayName" to cleanName, "bio" to cleanBio, "isPublic" to isPublic,
             "accountType" to accountType, "professionalCategory" to cleanCategory,
             "professionalLocation" to cleanLocation, "professionalDescription" to cleanDescription,
-            "professionalContactPublic" to showContact
+            "professionalContactPublic" to showContact,
+            "professionalPublicContact" to if (showContact) cleanContact else ""
         ))
         if (cleanContact.isNotBlank()) batch.set(privateContactRef, mapOf("value" to cleanContact))
         else batch.delete(privateContactRef)
@@ -521,12 +522,12 @@ class FirebaseCommunityRepository private constructor(
             }
     }
 
-    suspend fun publishPost(text: String, imageUrl: String, videoUrl: String, dogName: String, category: String = "STORY") {
+    suspend fun publishPost(text: String, imageUrl: String, videoUrl: String, dogName: String, category: String = "STORY"): String {
         val uid = requireVerifiedUid()
         val user = getMyProfile() ?: error("Completa primero tu perfil.")
         CommunityInputRules.validatePost(text, imageUrl, videoUrl)
         require(category in setOf("STORY", "ADOPTION", "LOST", "FOUND", "FOSTER")) { "Selecciona una categoría válida." }
-        db.collection("posts").add(
+        val created = db.collection("posts").add(
             mapOf(
                 "authorId" to uid,
                 "authorName" to user.displayName.ifBlank { user.username },
@@ -542,6 +543,7 @@ class FirebaseCommunityRepository private constructor(
                 "createdAt" to FieldValue.serverTimestamp()
             )
         ).await()
+        return created.id
     }
 
     suspend fun toggleLike(postId: String) {
@@ -747,6 +749,101 @@ class FirebaseCommunityRepository private constructor(
             ))
         }
         batch.commit().await()
+    }
+
+    /** Saves a coarse location (rounded to ~1 km) and explicit radius consent for lost-pet alerts. */
+    suspend fun saveLostPetSubscription(enabled: Boolean, radiusKm: Int, latitude: Double, longitude: Double) {
+        val uid = requireVerifiedUid()
+        require(radiusKm in setOf(5, 10, 20)) { "Selecciona un radio de 5, 10 o 20 km." }
+        require(latitude in -90.0..90.0 && longitude in -180.0..180.0)
+        db.collection("lostPetSubscriptions").document(uid).set(mapOf(
+            "uid" to uid, "enabled" to enabled, "radiusKm" to radiusKm,
+            "latitude" to kotlin.math.round(latitude * 100.0) / 100.0,
+            "longitude" to kotlin.math.round(longitude * 100.0) / 100.0,
+            "updatedAt" to FieldValue.serverTimestamp()
+        )).await()
+    }
+
+    suspend fun publishLostPetAlert(text: String, imageUrl: String, dogName: String, latitude: Double, longitude: Double): String {
+        require(latitude in -90.0..90.0 && longitude in -180.0..180.0)
+        val postId = publishPost(text, imageUrl, "", dogName, "LOST")
+        db.collection("lostPetAlerts").document(postId).set(mapOf(
+            "postId" to postId, "authorUid" to requireUid(), "dogName" to dogName.take(40),
+            "latitude" to kotlin.math.round(latitude * 100.0) / 100.0,
+            "longitude" to kotlin.math.round(longitude * 100.0) / 100.0,
+            "status" to "active", "createdAt" to FieldValue.serverTimestamp()
+        )).await()
+        runCatching { postBackend("/v1/lost-pet-alerts", JSONObject().put("alertId", postId)) }
+        return postId
+    }
+
+    suspend fun loadCommunityPlaces(): List<PawlyCommunityPlace> {
+        requireUid()
+        return db.collection("communityPlaces").whereEqualTo("status", "approved").limit(100).get().await()
+            .documents.map { doc ->
+                PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
+                    doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
+                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L)
+            }.sortedByDescending { it.createdAt }
+    }
+
+    suspend fun submitCommunityPlace(name: String, category: String, location: String, description: String) {
+        val uid = requireVerifiedUid()
+        val cleanName = name.trim()
+        val cleanLocation = location.trim()
+        val cleanDescription = description.trim()
+        require(cleanName.length in 3..80 && cleanLocation.length in 3..120 && cleanDescription.length in 10..500)
+        require(category in setOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro"))
+        db.collection("communityPlaces").add(mapOf(
+            "name" to cleanName, "category" to category, "location" to cleanLocation,
+            "description" to cleanDescription, "authorUid" to uid, "status" to "pending",
+            "createdAt" to FieldValue.serverTimestamp()
+        )).await()
+    }
+
+    suspend fun searchProfessionalProfiles(category: String = "", area: String = ""): List<PawlyUser> {
+        val uid = requireUid()
+        val profiles = db.collection("users").whereEqualTo("isPublic", true).limit(100).get().await()
+            .documents.mapNotNull { it.toPawlyUser() }
+            .filter { it.accountType == "professional" }
+            .filter { category.isBlank() || it.professionalCategory.contains(category, true) }
+            .filter { area.isBlank() || it.professionalLocation.contains(area, true) }
+        val blocked = db.collection("users").document(uid).collection("blocked").get().await().documents.map { it.id }.toSet()
+        return profiles.filter { it.uid != uid && it.uid !in blocked }
+    }
+
+    /** Raw contact numbers are sent only over TLS to the trusted Worker and never stored. */
+    suspend fun setPhoneDiscovery(phone: String, enabled: Boolean) {
+        require(phone.trim().length in 7..24) { "Introduce un teléfono válido." }
+        postBackend("/v1/contact-discovery", JSONObject().put("enabled", enabled).put("phone", phone.trim()))
+    }
+
+    suspend fun findContactMatches(phoneNumbers: List<String>): List<PawlyContactMatch> {
+        require(phoneNumbers.size in 1..30) { "Selecciona entre 1 y 30 contactos." }
+        val response = postBackend("/v1/contact-matches", JSONObject().put("phoneNumbers", org.json.JSONArray(phoneNumbers)))
+        val items = response.optJSONArray("matches") ?: org.json.JSONArray()
+        return List(items.length()) { i ->
+            val item = items.getJSONObject(i)
+            PawlyContactMatch(item.optString("uid"), item.optString("displayName"), item.optString("username"), item.optString("photoUrl"))
+        }.filter { it.uid.isNotBlank() }
+    }
+
+    private suspend fun postBackend(path: String, payload: JSONObject): JSONObject {
+        val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')
+        check(baseUrl.isNotBlank()) { "El servicio seguro de Pawly todavía no está configurado." }
+        val token = auth.currentUser?.getIdToken(false)?.await()?.token ?: error("Inicia sesión de nuevo.")
+        val request = Request.Builder().url(baseUrl + path).header("Authorization", "Bearer $token")
+            .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())).build()
+        return withContext(Dispatchers.IO) {
+            backendHttpClient.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw IllegalStateException(
+                    runCatching { JSONObject(body).optString("error") }.getOrNull().takeUnless { it.isNullOrBlank() }
+                        ?: "El servicio de Pawly respondió ${response.code}."
+                )
+                if (body.isBlank()) JSONObject() else JSONObject(body)
+            }
+        }
     }
 
     /** Loads public community events; coordinates belong to the event venue, never to a person. */
@@ -1186,6 +1283,6 @@ class FirebaseCommunityRepository private constructor(
             professionalDescription = getString("professionalDescription") ?: "",
             professionalContact = "",
             professionalContactPublic = getBoolean("professionalContactPublic") ?: false
-        )
+        ).copy(professionalContact = getString("professionalPublicContact").orEmpty())
     }
 }
