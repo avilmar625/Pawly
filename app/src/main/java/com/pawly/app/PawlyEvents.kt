@@ -139,20 +139,21 @@ internal fun PawlyEventsScreen(
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                        settings.userAgentString = "Pawly/1.0 (Android; https://github.com/avilmar625/Pawly)"
                         setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                     }
                 },
                 update = { web ->
                     val zoom = if (mapPoints.isEmpty()) 11 else 12
                     val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>" +
+                        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' integrity='sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' crossorigin='anonymous'>" +
                         "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
-                        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script></head><body><div id='map'></div><script>" +
+                        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' crossorigin='anonymous'></script></head><body><div id='map'></div><script>" +
                         "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);" +
                         "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
                         "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
                         "if(points.length>1){map.fitBounds(points.map(p=>[p.lat,p.lon]),{padding:[24,24]});}</script></body></html>"
-                    web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
+                    web.loadDataWithBaseURL("https://pawly.invalid/", html, "text/html", "UTF-8", null)
                 }
             )
             Text(
@@ -365,19 +366,20 @@ private fun EventLocationPickerDialog(
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
                             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                            settings.userAgentString = "Pawly/1.0 (Android; https://github.com/avilmar625/Pawly)"
                             addJavascriptInterface(bridge, "PawlyEventMap")
                             setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                             val markerScript = if (hasInitialMarker) "marker=L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
                             val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                                "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'>" +
+                                "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' integrity='sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' crossorigin='anonymous'>" +
                                 "<style>html,body,#map{height:100%;margin:0}</style>" +
-                                "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script></head><body><div id='map'></div><script>" +
+                                "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' crossorigin='anonymous'></script></head><body><div id='map'></div><script>" +
                                 "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
                                 "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
                                 "let marker=null;$markerScript" +
                                 "map.on('click',function(e){if(marker)map.removeLayer(marker);marker=L.marker(e.latlng).addTo(map);window.PawlyEventMap.select(e.latlng.lat,e.latlng.lng);});" +
                                 "</script></body></html>"
-                            loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
+                            loadDataWithBaseURL("https://pawly.invalid/", html, "text/html", "UTF-8", null)
                         }
                     }
                 )
