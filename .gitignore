@@ -17,3 +17,8 @@ local.properties
 
 # Firebase CLI project selection (local to this checkout)
 /.firebaserc
+
+# Cloudflare Worker local dependencies and secrets
+/backend/cloudflare-worker/node_modules/
+/backend/cloudflare-worker/.wrangler/
+/backend/cloudflare-worker/.dev.vars
