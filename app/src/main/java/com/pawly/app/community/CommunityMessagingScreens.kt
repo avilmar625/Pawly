@@ -154,6 +154,14 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
         val listener = repo.listenConversations({ conversations = it }, { error = it })
         onDispose { listener.remove() }
     }
+    var unreadCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    LaunchedEffect(conversations) {
+        val updated = mutableMapOf<String, Int>()
+        conversations.take(30).forEach { conversation ->
+            updated[conversation.id] = runCatching { repo.getUnreadMessageCount(conversation.id) }.getOrDefault(0)
+        }
+        unreadCounts = updated
+    }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (conversations.isEmpty()) item { EmptyCommunityCard("Tu bandeja está vacía", "Cuando escribas a otra persona, la conversación aparecerá aquí.") }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
@@ -165,6 +173,18 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
                     Column(Modifier.weight(1f)) {
                         Text(c.otherUserName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Text(c.lastMessage.ifBlank { "Empezad a hablar" }, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                    val unread = unreadCounts[c.id] ?: 0
+                    if (unread > 0) {
+                        Surface(color = Color(0xFFC83D4B), shape = CircleShape) {
+                            Text(
+                                unread.coerceAtMost(99).toString(),
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                     Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                 }
