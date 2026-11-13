@@ -18,6 +18,9 @@ import android.location.LocationListener
 import android.os.Build
 import android.os.Looper
 import android.location.Geocoder
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import androidx.compose.ui.viewinterop.AndroidView
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -345,6 +348,24 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             }
             currentCoordinates?.let { (latitude, longitude) ->
                 val point = "$latitude,$longitude"
+                val mapUrl = "https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.035},${latitude - 0.025},${longitude + 0.035},${latitude + 0.025}&layer=mapnik&marker=$latitude,$longitude"
+                Text(tr("Mapa de tu zona"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                AndroidView(
+                    modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(20.dp)),
+                    factory = { view ->
+                        WebView(view).apply {
+                            settings.javaScriptEnabled = false
+                            settings.domStorageEnabled = true
+                            settings.loadsImagesAutomatically = true
+                            settings.blockNetworkImage = false
+                            settings.allowFileAccess = false
+                            settings.allowContentAccess = false
+                            webViewClient = object : WebViewClient() {}
+                            setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
+                        }
+                    },
+                    update = { web -> if (web.tag != mapUrl) { web.tag = mapUrl; web.loadUrl(mapUrl) } }
+                )
                 val searches = listOf("Parques caninos" to "parques para perros", "Protectoras" to "protectoras de animales", "Veterinarios" to "veterinarios", "Urgencias veterinarias" to "urgencias veterinarias 24 horas", "Playas caninas" to "playas para perros", "Restaurantes dog-friendly" to "restaurantes que admiten perros", "Alojamientos" to "alojamientos que admiten perros", "Rutas" to "rutas de senderismo aptas para perros")
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(tr("Cerca de la ubicación obtenida"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
