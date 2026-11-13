@@ -396,31 +396,60 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 }
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
-                FilterChip(
-                    selected = page == item,
-                    onClick = { page = item; selectedUser = null; chat = null },
-                    label = {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(tr(item.label), maxLines = 1)
-                            if (item == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
-                                Surface(color = MaterialTheme.colorScheme.error, shape = CircleShape) {
-                                    Text(
-                                        unreadNotifications.coerceAtMost(99).toString(),
-                                        color = MaterialTheme.colorScheme.onError,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                                    )
+        var communityMenuExpanded by remember { mutableStateOf(false) }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+            OutlinedButton(
+                onClick = { communityMenuExpanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 11.dp)
+            ) {
+                Icon(
+                    when (page) {
+                        CommunityPage.FEED -> Icons.Default.DynamicFeed
+                        CommunityPage.PEOPLE -> Icons.Default.People
+                        CommunityPage.MESSAGES -> Icons.Default.Chat
+                        CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
+                        CommunityPage.EVENTS -> Icons.Default.Event
+                        CommunityPage.MODERATION -> Icons.Default.Shield
+                    },
+                    null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(tr(page.label), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start, fontWeight = FontWeight.SemiBold)
+                if (page == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
+                    Surface(color = MaterialTheme.colorScheme.error, shape = CircleShape) {
+                        Text(unreadNotifications.coerceAtMost(99).toString(), color = MaterialTheme.colorScheme.onError, modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.width(7.dp))
+                }
+                Icon(Icons.Default.ExpandMore, null)
+            }
+            DropdownMenu(expanded = communityMenuExpanded, onDismissRequest = { communityMenuExpanded = false }, modifier = Modifier.fillMaxWidth(.9f)) {
+                CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(tr(item.label), modifier = Modifier.weight(1f))
+                                if (item == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
+                                    Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
                                 }
                             }
-                        }
-                    },
-                    shape = RoundedCornerShape(50)
-                )
+                        },
+                        leadingIcon = {
+                            Icon(when (item) {
+                                CommunityPage.FEED -> Icons.Default.DynamicFeed
+                                CommunityPage.PEOPLE -> Icons.Default.People
+                                CommunityPage.MESSAGES -> Icons.Default.Chat
+                                CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
+                                CommunityPage.EVENTS -> Icons.Default.Event
+                                CommunityPage.MODERATION -> Icons.Default.Shield
+                            }, null)
+                        },
+                        onClick = { page = item; selectedUser = null; chat = null; communityMenuExpanded = false }
+                    )
+                }
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
