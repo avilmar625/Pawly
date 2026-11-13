@@ -21,7 +21,7 @@ import java.util.TimeZone
  * recreate alarms after a reboot or application update.
  */
 internal object CareReminderScheduler {
-    private const val CHANNEL_ID = "pawly_care_reminders"
+    internal const val CHANNEL_ID = "pawly_care_reminders"
     private const val ACTION = "com.pawly.app.action.CARE_REMINDER"
     private const val PREFS = "pawly_care_reminders"
     private const val PREFIX = "reminder:"
