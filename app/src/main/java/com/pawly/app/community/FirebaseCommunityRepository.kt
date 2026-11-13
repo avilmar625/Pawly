@@ -311,19 +311,44 @@ class FirebaseCommunityRepository private constructor(
         return dogs
     }
 
-        private suspend fun createNotification(targetUid: String, type: String, message: String, relatedId: String = "") {
+    private suspend fun createNotification(
+        targetUid: String,
+        type: String,
+        message: String,
+        relatedId: String = "",
+        sourceEventId: String = ""
+    ) {
         val actorUid = requireUid()
         if (targetUid.isBlank() || targetUid == actorUid) return
         val actor = getMyProfile()
-        db.collection("users").document(targetUid).collection("notifications").add(mapOf(
-            "actorId" to actorUid,
-            "actorName" to (actor?.displayName?.ifBlank { actor.username } ?: "Usuario Pawly"),
-            "type" to type,
-            "message" to message.take(180),
-            "relatedId" to relatedId.take(128),
-            "createdAt" to FieldValue.serverTimestamp(),
-            "read" to false
-        )).await()
+        val safeActorName = actor?.displayName?.ifBlank { actor.username } ?: "Usuario Pawly"
+        val notificationId = when (type) {
+            "LIKE" -> "LIKE-$actorUid-$relatedId"
+            "COMMENT" -> "COMMENT-$actorUid-$sourceEventId"
+            "FOLLOW" -> "FOLLOW-$actorUid-$targetUid"
+            else -> return
+        }
+        val notification = db.collection("users").document(targetUid)
+            .collection("notifications").document(notificationId)
+        try {
+            // Rules verify the underlying like, comment or follower relationship.
+            // Deterministic IDs prevent replaying the same interaction as new alerts.
+            if (notification.get().await().exists()) return
+            notification.set(mapOf(
+                "actorId" to actorUid,
+                "actorName" to safeActorName.take(80),
+                "type" to type,
+                "message" to message,
+                "relatedId" to relatedId.take(128),
+                "sourceEventId" to sourceEventId.take(128),
+                "createdAt" to FieldValue.serverTimestamp(),
+                "read" to false
+            )).await()
+        } catch (_: Exception) {
+            // The interaction itself has already committed. Notification failure must
+            // never make a successful like/comment/follow appear to have failed.
+            // Firestore rules remain the security boundary, not this client-side guard.
+        }
     }
 
     fun listenNotifications(onData: (List<PawlyNotification>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
@@ -502,7 +527,7 @@ class FirebaseCommunityRepository private constructor(
             ))
         }.await()
         val ownerUid = post.get().await().getString("authorId").orEmpty()
-        createNotification(ownerUid, "COMMENT", "Ha comentado tu publicación.", postId)
+        createNotification(ownerUid, "COMMENT", "Ha comentado tu publicación.", postId, comment.id)
     }
 
     suspend fun searchUsers(query: String): List<PawlyUser> {
