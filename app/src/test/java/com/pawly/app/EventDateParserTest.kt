@@ -30,4 +30,18 @@ class EventDateParserTest {
             EventDateParser.parseMillis("12/06/2028 25:61", madrid)
         }
     }
+    @Test
+    fun rejectsNonexistentLocalTimeDuringSpringClockChange() {
+        assertThrows(IllegalArgumentException::class.java) {
+            EventDateParser.parseMillis("31/03/2024 02:30", madrid)
+        }
+    }
+
+    @Test
+    fun rejectsAmbiguousLocalTimeDuringAutumnClockChange() {
+        assertThrows(IllegalArgumentException::class.java) {
+            EventDateParser.parseMillis("27/10/2024 02:30", madrid)
+        }
+    }
+
 }
