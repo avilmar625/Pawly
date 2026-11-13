@@ -162,7 +162,7 @@ internal fun PawlyEventsScreen(
                 modifier = Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(22.dp)),
                 factory = { view ->
                     WebView(view).apply {
-                        settings.javaScriptEnabled = false
+                        settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.loadsImagesAutomatically = true
                         settings.blockNetworkImage = false
