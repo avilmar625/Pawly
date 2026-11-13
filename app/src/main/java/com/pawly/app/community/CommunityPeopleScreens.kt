@@ -1,6 +1,8 @@
 package com.pawly.app
 
 import android.Manifest
+import android.content.Intent
+import android.provider.ContactsContract
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
@@ -41,17 +43,40 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (String) -> Unit) {
+    val context = LocalContext.current
     var query by remember { mutableStateOf("") }
     var users by remember { mutableStateOf(emptyList<PawlyUser>()) }
     var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
+    var inviteNotice by remember { mutableStateOf<String?>(null) }
+    val contactPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { contactUri ->
+        if (contactUri != null) {
+            val contactName = runCatching {
+                context.contentResolver.query(contactUri, arrayOf(ContactsContract.Contacts.DISPLAY_NAME), null, null, null)
+                    ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+            }.getOrNull().orEmpty()
+            val invite = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, "¡Hola! Estoy usando Pawly, una comunidad para personas que comparten su vida con animales. ¡Únete y nos encontramos allí!")
+            }
+            runCatching { context.startActivity(Intent.createChooser(invite, if (contactName.isBlank()) "Invitar a Pawly" else "Invitar a $contactName")) }
+                .onFailure { inviteNotice = "No se pudo abrir el menú para compartir." }
+        }
+    }
     LaunchedEffect(query) {
         if (query.trim().length < 2) { users = emptyList(); return@LaunchedEffect }
         delay(350); loading = true
         try { users = repo.searchUsers(query); error = null } catch (e: Exception) { error = e.localizedMessage } finally { loading = false }
     }
     Column(Modifier.fillMaxSize().padding(16.dp)) {
-        OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text(tr("Buscar personas")) }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
+        OutlinedButton(onClick = { contactPicker.launch(null) }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Contacts, null)
+            Spacer(Modifier.width(8.dp))
+            Text(tr("Invitar a alguien desde tu agenda"))
+        }
+        Text(tr("La agenda se abre mediante el selector seguro de Android. Pawly no lee ni sube tu lista de contactos."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        if (inviteNotice != null) Text(inviteNotice!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        OutlinedTextField(query, { query = it }, modifier = Modifier.fillMaxWidth(), label = { Text(tr("Buscar personas en Pawly")) }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true)
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         if (query.length < 2) Text(tr("Escribe al menos dos caracteres."), color = Muted)
