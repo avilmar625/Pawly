@@ -1,5 +1,6 @@
 package com.pawly.app
 
+import com.pawly.app.community.ProfessionalContactPolicy
 import android.content.Context
 import android.net.Uri
 import com.google.firebase.FirebaseApp
@@ -306,9 +307,9 @@ class FirebaseCommunityRepository private constructor(
     suspend fun getMyProfile(): PawlyUser? = ensureMyProfile()
 
     suspend fun refreshMyProfile(): PawlyUser {
-        val uid = requireUid()
-        val profile = db.collection("users").document(uid).get().await().toPawlyUser()
-            ?.withPrivateProfessionalContact() ?: ensureMyProfile()
+        // ensureMyProfile refreshes Firestore, migrates legacy public contact data,
+        // and loads the private contact for the account owner.
+        val profile = ensureMyProfile()
         cachedMyProfileState = profile
         return profile
     }
