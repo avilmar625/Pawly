@@ -407,11 +407,14 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 Icon(
                     when (page) {
                         CommunityPage.FEED -> Icons.Default.DynamicFeed
-                        CommunityPage.PEOPLE -> Icons.Default.People
+                        CommunityPage.SEARCH -> Icons.Default.People
                         CommunityPage.MESSAGES -> Icons.Default.Chat
                         CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
                         CommunityPage.EVENTS -> Icons.Default.Event
+                        CommunityPage.MAP -> Icons.Default.Map
+                        CommunityPage.PROFILE -> Icons.Default.Person
                         CommunityPage.MODERATION -> Icons.Default.Shield
+                        CommunityPage.SEARCH -> Icons.Default.People
                     },
                     null,
                     tint = MaterialTheme.colorScheme.primary
@@ -440,11 +443,14 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                         leadingIcon = {
                             Icon(when (item) {
                                 CommunityPage.FEED -> Icons.Default.DynamicFeed
-                                CommunityPage.PEOPLE -> Icons.Default.People
+                                CommunityPage.SEARCH -> Icons.Default.People
                                 CommunityPage.MESSAGES -> Icons.Default.Chat
                                 CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
                                 CommunityPage.EVENTS -> Icons.Default.Event
+                                CommunityPage.MAP -> Icons.Default.Map
+                                CommunityPage.PROFILE -> Icons.Default.Person
                                 CommunityPage.MODERATION -> Icons.Default.Shield
+                                CommunityPage.SEARCH -> Icons.Default.People
                             }, null)
                         },
                         onClick = { page = item; selectedUser = null; chat = null; communityMenuExpanded = false }
