@@ -70,7 +70,7 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles',
           'accountType', 'professionalCategory', 'professionalLocation',
-          'professionalDescription', 'professionalContactPublic', 'professionalContact'
+          'professionalDescription', 'professionalContactPublic', 'professionalContact', 'professionalPublicContact'
         ])
         && !('professionalContact' in request.resource.data)
         && (!('accountType' in request.resource.data)
@@ -86,6 +86,9 @@ service cloud.firestore {
             && request.resource.data.professionalDescription.size() <= 500))
         && (!('professionalContactPublic' in request.resource.data)
           || request.resource.data.professionalContactPublic is bool)
+        && (!('professionalPublicContact' in request.resource.data)
+          || (request.resource.data.professionalPublicContact is string
+            && request.resource.data.professionalPublicContact.size() <= 120))
         && (!('accountType' in request.resource.data)
           || request.resource.data.accountType != 'professional'
           || ('professionalCategory' in request.resource.data
@@ -635,6 +638,62 @@ service cloud.firestore {
               && exists(/databases/$(database)/documents/events/$(request.resource.data.targetId))));
       allow read, update, delete: if admin();
     }
+    // Lost-pet alert subscriptions store deliberately coarse coordinates only.
+    match /lostPetSubscriptions/{uid} {
+      allow get: if owner(uid);
+      allow list: if false;
+      allow create, update: if verified() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['uid', 'enabled', 'radiusKm', 'latitude', 'longitude', 'updatedAt'])
+        && request.resource.data.uid == uid
+        && request.resource.data.enabled is bool
+        && request.resource.data.radiusKm in [5, 10, 20]
+        && request.resource.data.latitude is number
+        && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number
+        && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if owner(uid);
+    }
+
+    // Alert coordinates are rounded by the app before storage; exact device locations are never saved.
+    match /lostPetAlerts/{alertId} {
+      allow get, list: if verified() && resource.data.status == 'active';
+      allow create: if verified()
+        && request.resource.data.keys().hasOnly(['postId', 'authorUid', 'dogName', 'latitude', 'longitude', 'status', 'createdAt'])
+        && request.resource.data.postId == alertId
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.dogName is string && request.resource.data.dogName.size() <= 40
+        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && request.resource.data.status == 'active'
+        && request.resource.data.createdAt == request.time
+        && exists(/databases/$(database)/documents/posts/$(alertId))
+        && get(/databases/$(database)/documents/posts/$(alertId)).data.authorId == request.auth.uid
+        && get(/databases/$(database)/documents/posts/$(alertId)).data.category == 'LOST';
+      allow update: if verified() && resource.data.authorUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['active', 'resolved'];
+      allow delete: if false;
+    }
+
+    // Community suggestions are moderated before appearing in Explore.
+    match /communityPlaces/{placeId} {
+      allow get, list: if verified() && resource.data.status == 'approved';
+      allow create: if verified()
+        && request.resource.data.keys().hasOnly(['name', 'category', 'location', 'description', 'authorUid', 'status', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 80
+        && request.resource.data.category in ['Parque', 'Playa', 'Restaurante', 'Alojamiento', 'Ruta', 'Veterinario', 'Otro']
+        && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 120
+        && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 500
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow update: if admin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if admin();
+    }
+
     // Public events are tied to their venue, not to the private location of a person.
     match /events/{eventId} {
       allow get, list: if signedIn();
