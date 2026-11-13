@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -55,6 +57,7 @@ data class PawlyEvent(
     val interestedByMe: Boolean
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PawlyEventsScreen(
     repository: FirebaseCommunityRepository,
@@ -110,7 +113,11 @@ internal fun PawlyEventsScreen(
             if (!mapOnly) FilledTonalIconButton(onClick = { createError = null; showCreate = true }) { Icon(Icons.Default.Add, contentDescription = tr("Crear evento")) }
         }
         Spacer(Modifier.height(12.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
             listOf("Todos", "Quedada", "Ruta", "Taller", "Adopción").forEach { item ->
                 FilterChip(selected = category == item, onClick = { category = item }, label = { Text(tr(if (item == "Todos") "Todos los eventos" else item)) })
             }
@@ -239,6 +246,7 @@ internal fun PawlyEventsScreen(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CreatePawlyEventDialog(
     error: String?,
@@ -273,9 +281,10 @@ private fun CreatePawlyEventDialog(
                 OutlinedTextField(location, { location = it.take(160) }, label = { Text(tr("Lugar o dirección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(date, { date = it.take(80) }, label = { Text(tr("Fecha y hora")) }, singleLine = true, placeholder = { Text(tr("DD/MM/AAAA · HH:mm")) }, modifier = Modifier.fillMaxWidth())
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
                         FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value), maxLines = 1) })
