@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import android.annotation.SuppressLint
+
 import android.content.Intent
 import android.net.Uri
 import android.webkit.WebView
@@ -326,6 +328,7 @@ private fun CreatePawlyEventDialog(
 }
 
 @Composable
+@SuppressLint("JavascriptInterface")
 private fun EventLocationPickerDialog(
     initialLatitude: Double?,
     initialLongitude: Double?,
