@@ -5,8 +5,6 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 class EventDateParserTest {
     private val madrid = ZoneId.of("Europe/Madrid")
