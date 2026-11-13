@@ -1,5 +1,5 @@
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "jose";
-import { parseActivityRequest, type ActivityRequest } from "./activity-validation";
+import { isCurrentComment, parseActivityRequest, type ActivityRequest } from "./activity-validation";
 
 interface Env {
   FIREBASE_PROJECT_ID: string;
@@ -153,6 +153,7 @@ async function verifyActivity(
         env, accessToken, `posts/${input.relatedId}/comments/${input.sourceEventId}`
       );
       if (!comment || decodeFirestoreString(comment.fields?.authorId) !== actorUid) return null;
+      if (!isCurrentComment(decodeFirestoreString(post.fields?.lastCommentId), input.sourceEventId)) return null;
     }
   }
 
@@ -163,17 +164,28 @@ async function verifyActivity(
 }
 
 async function listDeviceTokens(env: Env, accessToken: string, uid: string): Promise<Array<{ id: string; token: string }>> {
-  const response = await fetch(
-    `${firestoreRoot(env)}/users/${encodeURIComponent(uid)}/fcmTokens?pageSize=20`,
-    { headers: { authorization: `Bearer ${accessToken}` } }
-  );
-  if (!response.ok) throw new Error("No se pudieron consultar los dispositivos del destinatario.");
-  const payload = await response.json() as { documents?: any[] };
-  return (payload.documents ?? []).flatMap((doc) => {
-    const token = decodeFirestoreString(doc.fields?.token);
-    const id = String(doc.name ?? "").split("/").pop() ?? "";
-    return token && id ? [{ id, token }] : [];
-  });
+  const devices: Array<{ id: string; token: string }> = [];
+  let pageToken = "";
+  // Bound pagination so a corrupted or unexpectedly large token collection cannot
+  // make a single notification request run indefinitely.
+  for (let page = 0; page < 5; page++) {
+    const url = new URL(`${firestoreRoot(env)}/users/${encodeURIComponent(uid)}/fcmTokens`);
+    url.searchParams.set("pageSize", "100");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const response = await fetch(url.toString(), {
+      headers: { authorization: `Bearer ${accessToken}` }
+    });
+    if (!response.ok) throw new Error("No se pudieron consultar los dispositivos del destinatario.");
+    const payload = await response.json() as { documents?: any[]; nextPageToken?: string };
+    devices.push(...(payload.documents ?? []).flatMap((doc) => {
+      const token = decodeFirestoreString(doc.fields?.token);
+      const id = String(doc.name ?? "").split("/").pop() ?? "";
+      return token && id ? [{ id, token }] : [];
+    }));
+    pageToken = payload.nextPageToken ?? "";
+    if (!pageToken) break;
+  }
+  return devices;
 }
 
 async function claimDispatch(
