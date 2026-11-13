@@ -20,6 +20,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -294,6 +296,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 }
 
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false) {
     var page by remember { mutableStateOf(CommunityPage.FEED) }
@@ -369,9 +372,18 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 7.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
-                FilterChip(selected = page == item, onClick = { page = item; selectedUser = null; chat = null }, label = { Text(tr(item.label), maxLines = 1) }, shape = RoundedCornerShape(50))
+                FilterChip(
+                    selected = page == item,
+                    onClick = { page = item; selectedUser = null; chat = null },
+                    label = { Text(tr(item.label), maxLines = 1) },
+                    shape = RoundedCornerShape(50)
+                )
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
