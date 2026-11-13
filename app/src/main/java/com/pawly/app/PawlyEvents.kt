@@ -79,6 +79,7 @@ internal fun PawlyEventsScreen(
     var reportEventId by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
+    var mapLoadFailed by remember { mutableStateOf(false) }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
     val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
@@ -137,8 +138,10 @@ internal fun PawlyEventsScreen(
             val markers = mapPoints.joinToString(",") { event ->
                 "{lat:${event.latitude},lon:${event.longitude},title:${org.json.JSONObject.quote(event.title)},place:${org.json.JSONObject.quote(event.location)}}"
             }
+            val mapBounds = mapPoints.joinToString(",") { "[${it.latitude},${it.longitude}]" }
+            val mapKey = "$centerLat|$centerLon|$markers"
             AndroidView(
-                modifier = Modifier.fillMaxWidth().height(235.dp).clip(RoundedCornerShape(22.dp)),
+                modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(22.dp)),
                 factory = { view ->
                     WebView(view).apply {
                         settings.javaScriptEnabled = true
@@ -146,23 +149,38 @@ internal fun PawlyEventsScreen(
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        settings.userAgentString = "Pawly/1.0 (Android; https://github.com/avilmar625/Pawly)"
+                        webViewClient = object : WebViewClient() {
+                            override fun onReceivedError(view: WebView, request: android.webkit.WebResourceRequest, error: android.webkit.WebResourceError) {
+                                if (request.isForMainFrame) mapLoadFailed = true
+                            }
+                        }
                         setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                     }
                 },
                 update = { web ->
-                    val zoom = if (mapPoints.isEmpty()) 11 else 12
-                    val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; img-src data: https://*.tile.openstreetmap.org; style-src 'unsafe-inline' https://unpkg.com; script-src 'unsafe-inline' https://unpkg.com; connect-src https://*.tile.openstreetmap.org; font-src data: https://unpkg.com\">" +
-                        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' integrity='sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' crossorigin='anonymous'>" +
-                        "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
-                        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' crossorigin='anonymous'></script></head><body><div id='map'></div><script>" +
-                        "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);" +
-                        "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
-                        "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
-                        "if(points.length>1){map.fitBounds(points.map(p=>[p.lat,p.lon]),{padding:[24,24]});}</script></body></html>"
-                    web.loadDataWithBaseURL("https://pawly.invalid/", html, "text/html", "UTF-8", null)
+                    if (web.tag != mapKey) {
+                        web.tag = mapKey
+                        mapLoadFailed = false
+                        val zoom = if (mapPoints.isEmpty()) 11 else 12
+                        val fallback = org.json.JSONObject.quote("<iframe title='OpenStreetMap' src='https://www.openstreetmap.org/export/embed.html?bbox=-3.9,36.6,-3.4,36.9&layer=mapnik' style='width:100%;height:100%;border:0'></iframe>")
+                        val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                            "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\\\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\\\">" +
+                            "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
+                            "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\\\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\\\"></script></head><body><div id='map'></div><script>" +
+                            "let attempts=0;function initMap(){if(!window.L){if(attempts++<40){setTimeout(initMap,125);return;}document.getElementById('map').innerHTML=$fallback;return;}" +
+                            "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
+                            "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
+                            "if(points.length>1){map.fitBounds(L.latLngBounds([$mapBounds]),{padding:[24,24],maxZoom:14});}}initMap();</script></body></html>"
+                        web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
+                    }
                 }
             )
+            if (mapLoadFailed) {
+                Text(tr("No se pudo cargar el mapa. Comprueba tu conexión."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+            }
+            TextButton(onClick = {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/"))) }
+            }) { Text(tr("Abrir el mapa en el navegador")) }
             Text(
                 tr(if (mapPoints.isEmpty()) "Todavía no hay eventos con ubicación exacta."
                 else "Los marcadores corresponden a lugares de eventos publicados por la comunidad."),
