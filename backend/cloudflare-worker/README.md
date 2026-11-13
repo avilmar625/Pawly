@@ -7,7 +7,8 @@ Backend inicial para notificaciones push de actividad. Está diseñado para el p
 - Verifica el Firebase ID token del usuario con las claves públicas oficiales de Firebase Authentication.
 - Comprueba en Firestore que el like, comentario o seguimiento existe realmente.
 - Comprueba bloqueos en ambos sentidos.
-- Obtiene los tokens FCM del destinatario y envía el mensaje mediante FCM HTTP v1.
+- Obtiene los tokens FCM del destinatario mediante paginación acotada (hasta 500 dispositivos) y envía el mensaje mediante FCM HTTP v1.
+- Para comentarios, exige que el identificador coincida con el último comentario registrado en la publicación, además de comprobar autoría y existencia.
 - Registra un identificador idempotente en `pushDispatches` para evitar reenvíos repetidos.
 - Elimina tokens FCM que FCM devuelve como no registrados.
 
