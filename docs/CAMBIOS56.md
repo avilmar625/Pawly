@@ -17,7 +17,7 @@ Base: `cambios55`
 - Los identificadores de notificación son deterministas para evitar crear múltiples avisos para la misma interacción.
 - Un fallo al crear el aviso no convierte un like, comentario o follow ya confirmado en un falso error de la operación principal.
 
-**Límite:** esto protege la bandeja dentro de Firestore. No envía push. Para enviar push hace falta un emisor de confianza, que se implementará en una fase separada con Cloudflare Workers y secretos configurados fuera de Git.
+**Límite:** las reglas protegen la bandeja de Firestore y el cliente también puede solicitar el envío al Worker. La fuente del Worker ya está implementada en `backend/cloudflare-worker`; no se considera operativo hasta desplegarlo en una cuenta Cloudflare y configurar los secretos de una cuenta de servicio Firebase fuera de Git.
 
 ### 2. Restauración de recordatorios tras reinicio
 
@@ -57,7 +57,7 @@ Confirma que el proyecto activo es `pawly-83dca`. No actives Blaze ni habilites 
 
 ## Pendiente — no declarar listo para producción
 
-1. **Backend de confianza y push:** no se incluye aún un Worker desplegado. No hay claves de servicio ni secretos en el repositorio. El emisor FCM y las operaciones administrativas deben implementarse y probarse con Cloudflare Free.
+1. **Backend de confianza y push:** el Worker de actividad ya está implementado y tiene verificación de Firebase ID tokens, comprobación de la interacción, bloqueos e idempotencia. Sigue sin estar desplegado ni configurado; hacen falta una cuenta Cloudflare, una cuenta de servicio Firebase de privilegios mínimos y secretos fuera de Git. El endpoint debe probarse antes de habilitarlo a usuarios.
 2. **Eliminación real de cuenta:** la aplicación sigue creando una solicitud pendiente. No se ha implementado la eliminación recursiva de Firestore/Auth ni la eliminación de medios Cloudinary. Sigue siendo un bloqueante de publicación.
 3. **Traducciones:** siguen centralizadas en mapas Kotlin. La migración a recursos Android por idioma y pluralización está pendiente.
 4. **Profesionales:** el perfil profesional sigue siendo autodeclarado. No mostrar como verificado hasta implantar una comprobación real y un proceso de revisión.
