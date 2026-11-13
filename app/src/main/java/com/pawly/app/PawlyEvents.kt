@@ -321,6 +321,12 @@ private fun CreatePawlyEventDialog(
     val coordinatesValid = (latitude.isBlank() && longitude.isBlank()) ||
         (parsedLatitude != null && parsedLongitude != null &&
             parsedLatitude in -90.0..90.0 && parsedLongitude in -180.0..180.0)
+    val titleValidationMessage = tr("Escribe un título de al menos 4 caracteres.")
+    val descriptionValidationMessage = tr("Añade una descripción de al menos 10 caracteres.")
+    val locationValidationMessage = tr("Indica el lugar o la dirección del evento.")
+    val dateValidationMessage = tr("Selecciona una fecha y una hora.")
+    val futureDateValidationMessage = tr("La fecha y hora deben ser futuras.")
+    val coordinatesValidationMessage = tr("Quita o corrige el marcador del mapa.")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -401,12 +407,12 @@ private fun CreatePawlyEventDialog(
                     location.trim().length >= 3 && eventDateIsFuture && coordinatesValid,
                 onClick = {
                     validationError = when {
-                        title.trim().length < 4 -> tr("Escribe un título de al menos 4 caracteres.")
-                        description.trim().length < 10 -> tr("Añade una descripción de al menos 10 caracteres.")
-                        location.trim().length < 3 -> tr("Indica el lugar o la dirección del evento.")
-                        eventDateTimeMillis == null -> tr("Selecciona una fecha y una hora.")
-                        !eventDateIsFuture -> tr("La fecha y hora deben ser futuras.")
-                        !coordinatesValid -> tr("Quita o corrige el marcador del mapa.")
+                        title.trim().length < 4 -> titleValidationMessage
+                        description.trim().length < 10 -> descriptionValidationMessage
+                        location.trim().length < 3 -> locationValidationMessage
+                        eventDateTimeMillis == null -> dateValidationMessage
+                        !eventDateIsFuture -> futureDateValidationMessage
+                        !coordinatesValid -> coordinatesValidationMessage
                         else -> null
                     }
                     if (validationError == null) onPublish(title, description, category, location, dateText, parsedLatitude, parsedLongitude)
