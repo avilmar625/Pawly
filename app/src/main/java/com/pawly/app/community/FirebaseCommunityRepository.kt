@@ -311,7 +311,60 @@ class FirebaseCommunityRepository private constructor(
         return dogs
     }
 
-        fun listenFollowingIds(onData: (Set<String>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
+        private suspend fun createNotification(targetUid: String, type: String, message: String, relatedId: String = "") {
+        val actorUid = requireUid()
+        if (targetUid.isBlank() || targetUid == actorUid) return
+        val actor = getMyProfile()
+        db.collection("users").document(targetUid).collection("notifications").add(mapOf(
+            "actorId" to actorUid,
+            "actorName" to (actor?.displayName?.ifBlank { actor.username } ?: "Usuario Pawly"),
+            "type" to type,
+            "message" to message.take(180),
+            "relatedId" to relatedId.take(128),
+            "createdAt" to FieldValue.serverTimestamp(),
+            "read" to false
+        )).await()
+    }
+
+    fun listenNotifications(onData: (List<PawlyNotification>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
+        val uid = requireUid()
+        return db.collection("users").document(uid).collection("notifications")
+            .orderBy("createdAt", Query.Direction.DESCENDING).limit(60)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudieron cargar las notificaciones."); return@addSnapshotListener }
+                onData(snapshot?.documents.orEmpty().map { doc ->
+                    PawlyNotification(
+                        id = doc.id,
+                        actorId = doc.getString("actorId") ?: "",
+                        actorName = doc.getString("actorName") ?: "Usuario Pawly",
+                        type = doc.getString("type") ?: "",
+                        message = doc.getString("message") ?: "",
+                        relatedId = doc.getString("relatedId") ?: "",
+                        createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0,
+                        read = doc.getBoolean("read") ?: false
+                    )
+                })
+            }
+    }
+
+    suspend fun markNotificationRead(notificationId: String) {
+        require(notificationId.isNotBlank())
+        db.collection("users").document(requireUid()).collection("notifications")
+            .document(notificationId).update("read", true).await()
+    }
+
+    suspend fun markAllNotificationsRead() {
+        val uid = requireUid()
+        val docs = db.collection("users").document(uid).collection("notifications")
+            .whereEqualTo("read", false).limit(60).get().await().documents
+        docs.chunked(400).forEach { chunk ->
+            val batch = db.batch()
+            chunk.forEach { batch.update(it.reference, "read", true) }
+            batch.commit().await()
+        }
+    }
+
+    fun listenFollowingIds(onData: (Set<String>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
         val uid = requireUid()
         return db.collection("users").document(uid).collection("following")
             .addSnapshotListener { snapshot, error ->
@@ -417,6 +470,10 @@ class FirebaseCommunityRepository private constructor(
             tx.update(ref, "likedBy", if (liked) FieldValue.arrayRemove(uid) else FieldValue.arrayUnion(uid))
             tx.update(ref, "likeCount", FieldValue.increment(if (liked) -1 else 1))
         }.await()
+        if (!alreadyLiked) {
+            val postOwner = ref.get().await().getString("authorId").orEmpty()
+            createNotification(postOwner, "LIKE", "Le ha gustado tu publicación.", postId)
+        }
     }
 
     fun listenComments(postId: String, onData: (List<PawlyComment>) -> Unit, onError: (String) -> Unit): ListenerRegistration =
@@ -445,6 +502,8 @@ class FirebaseCommunityRepository private constructor(
                 "lastCommentId" to comment.id
             ))
         }.await()
+        val ownerUid = post.get().await().getString("authorId").orEmpty()
+        createNotification(ownerUid, "COMMENT", "Ha comentado tu publicación.", postId)
     }
 
     suspend fun searchUsers(query: String): List<PawlyUser> {
@@ -503,6 +562,7 @@ class FirebaseCommunityRepository private constructor(
                 tx.update(theirProfile, "followersCount", FieldValue.increment(-1))
             }
         }.await()
+        if (follow) createNotification(uid, "FOLLOW", "Ha empezado a seguirte.")
     }
 
     suspend fun block(uid: String) {
