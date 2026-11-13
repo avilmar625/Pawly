@@ -1,9 +1,9 @@
 /** Normalize user-supplied numbers to E.164. Bare nine-digit Spanish numbers default to +34. */
 export function normalizePhone(raw: string): string | null {
-  let value = raw.trim().replace(/[().\\s-]/g, "");
+  let value = raw.trim().replace(/[().\s-]/g, "");
   if (value.startsWith("00")) value = "+" + value.slice(2);
-  if (!value.startsWith("+") && /^\\d{9}$/.test(value)) value = "+34" + value;
-  if (!/^\\+[1-9]\\d{7,14}$/.test(value)) return null;
+  if (!value.startsWith("+") && /^\d{9}$/.test(value)) value = "+34" + value;
+  if (!/^\+[1-9]\d{7,14}$/.test(value)) return null;
   return value;
 }
 
