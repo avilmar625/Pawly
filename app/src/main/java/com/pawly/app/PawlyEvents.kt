@@ -54,7 +54,9 @@ data class PawlyEvent(
     val organizerName: String,
     val organizerUid: String,
     val interestedCount: Long,
-    val interestedByMe: Boolean
+    val interestedByMe: Boolean,
+    val startAt: Long = 0,
+    val timeZoneId: String = ""
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -145,7 +147,7 @@ internal fun PawlyEventsScreen(
                 },
                 update = { web ->
                     val zoom = if (mapPoints.isEmpty()) 11 else 12
-                    val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                    val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content="default-src 'none'; img-src data: https://*.tile.openstreetmap.org; style-src 'unsafe-inline' https://unpkg.com; script-src 'unsafe-inline' https://unpkg.com; connect-src https://*.tile.openstreetmap.org; font-src data: https://unpkg.com">" +
                         "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' integrity='sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' crossorigin='anonymous'>" +
                         "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
                         "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' crossorigin='anonymous'></script></head><body><div id='map'></div><script>" +
