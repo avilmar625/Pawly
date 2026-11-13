@@ -33,6 +33,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -67,6 +69,7 @@ private data class Place(
     val imageUrl: String
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit, elegantDesign: Boolean = false) {
     val context = LocalContext.current
@@ -252,7 +255,11 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             )
         }
         item {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
                 filters.forEach { item ->
                     FilterChip(
                         selected = filter == item,
