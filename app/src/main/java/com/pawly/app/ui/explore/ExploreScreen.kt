@@ -155,9 +155,16 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             }
         }.getOrDefault(emptyMap()))
     }
+    var collectionDescriptions by remember(explorePreferences) {
+        mutableStateOf(runCatching {
+            val stored = org.json.JSONObject(explorePreferences.getString("collection_descriptions", "{}") ?: "{}")
+            buildMap { val keys = stored.keys(); while (keys.hasNext()) { val key = keys.next(); put(key, stored.optString(key)) } }
+        }.getOrDefault(emptyMap()))
+    }
     var showCreateCollection by remember { mutableStateOf(false) }
     var showCollectionPicker by remember { mutableStateOf(false) }
     var newCollectionName by remember { mutableStateOf("") }
+    var newCollectionDescription by remember { mutableStateOf("") }
     var collectionNotice by remember { mutableStateOf<String?>(null) }
     var viewingCollection by remember { mutableStateOf<String?>(null) }
     fun persistCollections() {
@@ -165,8 +172,10 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         val content = org.json.JSONObject().apply {
             collectionContents.forEach { (name, values) -> put(name, JSONArray().apply { values.forEach { put(it) } }) }
         }
+        val descriptions = org.json.JSONObject().apply { collectionDescriptions.forEach { (name, description) -> put(name, description) } }
         explorePreferences.edit().putString("custom_collections", names.toString())
-            .putString("collection_contents", content.toString()).apply()
+            .putString("collection_contents", content.toString())
+            .putString("collection_descriptions", descriptions.toString()).apply()
     }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
     val places = listOf(
@@ -288,16 +297,15 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             )
         }
         item {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 filters.forEach { item ->
                     FilterChip(
                         selected = filter == item,
                         onClick = { filter = item },
-                        label = { Text(tr(item), fontSize = 11.sp) },
+                        label = { Text(tr(item), fontSize = 12.sp, maxLines = 1) },
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -325,7 +333,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     Text(tr("TUS COLECCIONES"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.2.sp)
                     Text(tr("Organiza tus ideas para futuras salidas"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                FilledTonalButton(onClick = { newCollectionName = ""; showCreateCollection = true }) {
+                FilledTonalButton(onClick = { newCollectionName = ""; newCollectionDescription = ""; showCreateCollection = true }) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(Modifier.width(5.dp))
                     Text(tr("Crear"))
@@ -334,26 +342,37 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             if (customCollections.isEmpty()) {
                 Text(tr("Aún no tienes colecciones. Crea, por ejemplo, «Playas para el verano» o «Rutas pendientes»."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
-                FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     customCollections.forEach { name ->
-                        InputChip(
-                            selected = false,
-                            onClick = { collectionNotice = "${name} · ${(collectionContents[name] ?: emptySet()).size} ideas guardadas" },
-                            label = { Text("${name} · ${(collectionContents[name] ?: emptySet()).size}") },
-                            trailingIcon = {
+                        Surface(
+                            onClick = { viewingCollection = name },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 2.dp
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Surface(shape = RoundedCornerShape(13.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                                    Icon(Icons.Default.Folder, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(11.dp).size(22.dp))
+                                }
+                                Spacer(Modifier.width(11.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(name, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(collectionDescriptions[name].orEmpty().ifBlank { "Tu lista personal de lugares e ideas" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text("${(collectionContents[name] ?: emptySet()).size} elementos", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                                }
                                 IconButton(onClick = {
                                     customCollections = customCollections - name
                                     collectionContents = collectionContents - name
+                                    collectionDescriptions = collectionDescriptions - name
                                     persistCollections()
-                                }, modifier = Modifier.size(24.dp)) {
-                                    Icon(Icons.Default.Close, contentDescription = tr("Eliminar colección"), modifier = Modifier.size(15.dp))
-                                }
+                                }) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Eliminar colección")) }
+                                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        )
+                        }
                     }
                 }
             }
-            collectionNotice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) }
         }
         item { SectionHeading("Ideas para vuestra próxima salida", "Guarda categorías e inicia búsquedas reales cuando quieras") }
         if (visible.isEmpty()) {
@@ -441,7 +460,11 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             onDismissRequest = { showCreateCollection = false },
             title = { Text(tr("Nueva colección")) },
             text = {
-                OutlinedTextField(value = newCollectionName, onValueChange = { newCollectionName = it.take(32) }, label = { Text(tr("Nombre de la colección")) }, singleLine = true)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(tr("Crea un espacio para organizar playas, rutas, restaurantes y planes que quieras guardar."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(value = newCollectionName, onValueChange = { newCollectionName = it.take(32) }, label = { Text(tr("Nombre de la colección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = newCollectionDescription, onValueChange = { newCollectionDescription = it.take(120) }, label = { Text(tr("Descripción (opcional)")) }, placeholder = { Text(tr("Ej. Playas tranquilas para el verano")) }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -449,6 +472,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     if (clean.isNotBlank() && customCollections.none { it.equals(clean, true) } && customCollections.size < 30) {
                         customCollections = customCollections + clean
                         collectionContents = collectionContents + (clean to emptySet())
+                        collectionDescriptions = collectionDescriptions + (clean to newCollectionDescription.trim())
                         persistCollections()
                         showCreateCollection = false
                     }
