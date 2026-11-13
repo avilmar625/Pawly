@@ -4,11 +4,15 @@ import android.annotation.SuppressLint
 
 import android.content.Intent
 import android.net.Uri
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.webkit.JavascriptInterface
 import android.os.Handler
 import android.os.Looper
 import java.util.Locale
+import java.util.Calendar
 import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
@@ -75,6 +79,7 @@ internal fun PawlyEventsScreen(
     var reportEventId by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
+    var mapLoadFailed by remember { mutableStateOf(false) }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
     val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
@@ -133,8 +138,10 @@ internal fun PawlyEventsScreen(
             val markers = mapPoints.joinToString(",") { event ->
                 "{lat:${event.latitude},lon:${event.longitude},title:${org.json.JSONObject.quote(event.title)},place:${org.json.JSONObject.quote(event.location)}}"
             }
+            val mapBounds = mapPoints.joinToString(",") { "[${it.latitude},${it.longitude}]" }
+            val mapKey = "$centerLat|$centerLon|$markers"
             AndroidView(
-                modifier = Modifier.fillMaxWidth().height(235.dp).clip(RoundedCornerShape(22.dp)),
+                modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(22.dp)),
                 factory = { view ->
                     WebView(view).apply {
                         settings.javaScriptEnabled = true
@@ -142,23 +149,38 @@ internal fun PawlyEventsScreen(
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        settings.userAgentString = "Pawly/1.0 (Android; https://github.com/avilmar625/Pawly)"
+                        webViewClient = object : WebViewClient() {
+                            override fun onReceivedError(view: WebView, request: android.webkit.WebResourceRequest, error: android.webkit.WebResourceError) {
+                                if (request.isForMainFrame) mapLoadFailed = true
+                            }
+                        }
                         setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                     }
                 },
                 update = { web ->
-                    val zoom = if (mapPoints.isEmpty()) 11 else 12
-                    val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; img-src data: https://*.tile.openstreetmap.org; style-src 'unsafe-inline' https://unpkg.com; script-src 'unsafe-inline' https://unpkg.com; connect-src https://*.tile.openstreetmap.org; font-src data: https://unpkg.com\">" +
-                        "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' integrity='sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' crossorigin='anonymous'>" +
-                        "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
-                        "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' crossorigin='anonymous'></script></head><body><div id='map'></div><script>" +
-                        "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);" +
-                        "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
-                        "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
-                        "if(points.length>1){map.fitBounds(points.map(p=>[p.lat,p.lon]),{padding:[24,24]});}</script></body></html>"
-                    web.loadDataWithBaseURL("https://pawly.invalid/", html, "text/html", "UTF-8", null)
+                    if (web.tag != mapKey) {
+                        web.tag = mapKey
+                        mapLoadFailed = false
+                        val zoom = if (mapPoints.isEmpty()) 11 else 12
+                        val fallback = org.json.JSONObject.quote("<iframe title='OpenStreetMap' src='https://www.openstreetmap.org/export/embed.html?bbox=-3.9,36.6,-3.4,36.9&layer=mapnik' style='width:100%;height:100%;border:0'></iframe>")
+                        val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                            "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\\\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\\\">" +
+                            "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
+                            "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\\\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\\\"></script></head><body><div id='map'></div><script>" +
+                            "let attempts=0;function initMap(){if(!window.L){if(attempts++<40){setTimeout(initMap,125);return;}document.getElementById('map').innerHTML=$fallback;return;}" +
+                            "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
+                            "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
+                            "if(points.length>1){map.fitBounds(L.latLngBounds([$mapBounds]),{padding:[24,24],maxZoom:14});}}initMap();</script></body></html>"
+                        web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
+                    }
                 }
             )
+            if (mapLoadFailed) {
+                Text(tr("No se pudo cargar el mapa. Comprueba tu conexión."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+            }
+            TextButton(onClick = {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/"))) }
+            }) { Text(tr("Abrir el mapa en el navegador")) }
             Text(
                 tr(if (mapPoints.isEmpty()) "Todavía no hay eventos con ubicación exacta."
                 else "Los marcadores corresponden a lugares de eventos publicados por la comunidad."),
@@ -270,16 +292,41 @@ private fun CreatePawlyEventDialog(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    var selectedDateMillis by remember { mutableStateOf<Long?>(null) }
+    var selectedHour by remember { mutableStateOf(-1) }
+    var selectedMinute by remember { mutableStateOf(-1) }
+    var validationError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Quedada") }
     var latitude by remember { mutableStateOf("") }
     var longitude by remember { mutableStateOf("") }
     var showMapPicker by remember { mutableStateOf(false) }
+    val eventDateTimeMillis = if (selectedDateMillis != null && selectedHour >= 0 && selectedMinute >= 0) {
+        Calendar.getInstance().apply {
+            timeInMillis = selectedDateMillis!!
+            set(Calendar.HOUR_OF_DAY, selectedHour)
+            set(Calendar.MINUTE, selectedMinute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    } else null
+    val dateText = eventDateTimeMillis?.let { millis ->
+        Calendar.getInstance().apply { timeInMillis = millis }.let { c ->
+            String.format(Locale.ROOT, "%02d/%02d/%04d %02d:%02d", c.get(Calendar.DAY_OF_MONTH), c.get(Calendar.MONTH) + 1, c.get(Calendar.YEAR), c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE))
+        }
+    }.orEmpty()
+    val eventDateIsFuture = eventDateTimeMillis?.let { it > System.currentTimeMillis() } == true
     val parsedLatitude = latitude.toDoubleOrNull()
     val parsedLongitude = longitude.toDoubleOrNull()
     val coordinatesValid = (latitude.isBlank() && longitude.isBlank()) ||
         (parsedLatitude != null && parsedLongitude != null &&
             parsedLatitude in -90.0..90.0 && parsedLongitude in -180.0..180.0)
+    val titleValidationMessage = tr("Escribe un título de al menos 4 caracteres.")
+    val descriptionValidationMessage = tr("Añade una descripción de al menos 10 caracteres.")
+    val locationValidationMessage = tr("Indica el lugar o la dirección del evento.")
+    val dateValidationMessage = tr("Selecciona una fecha y una hora.")
+    val futureDateValidationMessage = tr("La fecha y hora deben ser futuras.")
+    val coordinatesValidationMessage = tr("Quita o corrige el marcador del mapa.")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -290,10 +337,37 @@ private fun CreatePawlyEventDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(tr("Comparte un plan real con la comunidad."), style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(title, { title = it.take(90) }, label = { Text(tr("Nombre del evento")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(description, { description = it.take(1200) }, label = { Text(tr("Descripción")) }, minLines = 2, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(location, { location = it.take(160) }, label = { Text(tr("Lugar o dirección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(date, { date = it.take(80) }, label = { Text(tr("Fecha y hora")) }, singleLine = true, placeholder = { Text(tr("DD/MM/AAAA · HH:mm")) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(title, { title = it.take(90); validationError = null }, label = { Text(tr("Nombre del evento")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(description, { description = it.take(1200); validationError = null }, label = { Text(tr("Descripción")) }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(location, { location = it.take(160); validationError = null }, label = { Text(tr("Lugar o dirección")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {
+                        val initial = Calendar.getInstance().apply { selectedDateMillis?.let { timeInMillis = it } }
+                        val today = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+                        DatePickerDialog(context, { _, year, month, day ->
+                            selectedDateMillis = Calendar.getInstance().apply { set(Calendar.YEAR, year); set(Calendar.MONTH, month); set(Calendar.DAY_OF_MONTH, day); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
+                            validationError = null
+                        }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).apply { datePicker.minDate = today }.show()
+                    }, modifier = Modifier.weight(1f)) {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(tr("Fecha"), style = MaterialTheme.typography.labelSmall)
+                            Text(selectedDateMillis?.let { java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(it)) } ?: tr("Elegir fecha"), maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    OutlinedButton(onClick = {
+                        val initial = Calendar.getInstance().apply {
+                            if (selectedHour >= 0) set(Calendar.HOUR_OF_DAY, selectedHour)
+                            if (selectedMinute >= 0) set(Calendar.MINUTE, selectedMinute)
+                        }
+                        TimePickerDialog(context, { _, hour, minute -> selectedHour = hour; selectedMinute = minute; validationError = null }, initial.get(Calendar.HOUR_OF_DAY), initial.get(Calendar.MINUTE), true).show()
+                    }, modifier = Modifier.weight(1f)) {
+                        Column(horizontalAlignment = Alignment.Start) {
+                            Text(tr("Hora"), style = MaterialTheme.typography.labelSmall)
+                            Text(if (selectedHour >= 0 && selectedMinute >= 0) String.format(Locale.ROOT, "%02d:%02d", selectedHour, selectedMinute) else tr("Elegir hora"), maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                if (eventDateTimeMillis != null && !eventDateIsFuture) Text(tr("La fecha y hora deben ser futuras."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -323,14 +397,26 @@ private fun CreatePawlyEventDialog(
                     Text(tr("La dirección basta para publicar; añade un marcador solo si quieres mostrar el punto exacto."),
                         style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                if (validationError != null) Text(validationError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (error != null) Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = {
             Button(
                 enabled = title.trim().length >= 4 && description.trim().length >= 10 &&
-                    location.trim().length >= 3 && date.trim().length >= 4 && coordinatesValid,
-                onClick = { onPublish(title, description, category, location, date, parsedLatitude, parsedLongitude) }
+                    location.trim().length >= 3 && eventDateIsFuture && coordinatesValid,
+                onClick = {
+                    validationError = when {
+                        title.trim().length < 4 -> titleValidationMessage
+                        description.trim().length < 10 -> descriptionValidationMessage
+                        location.trim().length < 3 -> locationValidationMessage
+                        eventDateTimeMillis == null -> dateValidationMessage
+                        !eventDateIsFuture -> futureDateValidationMessage
+                        !coordinatesValid -> coordinatesValidationMessage
+                        else -> null
+                    }
+                    if (validationError == null) onPublish(title, description, category, location, dateText, parsedLatitude, parsedLongitude)
+                }
             ) { Text(tr("Publicar")) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
@@ -344,6 +430,7 @@ private fun CreatePawlyEventDialog(
             onSelected = { lat, lon ->
                 latitude = String.format(Locale.US, "%.6f", lat)
                 longitude = String.format(Locale.US, "%.6f", lon)
+                validationError = null
                 showMapPicker = false
             }
         )
@@ -379,20 +466,22 @@ private fun EventLocationPickerDialog(
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
                             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                            settings.userAgentString = "Pawly/1.0 (Android; https://github.com/avilmar625/Pawly)"
+                            webViewClient = WebViewClient()
                             addJavascriptInterface(bridge, "PawlyEventMap")
                             setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
                             val markerScript = if (hasInitialMarker) "marker=L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
-                            val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='Content-Security-Policy' content=\"default-src 'none'; img-src data: https://*.tile.openstreetmap.org; style-src 'unsafe-inline' https://unpkg.com; script-src 'unsafe-inline' https://unpkg.com; connect-src https://*.tile.openstreetmap.org; font-src data: https://unpkg.com\">" +
-                                "<link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' integrity='sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' crossorigin='anonymous'>" +
+                            val fallback = org.json.JSONObject.quote("<iframe title='OpenStreetMap' src='https://www.openstreetmap.org/export/embed.html?bbox=-3.9,36.6,-3.4,36.9&layer=mapnik' style='width:100%;height:100%;border:0'></iframe>")
+                            val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                                "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\\\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\\\">" +
                                 "<style>html,body,#map{height:100%;margin:0}</style>" +
-                                "<script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' integrity='sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' crossorigin='anonymous'></script></head><body><div id='map'></div><script>" +
+                                "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\\\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\\\"></script></head><body><div id='map'></div><script>" +
+                                "let attempts=0;function initMap(){if(!window.L){if(attempts++<40){setTimeout(initMap,125);return;}document.getElementById('map').innerHTML=$fallback;return;}" +
                                 "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
                                 "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
                                 "let marker=null;$markerScript" +
-                                "map.on('click',function(e){if(marker)map.removeLayer(marker);marker=L.marker(e.latlng).addTo(map);window.PawlyEventMap.select(e.latlng.lat,e.latlng.lng);});" +
+                                "map.on('click',function(e){if(marker)map.removeLayer(marker);marker=L.marker(e.latlng).addTo(map);window.PawlyEventMap.select(e.latlng.lat,e.latlng.lng);});}initMap();" +
                                 "</script></body></html>"
-                            loadDataWithBaseURL("https://pawly.invalid/", html, "text/html", "UTF-8", null)
+                            loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
                         }
                     }
                 )
