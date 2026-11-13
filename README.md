@@ -286,3 +286,10 @@ Detalles y alcance de esta evolución: [docs/CHANGES49.md](docs/CHANGES49.md).
 - **Legal y soporte:** los documentos de privacidad y términos siguen siendo borradores. El correo oficial de soporte y los datos del responsable deben completarse antes de una publicación.
 
 Detalles: [docs/CHANGES51.md](docs/CHANGES51.md).
+
+## Mejoras de eventos (integración cambios58)
+
+- La creación de eventos utiliza selectores de fecha y hora y conserva el formato validado por `EventDateParser` (`DD/MM/AAAA HH:mm`).
+- Los eventos deben tener fecha futura; las coordenadas siguen siendo opcionales y se validan antes de publicar.
+- El mapa usa un CDN alternativo para Leaflet, evita recargas innecesarias, ajusta el encuadre a los marcadores y ofrece una alternativa para abrir OpenStreetMap en el navegador.
+- Estas mejoras se integran sobre la rama de arquitectura sin reemplazar sus controles de moderación, seguridad, búsqueda ni colecciones de Explorar.
