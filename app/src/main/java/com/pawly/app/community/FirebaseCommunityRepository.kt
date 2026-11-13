@@ -1,5 +1,6 @@
 package com.pawly.app
 
+import com.pawly.app.community.ChatMessagePolicy
 import com.pawly.app.community.ProfessionalContactPolicy
 import android.content.Context
 import android.net.Uri
@@ -940,21 +941,20 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun sendMessage(conversationId: String, text: String, imageUrl: String = "", videoUrl: String = "") {
         val uid = requireVerifiedUid()
-        val clean = text.trim()
-        require(clean.length <= 2000) { "El mensaje no puede superar los 2000 caracteres." }
-        require(clean.isNotBlank() || imageUrl.isNotBlank() || videoUrl.isNotBlank()) { "Escribe un mensaje o adjunta una fotografía o un vídeo." }
-        require(imageUrl.length <= 2048 && videoUrl.length <= 2048) { "La dirección del archivo multimedia no es válida." }
-        require(imageUrl.isBlank() || videoUrl.isBlank()) { "Adjunta una fotografía o un vídeo, no ambos." }
+        val payload = ChatMessagePolicy.prepare(text, imageUrl, videoUrl)
         val ref = db.collection("conversations").document(conversationId)
         val messageRef = ref.collection("messages").document()
-        val preview = clean.ifBlank { if (videoUrl.isNotBlank()) "🎥 Vídeo" else "📷 Fotografía" }.take(120)
+        val preview = payload.text.ifBlank {
+            if (payload.videoUrl.isNotBlank()) "🎥 Vídeo" else "📷 Fotografía"
+        }.take(120)
 
         // Rules validate conversation membership, verification and both block lists.
         // A single atomic batch avoids several sequential network reads before sending.
         val batch = db.batch()
         batch.set(messageRef, mapOf(
-            "senderId" to uid, "text" to clean.take(2000), "imageUrl" to imageUrl, "videoUrl" to videoUrl,
-            "readBy" to listOf(uid), "createdAt" to FieldValue.serverTimestamp()
+            "senderId" to uid, "text" to payload.text, "imageUrl" to payload.imageUrl,
+            "videoUrl" to payload.videoUrl, "readBy" to listOf(uid),
+            "createdAt" to FieldValue.serverTimestamp()
         ))
         batch.update(ref, mapOf("lastMessage" to preview, "updatedAt" to FieldValue.serverTimestamp()))
         batch.commit().await()
