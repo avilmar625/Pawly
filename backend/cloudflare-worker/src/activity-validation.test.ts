@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseActivityRequest } from "./activity-validation";
+import { isCurrentComment, parseActivityRequest } from "./activity-validation";
 
 describe("parseActivityRequest", () => {
   it("accepts a valid like with matching post identifiers", () => {
@@ -21,5 +21,14 @@ describe("parseActivityRequest", () => {
     { type: "FOLLOW", recipientUid: "recipient", relatedId: "", sourceEventId: "", actorName: "spoofed" }
   ])("rejects malformed or over-privileged payloads: %j", (payload) => {
     expect(parseActivityRequest(payload)).toBeNull();
+  });
+});
+
+describe("isCurrentComment", () => {
+  it("accepts only the current comment id", () => {
+    expect(isCurrentComment("comment_1", "comment_1")).toBe(true);
+    expect(isCurrentComment("comment_2", "comment_1")).toBe(false);
+    expect(isCurrentComment(undefined, "comment_1")).toBe(false);
+    expect(isCurrentComment("", "comment_1")).toBe(false);
   });
 });
