@@ -121,13 +121,12 @@ internal fun PawlyEventsScreen(
             if (!mapOnly) FilledTonalIconButton(onClick = { createError = null; showCreate = true }) { Icon(Icons.Default.Add, contentDescription = tr("Crear evento")) }
         }
         Spacer(Modifier.height(12.dp))
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
         ) {
             listOf("Todos", "Quedada", "Ruta", "Taller", "Adopción").forEach { item ->
-                FilterChip(selected = category == item, onClick = { category = item }, label = { Text(tr(if (item == "Todos") "Todos los eventos" else item)) })
+                FilterChip(selected = category == item, onClick = { category = item }, label = { Text(tr(if (item == "Todos") "Todos los eventos" else item), maxLines = 1) })
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -145,7 +144,10 @@ internal fun PawlyEventsScreen(
                 factory = { view ->
                     WebView(view).apply {
                         settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = false
+                        settings.domStorageEnabled = true
+                        settings.loadsImagesAutomatically = true
+                        settings.blockNetworkImage = false
+                        settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
                         settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
@@ -462,7 +464,10 @@ private fun EventLocationPickerDialog(
                     factory = { viewContext ->
                         WebView(viewContext).apply {
                             settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = false
+                            settings.domStorageEnabled = true
+                            settings.loadsImagesAutomatically = true
+                            settings.blockNetworkImage = false
+                            settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
                             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
