@@ -538,7 +538,7 @@ class FirebaseCommunityRepository private constructor(
         val theirProfile = db.collection("users").document(uid)
         val myBlocked = db.collection("users").document(me).collection("blocked").document(uid)
         val theirBlocked = db.collection("users").document(uid).collection("blocked").document(me)
-        db.runTransaction { tx ->
+        val newlyFollowed = db.runTransaction { tx ->
             val alreadyFollowing = tx.get(following).exists()
             val blockedByMe = tx.get(myBlocked).exists()
             val blockedByThem = tx.get(theirBlocked).exists()
@@ -560,8 +560,9 @@ class FirebaseCommunityRepository private constructor(
                 ))
                 tx.update(theirProfile, "followersCount", FieldValue.increment(-1))
             }
+            follow && !alreadyFollowing
         }.await()
-        if (follow) createNotification(uid, "FOLLOW", "Ha empezado a seguirte.")
+        if (newlyFollowed) createNotification(uid, "FOLLOW", "Ha empezado a seguirte.")
     }
 
     suspend fun block(uid: String) {
