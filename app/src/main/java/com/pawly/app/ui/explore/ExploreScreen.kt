@@ -80,21 +80,22 @@ private data class NearbyPlace(
 
 private suspend fun loadNearbyPlaces(latitude: Double, longitude: Double, category: String): List<NearbyPlace> =
     withContext(Dispatchers.IO) {
-        val selector = when (category) {
-            "Naturaleza" -> """["leisure"~"dog_park|park"]"""
-            "Playas" -> """["natural"="beach"]"""
-            "Comer" -> """["amenity"~"restaurant|cafe|bar"]"""
-            "Alojarse" -> """["tourism"~"hotel|guest_house|hostel|camp_site"]"""
-            else -> """["leisure"="dog_park"],["natural"="beach"],["amenity"~"restaurant|cafe|bar"],["tourism"~"hotel|guest_house|hostel|camp_site"]"""
+        val selectors = when (category) {
+            "Naturaleza" -> listOf("""["leisure"~"dog_park|park"]""")
+            "Playas" -> listOf("""["natural"="beach"]""")
+            "Comer" -> listOf("""["amenity"~"restaurant|cafe|bar"]""")
+            "Alojarse" -> listOf("""["tourism"~"hotel|guest_house|hostel|camp_site"]""")
+            else -> listOf(
+                """["leisure"="dog_park"]""",
+                """["natural"="beach"]""",
+                """["amenity"~"restaurant|cafe|bar"]""",
+                """["tourism"~"hotel|guest_house|hostel|camp_site"]"""
+            )
         }
-        val query = if (category == "Todo") {
-            """[out:json][timeout:20];(node(around:12000,$latitude,$longitude)$selector;way(around:12000,$latitude,$longitude)$selector;relation(around:12000,$latitude,$longitude)$selector;);out center tags;"""
-        } else {
-            val selectors = selector.split(",").joinToString("") { tag ->
-                "node(around:12000,$latitude,$longitude)$tag;way(around:12000,$latitude,$longitude)$tag;relation(around:12000,$latitude,$longitude)$tag;"
-            }
-            """[out:json][timeout:20];($selectors);out center tags;"""
+        val statements = selectors.joinToString("") { tag ->
+            "node(around:12000,$latitude,$longitude)$tag;way(around:12000,$latitude,$longitude)$tag;relation(around:12000,$latitude,$longitude)$tag;"
         }
+        val query = """[out:json][timeout:20];($statements);out center tags;"""
         val request = okhttp3.Request.Builder()
             .url("https://overpass-api.de/api/interpreter")
             .post(okhttp3.FormBody.Builder().add("data", query).build())
