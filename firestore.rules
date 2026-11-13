@@ -55,9 +55,9 @@ service cloud.firestore {
         && request.resource.data.username is string
         && request.resource.data.usernameLower is string
         && request.resource.data.isPublic == false
-        && get(/databases/$(database)/documents/usernames/$(request.resource.data.usernameLower)).data.uid == uid
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.usernameLower)).data.uid == uid
         && exists(/databases/$(database)/documents/usernameReservations/$(uid))
-        && get(/databases/$(database)/documents/usernameReservations/$(uid)).data.username == request.resource.data.usernameLower;
+        && getAfter(/databases/$(database)/documents/usernameReservations/$(uid)).data.username == request.resource.data.usernameLower;
       allow update: if (owner(uid)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.username == resource.data.username
