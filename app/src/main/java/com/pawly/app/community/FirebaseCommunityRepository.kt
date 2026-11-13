@@ -464,16 +464,15 @@ class FirebaseCommunityRepository private constructor(
     suspend fun toggleLike(postId: String) {
         val uid = requireVerifiedUid()
         val ref = db.collection("posts").document(postId)
-        db.runTransaction { tx ->
+        val postOwner = ref.get().await().getString("authorId").orEmpty()
+        val added = db.runTransaction { tx ->
             val doc = tx.get(ref)
             val liked = (doc.get("likedBy") as? List<*>)?.contains(uid) == true
             tx.update(ref, "likedBy", if (liked) FieldValue.arrayRemove(uid) else FieldValue.arrayUnion(uid))
             tx.update(ref, "likeCount", FieldValue.increment(if (liked) -1 else 1))
+            !liked
         }.await()
-        if (!alreadyLiked) {
-            val postOwner = ref.get().await().getString("authorId").orEmpty()
-            createNotification(postOwner, "LIKE", "Le ha gustado tu publicación.", postId)
-        }
+        if (added) createNotification(postOwner, "LIKE", "Le ha gustado tu publicación.", postId)
     }
 
     fun listenComments(postId: String, onData: (List<PawlyComment>) -> Unit, onError: (String) -> Unit): ListenerRegistration =
