@@ -366,7 +366,8 @@ private fun PawlyMainApp(
                     onToggleSave = { name ->
                         savedPlaceNames = if (name in savedPlaceNames) savedPlaceNames - name else savedPlaceNames + name
                     },
-                    elegantDesign = elegantDesign
+                    elegantDesign = elegantDesign,
+                    repository = cloudRepository
                 )
                 Tab.LEARN -> LearningHubScreen(dogName = dogName, elegantDesign = elegantDesign)
                 Tab.HEALTH -> {
