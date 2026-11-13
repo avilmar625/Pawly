@@ -159,6 +159,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     var showCollectionPicker by remember { mutableStateOf(false) }
     var newCollectionName by remember { mutableStateOf("") }
     var collectionNotice by remember { mutableStateOf<String?>(null) }
+    var viewingCollection by remember { mutableStateOf<String?>(null) }
     fun persistCollections() {
         val names = JSONArray().apply { customCollections.forEach { put(it) } }
         val content = org.json.JSONObject().apply {
@@ -410,6 +411,29 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     TextButton(onClick = { selectedPlace = null }) { Text(tr("Cerrar")) }
                 }
             }
+        )
+    }
+    viewingCollection?.let { name ->
+        AlertDialog(
+            onDismissRequest = { viewingCollection = null },
+            title = { Text(name) },
+            text = {
+                val entries = collectionContents[name] ?: emptySet()
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (entries.isEmpty()) Text(tr("Esta colección está vacía. Abre una idea y añádela desde el botón Colección."))
+                    entries.forEach { entry ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(entry, modifier = Modifier.weight(1f))
+                            IconButton(onClick = {
+                                collectionContents = collectionContents + (name to entries - entry)
+                                persistCollections()
+                            }) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Quitar de la colección")) }
+                        }
+                    }
+                    Text(tr("Estas colecciones se guardan en este dispositivo."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = { TextButton(onClick = { viewingCollection = null }) { Text(tr("Cerrar")) } }
         )
     }
     if (showCreateCollection) {
