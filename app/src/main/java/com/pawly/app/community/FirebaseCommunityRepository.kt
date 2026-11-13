@@ -823,7 +823,7 @@ class FirebaseCommunityRepository private constructor(
 
     /** Raw contact numbers are sent only over TLS to the trusted Worker and never stored. */
     suspend fun setPhoneDiscovery(phone: String, enabled: Boolean) {
-        require(phone.trim().length in 7..24) { "Introduce un teléfono válido." }
+        if (enabled) require(phone.trim().length in 7..24) { "Introduce un teléfono válido." }
         postBackend("/v1/contact-discovery", JSONObject().put("enabled", enabled).put("phone", phone.trim()))
     }
 
