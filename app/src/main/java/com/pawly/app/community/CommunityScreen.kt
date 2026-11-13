@@ -414,7 +414,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                         CommunityPage.MAP -> Icons.Default.Map
                         CommunityPage.PROFILE -> Icons.Default.Person
                         CommunityPage.MODERATION -> Icons.Default.Shield
-                        CommunityPage.SEARCH -> Icons.Default.People
                     },
                     null,
                     tint = MaterialTheme.colorScheme.primary
@@ -450,7 +449,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                                 CommunityPage.MAP -> Icons.Default.Map
                                 CommunityPage.PROFILE -> Icons.Default.Person
                                 CommunityPage.MODERATION -> Icons.Default.Shield
-                                CommunityPage.SEARCH -> Icons.Default.People
                             }, null)
                         },
                         onClick = { page = item; selectedUser = null; chat = null; communityMenuExpanded = false }
