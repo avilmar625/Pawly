@@ -126,18 +126,65 @@ service cloud.firestore {
       allow delete: if owner(uid);
 
       match /notifications/{notificationId} {
+        function actorProfile() {
+          return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+        }
+        function sourcePost() {
+          return get(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)).data;
+        }
+        function validActorName() {
+          return request.resource.data.actorName == actorProfile().displayName
+            || request.resource.data.actorName == actorProfile().username;
+        }
+        function validActivitySource() {
+          return request.resource.data.type == 'LIKE'
+            && request.resource.data.relatedId is string
+            && request.resource.data.sourceEventId == request.resource.data.relatedId
+            && sourcePost().authorId == uid
+            && request.auth.uid in sourcePost().likedBy
+            && notificationId == 'LIKE-' + request.auth.uid + '-' + request.resource.data.relatedId
+          || request.resource.data.type == 'COMMENT'
+            && request.resource.data.relatedId is string
+            && request.resource.data.sourceEventId is string
+            && request.resource.data.sourceEventId.size() > 0
+            && sourcePost().authorId == uid
+            && sourcePost().lastCommentId == request.resource.data.sourceEventId
+            && get(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)/comments/$(request.resource.data.sourceEventId)).data.authorId == request.auth.uid
+            && notificationId == 'COMMENT-' + request.auth.uid + '-' + request.resource.data.sourceEventId
+          || request.resource.data.type == 'FOLLOW'
+            && request.resource.data.relatedId == ''
+            && request.resource.data.sourceEventId == ''
+            && exists(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid))
+            && notificationId == 'FOLLOW-' + request.auth.uid + '-' + uid;
+        }
         allow get, list: if owner(uid);
+        // The client may only report a real, verifiable interaction. Arbitrary
+        // notification text, actor spoofing, blocked interactions and replayed
+        // IDs are rejected by the rules.
         allow create: if verified()
-          && request.resource.data.keys().hasOnly(['actorId', 'actorName', 'type', 'message', 'relatedId', 'createdAt', 'read'])
+          && request.auth.uid != uid
+          && !blockedEitherWay(uid)
+          && request.resource.data.keys().hasOnly([
+            'actorId', 'actorName', 'type', 'message', 'relatedId',
+            'sourceEventId', 'createdAt', 'read'
+          ])
           && request.resource.data.actorId == request.auth.uid
           && request.resource.data.actorName is string
           && request.resource.data.actorName.size() <= 80
+          && validActorName()
           && request.resource.data.type in ['LIKE', 'COMMENT', 'FOLLOW']
-          && request.resource.data.message is string
-          && request.resource.data.message.size() <= 180
+          && request.resource.data.message == (
+            request.resource.data.type == 'LIKE' ? 'Le ha gustado tu publicación.'
+              : request.resource.data.type == 'COMMENT' ? 'Ha comentado tu publicación.'
+              : 'Ha empezado a seguirte.'
+          )
           && request.resource.data.relatedId is string
           && request.resource.data.relatedId.size() <= 128
-          && request.resource.data.read == false;
+          && request.resource.data.sourceEventId is string
+          && request.resource.data.sourceEventId.size() <= 128
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.read == false
+          && validActivitySource();
         allow update: if owner(uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
           && request.resource.data.read == true;
