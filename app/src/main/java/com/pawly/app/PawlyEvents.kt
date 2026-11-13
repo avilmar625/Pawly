@@ -94,7 +94,7 @@ internal fun PawlyOpenStreetMap(
             overlays.add(object : Overlay() {
                 override fun onSingleTapConfirmed(event: MotionEvent, mapView: MapView): Boolean {
                     val callback = latestOnMapTap ?: return false
-                    val point = mapView.projection.fromPixels(event.x.toInt(), event.y.toInt()) as? GeoPoint ?: return false
+                    val point = mapView.projection.fromPixels(event.x.toInt(), event.y.toInt())
                     callback(point.latitude, point.longitude)
                     return true
                 }
