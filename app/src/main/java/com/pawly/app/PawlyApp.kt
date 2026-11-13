@@ -488,7 +488,8 @@ private fun PawlyMainApp(
                 Tab.SERVICES -> ProfessionalServicesScreen(
                     onBack = { selected = Tab.MORE },
                     elegantDesign = elegantDesign,
-                    language = language
+                    language = language,
+                    repository = cloudRepository
                 )
                 Tab.LOST -> LostPetHelpScreen(
                     repository = cloudRepository,
