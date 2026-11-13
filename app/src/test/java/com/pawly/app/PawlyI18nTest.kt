@@ -61,6 +61,15 @@ class PawlyI18nTest {
     }
 
     @Test
+    fun professionalContactConsentIsTranslatedInAllSupportedLanguages() {
+        assertEquals("Mostrar contacto profesional en tu perfil público", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "es"))
+        assertEquals("Show professional contact on your public profile", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "en"))
+        assertEquals("Mostra el contacte professional al teu perfil públic", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "ca"))
+        assertEquals("Afficher le contact professionnel sur votre profil public", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "fr"))
+        assertEquals("Erakutsi kontaktu profesionala zure profil publikoan", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "eu"))
+    }
+
+    @Test
     fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
         assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
         assertEquals("Texto nuevo", PawlyI18n.text("Texto nuevo", "en"))

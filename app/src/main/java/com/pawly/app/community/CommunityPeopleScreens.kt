@@ -109,7 +109,7 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                     }
                     if (user!!.professionalLocation.isNotBlank()) Text(tr("Zona: ") + user!!.professionalLocation, color = Muted, style = MaterialTheme.typography.bodySmall)
                     if (user!!.professionalDescription.isNotBlank()) Text(user!!.professionalDescription, color = Ink, modifier = Modifier.padding(8.dp))
-                    if (user!!.professionalContact.isNotBlank()) Text(tr("Contacto: ") + user!!.professionalContact, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                    if (user!!.professionalContactPublic && user!!.professionalContact.isNotBlank()) Text(tr("Contacto: ") + user!!.professionalContact, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                 }
                 if (user!!.bio.isNotBlank()) Text(user!!.bio, color = Ink, modifier = Modifier.padding(8.dp))
                 Text(user!!.followersCount.toString() + " seguidores · " + user!!.followingCount + " siguiendo", color = Muted, style = MaterialTheme.typography.bodySmall)

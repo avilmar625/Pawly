@@ -115,7 +115,7 @@ class FirebaseCommunityRepository private constructor(
                 "professionalCategory" to "",
                 "professionalLocation" to "",
                 "professionalDescription" to "",
-                "professionalContact" to "",
+                "professionalContactPublic" to false,
                 "dogProfiles" to emptyList<Map<String, Any>>(),
                 "createdAt" to FieldValue.serverTimestamp()
             ))
@@ -213,7 +213,7 @@ class FirebaseCommunityRepository private constructor(
         displayName: String, bio: String, isPublic: Boolean,
         accountType: String = "personal", professionalCategory: String = "",
         professionalLocation: String = "", professionalDescription: String = "",
-        professionalContact: String = ""
+        professionalContact: String = "", professionalContactPublic: Boolean = false
     ) {
         require(displayName.trim().isNotBlank()) { "El nombre público no puede estar vacío." }
         require(accountType in setOf("personal", "professional")) { "Selecciona un tipo de perfil válido." }
@@ -225,16 +225,24 @@ class FirebaseCommunityRepository private constructor(
         val cleanLocation = professionalLocation.trim().take(100)
         val cleanDescription = professionalDescription.trim().take(500)
         val cleanContact = professionalContact.trim().take(120)
-        db.collection("users").document(uid).update(mapOf(
+        val userRef = db.collection("users").document(uid)
+        val privateContactRef = userRef.collection("privateData").document("professionalContact")
+        val showContact = ProfessionalContactPolicy.isPublic(accountType, professionalContactPublic, cleanContact)
+        val batch = db.batch()
+        batch.update(userRef, mapOf(
             "displayName" to cleanName, "bio" to cleanBio, "isPublic" to isPublic,
             "accountType" to accountType, "professionalCategory" to cleanCategory,
             "professionalLocation" to cleanLocation, "professionalDescription" to cleanDescription,
-            "professionalContact" to cleanContact
-        )).await()
+            "professionalContactPublic" to showContact
+        ))
+        if (cleanContact.isNotBlank()) batch.set(privateContactRef, mapOf("value" to cleanContact))
+        else batch.delete(privateContactRef)
+        batch.commit().await()
         cachedMyProfileState = cachedMyProfileState?.copy(
             displayName = cleanName, bio = cleanBio, isPublic = isPublic, accountType = accountType,
             professionalCategory = cleanCategory, professionalLocation = cleanLocation,
-            professionalDescription = cleanDescription, professionalContact = cleanContact
+            professionalDescription = cleanDescription, professionalContact = cleanContact,
+            professionalContactPublic = showContact
         )
     }
     suspend fun updateProfilePhoto(uri: Uri): String {
@@ -300,7 +308,7 @@ class FirebaseCommunityRepository private constructor(
     suspend fun refreshMyProfile(): PawlyUser {
         val uid = requireUid()
         val profile = db.collection("users").document(uid).get().await().toPawlyUser()
-            ?: ensureMyProfile()
+            ?.withPrivateProfessionalContact() ?: ensureMyProfile()
         cachedMyProfileState = profile
         return profile
     }
@@ -584,7 +592,10 @@ class FirebaseCommunityRepository private constructor(
         return docs.documents.mapNotNull { it.toPawlyUser() }.filter { it.uid != currentUid && it.isPublic && it.uid !in blocked }
     }
 
-    suspend fun getUser(uid: String): PawlyUser? = db.collection("users").document(uid).get().await().toPawlyUser()
+    suspend fun getUser(uid: String): PawlyUser? = db.collection("users").document(uid).get().await()
+        .toPawlyUser()?.let { profile ->
+            if (profile.professionalContactPublic) profile.withPrivateProfessionalContact() else profile
+        }
 
     suspend fun getUserDogs(uid: String): List<PawlyDog> {
         val data = db.collection("users").document(uid).get().await().get("dogProfiles") as? List<Map<String, Any>>
@@ -975,8 +986,22 @@ class FirebaseCommunityRepository private constructor(
         val user = auth.currentUser ?: error("Inicia sesión para utilizar la comunidad.")
         val uid = user.uid
         val userRef = db.collection("users").document(uid)
-        val existingProfile = userRef.get().await().toPawlyUser()
+        val existingSnapshot = userRef.get().await()
+        var existingProfile = existingSnapshot.toPawlyUser()
         if (existingProfile != null) {
+            // Move legacy contact out of the public user document. Old visibility was implicit,
+            // so it is deliberately disabled until the owner opts in again.
+            val legacyContact = existingSnapshot.getString("professionalContact").orEmpty()
+            if (legacyContact.isNotBlank()) {
+                val migration = db.batch()
+                migration.set(userRef.collection("privateData").document("professionalContact"), mapOf("value" to legacyContact.take(120)))
+                migration.update(userRef, mapOf(
+                    "professionalContact" to com.google.firebase.firestore.FieldValue.delete(),
+                    "professionalContactPublic" to false
+                ))
+                migration.commit().await()
+            }
+            existingProfile = existingProfile.withPrivateProfessionalContact()
             cachedMyProfileState = existingProfile
             // Repair the username claim for accounts created before reservation claims
             // were introduced. Failure here should not lock an existing account out.
@@ -1052,7 +1077,7 @@ class FirebaseCommunityRepository private constructor(
             "professionalCategory" to "",
             "professionalLocation" to "",
             "professionalDescription" to "",
-            "professionalContact" to "",
+            "professionalContactPublic" to false,
             "dogProfiles" to emptyList<Map<String, Any>>(),
             "createdAt" to FieldValue.serverTimestamp()
         )
@@ -1089,6 +1114,13 @@ class FirebaseCommunityRepository private constructor(
         return user.uid
     }
 
+    private suspend fun PawlyUser.withPrivateProfessionalContact(): PawlyUser {
+        val contact = db.collection("users").document(uid)
+            .collection("privateData").document("professionalContact").get().await()
+            .getString("value").orEmpty()
+        return copy(professionalContact = contact)
+    }
+
     private fun com.google.firebase.firestore.DocumentSnapshot.toPawlyUser(): PawlyUser? {
         if (!exists()) return null
         return PawlyUser(
@@ -1105,7 +1137,8 @@ class FirebaseCommunityRepository private constructor(
             professionalCategory = getString("professionalCategory") ?: "",
             professionalLocation = getString("professionalLocation") ?: "",
             professionalDescription = getString("professionalDescription") ?: "",
-            professionalContact = getString("professionalContact") ?: ""
+            professionalContact = "",
+            professionalContactPublic = getBoolean("professionalContactPublic") ?: false
         )
     }
 }

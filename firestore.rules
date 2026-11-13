@@ -66,8 +66,9 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'displayName', 'bio', 'photoUrl', 'isPublic', 'dogProfiles',
           'accountType', 'professionalCategory', 'professionalLocation',
-          'professionalDescription', 'professionalContact'
+          'professionalDescription', 'professionalContactPublic', 'professionalContact'
         ])
+        && !('professionalContact' in request.resource.data)
         && (!('accountType' in request.resource.data)
           || request.resource.data.accountType in ['personal', 'professional'])
         && (!('professionalCategory' in request.resource.data)
@@ -79,9 +80,8 @@ service cloud.firestore {
         && (!('professionalDescription' in request.resource.data)
           || (request.resource.data.professionalDescription is string
             && request.resource.data.professionalDescription.size() <= 500))
-        && (!('professionalContact' in request.resource.data)
-          || (request.resource.data.professionalContact is string
-            && request.resource.data.professionalContact.size() <= 120))
+        && (!('professionalContactPublic' in request.resource.data)
+          || request.resource.data.professionalContactPublic is bool)
         && (!('accountType' in request.resource.data)
           || request.resource.data.accountType != 'professional'
           || ('professionalCategory' in request.resource.data
@@ -124,6 +124,21 @@ service cloud.firestore {
             && exists(/databases/$(database)/documents/users/$(uid)/following/$(request.auth.uid))
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.auth.uid))));
       allow delete: if owner(uid);
+
+      match /privateData/{privateDocumentId} {
+        allow get: if owner(uid) || (signedIn()
+          && privateDocumentId == 'professionalContact'
+          && get(/databases/$(database)/documents/users/$(uid)).data.isPublic == true
+          && get(/databases/$(database)/documents/users/$(uid)).data.professionalContactPublic == true
+          && !blockedEitherWay(uid));
+        allow list: if false;
+        allow create, update: if owner(uid)
+          && privateDocumentId == 'professionalContact'
+          && request.resource.data.keys().hasOnly(['value'])
+          && request.resource.data.value is string
+          && request.resource.data.value.size() <= 120;
+        allow delete: if owner(uid) && privateDocumentId == 'professionalContact';
+      }
 
       match /notifications/{notificationId} {
         function actorProfile() {

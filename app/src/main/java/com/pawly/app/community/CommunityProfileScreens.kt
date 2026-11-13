@@ -52,6 +52,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
     var professionalLocation by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalLocation.orEmpty()) }
     var professionalDescription by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalDescription.orEmpty()) }
     var professionalContact by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalContact.orEmpty()) }
+    var professionalContactPublic by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalContactPublic ?: false) }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { avatarUri = it }
     var editDog by remember { mutableStateOf<PawlyDog?>(null) }
@@ -73,6 +74,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
             professionalLocation = it.professionalLocation
             professionalDescription = it.professionalDescription
             professionalContact = it.professionalContact
+            professionalContactPublic = it.professionalContactPublic
         }
         repo.cachedMyDogs()?.let { dogs = it }
         runCatching {
@@ -88,6 +90,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
             professionalLocation = freshProfile.professionalLocation
             professionalDescription = freshProfile.professionalDescription
             professionalContact = freshProfile.professionalContact
+            professionalContactPublic = freshProfile.professionalContactPublic
         }.onFailure { error = it.localizedMessage }
     }
     DisposableEffect(repo) {
@@ -125,16 +128,23 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                     if (accountType == "professional") {
                         Text(tr("Perfil profesional"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Text(tr("Estos datos aparecerán en tu perfil público si activas la visibilidad. La insignia indica el tipo de cuenta, no una verificación de credenciales."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        Text(tr("El contacto profesional será visible públicamente si tu perfil es público. Usa un correo o teléfono de trabajo, no datos personales que no quieras compartir."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text(tr("El contacto se guarda de forma privada. Solo se comparte si activas expresamente esta opción y tu perfil es público."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         OutlinedTextField(professionalCategory, { professionalCategory = it }, label = { Text(tr("Especialidad o servicio")) }, placeholder = { Text(tr("Adiestramiento, veterinaria, peluquería…")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(professionalLocation, { professionalLocation = it }, label = { Text(tr("Ciudad o zona de trabajo")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(professionalDescription, { professionalDescription = it }, label = { Text(tr("Servicios y experiencia")) }, modifier = Modifier.fillMaxWidth(), minLines = 3, maxLines = 5)
                         OutlinedTextField(professionalContact, { professionalContact = it }, label = { Text(tr("Contacto profesional (opcional)")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(tr("Mostrar contacto profesional en tu perfil público"), fontWeight = FontWeight.SemiBold)
+                                Text(tr("Solo se mostrará si tu perfil también es público."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Switch(checked = professionalContactPublic, onCheckedChange = { professionalContactPublic = it })
+                        }
                     }
                     Button(onClick = {
                         busy = true
                         scope.launch { runCatching {
-                            repo.updateProfile(name, bio, isPublic, accountType, professionalCategory, professionalLocation, professionalDescription, professionalContact)
+                            repo.updateProfile(name, bio, isPublic, accountType, professionalCategory, professionalLocation, professionalDescription, professionalContact, professionalContactPublic)
                             if (avatarUri != null) {
                                 val url = repo.updateProfilePhoto(avatarUri!!)
                                 profile = profile?.copy(photoUrl = url)
@@ -143,7 +153,8 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                             profile = profile?.copy(
                                 displayName = name, bio = bio, isPublic = isPublic, accountType = accountType,
                                 professionalCategory = professionalCategory, professionalLocation = professionalLocation,
-                                professionalDescription = professionalDescription, professionalContact = professionalContact
+                                professionalDescription = professionalDescription, professionalContact = professionalContact,
+                                professionalContactPublic = accountType == "professional" && professionalContactPublic && professionalContact.isNotBlank()
                             )
                             status = "Perfil actualizado."
                         }.onFailure { error = it.localizedMessage }; busy = false }
