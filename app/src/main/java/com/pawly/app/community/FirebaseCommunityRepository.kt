@@ -669,7 +669,7 @@ class FirebaseCommunityRepository private constructor(
                 interestedCount = doc.getLong("interestedCount") ?: 0,
                 interestedByMe = interested
             )
-        }
+        }.sortedWith(compareBy { if (it.startAt > 0L) it.startAt else Long.MAX_VALUE })
     }
 
     suspend fun createEvent(
