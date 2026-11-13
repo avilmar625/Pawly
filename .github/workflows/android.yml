@@ -15,6 +15,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  backend-check:
+    name: Check Cloudflare Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/cloudflare-worker/package.json
+      - name: Install Worker dependencies
+        working-directory: backend/cloudflare-worker
+        run: npm install
+      - name: Type-check Worker
+        working-directory: backend/cloudflare-worker
+        run: npm run check
+
   assemble:
     name: Build, test and package
     runs-on: ubuntu-latest
