@@ -1,19 +1,20 @@
 package com.pawly.app
 
-import android.annotation.SuppressLint
 
 import android.content.Intent
 import android.net.Uri
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.webkit.JavascriptInterface
-import android.os.Handler
-import android.os.Looper
 import java.util.Locale
 import java.util.Calendar
 import androidx.compose.ui.viewinterop.AndroidView
+import android.view.MotionEvent
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Overlay
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
@@ -63,6 +64,74 @@ data class PawlyEvent(
     val timeZoneId: String = ""
 )
 
+internal data class PawlyMapMarker(
+    val latitude: Double,
+    val longitude: Double,
+    val title: String,
+    val description: String = ""
+)
+
+/** Native OSM map. It does not depend on WebView, Leaflet CDNs or a Google Maps API key. */
+@Composable
+internal fun PawlyOpenStreetMap(
+    modifier: Modifier,
+    centerLatitude: Double,
+    centerLongitude: Double,
+    zoom: Double = 12.0,
+    markers: List<PawlyMapMarker> = emptyList(),
+    onMapTap: ((Double, Double) -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val latestOnMapTap by rememberUpdatedState(onMapTap)
+    val mapView = remember(context) {
+        Configuration.getInstance().userAgentValue = context.packageName
+        MapView(context).apply {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setMultiTouchControls(true)
+            setBuiltInZoomControls(true)
+            minZoomLevel = 3.0
+            maxZoomLevel = 19.0
+            overlays.add(object : Overlay() {
+                override fun onSingleTapConfirmed(event: MotionEvent, mapView: MapView): Boolean {
+                    val callback = latestOnMapTap ?: return false
+                    val point = mapView.projection.fromPixels(event.x.toInt(), event.y.toInt()) as? GeoPoint ?: return false
+                    callback(point.latitude, point.longitude)
+                    return true
+                }
+            })
+        }
+    }
+    AndroidView(
+        modifier = modifier,
+        factory = { mapView },
+        update = { map ->
+            val centerKey = "$centerLatitude|$centerLongitude|$zoom"
+            if (map.tag != centerKey) {
+                map.tag = centerKey
+                map.controller.setZoom(zoom)
+                map.controller.setCenter(GeoPoint(centerLatitude, centerLongitude))
+            }
+            map.overlays.removeAll { it is Marker }
+            markers.forEach { point ->
+                map.overlays.add(Marker(map).apply {
+                    position = GeoPoint(point.latitude, point.longitude)
+                    title = point.title
+                    snippet = point.description
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                })
+            }
+            map.invalidate()
+        }
+    )
+    DisposableEffect(mapView) {
+        mapView.onResume()
+        onDispose {
+            mapView.onPause()
+            mapView.onDetach()
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PawlyEventsScreen(
@@ -79,7 +148,6 @@ internal fun PawlyEventsScreen(
     var reportEventId by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
-    var mapLoadFailed by remember { mutableStateOf(false) }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
     val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
@@ -149,51 +217,19 @@ internal fun PawlyEventsScreen(
             val mapPoints = visible.filter { it.latitude != null && it.longitude != null }
             val centerLat = mapPoints.mapNotNull { it.latitude }.average().takeIf { it.isFinite() } ?: 36.7213
             val centerLon = mapPoints.mapNotNull { it.longitude }.average().takeIf { it.isFinite() } ?: -4.4214
-            val markers = mapPoints.joinToString(",") { event ->
-                "{lat:${event.latitude},lon:${event.longitude},title:${org.json.JSONObject.quote(event.title)},place:${org.json.JSONObject.quote(event.location)}}"
+            val mapMarkers = mapPoints.mapNotNull { event ->
+                val lat = event.latitude ?: return@mapNotNull null
+                val lon = event.longitude ?: return@mapNotNull null
+                PawlyMapMarker(lat, lon, event.title, event.location)
             }
-            val south = (mapPoints.mapNotNull { it.latitude }.minOrNull() ?: 36.70) - 0.025
-            val north = (mapPoints.mapNotNull { it.latitude }.maxOrNull() ?: 36.75) + 0.025
-            val west = (mapPoints.mapNotNull { it.longitude }.minOrNull() ?: -4.48) - 0.025
-            val east = (mapPoints.mapNotNull { it.longitude }.maxOrNull() ?: -4.38) + 0.025
-            val mapUrl = Uri.encode("https://www.openstreetmap.org/export/embed.html?bbox=$west,$south,$east,$north&layer=mapnik&marker=$centerLat,$centerLon")
-            val mapKey = "$centerLat|$centerLon|$markers|$mapUrl"
-            AndroidView(
+            PawlyOpenStreetMap(
                 modifier = Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(22.dp)),
-                factory = { view ->
-                    WebView(view).apply {
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.loadsImagesAutomatically = true
-                        settings.blockNetworkImage = false
-                        settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-                        settings.allowFileAccess = false
-                        settings.allowContentAccess = false
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageFinished(view: WebView, url: String?) {
-                                mapLoadFailed = false
-                            }
-                            override fun onReceivedError(view: WebView, request: android.webkit.WebResourceRequest, error: android.webkit.WebResourceError) {
-                                if (request.isForMainFrame) mapLoadFailed = true
-                            }
-                            override fun onReceivedHttpError(view: WebView, request: android.webkit.WebResourceRequest, errorResponse: android.webkit.WebResourceResponse) {
-                                if (request.isForMainFrame) mapLoadFailed = true
-                            }
-                        }
-                        setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
-                    }
-                },
-                update = { web ->
-                    if (web.tag != mapKey) {
-                        web.tag = mapKey
-                        mapLoadFailed = false
-                        web.loadUrl(Uri.decode(mapUrl))
-                    }
-                }
+                centerLatitude = centerLat,
+                centerLongitude = centerLon,
+                zoom = if (mapMarkers.size > 1) 11.0 else 13.0,
+                markers = mapMarkers
             )
-            if (mapLoadFailed) {
-                Text(tr("No se pudo cargar el mapa. Comprueba tu conexión."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
-            }
+            Text("© OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(onClick = {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/"))) }
             }) { Text(tr("Abrir el mapa en el navegador")) }
@@ -453,69 +489,45 @@ private fun CreatePawlyEventDialog(
 }
 
 @Composable
-@SuppressLint("JavascriptInterface")
 private fun EventLocationPickerDialog(
     initialLatitude: Double?,
     initialLongitude: Double?,
     onDismiss: () -> Unit,
     onSelected: (Double, Double) -> Unit
 ) {
-    val bridge = remember(onSelected) { PawlyEventMapBridge(onSelected) }
-    val centerLatitude = initialLatitude ?: 40.4168
-    val centerLongitude = initialLongitude ?: -3.7038
-    val zoom = if (initialLatitude != null && initialLongitude != null) 14 else 5
-    val hasInitialMarker = initialLatitude != null && initialLongitude != null
+    var selectedPoint by remember(initialLatitude, initialLongitude) {
+        mutableStateOf(if (initialLatitude != null && initialLongitude != null) initialLatitude to initialLongitude else null)
+    }
+    val centerLatitude = selectedPoint?.first ?: initialLatitude ?: 36.7213
+    val centerLongitude = selectedPoint?.second ?: initialLongitude ?: -4.4214
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Marca el lugar del evento")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Toca el mapa para colocar el marcador. Puedes moverlo antes de confirmar."),
-                    style = MaterialTheme.typography.bodySmall)
-                AndroidView(
+                Text(tr("Toca el mapa para elegir el punto. Puedes acercar, alejar y mover el mapa antes de confirmar."), style = MaterialTheme.typography.bodySmall)
+                PawlyOpenStreetMap(
                     modifier = Modifier.fillMaxWidth().height(310.dp).clip(RoundedCornerShape(16.dp)),
-                    factory = { viewContext ->
-                        WebView(viewContext).apply {
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            settings.loadsImagesAutomatically = true
-                            settings.blockNetworkImage = false
-                            settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-                            settings.allowFileAccess = false
-                            settings.allowContentAccess = false
-                            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                            webViewClient = WebViewClient()
-                            addJavascriptInterface(bridge, "PawlyEventMap")
-                            setBackgroundColor(android.graphics.Color.rgb(247, 243, 235))
-                            val markerScript = if (hasInitialMarker) "marker=L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
-                            val fallback = org.json.JSONObject.quote("<iframe title='OpenStreetMap' src='https://www.openstreetmap.org/export/embed.html?bbox=-3.9,36.6,-3.4,36.9&layer=mapnik' style='width:100%;height:100%;border:0'></iframe>")
-                            val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                                "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\">" +
-                                "<style>html,body,#map{height:100%;margin:0}</style>" +
-                                "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\"></script></head><body><div id='map'></div><script>" +
-                                "let attempts=0;function initMap(){if(!window.L){if(attempts++<40){setTimeout(initMap,125);return;}document.getElementById('map').innerHTML=$fallback;return;}" +
-                                "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
-                                "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
-                                "let marker=null;$markerScript" +
-                                "map.on('click',function(e){if(marker)map.removeLayer(marker);marker=L.marker(e.latlng).addTo(map);window.PawlyEventMap.select(e.latlng.lat,e.latlng.lng);});}initMap();" +
-                                "</script></body></html>"
-                            loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
-                        }
-                    }
+                    centerLatitude = centerLatitude,
+                    centerLongitude = centerLongitude,
+                    zoom = if (selectedPoint != null) 14.0 else 11.0,
+                    markers = selectedPoint?.let { listOf(PawlyMapMarker(it.first, it.second, "Ubicación del evento")) }.orEmpty(),
+                    onMapTap = { latitude, longitude -> selectedPoint = latitude to longitude }
                 )
+                Text(
+                    selectedPoint?.let { String.format(Locale.US, "%.5f, %.5f", it.first, it.second) }
+                        ?: tr("Todavía no has seleccionado una ubicación."),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelMedium
+                )
+                Text("© OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Listo")) } },
-        dismissButton = {}
+        confirmButton = {
+            TextButton(onClick = { selectedPoint?.let { onSelected(it.first, it.second) } }, enabled = selectedPoint != null) {
+                Text(tr("Usar esta ubicación"))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
     )
-}
-
-private class PawlyEventMapBridge(
-    private val onSelected: (Double, Double) -> Unit
-) {
-    @JavascriptInterface
-    fun select(latitude: Double, longitude: Double) {
-        if (latitude !in -90.0..90.0 || longitude !in -180.0..180.0) return
-        Handler(Looper.getMainLooper()).post { onSelected(latitude, longitude) }
-    }
 }
