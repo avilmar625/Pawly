@@ -28,6 +28,12 @@ import java.util.Date
  * Firebase-backed community data source. It is only created when google-services.json
  * has been supplied; the rest of Pawly remains usable without a Firebase project.
  */
+data class PawlyExploreCollection(
+    val name: String,
+    val description: String,
+    val entries: Set<String>
+)
+
 class FirebaseCommunityRepository private constructor(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
@@ -701,6 +707,47 @@ class FirebaseCommunityRepository private constructor(
             .get().await().documents.mapNotNull { it.toPawlyUser() }
             .filter { it.uid != me && it.uid !in blocked && it.uid !in followed && it.isPublic }
             .take(limit.toInt())
+    }
+
+    /**
+     * Syncs the signed-in user's saved Explore collections. The collection data is private
+     * to its owner and is deliberately separate from public community recommendations.
+     */
+    suspend fun loadExploreCollections(): List<PawlyExploreCollection> {
+        val uid = requireUid()
+        return db.collection("users").document(uid).collection("exploreCollections")
+            .get().await().documents.mapNotNull { doc ->
+                val name = doc.getString("name")?.trim().orEmpty()
+                if (name.isBlank()) null else PawlyExploreCollection(
+                    name = name,
+                    description = doc.getString("description").orEmpty(),
+                    entries = (doc.get("entries") as? List<*>)?.filterIsInstance<String>()?.toSet().orEmpty()
+                )
+            }
+    }
+
+    /** Replaces the cloud snapshot atomically; bounded to 30 collections and 100 entries each. */
+    suspend fun syncExploreCollections(collections: List<PawlyExploreCollection>) {
+        val uid = requireUid()
+        require(collections.size <= 30) { "Puedes guardar como máximo 30 colecciones." }
+        require(collections.all { it.name.isNotBlank() && it.name.length <= 32 && it.description.length <= 120 && it.entries.size <= 100 }) {
+            "Una colección supera los límites permitidos."
+        }
+        val root = db.collection("users").document(uid).collection("exploreCollections")
+        val existing = root.get().await().documents
+        val wantedIds = collections.map { java.util.UUID.nameUUIDFromBytes(it.name.lowercase().toByteArray()).toString() }.toSet()
+        val batch = db.batch()
+        existing.filter { it.id !in wantedIds }.forEach { batch.delete(it.reference) }
+        collections.forEach { item ->
+            val id = java.util.UUID.nameUUIDFromBytes(item.name.lowercase().toByteArray()).toString()
+            batch.set(root.document(id), mapOf(
+                "name" to item.name,
+                "description" to item.description,
+                "entries" to item.entries.toList().sorted(),
+                "updatedAt" to FieldValue.serverTimestamp()
+            ))
+        }
+        batch.commit().await()
     }
 
     /** Loads public community events; coordinates belong to the event venue, never to a person. */
