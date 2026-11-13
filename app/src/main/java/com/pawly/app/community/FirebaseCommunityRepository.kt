@@ -796,6 +796,22 @@ class FirebaseCommunityRepository private constructor(
             }.sortedByDescending { it.createdAt }
     }
 
+    suspend fun loadPendingCommunityPlaces(): List<PawlyCommunityPlace> {
+        requireUid()
+        return db.collection("communityPlaces").whereEqualTo("status", "pending").limit(100).get().await()
+            .documents.map { doc ->
+                PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
+                    doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
+                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L)
+            }.sortedByDescending { it.createdAt }
+    }
+
+    suspend fun reviewCommunityPlace(placeId: String, approve: Boolean) {
+        requireUid()
+        db.collection("communityPlaces").document(placeId)
+            .update("status", if (approve) "approved" else "rejected").await()
+    }
+
     suspend fun submitCommunityPlace(name: String, category: String, location: String, description: String) {
         val uid = requireVerifiedUid()
         val cleanName = name.trim()
