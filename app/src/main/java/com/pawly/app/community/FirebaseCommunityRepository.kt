@@ -12,6 +12,13 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -28,6 +35,7 @@ class FirebaseCommunityRepository private constructor(
     private val db: FirebaseFirestore,
     private val appContext: Context
 ) {
+    private val backendHttpClient = OkHttpClient()
     val currentUid: String? get() = auth.currentUser?.uid
     val currentEmail: String? get() = auth.currentUser?.email
     val isEmailVerified: Boolean get() = auth.currentUser?.isEmailVerified == true
@@ -317,6 +325,34 @@ class FirebaseCommunityRepository private constructor(
         return dogs
     }
 
+    private suspend fun dispatchActivityPush(
+        targetUid: String,
+        type: String,
+        relatedId: String = "",
+        sourceEventId: String = ""
+    ) {
+        val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')
+        if (baseUrl.isBlank() || targetUid.isBlank()) return
+        val idToken = auth.currentUser?.getIdToken(false)?.await()?.token ?: return
+        val payload = JSONObject()
+            .put("type", type)
+            .put("recipientUid", targetUid)
+            .put("relatedId", relatedId)
+            .put("sourceEventId", sourceEventId)
+        val request = Request.Builder()
+            .url("$baseUrl/v1/activity-notifications")
+            .header("Authorization", "Bearer $idToken")
+            .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+        withContext(Dispatchers.IO) {
+            backendHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    throw IllegalStateException("El servicio de notificaciones respondió ${response.code}.")
+                }
+            }
+        }
+    }
+
     private suspend fun createNotification(
         targetUid: String,
         type: String,
@@ -502,7 +538,10 @@ class FirebaseCommunityRepository private constructor(
             tx.update(ref, "likeCount", FieldValue.increment(if (liked) -1 else 1))
             !liked
         }.await()
-        if (added) createNotification(postOwner, "LIKE", "Le ha gustado tu publicación.", postId, postId)
+        if (added) {
+            createNotification(postOwner, "LIKE", "Le ha gustado tu publicación.", postId, postId)
+            runCatching { dispatchActivityPush(postOwner, "LIKE", postId, postId) }
+        }
     }
 
     fun listenComments(postId: String, onData: (List<PawlyComment>) -> Unit, onError: (String) -> Unit): ListenerRegistration =
@@ -533,6 +572,7 @@ class FirebaseCommunityRepository private constructor(
         }.await()
         val ownerUid = post.get().await().getString("authorId").orEmpty()
         createNotification(ownerUid, "COMMENT", "Ha comentado tu publicación.", postId, comment.id)
+        runCatching { dispatchActivityPush(ownerUid, "COMMENT", postId, comment.id) }
     }
 
     suspend fun searchUsers(query: String): List<PawlyUser> {
@@ -592,7 +632,10 @@ class FirebaseCommunityRepository private constructor(
             }
             follow && !alreadyFollowing
         }.await()
-        if (newlyFollowed) createNotification(uid, "FOLLOW", "Ha empezado a seguirte.")
+        if (newlyFollowed) {
+            createNotification(uid, "FOLLOW", "Ha empezado a seguirte.")
+            runCatching { dispatchActivityPush(uid, "FOLLOW") }
+        }
     }
 
     suspend fun block(uid: String) {
