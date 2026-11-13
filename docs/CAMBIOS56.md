@@ -19,7 +19,15 @@ Base: `cambios55`
 
 **Límite:** las reglas protegen la bandeja de Firestore y el cliente también puede solicitar el envío al Worker. La fuente del Worker ya está implementada en `backend/cloudflare-worker`; no se considera operativo hasta desplegarlo en una cuenta Cloudflare y configurar los secretos de una cuenta de servicio Firebase fuera de Git.
 
-### 2. Restauración de recordatorios tras reinicio
+### 2. Validación del endpoint de actividad
+
+- Se extrae la validación estructural del cuerpo HTTP a `activity-validation.ts`.
+- Se rechazan campos adicionales (por ejemplo, nombres o textos de actor aportados por el cliente), IDs con caracteres de ruta y combinaciones incoherentes de tipo/identificadores.
+- El cuerpo HTTP se limita a 4 KiB incluso cuando no se declara `Content-Length`.
+- Se incorporan pruebas unitarias para likes, comentarios, follows y payloads manipulados; CI ejecuta `npm test` y el chequeo TypeScript.
+- La comprobación de que la interacción realmente existe, pertenece al destinatario y respeta bloqueos sigue realizándose contra Firestore en el Worker.
+
+### 3. Restauración de recordatorios tras reinicio
 
 - Las alarmas guardan sus datos mínimos en SharedPreferences.
 - Se añade un receptor para `BOOT_COMPLETED` y `MY_PACKAGE_REPLACED`.
@@ -28,14 +36,14 @@ Base: `cambios55`
 
 Los recordatorios siguen siendo locales al dispositivo. No se sincronizan entre Android e iOS y se pierden si se borran los datos de la aplicación o se desinstala.
 
-### 3. Fechas estructuradas para eventos
+### 4. Fechas estructuradas para eventos
 
 - Los eventos nuevos conservan `dateText` para compatibilidad visual y añaden `startAt` (Timestamp Firestore) y `timeZoneId`.
 - La fecha se valida estrictamente como `DD/MM/AAAA HH:mm` (también admite el separador visual `·`).
 - No se permiten fechas pasadas.
 - La lista ordena los eventos cargados por su hora de inicio. Los eventos antiguos sin `startAt` quedan al final y mantienen su texto histórico.
 
-### 4. Integración del mapa
+### 5. Integración del mapa
 
 - Se añade Subresource Integrity (SRI) a Leaflet 1.9.4.
 - Se aplica una Content Security Policy limitada a Leaflet y a los recursos de teselas.
@@ -69,7 +77,7 @@ Confirma que el proyecto activo es `pawly-83dca`. No actives Blaze ni habilites 
 ## Verificación
 
 La rama debe pasar:
-- `testDebugUnitTest`
+- `npm test` y `npm run check` en `backend/cloudflare-worker`\n- `testDebugUnitTest`
 - `lintDebug`
 - `assembleDebug`
 - `bundleRelease` (sin firma)
