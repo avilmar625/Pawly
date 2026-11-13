@@ -144,6 +144,22 @@ service cloud.firestore {
         allow delete: if owner(uid) && privateDocumentId == 'professionalContact';
       }
 
+      // Private Explore collections sync across the owner's devices.
+      match /exploreCollections/{collectionId} {
+        allow get, list: if owner(uid);
+        allow create, update: if owner(uid)
+          && request.resource.data.keys().hasOnly(['name', 'description', 'entries', 'updatedAt'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 32
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 120
+          && request.resource.data.entries is list
+          && request.resource.data.entries.size() <= 100
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if owner(uid);
+      }
+
       match /notifications/{notificationId} {
         function actorProfile() {
           return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
