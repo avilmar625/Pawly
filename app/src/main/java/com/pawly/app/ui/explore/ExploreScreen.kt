@@ -435,21 +435,38 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     viewingCollection?.let { name ->
         AlertDialog(
             onDismissRequest = { viewingCollection = null },
-            title = { Text(name) },
+            title = { Text(name, fontWeight = FontWeight.Bold) },
             text = {
                 val entries = collectionContents[name] ?: emptySet()
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (entries.isEmpty()) Text(tr("Esta colección está vacía. Abre una idea y añádela desde el botón Colección."))
-                    entries.forEach { entry ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(entry, modifier = Modifier.weight(1f))
-                            IconButton(onClick = {
-                                collectionContents = collectionContents + (name to entries - entry)
-                                persistCollections()
-                            }) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Quitar de la colección")) }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    collectionDescriptions[name]?.takeIf { it.isNotBlank() }?.let {
+                        Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text("${entries.size} elementos guardados", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    if (entries.isEmpty()) {
+                        Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(14.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Icon(Icons.Default.BookmarkAdd, null, tint = MaterialTheme.colorScheme.primary)
+                                Text(tr("Tu colección está lista"), fontWeight = FontWeight.Bold)
+                                Text(tr("Abre una idea de Explora y utiliza «Colección» para guardarla aquí."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    } else {
+                        entries.forEach { entry ->
+                            Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(13.dp)) {
+                                Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Place, null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(9.dp))
+                                    Text(entry, modifier = Modifier.weight(1f), fontWeight = FontWeight.Medium)
+                                    IconButton(onClick = {
+                                        collectionContents = collectionContents + (name to entries - entry)
+                                        persistCollections()
+                                    }) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Quitar de la colección")) }
+                                }
+                            }
                         }
                     }
-                    Text(tr("Estas colecciones se guardan en este dispositivo."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(tr("Se guardan en este dispositivo y no se sincronizan con otros móviles."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             confirmButton = { TextButton(onClick = { viewingCollection = null }) { Text(tr("Cerrar")) } }
