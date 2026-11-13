@@ -223,8 +223,6 @@ internal fun PawlyEventsScreen(
                             }
                         }
                         TextButton(onClick = { reportEventId = event.id }) {
-                            Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(5.dp))
                             Text(tr("Denunciar evento"))
                         }
                     }
