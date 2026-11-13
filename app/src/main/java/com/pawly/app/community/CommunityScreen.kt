@@ -49,7 +49,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class CommunityPage(val label: String) {
-    FEED("Muro"), SEARCH("Personas"), EVENTS("Eventos"), MAP("Mapa"), MESSAGES("Mensajes"), PROFILE("Mi perfil"), MODERATION("Moderar")
+    FEED("Muro"), SEARCH("Personas"), EVENTS("Eventos"), MAP("Mapa"), MESSAGES("Mensajes"), NOTIFICATIONS("Avisos"), PROFILE("Mi perfil"), MODERATION("Moderar")
 }
 
 @Composable
@@ -455,6 +455,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
             page == CommunityPage.EVENTS -> PawlyEventsScreen(repository = repo, elegantDesign = elegantDesign)
             page == CommunityPage.MAP -> PawlyEventsScreen(repository = repo, mapOnly = true, elegantDesign = elegantDesign)
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
+            page == CommunityPage.NOTIFICATIONS -> NotificationsScreen(repo, onOpenProfile = { selectedUser = it })
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
         }
@@ -518,3 +519,70 @@ private fun BlockConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     )
 }
 
+
+
+@Composable
+private fun NotificationsScreen(repo: FirebaseCommunityRepository, onOpenProfile: (String) -> Unit) {
+    var notifications by remember { mutableStateOf(emptyList<PawlyNotification>()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    DisposableEffect(repo) {
+        val listener = repo.listenNotifications({ notifications = it; error = null }, { error = it })
+        onDispose { listener.remove() }
+    }
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(tr("Actividad"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(tr("Likes, comentarios y nuevos seguidores."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            TextButton(onClick = {
+                scope.launch { runCatching { repo.markAllNotificationsRead() }.onFailure { error = it.localizedMessage } }
+            }, enabled = notifications.any { !it.read }) { Text(tr("Marcar todo leído")) }
+        }
+        if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
+        if (notifications.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(tr("Todavía no tienes notificaciones."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
+                items(notifications, key = { it.id }) { item ->
+                    Surface(
+                        color = if (item.read) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer.copy(alpha = .42f),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            scope.launch { runCatching { repo.markNotificationRead(item.id) } }
+                            if (item.actorId.isNotBlank()) onOpenProfile(item.actorId)
+                        }
+                    ) {
+                        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                when (item.type) {
+                                    "LIKE" -> Icons.Default.Favorite
+                                    "COMMENT" -> Icons.Default.ChatBubbleOutline
+                                    "FOLLOW" -> Icons.Default.PersonAdd
+                                    else -> Icons.Default.Notifications
+                                },
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(25.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(item.actorName, fontWeight = FontWeight.Bold)
+                                Text(item.message, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    if (item.createdAt > 0) java.text.DateFormat.getDateTimeInstance().format(java.util.Date(item.createdAt)) else tr("Ahora"),
+                                    color = MaterialTheme.colorScheme.outline,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                            if (!item.read) Surface(color = MaterialTheme.colorScheme.error, shape = CircleShape, modifier = Modifier.size(9.dp)) {}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
