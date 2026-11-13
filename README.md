@@ -15,6 +15,10 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 
 - **Inicio:** selector para varios perfiles, perfil editable con foto de cámara o galería, tareas cotidianas y resumen actualizado.
 - **Explorar:** búsqueda y filtros por categorías, lugares cercanos de OpenStreetMap y colecciones personales que se sincronizan con Firestore al iniciar sesión. Los favoritos rápidos siguen guardándose localmente.
+- **Comunidad local:** lugares propuestos por miembros, con aprobación de moderación antes de mostrarse en Explorar.
+- **Mascotas perdidas:** avisos con ubicación aproximada y notificaciones push voluntarias por radio de 5, 10 o 20 km mediante Cloudflare Worker.
+- **Contactos:** selección manual de teléfonos del sistema y coincidencia HMAC; no se carga la agenda completa ni se guardan teléfonos en claro.
+- **Profesionales:** directorio de perfiles profesionales públicos de Pawly; el contacto solo se muestra con consentimiento explícito.
 - **Salud:** fechas por mascota y recordatorios locales con fecha y hora para vacunas, desparasitación y revisiones. Android puede retrasar avisos por ahorro de batería; no ofrece pautas veterinarias.
 - **Diario:** recuerdos de texto persistentes, con recuento actualizado.
 - **Persistencia y sincronización:** la app conserva datos locales para uso sin conexión y sincroniza con Firebase las áreas conectadas cuando hay sesión y red. No todas las preferencias, recordatorios o marcas diarias se sincronizan.
