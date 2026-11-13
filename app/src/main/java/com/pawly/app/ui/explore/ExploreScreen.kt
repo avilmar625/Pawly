@@ -214,6 +214,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
+    var selectedNearbyPlace by remember { mutableStateOf<NearbyPlace?>(null) }
     val explorePreferences = remember(context) { context.getSharedPreferences("pawly_explore", android.content.Context.MODE_PRIVATE) }
     var customCollections by remember(explorePreferences) {
         mutableStateOf(runCatching {
@@ -469,6 +470,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     place = place,
                     saved = place.name in savedPlaces,
                     onSave = { onToggleSave(place.name) },
+                    onAddToCollection = { selectedNearbyPlace = place; showCollectionPicker = true },
                     onOpenMap = {
                         val uri = Uri.parse("geo:${place.latitude},${place.longitude}?q=${place.latitude},${place.longitude}(${Uri.encode(place.name)})")
                         val intent = Intent(Intent.ACTION_VIEW, uri)
@@ -600,19 +602,21 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             dismissButton = { TextButton(onClick = { showCreateCollection = false }) { Text(tr("Cancelar")) } }
         )
     }
-    if (showCollectionPicker && selectedPlace != null) {
+    val collectionTarget = selectedPlace?.name ?: selectedNearbyPlace?.name
+    if (showCollectionPicker && collectionTarget != null) {
         AlertDialog(
-            onDismissRequest = { showCollectionPicker = false },
+            onDismissRequest = { showCollectionPicker = false; selectedNearbyPlace = null },
             title = { Text(tr("Guardar en una colección")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(collectionTarget, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                     if (customCollections.isEmpty()) Text(tr("Primero crea una colección para organizar tus ideas."))
                     else customCollections.forEach { name ->
-                        val isSaved = selectedPlace!!.name in (collectionContents[name] ?: emptySet())
+                        val isSaved = collectionTarget in (collectionContents[name] ?: emptySet())
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = isSaved, onCheckedChange = { checked ->
                                 val current = collectionContents[name] ?: emptySet()
-                                collectionContents = collectionContents + (name to if (checked) current + selectedPlace!!.name else current - selectedPlace!!.name)
+                                collectionContents = collectionContents + (name to if (checked) current + collectionTarget else current - collectionTarget)
                                 persistCollections()
                             })
                             Text(name, modifier = Modifier.weight(1f))
@@ -620,11 +624,13 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showCollectionPicker = false }) { Text(tr("Listo")) } },
+            confirmButton = { TextButton(onClick = { showCollectionPicker = false; selectedNearbyPlace = null }) { Text(tr("Listo")) } },
             dismissButton = {
                 TextButton(onClick = {
                     showCollectionPicker = false
+                    selectedNearbyPlace = null
                     newCollectionName = ""
+                    newCollectionDescription = ""
                     showCreateCollection = true
                 }) { Text(tr("Nueva colección")) }
             }
@@ -633,7 +639,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
 }
 
 @Composable
-private fun NearbyPlaceCard(place: NearbyPlace, saved: Boolean, onSave: () -> Unit, onOpenMap: () -> Unit) {
+private fun NearbyPlaceCard(place: NearbyPlace, saved: Boolean, onSave: () -> Unit, onAddToCollection: () -> Unit, onOpenMap: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(19.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -655,10 +661,17 @@ private fun NearbyPlaceCard(place: NearbyPlace, saved: Boolean, onSave: () -> Un
                 }
             }
             Text(place.address, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = onOpenMap, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Map, null)
-                Spacer(Modifier.width(7.dp))
-                Text(tr("Ver ubicación en el mapa"))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onAddToCollection, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.FolderOpen, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text(tr("Colección"), maxLines = 1)
+                }
+                Button(onClick = onOpenMap, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Map, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text(tr("Ver mapa"), maxLines = 1)
+                }
             }
             Text(tr("Datos cartográficos comunitarios. Comprueba que el lugar admite perros antes de desplazarte."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
