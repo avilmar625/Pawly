@@ -129,9 +129,13 @@ private suspend fun loadNearbyPlaces(latitude: Double, longitude: Double, catego
                     ).filterNotNull().joinToString(", ").ifBlank { tags.optString("operator").ifBlank { "Ubicación en OpenStreetMap" } }
                     val type = when {
                         tags.optString("leisure") == "dog_park" -> "Parque canino"
+                        tags.optString("leisure") == "park" -> "Parque"
                         tags.optString("natural") == "beach" -> "Playa"
                         tags.optString("tourism").isNotBlank() -> "Alojamiento"
-                        else -> "Restauración"
+                        tags.optString("amenity") == "cafe" -> "Cafetería"
+                        tags.optString("amenity") == "bar" -> "Bar"
+                        tags.optString("amenity") == "restaurant" -> "Restaurante"
+                        else -> "Lugar cercano"
                     }
                     add(NearbyPlace(id, name, type, address, lat, lon))
                 }
