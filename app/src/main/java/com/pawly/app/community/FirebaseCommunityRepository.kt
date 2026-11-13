@@ -749,6 +749,21 @@ class FirebaseCommunityRepository private constructor(
         }
     }
 
+    suspend fun getUnreadMessageCount(conversationId: String): Int {
+        val uid = requireUid()
+        val conversation = db.collection("conversations").document(conversationId).get().await()
+        val participants = conversation.get("participants") as? List<String> ?: emptyList()
+        if (uid !in participants || participants.size != 2) return 0
+        val otherUid = participants.first { it != uid }
+        val recentIncoming = db.collection("conversations").document(conversationId)
+            .collection("messages")
+            .whereEqualTo("senderId", otherUid)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(100)
+            .get().await()
+        return recentIncoming.documents.count { uid !in (it.get("readBy") as? List<*>)?.filterIsInstance<String>().orEmpty() }
+    }
+
     fun listenMessages(conversationId: String, onData: (List<PawlyMessage>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
         return db.collection("conversations").document(conversationId).collection("messages")
             .orderBy("createdAt", Query.Direction.ASCENDING).limit(200)
