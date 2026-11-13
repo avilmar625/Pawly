@@ -32,6 +32,9 @@ jobs:
       - name: Type-check Worker
         working-directory: backend/cloudflare-worker
         run: npm run check
+      - name: Test Worker request validation
+        working-directory: backend/cloudflare-worker
+        run: npm test
 
   assemble:
     name: Build, test and package
