@@ -21,8 +21,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.ResolverStyle
 import java.util.Date
 import java.util.Locale
 
@@ -725,13 +723,7 @@ class FirebaseCommunityRepository private constructor(
         val cleanDescription = description.trim()
         val cleanLocation = location.trim()
         val cleanDate = dateText.trim()
-        val normalizedDate = cleanDate.replace("·", " ").replace(Regex("\\s+"), " ").trim()
-        val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/uuuu HH:mm", Locale.ROOT)
-            .withResolverStyle(ResolverStyle.STRICT)
-        val startAtMillis = runCatching {
-            LocalDateTime.parse(normalizedDate, dateFormatter)
-                .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        }.getOrElse { throw IllegalArgumentException("Introduce la fecha como DD/MM/AAAA · HH:mm.") }
+        val startAtMillis = EventDateParser.parseMillis(cleanDate)
         require(startAtMillis > System.currentTimeMillis()) { "La fecha del evento debe estar en el futuro." }
         require(cleanTitle.length in 4..90) { "El título debe tener entre 4 y 90 caracteres." }
         require(cleanDescription.length in 10..1200) { "La descripción debe tener entre 10 y 1200 caracteres." }
