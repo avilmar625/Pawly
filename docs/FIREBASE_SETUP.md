@@ -81,6 +81,7 @@ El archivo `firebase.json` ya apunta a `firestore.rules` y `firestore.indexes.js
 ### Datos que ya usan Firestore
 
 - Comunidad: perfiles de usuario, perfiles de mascotas, publicaciones, likes, comentarios, seguidores, bloqueos, denuncias y conversaciones.
+- Explorar: colecciones personales privadas sincronizadas entre dispositivos bajo `users/{uid}/exploreCollections`; los favoritos rápidos siguen siendo locales.
 - Chat: mensajes de texto, fotos y vídeos; acceso restringido a los dos participantes.
 - Mascotas compartidas: invitaciones, miembros y roles; el propietario y los editores pueden modificar los registros permitidos, los lectores solo consultan.
 - Pasaporte sanitario, rutinas, ficha básica y Diario: espacio de mascota compartido bajo `sharedPets/{ownerUid}_{petId}`, con las reglas de miembro/rol correspondientes.
