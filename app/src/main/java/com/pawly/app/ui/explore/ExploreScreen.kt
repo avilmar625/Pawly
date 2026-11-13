@@ -146,15 +146,6 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     var nearbyPlaces by remember { mutableStateOf(emptyList<NearbyPlace>()) }
     var placesLoading by remember { mutableStateOf(false) }
     var placesError by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(currentCoordinates, filter) {
-        val point = currentCoordinates ?: run { nearbyPlaces = emptyList(); return@LaunchedEffect }
-        placesLoading = true
-        placesError = null
-        runCatching { loadNearbyPlaces(point.first, point.second, filter) }
-            .onSuccess { nearbyPlaces = it }
-            .onFailure { placesError = it.localizedMessage ?: "No se han podido cargar lugares cercanos." }
-        placesLoading = false
-    }
     LaunchedEffect(currentCoordinates) {
         val point = currentCoordinates ?: return@LaunchedEffect
         currentAddress = withContext(Dispatchers.IO) {
@@ -213,6 +204,16 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     }
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
+    LaunchedEffect(currentCoordinates, filter) {
+        val point = currentCoordinates ?: run { nearbyPlaces = emptyList(); return@LaunchedEffect }
+        placesLoading = true
+        placesError = null
+        runCatching { loadNearbyPlaces(point.first, point.second, filter) }
+            .onSuccess { nearbyPlaces = it }
+            .onFailure { placesError = it.localizedMessage ?: "No se han podido cargar lugares cercanos." }
+        placesLoading = false
+    }
+
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
     var selectedNearbyPlace by remember { mutableStateOf<NearbyPlace?>(null) }
     val explorePreferences = remember(context) { context.getSharedPreferences("pawly_explore", android.content.Context.MODE_PRIVATE) }
