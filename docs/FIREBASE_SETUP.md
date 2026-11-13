@@ -82,6 +82,9 @@ El archivo `firebase.json` ya apunta a `firestore.rules` y `firestore.indexes.js
 
 - Comunidad: perfiles de usuario, perfiles de mascotas, publicaciones, likes, comentarios, seguidores, bloqueos, denuncias y conversaciones.
 - Explorar: colecciones personales privadas sincronizadas entre dispositivos bajo `users/{uid}/exploreCollections`; los favoritos rápidos siguen siendo locales.
+- Lugares de la comunidad: propuestas pendientes en `communityPlaces`, visibles solo tras aprobación administrativa.
+- Avisos de mascotas perdidas: publicaciones `LOST`, alertas con ubicación aproximada en `lostPetAlerts` y preferencias de radio en `lostPetSubscriptions`.
+- Contactos: directorio privado `phoneDirectory` indexado mediante HMAC; no contiene números en claro.
 - Chat: mensajes de texto, fotos y vídeos; acceso restringido a los dos participantes.
 - Mascotas compartidas: invitaciones, miembros y roles; el propietario y los editores pueden modificar los registros permitidos, los lectores solo consultan.
 - Pasaporte sanitario, rutinas, ficha básica y Diario: espacio de mascota compartido bajo `sharedPets/{ownerUid}_{petId}`, con las reglas de miembro/rol correspondientes.
@@ -178,6 +181,10 @@ Prueba con dos cuentas distintas y verificadas:
 6. Enviar una foto y un vídeo por chat y comprobar que solo los participantes pueden leer el mensaje en Firestore.
 7. Compartir una mascota con rol editor y después lector; verificar que los permisos se respetan en el servidor.
 8. Comprobar que al cerrar sesión no se mezclan los datos locales de distintas cuentas.
+9. Publicar una alerta de mascota perdida desde un dispositivo y comprobar que solo los usuarios con suscripción activada y dentro del radio reciben FCM.
+10. Enviar una propuesta de lugar y verificar que no aparece hasta que un administrador la apruebe.
+11. Crear un perfil profesional público y comprobar que aparece en el directorio; desactivar la publicación del contacto y verificar que deja de mostrarse.
+12. Registrar voluntariamente un teléfono en una cuenta, activar el secreto HMAC del Worker y probar el selector de contactos con otra cuenta pública.
 
 No uses información veterinaria real durante las pruebas iniciales. Comprueba también el consumo y los límites del plan gratuito de Cloudinary desde su Dashboard.
 
@@ -185,7 +192,7 @@ No uses información veterinaria real durante las pruebas iniciales. Comprueba t
 
 - Las cargas unsigned de Cloudinary no autentican al usuario y las URLs son públicas para quien las conozca.
 - El Worker de Cloudflare para notificaciones push está implementado en el repositorio, pero no desplegado ni configurado. No hay todavía backend para firmar subidas, aplicar moderación ni eliminar archivos de Cloudinary.
-- Hasta desplegar y probar el Worker, Pawly solo registra/recibe FCM; no debe darse por operativo el envío push entre usuarios.
+- Hasta desplegar y configurar el Worker con los secretos `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` y `PHONE_MATCH_HMAC_SECRET`, no estarán operativos los avisos push ni la búsqueda por teléfono.
 - La solicitud de eliminación de cuenta no borra automáticamente todas las subcolecciones y archivos multimedia.
 - No hay cifrado de extremo a extremo para chat ni multimedia.
 - Algunas preferencias, recordatorios y estados diarios permanecen locales.
