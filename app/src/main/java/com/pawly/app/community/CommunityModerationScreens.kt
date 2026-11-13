@@ -41,12 +41,19 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun ModerationScreen(repo: FirebaseCommunityRepository) {
     var reports by remember { mutableStateOf(emptyList<PawlyReport>()) }
+    var pendingPlaces by remember { mutableStateOf(emptyList<PawlyCommunityPlace>()) }
+    var placeModerationAvailable by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     DisposableEffect(repo) {
         val listener = repo.listenReports({ reports = it }, { error = it })
         onDispose { listener.remove() }
+    }
+    LaunchedEffect(repo) {
+        runCatching { repo.loadPendingCommunityPlaces() }
+            .onSuccess { pendingPlaces = it; placeModerationAvailable = true }
+            .onFailure { placeModerationAvailable = false }
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
@@ -55,6 +62,39 @@ internal fun ModerationScreen(repo: FirebaseCommunityRepository) {
         }
         if (status != null) item { Text(status!!, color = MaterialTheme.colorScheme.primary) }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
+        if (placeModerationAvailable) {
+            item {
+                Text(tr("Lugares propuestos por la comunidad"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                Text(tr("Aprueba solo lugares reales y descripciones útiles. Las propuestas rechazadas no se muestran en Explorar."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            if (pendingPlaces.isEmpty()) item { Text(tr("No hay lugares pendientes."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+            items(pendingPlaces, key = { "place-" + it.id }) { place ->
+                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(place.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(place.category + " · " + place.location, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                        Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text("Autor: " + place.authorUid, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = {
+                                scope.launch {
+                                    runCatching { repo.reviewCommunityPlace(place.id, true) }
+                                        .onSuccess { pendingPlaces = pendingPlaces.filterNot { it.id == place.id }; status = "Lugar aprobado y visible en Explorar." }
+                                        .onFailure { error = it.localizedMessage }
+                                }
+                            }, modifier = Modifier.weight(1f)) { Text(tr("Aprobar")) }
+                            OutlinedButton(onClick = {
+                                scope.launch {
+                                    runCatching { repo.reviewCommunityPlace(place.id, false) }
+                                        .onSuccess { pendingPlaces = pendingPlaces.filterNot { it.id == place.id }; status = "Propuesta rechazada." }
+                                        .onFailure { error = it.localizedMessage }
+                                }
+                            }, modifier = Modifier.weight(1f)) { Text(tr("Rechazar")) }
+                        }
+                    }
+                }
+            }
+        }
         if (reports.isEmpty()) item { EmptyCommunityCard("Sin denuncias pendientes", "Cuando alguien envíe un aviso, aparecerá aquí.") }
         items(reports, key = { it.id }) { report ->
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
