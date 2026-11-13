@@ -76,3 +76,15 @@ data class PawlyMessage(
 data class PawlyBlockedUser(val uid: String, val displayName: String, val username: String)
 
 data class PawlyReport(val id: String, val reporterId: String, val targetId: String, val targetType: String, val reason: String, val status: String)
+
+
+data class PawlyNotification(
+    val id: String = "",
+    val actorId: String = "",
+    val actorName: String = "",
+    val type: String = "",
+    val message: String = "",
+    val relatedId: String = "",
+    val createdAt: Long = 0,
+    val read: Boolean = false
+)
