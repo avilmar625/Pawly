@@ -354,7 +354,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(20.dp)),
                     factory = { view ->
                         WebView(view).apply {
-                            settings.javaScriptEnabled = false
+                            settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
                             settings.loadsImagesAutomatically = true
                             settings.blockNetworkImage = false
