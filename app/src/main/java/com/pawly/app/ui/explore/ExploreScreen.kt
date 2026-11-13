@@ -135,6 +135,38 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     var filter by remember { mutableStateOf("Todo") }
     var query by remember { mutableStateOf("") }
     var selectedPlace by remember { mutableStateOf<Place?>(null) }
+    val explorePreferences = remember(context) { context.getSharedPreferences("pawly_explore", android.content.Context.MODE_PRIVATE) }
+    var customCollections by remember(explorePreferences) {
+        mutableStateOf(runCatching {
+            val stored = JSONArray(explorePreferences.getString("custom_collections", "[]") ?: "[]")
+            List(stored.length()) { stored.getString(it) }.distinct()
+        }.getOrDefault(emptyList()))
+    }
+    var collectionContents by remember(explorePreferences) {
+        mutableStateOf(runCatching {
+            val stored = org.json.JSONObject(explorePreferences.getString("collection_contents", "{}") ?: "{}")
+            buildMap {
+                val keys = stored.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    val values = stored.optJSONArray(key) ?: JSONArray()
+                    put(key, List(values.length()) { values.getString(it) }.toSet())
+                }
+            }
+        }.getOrDefault(emptyMap()))
+    }
+    var showCreateCollection by remember { mutableStateOf(false) }
+    var showCollectionPicker by remember { mutableStateOf(false) }
+    var newCollectionName by remember { mutableStateOf("") }
+    var collectionNotice by remember { mutableStateOf<String?>(null) }
+    fun persistCollections() {
+        val names = JSONArray().apply { customCollections.forEach { put(it) } }
+        val content = org.json.JSONObject().apply {
+            collectionContents.forEach { (name, values) -> put(name, JSONArray().apply { values.forEach { put(it) } }) }
+        }
+        explorePreferences.edit().putString("custom_collections", names.toString())
+            .putString("collection_contents", content.toString()).apply()
+    }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
     val places = listOf(
         Place("🌿", "Naturaleza", "Rutas y senderos", "Ideas para caminar juntos", "Busca caminos, sombra y agua antes de salir.", Color(0xFFE6EEDB), "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1000&h=500&fit=crop"),
@@ -286,6 +318,42 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
             }
         }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(tr("TUS COLECCIONES"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.2.sp)
+                    Text(tr("Organiza tus ideas para futuras salidas"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+                FilledTonalButton(onClick = { newCollectionName = ""; showCreateCollection = true }) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(5.dp))
+                    Text(tr("Crear"))
+                }
+            }
+            if (customCollections.isEmpty()) {
+                Text(tr("Aún no tienes colecciones. Crea, por ejemplo, «Playas para el verano» o «Rutas pendientes»."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            } else {
+                FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    customCollections.forEach { name ->
+                        InputChip(
+                            selected = false,
+                            onClick = { collectionNotice = "${name} · ${(collectionContents[name] ?: emptySet()).size} ideas guardadas" },
+                            label = { Text("${name} · ${(collectionContents[name] ?: emptySet()).size}") },
+                            trailingIcon = {
+                                IconButton(onClick = {
+                                    customCollections = customCollections - name
+                                    collectionContents = collectionContents - name
+                                    persistCollections()
+                                }, modifier = Modifier.size(24.dp)) {
+                                    Icon(Icons.Default.Close, contentDescription = tr("Eliminar colección"), modifier = Modifier.size(15.dp))
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+            collectionNotice?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) }
+        }
         item { SectionHeading("Ideas para vuestra próxima salida", "Guarda categorías e inicia búsquedas reales cuando quieras") }
         if (visible.isEmpty()) {
             item { Text(tr("No hay resultados. Prueba con otra búsqueda."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
@@ -329,6 +397,11 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             },
             dismissButton = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { showCollectionPicker = true }) {
+                        Icon(Icons.Default.FolderOpen, null)
+                        Spacer(Modifier.width(5.dp))
+                        Text(tr("Colección"))
+                    }
                     TextButton(onClick = { onToggleSave(place.name) }) {
                         Icon(if (place.name in savedPlaces) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, null)
                         Spacer(Modifier.width(5.dp))
@@ -336,6 +409,57 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     }
                     TextButton(onClick = { selectedPlace = null }) { Text(tr("Cerrar")) }
                 }
+            }
+        )
+    }
+    if (showCreateCollection) {
+        AlertDialog(
+            onDismissRequest = { showCreateCollection = false },
+            title = { Text(tr("Nueva colección")) },
+            text = {
+                OutlinedTextField(value = newCollectionName, onValueChange = { newCollectionName = it.take(32) }, label = { Text(tr("Nombre de la colección")) }, singleLine = true)
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val clean = newCollectionName.trim()
+                    if (clean.isNotBlank() && customCollections.none { it.equals(clean, true) } && customCollections.size < 30) {
+                        customCollections = customCollections + clean
+                        collectionContents = collectionContents + (clean to emptySet())
+                        persistCollections()
+                        showCreateCollection = false
+                    }
+                }, enabled = newCollectionName.trim().isNotBlank() && customCollections.size < 30) { Text(tr("Crear")) }
+            },
+            dismissButton = { TextButton(onClick = { showCreateCollection = false }) { Text(tr("Cancelar")) } }
+        )
+    }
+    if (showCollectionPicker && selectedPlace != null) {
+        AlertDialog(
+            onDismissRequest = { showCollectionPicker = false },
+            title = { Text(tr("Guardar en una colección")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    if (customCollections.isEmpty()) Text(tr("Primero crea una colección para organizar tus ideas."))
+                    else customCollections.forEach { name ->
+                        val isSaved = selectedPlace!!.name in (collectionContents[name] ?: emptySet())
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = isSaved, onCheckedChange = { checked ->
+                                val current = collectionContents[name] ?: emptySet()
+                                collectionContents = collectionContents + (name to if (checked) current + selectedPlace!!.name else current - selectedPlace!!.name)
+                                persistCollections()
+                            })
+                            Text(name, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showCollectionPicker = false }) { Text(tr("Listo")) } },
+            dismissButton = {
+                TextButton(onClick = {
+                    showCollectionPicker = false
+                    newCollectionName = ""
+                    showCreateCollection = true
+                }) { Text(tr("Nueva colección")) }
             }
         )
     }
