@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -176,6 +177,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
     var attachmentIsVideo by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val messageListState = rememberLazyListState()
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         attachment = it
         attachmentIsVideo = false
@@ -191,6 +193,9 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         }, { error = it })
         onDispose { listener.remove() }
     }
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) messageListState.animateScrollToItem(messages.lastIndex)
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 6.dp)) {
         Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 2.dp) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -200,7 +205,7 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                 Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium)
             }
         }
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        LazyColumn(state = messageListState, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             items(messages, key = { it.id }) { item ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = if (item.senderId == uid) Arrangement.End else Arrangement.Start) {
                     Column(horizontalAlignment = if (item.senderId == uid) Alignment.End else Alignment.Start) {
