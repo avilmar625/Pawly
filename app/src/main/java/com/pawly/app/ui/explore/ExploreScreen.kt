@@ -450,6 +450,15 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                             .onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido enviar la propuesta." }
                         communityPlacesLoading = false
                     }
+                },
+                onOpenPlace = { place ->
+                    val query = Uri.encode("${place.name} ${place.location}")
+                    val geo = Uri.parse("geo:0,0?q=$query")
+                    val maps = Intent(Intent.ACTION_VIEW, geo).setPackage("com.google.android.apps.maps")
+                    runCatching {
+                        if (maps.resolveActivity(context.packageManager) != null) context.startActivity(maps)
+                        else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=$query")))
+                    }
                 }
             )
         }
@@ -745,7 +754,8 @@ private fun CommunityPlacesPanel(
     loading: Boolean,
     message: String?,
     enabled: Boolean,
-    onSubmit: (String, String, String, String) -> Unit
+    onSubmit: (String, String, String, String) -> Unit,
+    onOpenPlace: (PawlyCommunityPlace) -> Unit
 ) {
     var dialog by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
@@ -774,7 +784,12 @@ private fun CommunityPlacesPanel(
                 Text(tr("Todavía no hay lugares aprobados por la comunidad. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 places.take(8).forEach { place ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                            .clickable { onOpenPlace(place) }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Surface(shape = RoundedCornerShape(11.dp), color = MaterialTheme.colorScheme.primaryContainer) {
                             Icon(Icons.Default.Place, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(9.dp))
                         }
@@ -782,8 +797,9 @@ private fun CommunityPlacesPanel(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(place.name, fontWeight = FontWeight.SemiBold)
                             Text(place.category + " · " + place.location, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
-                            Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
+                        Icon(Icons.Default.OpenInNew, contentDescription = tr("Abrir en el mapa"), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     }
                 }
             }
