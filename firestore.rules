@@ -551,6 +551,7 @@ service cloud.firestore {
 
     match /accountDeletionRequests/{requestId} {
       allow create: if signedIn()
+        && requestId == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid', 'email', 'requestedAt', 'status', 'source'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email is string

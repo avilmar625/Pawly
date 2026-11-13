@@ -177,11 +177,15 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun requestAccountDeletion() {
         val uid = requireUid()
-        val pendingRequests = db.collection("accountDeletionRequests")
-            .whereEqualTo("uid", uid)
-            .get().await().documents
-        if (pendingRequests.any { it.getString("status") == "pending" }) return
-        db.collection("accountDeletionRequests").add(
+        // One stable document per account prevents concurrent taps or repeated
+        // requests from creating an unbounded queue of duplicate deletion jobs.
+        val requestRef = db.collection("accountDeletionRequests").document(uid)
+        val existing = requestRef.get().await()
+        if (existing.exists()) {
+            if (existing.getString("status") == "pending") return
+            error("Ya existe una solicitud de eliminación registrada para esta cuenta.")
+        }
+        requestRef.set(
             mapOf(
                 "uid" to uid,
                 "email" to (currentEmail ?: ""),
