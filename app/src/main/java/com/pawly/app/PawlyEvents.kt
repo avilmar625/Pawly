@@ -166,9 +166,9 @@ internal fun PawlyEventsScreen(
                         val zoom = if (mapPoints.isEmpty()) 11 else 12
                         val fallback = org.json.JSONObject.quote("<iframe title='OpenStreetMap' src='https://www.openstreetmap.org/export/embed.html?bbox=-3.9,36.6,-3.4,36.9&layer=mapnik' style='width:100%;height:100%;border:0'></iframe>")
                         val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                            "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\\\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\\\">" +
+                            "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\">" +
                             "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
-                            "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\\\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\\\"></script></head><body><div id='map'></div><script>" +
+                            "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\"></script></head><body><div id='map'></div><script>" +
                             "let attempts=0;function initMap(){if(!window.L){if(attempts++<40){setTimeout(initMap,125);return;}document.getElementById('map').innerHTML=$fallback;return;}" +
                             "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
                             "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
@@ -476,9 +476,9 @@ private fun EventLocationPickerDialog(
                             val markerScript = if (hasInitialMarker) "marker=L.marker([$centerLatitude,$centerLongitude]).addTo(map);" else ""
                             val fallback = org.json.JSONObject.quote("<iframe title='OpenStreetMap' src='https://www.openstreetmap.org/export/embed.html?bbox=-3.9,36.6,-3.4,36.9&layer=mapnik' style='width:100%;height:100%;border:0'></iframe>")
                             val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                                "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\\\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\\\">" +
+                                "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\">" +
                                 "<style>html,body,#map{height:100%;margin:0}</style>" +
-                                "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\\\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\\\"></script></head><body><div id='map'></div><script>" +
+                                "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\"></script></head><body><div id='map'></div><script>" +
                                 "let attempts=0;function initMap(){if(!window.L){if(attempts++<40){setTimeout(initMap,125);return;}document.getElementById('map').innerHTML=$fallback;return;}" +
                                 "const map=L.map('map').setView([$centerLatitude,$centerLongitude],$zoom);" +
                                 "L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
