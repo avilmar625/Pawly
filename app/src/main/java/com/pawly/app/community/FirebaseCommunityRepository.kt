@@ -755,8 +755,8 @@ class FirebaseCommunityRepository private constructor(
         val uid = requireUid()
         val doc = db.collection("lostPetSubscriptions").document(uid).get().await()
         if (!doc.exists()) return null
-        val latitude = doc.getDouble("latitude") ?: return null
-        val longitude = doc.getDouble("longitude") ?: return null
+        val latitude = doc.getLong("latCell")?.toDouble()?.div(100.0) ?: return null
+        val longitude = doc.getLong("lonCell")?.toDouble()?.div(100.0) ?: return null
         return Triple(doc.getBoolean("enabled") ?: false, (doc.getLong("radiusKm") ?: 10L).toInt(), latitude to longitude)
     }
 
@@ -767,8 +767,8 @@ class FirebaseCommunityRepository private constructor(
         require(latitude in -90.0..90.0 && longitude in -180.0..180.0)
         db.collection("lostPetSubscriptions").document(uid).set(mapOf(
             "uid" to uid, "enabled" to enabled, "radiusKm" to radiusKm,
-            "latitude" to kotlin.math.round(latitude * 100.0) / 100.0,
-            "longitude" to kotlin.math.round(longitude * 100.0) / 100.0,
+            "latCell" to kotlin.math.round(latitude * 100.0).toInt(),
+            "lonCell" to kotlin.math.round(longitude * 100.0).toInt(),
             "updatedAt" to FieldValue.serverTimestamp()
         )).await()
     }
