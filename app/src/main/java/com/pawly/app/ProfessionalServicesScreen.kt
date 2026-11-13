@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -41,6 +42,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOfCoroutineScope
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,7 +100,8 @@ internal object ProfessionalDirectorySearch {
 internal fun ProfessionalServicesScreen(
     onBack: () -> Unit,
     elegantDesign: Boolean = false,
-    language: String = "es"
+    language: String = "es",
+    repository: FirebaseCommunityRepository? = null
 ) {
     val context = LocalContext.current
     fun t(value: String) = PawlyI18n.text(value, language)
@@ -101,6 +109,27 @@ internal fun ProfessionalServicesScreen(
     var search by remember { mutableStateOf("") }
     var area by remember { mutableStateOf("") }
     val selected = ProfessionalDirectorySearch.categories.first { it.id == selectedId }
+    var communityProfessionals by remember { mutableStateOf(emptyList<PawlyUser>()) }
+    var professionalsLoading by remember { mutableStateOf(false) }
+    var professionalsError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(repository, selectedId, area) {
+        val repo = repository ?: return@LaunchedEffect
+        professionalsLoading = true
+        runCatching { repo.searchProfessionalProfiles(selected.title, area) }
+            .onSuccess { communityProfessionals = it; professionalsError = null }
+            .onFailure { professionalsError = "No se han podido cargar los perfiles de Pawly." }
+        professionalsLoading = false
+    }
+
+    fun openProfessionalContact(value: String) {
+        val clean = value.trim()
+        val uri = when {
+            clean.startsWith("https://") || clean.startsWith("http://") -> clean
+            clean.contains("@") -> "mailto:$clean"
+            else -> "tel:$clean"
+        }
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(uri))) }
+    }
 
     fun openSearch(query: String) {
         val url = "https://www.google.com/maps/search/?api=1&query=${Uri.encode(query)}"
@@ -134,6 +163,57 @@ internal fun ProfessionalServicesScreen(
                 Text(t("PROFESIONALES PARA SU BIENESTAR"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
                 Text(tr("Encontrad a la persona adecuada."), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 Text(tr("Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa."), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+        }
+
+        Card(
+            shape = RoundedCornerShape(23.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(t("DIRECTORIO PAWLY"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
+                        Text(t("Profesionales de la comunidad"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
+                    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape) {
+                        Icon(Icons.Filled.WorkspacePremium, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(10.dp))
+                    }
+                }
+                Text(t("Perfiles publicados por miembros que han elegido ofrecer sus servicios. Pawly no verifica titulaciones ni garantiza los servicios."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (professionalsLoading) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                professionalsError?.let { Text(t(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                if (!professionalsLoading && communityProfessionals.isEmpty()) {
+                    Text(t("Todavía no hay profesionales publicados en esta categoría. Puedes consultar también el mapa externo."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+                communityProfessionals.take(12).forEach { professional ->
+                    Surface(shape = RoundedCornerShape(17.dp), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f)) {
+                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+                            if (professional.photoUrl.isNotBlank()) {
+                                coil3.compose.AsyncImage(model = professional.photoUrl, contentDescription = null, modifier = Modifier.size(52.dp).clip(CircleShape))
+                            } else {
+                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                                    Icon(Icons.Filled.WorkspacePremium, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(14.dp).size(24.dp))
+                                }
+                            }
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(professional.displayName.ifBlank { professional.username }, fontWeight = FontWeight.Bold)
+                                Text(professional.professionalCategory, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                                if (professional.professionalLocation.isNotBlank()) Text(professional.professionalLocation, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                if (professional.professionalDescription.isNotBlank()) Text(professional.professionalDescription, style = MaterialTheme.typography.bodySmall)
+                                if (professional.professionalContactPublic && professional.professionalContact.isNotBlank()) {
+                                    TextButton(onClick = { openProfessionalContact(professional.professionalContact) }) {
+                                        Icon(Icons.Filled.ContactMail, null)
+                                        Text("  " + t("Contactar"))
+                                    }
+                                } else {
+                                    Text(t("Contacto no publicado"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
