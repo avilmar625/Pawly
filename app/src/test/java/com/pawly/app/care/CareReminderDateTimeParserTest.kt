@@ -10,7 +10,7 @@ class CareReminderDateTimeParserTest {
     fun parsesValidReminderInRequestedTimeZone() {
         val utc = TimeZone.getTimeZone("UTC")
         assertEquals(
-            1_796_146_800_000L,
+            1_796_119_200_000L,
             CareReminderDateTimeParser.parseMillis("2026-12-01 10:00", utc)
         )
     }
