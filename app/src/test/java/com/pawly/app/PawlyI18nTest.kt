@@ -52,6 +52,15 @@ class PawlyI18nTest {
     }
 
     @Test
+    fun eventReportingIsTranslatedInEverySupportedLanguage() {
+        assertEquals("Denunciar evento", PawlyI18n.text("Denunciar evento", "es"))
+        assertEquals("Report event", PawlyI18n.text("Denunciar evento", "en"))
+        assertEquals("Denuncia l'esdeveniment", PawlyI18n.text("Denunciar evento", "ca"))
+        assertEquals("Signaler l’événement", PawlyI18n.text("Denunciar evento", "fr"))
+        assertEquals("Salatu ekitaldia", PawlyI18n.text("Denunciar evento", "eu"))
+    }
+
+    @Test
     fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
         assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
         assertEquals("Texto nuevo", PawlyI18n.text("Texto nuevo", "en"))
