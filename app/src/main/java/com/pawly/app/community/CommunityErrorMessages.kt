@@ -9,7 +9,7 @@ internal fun Throwable.toPawlyMessage(fallback: String): String {
     val authCode = (this as? FirebaseAuthException)?.errorCode.orEmpty()
     val firestoreCode = (this as? FirebaseFirestoreException)?.code
     if (firestoreCode == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-        return "Firebase ha rechazado la operación por las reglas de Firestore. Publica las reglas del archivo firestore.rules de la rama cambios55 y vuelve a intentarlo."
+        return "Firebase ha rechazado la operación por las reglas de Firestore. Actualiza y publica el archivo firestore.rules de la rama cambios59-experiencia desde Firebase Console y vuelve a intentarlo."
     }
     if (firestoreCode == FirebaseFirestoreException.Code.UNAVAILABLE || this is FirebaseNetworkException) {
         return "No hay conexión con Firebase. Comprueba Internet e inténtalo de nuevo."
