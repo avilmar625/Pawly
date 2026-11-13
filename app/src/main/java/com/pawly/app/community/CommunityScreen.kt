@@ -396,10 +396,9 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 }
             }
         }
-        FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
                 FilterChip(
