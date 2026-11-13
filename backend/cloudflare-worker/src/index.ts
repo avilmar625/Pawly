@@ -605,8 +605,8 @@ async function handleLostPetAlert(request: Request, env: Env): Promise<Response>
       decodeFirestoreString(alert.fields?.status) !== "active" ||
       decodeFirestoreString(post.fields?.category) !== "LOST" ||
       decodeFirestoreString(post.fields?.authorId) !== uid) return json({ error: "No se pudo verificar el aviso." }, 403);
-    const latitude = decodeFirestoreNumber(alert.fields?.latitude);
-    const longitude = decodeFirestoreNumber(alert.fields?.longitude);
+    const latitude = decodeFirestoreNumber(alert.fields?.latCell) / 100;
+    const longitude = decodeFirestoreNumber(alert.fields?.lonCell) / 100;
     const dogName = decodeFirestoreString(alert.fields?.dogName) || "Una mascota";
     const subscriptions = await listLostPetSubscriptions(env, accessToken);
     let delivered = 0;
@@ -615,8 +615,8 @@ async function handleLostPetAlert(request: Request, env: Env): Promise<Response>
       const recipientUid = decodeFirestoreString(fields.uid);
       if (!recipientUid || recipientUid === uid || !decodeFirestoreBoolean(fields.enabled)) continue;
       const radius = decodeFirestoreNumber(fields.radiusKm);
-      const subLat = decodeFirestoreNumber(fields.latitude);
-      const subLon = decodeFirestoreNumber(fields.longitude);
+      const subLat = decodeFirestoreNumber(fields.latCell) / 100;
+      const subLon = decodeFirestoreNumber(fields.lonCell) / 100;
       if (![5, 10, 20].includes(radius) || distanceKm(latitude, longitude, subLat, subLon) > radius) continue;
       const [blockA, blockB] = await Promise.all([
         readDocument(env, accessToken, `users/${uid}/blocked/${recipientUid}`),
