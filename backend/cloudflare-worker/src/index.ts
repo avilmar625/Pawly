@@ -6,6 +6,7 @@ interface Env {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_PRIVATE_KEY: string;
+  PHONE_MATCH_HMAC_SECRET?: string;
 }
 
 type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
@@ -410,6 +411,248 @@ async function handleActivityNotification(request: Request, env: Env): Promise<R
   }
 }
 
+
+function decodeFirestoreNumber(value: any): number {
+  const raw = value?.doubleValue ?? value?.integerValue;
+  const number = typeof raw === "string" ? Number(raw) : raw;
+  return typeof number === "number" && Number.isFinite(number) ? number : 0;
+}
+
+function decodeFirestoreBoolean(value: any): boolean {
+  return value?.booleanValue === true;
+}
+
+function normalizePhone(raw: string): string | null {
+  let value = raw.trim().replace(/[().\\s-]/g, "");
+  if (value.startsWith("00")) value = "+" + value.slice(2);
+  if (!value.startsWith("+") && /^\\d{9}$/.test(value)) value = "+34" + value;
+  if (!/^\\+[1-9]\\d{7,14}$/.test(value)) return null;
+  return value;
+}
+
+async function phoneDigest(secret: string, phone: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(phone));
+  return Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function verifiedRequestUser(request: Request, env: Env): Promise<string | null> {
+  const bearer = (request.headers.get("authorization") ?? "").match(/^Bearer\\s+(.+)$/i)?.[1];
+  if (!bearer) return null;
+  try { return await verifyFirebaseUser(bearer, env); } catch { return null; }
+}
+
+async function writeFirestoreDocument(env: Env, token: string, path: string, fields: Record<string, unknown>): Promise<void> {
+  const response = await firestoreRequest(env, token, path, {
+    method: "PATCH",
+    body: JSON.stringify({ fields })
+  });
+  if (!response.ok) throw new Error("No se pudo guardar el registro privado.");
+}
+
+async function deleteFirestoreDocument(env: Env, token: string, path: string): Promise<void> {
+  const response = await firestoreRequest(env, token, path, { method: "DELETE" });
+  if (!response.ok && response.status !== 404) throw new Error("No se pudo retirar el registro privado.");
+}
+
+async function handleContactDiscovery(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  if (!env.PHONE_MATCH_HMAC_SECRET || env.PHONE_MATCH_HMAC_SECRET.length < 32) {
+    return json({ error: "La búsqueda privada por teléfono todavía no está configurada." }, 503);
+  }
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 2048) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { enabled?: boolean; phone?: string };
+    const privatePath = `users/${uid}/privateData/contactDiscovery`;
+    const accessToken = await googleAccessToken(env);
+    const previous = await readDocument(env, accessToken, privatePath);
+    const previousHash = decodeFirestoreString(previous?.fields?.phoneHash);
+    if (body.enabled !== true) {
+      if (previousHash) {
+        const existing = await readDocument(env, accessToken, `phoneDirectory/${previousHash}`);
+        if (decodeFirestoreString(existing?.fields?.uid) === uid) {
+          await deleteFirestoreDocument(env, accessToken, `phoneDirectory/${previousHash}`);
+        }
+      }
+      await deleteFirestoreDocument(env, accessToken, privatePath);
+      return json({ enabled: false });
+    }
+    if (typeof body.phone !== "string") return json({ error: "Introduce un número de teléfono." }, 400);
+    const normalized = normalizePhone(body.phone);
+    if (!normalized) return json({ error: "Usa un teléfono internacional válido, por ejemplo +34 600 000 000." }, 400);
+    const hash = await phoneDigest(env.PHONE_MATCH_HMAC_SECRET, normalized);
+    const existing = await readDocument(env, accessToken, `phoneDirectory/${hash}`);
+    const ownerUid = decodeFirestoreString(existing?.fields?.uid);
+    if (ownerUid && ownerUid !== uid) return json({ error: "Ese teléfono ya está asociado a otra cuenta." }, 409);
+    if (previousHash && previousHash !== hash) {
+      const old = await readDocument(env, accessToken, `phoneDirectory/${previousHash}`);
+      if (decodeFirestoreString(old?.fields?.uid) === uid) await deleteFirestoreDocument(env, accessToken, `phoneDirectory/${previousHash}`);
+    }
+    await writeFirestoreDocument(env, accessToken, `phoneDirectory/${hash}`, {
+      uid: { stringValue: uid }, updatedAt: { timestampValue: new Date().toISOString() }
+    });
+    await writeFirestoreDocument(env, accessToken, privatePath, {
+      phoneHash: { stringValue: hash }, enabled: { booleanValue: true },
+      updatedAt: { timestampValue: new Date().toISOString() }
+    });
+    return json({ enabled: true });
+  } catch {
+    return json({ error: "No se pudo actualizar la búsqueda privada por teléfono." }, 502);
+  }
+}
+
+async function handleContactMatches(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  if (!env.PHONE_MATCH_HMAC_SECRET || env.PHONE_MATCH_HMAC_SECRET.length < 32) {
+    return json({ error: "La búsqueda privada por teléfono todavía no está configurada." }, 503);
+  }
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 12000) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { phoneNumbers?: unknown };
+    if (!Array.isArray(body.phoneNumbers) || body.phoneNumbers.length < 1 || body.phoneNumbers.length > 30 ||
+      body.phoneNumbers.some(value => typeof value !== "string" || value.length > 32)) {
+      return json({ error: "Selecciona entre 1 y 30 teléfonos." }, 400);
+    }
+    const accessToken = await googleAccessToken(env);
+    const blockedByMe = new Set<string>();
+    const blocks = await fetch(`${firestoreRoot(env)}/users/${encodeURIComponent(uid)}/blocked?pageSize=100`, {
+      headers: { authorization: `Bearer ${accessToken}` }
+    });
+    if (blocks.ok) {
+      const payload = await blocks.json() as { documents?: any[] };
+      (payload.documents ?? []).forEach(doc => blockedByMe.add(String(doc.name).split("/").pop() ?? ""));
+    }
+    const matches = new Map<string, { uid: string; displayName: string; username: string; photoUrl: string }>();
+    for (const rawPhone of body.phoneNumbers as string[]) {
+      const normalized = normalizePhone(rawPhone);
+      if (!normalized) continue;
+      const hash = await phoneDigest(env.PHONE_MATCH_HMAC_SECRET, normalized);
+      const directory = await readDocument(env, accessToken, `phoneDirectory/${hash}`);
+      const matchedUid = decodeFirestoreString(directory?.fields?.uid);
+      if (!matchedUid || matchedUid === uid || blockedByMe.has(matchedUid)) continue;
+      const [profile, theirBlock] = await Promise.all([
+        readDocument(env, accessToken, `users/${matchedUid}`),
+        readDocument(env, accessToken, `users/${matchedUid}/blocked/${uid}`)
+      ]);
+      if (!profile || theirBlock || profile.fields?.isPublic?.booleanValue !== true) continue;
+      matches.set(matchedUid, {
+        uid: matchedUid,
+        displayName: decodeFirestoreString(profile.fields?.displayName) || "Usuario Pawly",
+        username: decodeFirestoreString(profile.fields?.username),
+        photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
+      });
+    }
+    return json({ matches: Array.from(matches.values()) });
+  } catch {
+    return json({ error: "No se pudieron consultar los contactos." }, 502);
+  }
+}
+
+function distanceKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const rad = (value: number) => value * Math.PI / 180;
+  const dLat = rad(bLat - aLat);
+  const dLon = rad(bLon - aLon);
+  const h = Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+async function listLostPetSubscriptions(env: Env, accessToken: string): Promise<any[]> {
+  const all: any[] = [];
+  let pageToken = "";
+  for (let page = 0; page < 10; page++) {
+    const url = new URL(`${firestoreRoot(env)}/lostPetSubscriptions`);
+    url.searchParams.set("pageSize", "500");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const response = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
+    if (!response.ok) throw new Error("No se pudieron consultar las suscripciones de avisos.");
+    const payload = await response.json() as { documents?: any[]; nextPageToken?: string };
+    all.push(...(payload.documents ?? []));
+    pageToken = payload.nextPageToken ?? "";
+    if (!pageToken) break;
+  }
+  return all;
+}
+
+async function sendGenericPush(env: Env, accessToken: string, token: string, title: string, body: string, data: Record<string, string>): Promise<"sent" | "invalid"> {
+  const response = await fetch(`https://fcm.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/messages:send`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+    body: JSON.stringify({ message: { token, notification: { title, body }, data } })
+  });
+  if (response.ok) return "sent";
+  const errorBody = await response.text();
+  if (response.status === 404 || errorBody.includes("UNREGISTERED")) return "invalid";
+  throw new Error("FCM no pudo entregar el aviso.");
+}
+
+async function handleLostPetAlert(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 2048) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { alertId?: unknown };
+    if (typeof body.alertId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(body.alertId)) return json({ error: "Aviso no válido." }, 400);
+    const accessToken = await googleAccessToken(env);
+    const [alert, post] = await Promise.all([
+      readDocument(env, accessToken, `lostPetAlerts/${body.alertId}`),
+      readDocument(env, accessToken, `posts/${body.alertId}`)
+    ]);
+    if (!alert || !post || decodeFirestoreString(alert.fields?.authorUid) !== uid ||
+      decodeFirestoreString(alert.fields?.status) !== "active" ||
+      decodeFirestoreString(post.fields?.category) !== "LOST" ||
+      decodeFirestoreString(post.fields?.authorId) !== uid) return json({ error: "No se pudo verificar el aviso." }, 403);
+    const latitude = decodeFirestoreNumber(alert.fields?.latitude);
+    const longitude = decodeFirestoreNumber(alert.fields?.longitude);
+    const dogName = decodeFirestoreString(alert.fields?.dogName) || "Una mascota";
+    const subscriptions = await listLostPetSubscriptions(env, accessToken);
+    let delivered = 0;
+    for (const subscription of subscriptions) {
+      const fields = subscription.fields ?? {};
+      const recipientUid = decodeFirestoreString(fields.uid);
+      if (!recipientUid || recipientUid === uid || !decodeFirestoreBoolean(fields.enabled)) continue;
+      const radius = decodeFirestoreNumber(fields.radiusKm);
+      const subLat = decodeFirestoreNumber(fields.latitude);
+      const subLon = decodeFirestoreNumber(fields.longitude);
+      if (![5, 10, 20].includes(radius) || distanceKm(latitude, longitude, subLat, subLon) > radius) continue;
+      const [blockA, blockB] = await Promise.all([
+        readDocument(env, accessToken, `users/${uid}/blocked/${recipientUid}`),
+        readDocument(env, accessToken, `users/${recipientUid}/blocked/${uid}`)
+      ]);
+      if (blockA || blockB) continue;
+      const dispatchPath = `lostPetPushes/${body.alertId}_${recipientUid}`;
+      const claim = await fetch(`${firestoreRoot(env)}/lostPetPushes?documentId=${encodeURIComponent(body.alertId + "_" + recipientUid)}`, {
+        method: "POST", headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+        body: JSON.stringify({ fields: {
+          alertId: { stringValue: body.alertId }, recipientUid: { stringValue: recipientUid },
+          createdAt: { timestampValue: new Date().toISOString() }
+        } })
+      });
+      if (claim.status === 409) continue;
+      if (!claim.ok) throw new Error("No se pudo registrar el envío del aviso.");
+      const devices = await listDeviceTokens(env, accessToken, recipientUid);
+      for (const device of devices) {
+        const result = await sendGenericPush(env, accessToken, device.token, "Mascota perdida cerca de ti",
+          `${dogName}: se ha publicado un aviso en tu zona. Abre Pawly para ver los detalles.`,
+          { type: "LOST_PET", relatedId: body.alertId });
+        if (result === "sent") delivered++;
+        else await firestoreRequest(env, accessToken, `users/${recipientUid}/fcmTokens/${device.id}`, { method: "DELETE" });
+      }
+      void dispatchPath;
+    }
+    return json({ accepted: true, delivered });
+  } catch {
+    return json({ error: "No se pudieron enviar los avisos de proximidad." }, 502);
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") return json({ ok: true });
@@ -419,6 +662,15 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/v1/activity-notifications") {
       return handleActivityNotification(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/lost-pet-alerts") {
+      return handleLostPetAlert(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/contact-discovery") {
+      return handleContactDiscovery(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/contact-matches") {
+      return handleContactMatches(request, env);
     }
     return json({ error: "Ruta no encontrada." }, 404);
   }
