@@ -22,6 +22,7 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -145,6 +146,18 @@ private suspend fun loadNearbyPlaces(latitude: Double, longitude: Double, catego
 @Composable
 internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit, elegantDesign: Boolean = false, repository: FirebaseCommunityRepository? = null) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var communityPlaces by remember { mutableStateOf(emptyList<PawlyCommunityPlace>()) }
+    var communityPlacesMessage by remember { mutableStateOf<String?>(null) }
+    var communityPlacesLoading by remember { mutableStateOf(false) }
+    LaunchedEffect(repository) {
+        val repo = repository ?: return@LaunchedEffect
+        communityPlacesLoading = true
+        runCatching { repo.loadCommunityPlaces() }
+            .onSuccess { communityPlaces = it; communityPlacesMessage = null }
+            .onFailure { communityPlacesMessage = "No se han podido cargar las recomendaciones de la comunidad." }
+        communityPlacesLoading = false
+    }
     var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var currentAddress by remember { mutableStateOf<String?>(null) }
     var mapSearchQuery by remember { mutableStateOf("") }
@@ -418,6 +431,27 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     }
                 }
             }
+        }
+        item {
+            CommunityPlacesPanel(
+                places = communityPlaces,
+                loading = communityPlacesLoading,
+                message = communityPlacesMessage,
+                enabled = repository != null,
+                onSubmit = { name, category, location, description ->
+                    val repo = repository ?: return@CommunityPlacesPanel
+                    scope.launch {
+                        communityPlacesLoading = true
+                        runCatching { repo.submitCommunityPlace(name, category, location, description) }
+                            .onSuccess {
+                                communityPlacesMessage = "¡Gracias! Tu propuesta queda pendiente de revisión antes de aparecer públicamente."
+                                communityPlaces = runCatching { repo.loadCommunityPlaces() }.getOrDefault(communityPlaces)
+                            }
+                            .onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido enviar la propuesta." }
+                        communityPlacesLoading = false
+                    }
+                }
+            )
         }
         item {
             OutlinedTextField(
@@ -700,6 +734,90 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                     showCreateCollection = true
                 }) { Text(tr("Nueva colección")) }
             }
+        )
+    }
+}
+
+
+@Composable
+private fun CommunityPlacesPanel(
+    places: List<PawlyCommunityPlace>,
+    loading: Boolean,
+    message: String?,
+    enabled: Boolean,
+    onSubmit: (String, String, String, String) -> Unit
+) {
+    var dialog by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("Parque") }
+    var location by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    val categories = listOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro")
+    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(tr("RECOMENDACIONES DE LA COMUNIDAD"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.1.sp)
+                    Text(tr("Lugares que otros miembros comparten"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+                FilledTonalButton(onClick = { dialog = true }, enabled = enabled && !loading) {
+                    Icon(Icons.Default.AddLocationAlt, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text(tr("Aportar"))
+                }
+            }
+            Text(tr("Las propuestas se revisan antes de publicarse para mantener la calidad y evitar spam."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (places.isEmpty()) {
+                Text(tr("Todavía no hay lugares aprobados por la comunidad. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            } else {
+                places.take(8).forEach { place ->
+                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
+                        Surface(shape = RoundedCornerShape(11.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                            Icon(Icons.Default.Place, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(9.dp))
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(place.name, fontWeight = FontWeight.SemiBold)
+                            Text(place.category + " · " + place.location, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                            Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+            message?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+    if (dialog) {
+        AlertDialog(
+            onDismissRequest = { dialog = false },
+            title = { Text(tr("Compartir un lugar")) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text(tr("Cuéntanos dónde está y por qué merece la pena visitarlo con mascota."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(name, { name = it.take(80) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Nombre del lugar")) })
+                    Box {
+                        OutlinedButton(onClick = { categoryExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                            Text(tr("Categoría: ") + tr(category), modifier = Modifier.weight(1f))
+                            Icon(Icons.Default.ExpandMore, null)
+                        }
+                        DropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
+                            categories.forEach { value -> DropdownMenuItem(text = { Text(tr(value)) }, onClick = { category = value; categoryExpanded = false }) }
+                        }
+                    }
+                    OutlinedTextField(location, { location = it.take(120) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Ciudad o dirección")) })
+                    OutlinedTextField(description, { description = it.take(500) }, modifier = Modifier.fillMaxWidth(), minLines = 3, label = { Text(tr("¿Por qué lo recomiendas?")) })
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onSubmit(name.trim(), category, location.trim(), description.trim()); dialog = false },
+                    enabled = name.trim().length >= 3 && location.trim().length >= 3 && description.trim().length >= 10 && enabled && !loading
+                ) { Text(tr("Enviar a revisión")) }
+            },
+            dismissButton = { TextButton(onClick = { dialog = false }) { Text(tr("Cancelar")) } }
         )
     }
 }
