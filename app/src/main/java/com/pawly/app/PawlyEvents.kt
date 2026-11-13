@@ -147,27 +147,36 @@ internal fun PawlyEventsScreen(
         Spacer(Modifier.height(8.dp))
         if (mapOnly) {
             val mapPoints = visible.filter { it.latitude != null && it.longitude != null }
-            val centerLat = mapPoints.mapNotNull { it.latitude }.average().takeIf { it.isFinite() } ?: 40.4168
-            val centerLon = mapPoints.mapNotNull { it.longitude }.average().takeIf { it.isFinite() } ?: -3.7038
+            val centerLat = mapPoints.mapNotNull { it.latitude }.average().takeIf { it.isFinite() } ?: 36.7213
+            val centerLon = mapPoints.mapNotNull { it.longitude }.average().takeIf { it.isFinite() } ?: -4.4214
             val markers = mapPoints.joinToString(",") { event ->
                 "{lat:${event.latitude},lon:${event.longitude},title:${org.json.JSONObject.quote(event.title)},place:${org.json.JSONObject.quote(event.location)}}"
             }
-            val mapBounds = mapPoints.joinToString(",") { "[${it.latitude},${it.longitude}]" }
-            val mapKey = "$centerLat|$centerLon|$markers"
+            val south = (mapPoints.mapNotNull { it.latitude }.minOrNull() ?: 36.70) - 0.025
+            val north = (mapPoints.mapNotNull { it.latitude }.maxOrNull() ?: 36.75) + 0.025
+            val west = (mapPoints.mapNotNull { it.longitude }.minOrNull() ?: -4.48) - 0.025
+            val east = (mapPoints.mapNotNull { it.longitude }.maxOrNull() ?: -4.38) + 0.025
+            val mapUrl = Uri.encode("https://www.openstreetmap.org/export/embed.html?bbox=$west,$south,$east,$north&layer=mapnik&marker=$centerLat,$centerLon")
+            val mapKey = "$centerLat|$centerLon|$markers|$mapUrl"
             AndroidView(
-                modifier = Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(22.dp)),
+                modifier = Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(22.dp)),
                 factory = { view ->
                     WebView(view).apply {
-                        settings.javaScriptEnabled = true
+                        settings.javaScriptEnabled = false
                         settings.domStorageEnabled = true
                         settings.loadsImagesAutomatically = true
                         settings.blockNetworkImage = false
                         settings.cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
-                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView, url: String?) {
+                                mapLoadFailed = false
+                            }
                             override fun onReceivedError(view: WebView, request: android.webkit.WebResourceRequest, error: android.webkit.WebResourceError) {
+                                if (request.isForMainFrame) mapLoadFailed = true
+                            }
+                            override fun onReceivedHttpError(view: WebView, request: android.webkit.WebResourceRequest, errorResponse: android.webkit.WebResourceResponse) {
                                 if (request.isForMainFrame) mapLoadFailed = true
                             }
                         }
@@ -178,17 +187,7 @@ internal fun PawlyEventsScreen(
                     if (web.tag != mapKey) {
                         web.tag = mapKey
                         mapLoadFailed = false
-                        val zoom = if (mapPoints.isEmpty()) 11 else 12
-                        val fallback = org.json.JSONObject.quote("<iframe title='OpenStreetMap' src='https://www.openstreetmap.org/export/embed.html?bbox=-3.9,36.6,-3.4,36.9&layer=mapnik' style='width:100%;height:100%;border:0'></iframe>")
-                        val html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                            "<link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css' onerror=\"this.onerror=null;this.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'\">" +
-                            "<style>html,body,#map{height:100%;margin:0}.leaflet-popup-content{font:14px sans-serif}</style>" +
-                            "<script src='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js' onerror=\"this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'\"></script></head><body><div id='map'></div><script>" +
-                            "let attempts=0;function initMap(){if(!window.L){if(attempts++<40){setTimeout(initMap,125);return;}document.getElementById('map').innerHTML=$fallback;return;}" +
-                            "const map=L.map('map').setView([$centerLat,$centerLon],$zoom);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);" +
-                            "const points=[$markers];points.forEach(p=>L.marker([p.lat,p.lon]).addTo(map).bindPopup('<b>'+p.title+'</b><br>'+p.place));" +
-                            "if(points.length>1){map.fitBounds(L.latLngBounds([$mapBounds]),{padding:[24,24],maxZoom:14});}}initMap();</script></body></html>"
-                        web.loadDataWithBaseURL("https://www.openstreetmap.org/", html, "text/html", "UTF-8", null)
+                        web.loadUrl(Uri.decode(mapUrl))
                     }
                 }
             )
