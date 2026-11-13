@@ -69,6 +69,72 @@ private data class Place(
     val imageUrl: String
 )
 
+private data class NearbyPlace(
+    val id: String,
+    val name: String,
+    val category: String,
+    val address: String,
+    val latitude: Double,
+    val longitude: Double
+)
+
+private suspend fun loadNearbyPlaces(latitude: Double, longitude: Double, category: String): List<NearbyPlace> =
+    withContext(Dispatchers.IO) {
+        val selector = when (category) {
+            "Naturaleza" -> """["leisure"~"dog_park|park"]"""
+            "Playas" -> """["natural"="beach"]"""
+            "Comer" -> """["amenity"~"restaurant|cafe|bar"]"""
+            "Alojarse" -> """["tourism"~"hotel|guest_house|hostel|camp_site"]"""
+            else -> """["leisure"="dog_park"],["natural"="beach"],["amenity"~"restaurant|cafe|bar"],["tourism"~"hotel|guest_house|hostel|camp_site"]"""
+        }
+        val query = if (category == "Todo") {
+            """[out:json][timeout:20];(node(around:12000,$latitude,$longitude)$selector;way(around:12000,$latitude,$longitude)$selector;relation(around:12000,$latitude,$longitude)$selector;);out center tags;"""
+        } else {
+            val selectors = selector.split(",").joinToString("") { tag ->
+                "node(around:12000,$latitude,$longitude)$tag;way(around:12000,$latitude,$longitude)$tag;relation(around:12000,$latitude,$longitude)$tag;"
+            }
+            """[out:json][timeout:20];($selectors);out center tags;"""
+        }
+        val request = okhttp3.Request.Builder()
+            .url("https://overpass-api.de/api/interpreter")
+            .post(okhttp3.FormBody.Builder().add("data", query).build())
+            .header("User-Agent", "Pawly Android app")
+            .build()
+        val response = okhttp3.OkHttpClient().newCall(request).execute()
+        response.use { result ->
+            if (!result.isSuccessful) throw IllegalStateException("El directorio de lugares no está disponible ahora (HTTP ${result.code}).")
+            val payload = org.json.JSONObject(result.body?.string().orEmpty())
+            val elements = payload.optJSONArray("elements") ?: JSONArray()
+            buildList {
+                val seen = mutableSetOf<String>()
+                for (index in 0 until elements.length()) {
+                    val element = elements.optJSONObject(index) ?: continue
+                    val tags = element.optJSONObject("tags") ?: continue
+                    val name = tags.optString("name").trim().ifBlank { tags.optString("brand").trim() }
+                    if (name.isBlank()) continue
+                    val center = element.optJSONObject("center")
+                    val lat = if (element.has("lat")) element.optDouble("lat", Double.NaN) else center?.optDouble("lat", Double.NaN) ?: Double.NaN
+                    val lon = if (element.has("lon")) element.optDouble("lon", Double.NaN) else center?.optDouble("lon", Double.NaN) ?: Double.NaN
+                    if (!lat.isFinite() || !lon.isFinite()) continue
+                    val id = element.optString("type") + "/" + element.optString("id")
+                    if (!seen.add(id)) continue
+                    val address = listOf(
+                        tags.optString("addr:street").takeIf { it.isNotBlank() },
+                        tags.optString("addr:housenumber").takeIf { it.isNotBlank() },
+                        tags.optString("addr:city").takeIf { it.isNotBlank() }
+                    ).filterNotNull().joinToString(", ").ifBlank { tags.optString("operator").ifBlank { "Ubicación en OpenStreetMap" } }
+                    val type = when {
+                        tags.optString("leisure") == "dog_park" -> "Parque canino"
+                        tags.optString("natural") == "beach" -> "Playa"
+                        tags.optString("tourism").isNotBlank() -> "Alojamiento"
+                        else -> "Restauración"
+                    }
+                    add(NearbyPlace(id, name, type, address, lat, lon))
+                }
+            }.take(60)
+        }
+    }
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit, elegantDesign: Boolean = false) {
@@ -76,6 +142,18 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var currentAddress by remember { mutableStateOf<String?>(null) }
     var mapSearchQuery by remember { mutableStateOf("") }
+    var nearbyPlaces by remember { mutableStateOf(emptyList<NearbyPlace>()) }
+    var placesLoading by remember { mutableStateOf(false) }
+    var placesError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentCoordinates, filter) {
+        val point = currentCoordinates ?: run { nearbyPlaces = emptyList(); return@LaunchedEffect }
+        placesLoading = true
+        placesError = null
+        runCatching { loadNearbyPlaces(point.first, point.second, filter) }
+            .onSuccess { nearbyPlaces = it }
+            .onFailure { placesError = it.localizedMessage ?: "No se han podido cargar lugares cercanos." }
+        placesLoading = false
+    }
     LaunchedEffect(currentCoordinates) {
         val point = currentCoordinates ?: return@LaunchedEffect
         currentAddress = withContext(Dispatchers.IO) {
@@ -374,12 +452,35 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
             }
         }
-        item { SectionHeading("Ideas para vuestra próxima salida", "Guarda categorías e inicia búsquedas reales cuando quieras") }
-        if (visible.isEmpty()) {
-            item { Text(tr("No hay resultados. Prueba con otra búsqueda."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
-        }
-        items(visible) { place ->
-            PlaceCard(place = place, saved = place.name in savedPlaces, onOpen = { selectedPlace = place }, onSave = { onToggleSave(place.name) })
+        item { SectionHeading(if (currentCoordinates != null) "Lugares cercanos" else "Ideas para vuestra próxima salida", if (currentCoordinates != null) "Resultados de OpenStreetMap en un radio aproximado de 12 km" else "Activa tu ubicación para consultar lugares reales") }
+        if (currentCoordinates != null) {
+            if (placesLoading) item { Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text(tr("Buscando lugares cercanos…"), color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+            if (placesError != null) item {
+                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(14.dp)) {
+                    Text(placesError!!, modifier = Modifier.padding(13.dp), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (!placesLoading && placesError == null && nearbyPlaces.isEmpty()) item {
+                Text(tr("No hay lugares cartografiados en esta categoría cerca de tu ubicación. Prueba otra categoría o amplía la búsqueda en el mapa."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp))
+            }
+            items(nearbyPlaces, key = { it.id }) { place ->
+                NearbyPlaceCard(
+                    place = place,
+                    saved = place.name in savedPlaces,
+                    onSave = { onToggleSave(place.name) },
+                    onOpenMap = {
+                        val uri = Uri.parse("geo:${place.latitude},${place.longitude}?q=${place.latitude},${place.longitude}(${Uri.encode(place.name)})")
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        if (intent.resolveActivity(context.packageManager) != null) context.startActivity(intent)
+                        else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/?mlat=${place.latitude}&mlon=${place.longitude}#map=16/${place.latitude}/${place.longitude}")))
+                    }
+                )
+            }
+        } else {
+            if (visible.isEmpty()) item { Text(tr("No hay resultados. Prueba con otra búsqueda."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
+            items(visible) { place ->
+                PlaceCard(place = place, saved = place.name in savedPlaces, onOpen = { selectedPlace = place }, onSave = { onToggleSave(place.name) })
+            }
         }
         item {
             Text(tr("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
@@ -527,6 +628,39 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }) { Text(tr("Nueva colección")) }
             }
         )
+    }
+}
+
+@Composable
+private fun NearbyPlaceCard(place: NearbyPlace, saved: Boolean, onSave: () -> Unit, onOpenMap: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(19.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Icon(Icons.Default.Place, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(10.dp))
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(place.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(place.category, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                }
+                IconButton(onClick = onSave) {
+                    Icon(if (saved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder, contentDescription = if (saved) "Guardado" else "Guardar")
+                }
+            }
+            Text(place.address, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = onOpenMap, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Map, null)
+                Spacer(Modifier.width(7.dp))
+                Text(tr("Ver ubicación en el mapa"))
+            }
+            Text(tr("Datos cartográficos comunitarios. Comprueba que el lugar admite perros antes de desplazarte."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
