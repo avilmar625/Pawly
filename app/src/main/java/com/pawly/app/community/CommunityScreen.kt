@@ -303,6 +303,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var suggestedUsers by remember { mutableStateOf(emptyList<PawlyUser>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
+    var unreadNotifications by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedUser by remember { mutableStateOf<String?>(null) }
     var chat by remember { mutableStateOf<PawlyConversation?>(null) }
@@ -336,7 +337,11 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     DisposableEffect(repo, uid) {
         val feedListener = repo.listenFeed({ posts = it; error = null }, { error = it })
         val followingListener = repo.listenFollowingIds({ followingIds = it }, { error = it })
-        onDispose { feedListener.remove(); followingListener.remove() }
+        val notificationsListener = repo.listenNotifications(
+            { unreadNotifications = it.count { notification -> !notification.read } },
+            { error = it }
+        )
+        onDispose { feedListener.remove(); followingListener.remove(); notificationsListener.remove() }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (elegantDesign) {
@@ -381,7 +386,21 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 FilterChip(
                     selected = page == item,
                     onClick = { page = item; selectedUser = null; chat = null },
-                    label = { Text(tr(item.label), maxLines = 1) },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(tr(item.label), maxLines = 1)
+                            if (item == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
+                                Surface(color = MaterialTheme.colorScheme.error, shape = CircleShape) {
+                                    Text(
+                                        unreadNotifications.coerceAtMost(99).toString(),
+                                        color = MaterialTheme.colorScheme.onError,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    },
                     shape = RoundedCornerShape(50)
                 )
             }
