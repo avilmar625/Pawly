@@ -1,6 +1,12 @@
 package com.pawly.app
 
 import android.net.Uri
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +45,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,8 +76,46 @@ internal fun LostPetHelpScreen(
     var photo by remember { mutableStateOf<Uri?>(null) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var approximateLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var receiveNearbyAlerts by remember { mutableStateOf(false) }
+    var alertRadius by remember { mutableStateOf(10) }
+    var subscriptionSaved by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { photo = it }
     fun t(value: String) = PawlyI18n.text(value, language)
+    fun requestApproximateLocation() {
+        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (!fine && !coarse) return
+        val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val provider = when {
+            manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER) -> LocationManager.NETWORK_PROVIDER
+            manager.isProviderEnabled(LocationManager.GPS_PROVIDER) -> LocationManager.GPS_PROVIDER
+            else -> null
+        } ?: return
+        try {
+            @Suppress("DEPRECATION")
+            manager.getLastKnownLocation(provider)?.let { approximateLocation = it.latitude to it.longitude }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                manager.getCurrentLocation(provider, null, context.mainExecutor) { location ->
+                    if (location != null) approximateLocation = location.latitude to location.longitude
+                }
+            }
+        } catch (_: SecurityException) { }
+    }
+    val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        if (grants[Manifest.permission.ACCESS_FINE_LOCATION] == true || grants[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
+            requestApproximateLocation()
+        }
+    }
+    LaunchedEffect(repository) {
+        runCatching { repository?.loadLostPetSubscription() }.getOrNull()?.let { saved ->
+            receiveNearbyAlerts = saved.first
+            alertRadius = saved.second
+            approximateLocation = saved.third
+            subscriptionSaved = true
+        }
+        requestApproximateLocation()
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
@@ -94,7 +141,58 @@ internal fun LostPetHelpScreen(
         if (repository == null) {
             Text(tr("Para publicar un aviso necesitas conectar Pawly con Firebase e iniciar sesión."), color = MaterialTheme.colorScheme.error)
         }
-        OutlinedTextField(petName, { petName = it }, label = { Text(t("Nombre de la mascota")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        ) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(t("Alertas de mascotas perdidas cerca de ti"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text(t("Actívalas solo si quieres recibir avisos de tu zona."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                    }
+                    Switch(checked = receiveNearbyAlerts, onCheckedChange = { receiveNearbyAlerts = it; subscriptionSaved = false })
+                }
+                Text(t("Radio de recepción"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(5, 10, 20).forEach { radius ->
+                        FilterChip(selected = alertRadius == radius, onClick = { alertRadius = radius; subscriptionSaved = false }, label = { Text("$radius km") })
+                    }
+                }
+                Text(
+                    t("Pawly utiliza una ubicación aproximada (redondeada a unos 1 km). No se comparte tu posición exacta. Los avisos solo se envían a personas que hayan activado esta opción y estén dentro del radio."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                OutlinedButton(
+                    onClick = {
+                        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        if (!fine && !coarse) locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                        else requestApproximateLocation()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Icon(Icons.Default.LocationOn, null); Text("  " + t(if (approximateLocation == null) "Compartir ubicación aproximada" else "Actualizar ubicación aproximada")) }
+                if (approximateLocation != null) Text(t("Ubicación aproximada lista."), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                Button(
+                    onClick = {
+                        val point = approximateLocation
+                        if (point == null) { error = t("Necesitamos tu ubicación aproximada para configurar alertas."); return@Button }
+                        busy = true
+                        scope.launch {
+                            runCatching { repository?.saveLostPetSubscription(receiveNearbyAlerts, alertRadius, point.first, point.second) }
+                                .onSuccess { subscriptionSaved = true; error = null }
+                                .onFailure { error = it.localizedMessage ?: t("No se pudo guardar la preferencia.") }
+                            busy = false
+                        }
+                    },
+                    enabled = repository != null && !busy && approximateLocation != null,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(t(if (subscriptionSaved) "Preferencias guardadas" else "Guardar preferencias de alertas")) }
+            }
+        }
+
+                OutlinedTextField(petName, { petName = it }, label = { Text(t("Nombre de la mascota")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(breed, { breed = it }, label = { Text(tr("Especie o raza (opcional)")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(area, { area = it }, label = { Text(t("Zona donde se perdió")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.LocationOn, null) })
         OutlinedTextField(lastSeen, { lastSeen = it }, label = { Text(t("Última vez vista")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text(tr("Fecha, hora y lugar aproximados")) })
@@ -124,8 +222,13 @@ internal fun LostPetHelpScreen(
                             if (contact.isNotBlank()) append("\n\nContacto: ${contact.trim()}")
                             append("\n\nAviso publicado desde Pawly el " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")))
                         }
-                        repo.publishPost(body, imageUrl, "", petName.trim(), "LOST")
-                        onPublished()
+                        val point = approximateLocation
+                        if (point == null) {
+                            error = t("Activa la ubicación aproximada para enviar avisos a personas cercanas.")
+                        } else {
+                            repo.publishLostPetAlert(body, imageUrl, petName.trim(), point.first, point.second)
+                            onPublished()
+                        }
                     } catch (e: Exception) {
                         error = e.localizedMessage ?: "No se ha podido publicar el aviso."
                     } finally {
@@ -133,7 +236,7 @@ internal fun LostPetHelpScreen(
                     }
                 }
             },
-            enabled = repository != null && !busy && petName.isNotBlank() && area.isNotBlank() && description.isNotBlank(),
+            enabled = repository != null && !busy && approximateLocation != null && petName.isNotBlank() && area.isNotBlank() && description.isNotBlank(),
             modifier = Modifier.fillMaxWidth().height(54.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
