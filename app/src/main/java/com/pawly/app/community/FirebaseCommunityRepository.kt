@@ -2,6 +2,7 @@ package com.pawly.app
 
 import com.pawly.app.community.ChatMessagePolicy
 import com.pawly.app.community.ProfessionalContactPolicy
+import com.pawly.app.community.ExploreCollectionPolicy
 import android.content.Context
 import android.net.Uri
 import com.google.firebase.FirebaseApp
@@ -730,16 +731,14 @@ class FirebaseCommunityRepository private constructor(
     suspend fun syncExploreCollections(collections: List<PawlyExploreCollection>) {
         val uid = requireUid()
         require(collections.size <= 30) { "Puedes guardar como máximo 30 colecciones." }
-        require(collections.all { it.name.isNotBlank() && it.name.length <= 32 && it.description.length <= 120 && it.entries.size <= 100 }) {
-            "Una colección supera los límites permitidos."
-        }
+        collections.forEach { ExploreCollectionPolicy.validate(it.name, it.description, it.entries.size) }
         val root = db.collection("users").document(uid).collection("exploreCollections")
         val existing = root.get().await().documents
-        val wantedIds = collections.map { java.util.UUID.nameUUIDFromBytes(it.name.lowercase().toByteArray()).toString() }.toSet()
+        val wantedIds = collections.map { ExploreCollectionPolicy.documentId(it.name) }.toSet()
         val batch = db.batch()
         existing.filter { it.id !in wantedIds }.forEach { batch.delete(it.reference) }
         collections.forEach { item ->
-            val id = java.util.UUID.nameUUIDFromBytes(item.name.lowercase().toByteArray()).toString()
+            val id = ExploreCollectionPolicy.documentId(item.name)
             batch.set(root.document(id), mapOf(
                 "name" to item.name,
                 "description" to item.description,
