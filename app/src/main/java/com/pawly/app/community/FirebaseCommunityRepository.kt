@@ -751,6 +751,15 @@ class FirebaseCommunityRepository private constructor(
         batch.commit().await()
     }
 
+    suspend fun loadLostPetSubscription(): Triple<Boolean, Int, Pair<Double, Double>>? {
+        val uid = requireUid()
+        val doc = db.collection("lostPetSubscriptions").document(uid).get().await()
+        if (!doc.exists()) return null
+        val latitude = doc.getDouble("latitude") ?: return null
+        val longitude = doc.getDouble("longitude") ?: return null
+        return Triple(doc.getBoolean("enabled") ?: false, (doc.getLong("radiusKm") ?: 10L).toInt(), latitude to longitude)
+    }
+
     /** Saves a coarse location (rounded to ~1 km) and explicit radius consent for lost-pet alerts. */
     suspend fun saveLostPetSubscription(enabled: Boolean, radiusKm: Int, latitude: Double, longitude: Double) {
         val uid = requireVerifiedUid()
