@@ -54,6 +54,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", buildConfigString("CLOUDINARY_CLOUD_NAME"))
+        buildConfigField("String", "PAWLY_BACKEND_URL", buildConfigString("PAWLY_BACKEND_URL"))
         // Separate presets let Cloudinary enforce different allowed formats for images and videos.
         // The legacy key remains a fallback so existing local.properties files keep working.
         buildConfigField("String", "CLOUDINARY_IMAGE_UPLOAD_PRESET", buildConfigString("CLOUDINARY_IMAGE_UPLOAD_PRESET", "CLOUDINARY_UPLOAD_PRESET"))
