@@ -110,7 +110,7 @@ async function verifyFirebaseUser(token: string, env: Env): Promise<string> {
     audience: env.FIREBASE_PROJECT_ID,
     algorithms: ["RS256"]
   });
-  if (typeof payload.sub !== "string" || payload.sub.length === 0 || payload.sub.length > 128) {
+  if (typeof payload.sub !== "string" || payload.sub.length === 0 || payload.sub.length > 128 || payload.email_verified !== true) {
     throw new Error("Token de usuario no válido.");
   }
   return payload.sub;
