@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.net.Uri
+import android.content.Intent
+import android.provider.ContactsContract
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -41,6 +43,31 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var discoveryPhone by remember { mutableStateOf("") }
+    var phoneDiscoveryEnabled by remember { mutableStateOf(false) }
+    var contactMatches by remember { mutableStateOf(emptyList<PawlyContactMatch>()) }
+    var contactMatchStatus by remember { mutableStateOf<String?>(null) }
+    var phoneDiscoveryBusy by remember { mutableStateOf(false) }
+    val contactPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val selectedUri = result.data?.data
+        if (result.resultCode == android.app.Activity.RESULT_OK && selectedUri != null) {
+            val number = runCatching {
+                context.contentResolver.query(
+                    selectedUri, arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER), null, null, null
+                )?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+            }.getOrNull()
+            if (!number.isNullOrBlank()) {
+                phoneDiscoveryBusy = true
+                scope.launch {
+                    runCatching { repo.findContactMatches(listOf(number)) }
+                        .onSuccess { contactMatches = it; contactMatchStatus = if (it.isEmpty()) "No hemos encontrado una cuenta pública asociada a ese teléfono." else "Contactos de Pawly encontrados." }
+                        .onFailure { contactMatchStatus = it.localizedMessage ?: "No se ha podido consultar el contacto." }
+                    phoneDiscoveryBusy = false
+                }
+            } else contactMatchStatus = "El contacto seleccionado no tiene un teléfono disponible."
+        }
+    }
     var profile by remember(repo) { mutableStateOf(repo.cachedMyProfile()) }
     var dogs by remember(repo) { mutableStateOf(repo.cachedMyDogs().orEmpty()) }
     var blockedUsers by remember { mutableStateOf(emptyList<PawlyBlockedUser>()) }
@@ -62,6 +89,9 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
     var busy by remember { mutableStateOf(false) }
     var confirmAccountDeletion by remember { mutableStateOf(false) }
     var accountDeletionSubmitted by remember { mutableStateOf(false) }
+    LaunchedEffect(repo) {
+        runCatching { repo.loadPhoneDiscoveryEnabled() }.onSuccess { phoneDiscoveryEnabled = it }
+    }
     LaunchedEffect(repo) {
         // Paint the in-memory snapshot first; refresh both records in the background.
         repo.cachedMyProfile()?.let {
@@ -169,6 +199,75 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
             }
         }
         items(dogs, key = { it.id }) { dog -> DogProfileCard(dog) { editDog = dog; showDogEditor = true } }
+        item {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(22.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("ENCUENTRA A TU GENTE"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.1.sp)
+                            Text(tr("Contactos de tu agenda"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        }
+                        Icon(Icons.Default.PeopleAlt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(27.dp))
+                    }
+                    Text(tr("Elige un contacto con el selector seguro del teléfono. Su número se envía cifrado en tránsito al servicio de Pawly, se transforma mediante HMAC y no se guarda en claro ni se muestra a otros usuarios."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(
+                        onClick = { contactPicker.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !phoneDiscoveryBusy
+                    ) {
+                        Icon(Icons.Default.ContactPhone, null)
+                        Text("  " + tr("Buscar un contacto de mi agenda"))
+                    }
+                    if (phoneDiscoveryBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    contactMatchStatus?.let { Text(tr(it), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
+                    contactMatches.forEach { match ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(match.photoUrl, match.displayName, 42)
+                            Spacer(Modifier.width(10.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(match.displayName, fontWeight = FontWeight.SemiBold)
+                                Text("@${match.username}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            }
+                            Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                    HorizontalDivider()
+                    Text(tr("Permite que otras personas que tengan tu número te encuentren"), fontWeight = FontWeight.SemiBold)
+                    OutlinedTextField(
+                        value = discoveryPhone,
+                        onValueChange = { discoveryPhone = it.take(24) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text(tr("Tu teléfono (formato internacional)")) },
+                        placeholder = { Text("+34 600 000 000") }
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Permitir que me encuentren por teléfono"), fontWeight = FontWeight.Medium)
+                            Text(tr("Es voluntario y puedes retirarlo cuando quieras."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = phoneDiscoveryEnabled, onCheckedChange = { phoneDiscoveryEnabled = it })
+                    }
+                    Button(
+                        onClick = {
+                            phoneDiscoveryBusy = true
+                            scope.launch {
+                                runCatching { repo.setPhoneDiscovery(discoveryPhone, phoneDiscoveryEnabled) }
+                                    .onSuccess { contactMatchStatus = if (phoneDiscoveryEnabled) "La búsqueda por teléfono está activada." else "Has dejado de ser localizable por teléfono." }
+                                    .onFailure { contactMatchStatus = it.localizedMessage ?: "No se pudo guardar la preferencia." }
+                                phoneDiscoveryBusy = false
+                            }
+                        },
+                        enabled = !phoneDiscoveryBusy && (!phoneDiscoveryEnabled || discoveryPhone.trim().length >= 7),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(tr("Guardar privacidad de contactos")) }
+                }
+            }
+        }
         item { Text(tr("Cuentas bloqueadas"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) }
         if (blockedUsers.isEmpty()) item { Text(tr("No has bloqueado a nadie."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
         items(blockedUsers, key = { it.uid }) { blocked ->
