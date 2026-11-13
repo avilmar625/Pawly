@@ -155,7 +155,7 @@ Firestore almacena las URL HTTPS y los metadatos; los bytes no se guardan en Fir
 
 Pawly registra el token FCM del dispositivo y declara el servicio Android que puede recibir mensajes. **Eso no significa que la app ya envíe notificaciones push a otros usuarios.**
 
-El envío requiere un emisor de confianza (por ejemplo, Cloud Functions o un servidor propio) que utilice credenciales de servidor fuera del APK. No se debe llamar a la API de envío con una clave privada desde Android. En la arquitectura sin backend de pago, el chat se actualiza en tiempo real mientras la aplicación está conectada; las notificaciones push automáticas entre usuarios quedan pendientes.
+El repositorio incluye un emisor de confianza en `backend/cloudflare-worker`, compatible con el plan gratuito de Cloudflare Workers y sin Firebase Cloud Functions. Verifica el Firebase ID token, comprueba la interacción en Firestore, respeta bloqueos y envía por FCM HTTP v1. **No estará operativo hasta que el propietario despliegue el Worker y configure los secretos** siguiendo `backend/cloudflare-worker/README.md`. Requiere una cuenta de servicio Firebase dedicada con permisos mínimos; su clave privada debe almacenarse como secreto de Cloudflare, nunca en Android ni en GitHub. No hace falta activar Blaze para desplegar Workers, aunque Firestore/FCM conservan sus propias cuotas y condiciones.
 
 ## 8. Compilar y probar
 
@@ -183,8 +183,8 @@ No uses información veterinaria real durante las pruebas iniciales. Comprueba t
 ## 9. Qué no está listo para producción
 
 - Las cargas unsigned de Cloudinary no autentican al usuario y las URLs son públicas para quien las conozca.
-- No hay backend propio que firme subidas, aplique moderación o elimine archivos de Cloudinary.
-- No hay envío automático de push entre usuarios; solo registro/recepción FCM.
+- El Worker de Cloudflare para notificaciones push está implementado en el repositorio, pero no desplegado ni configurado. No hay todavía backend para firmar subidas, aplicar moderación ni eliminar archivos de Cloudinary.
+- Hasta desplegar y probar el Worker, Pawly solo registra/recibe FCM; no debe darse por operativo el envío push entre usuarios.
 - La solicitud de eliminación de cuenta no borra automáticamente todas las subcolecciones y archivos multimedia.
 - No hay cifrado de extremo a extremo para chat ni multimedia.
 - Algunas preferencias, recordatorios y estados diarios permanecen locales.
