@@ -23,3 +23,8 @@ export function parseActivityRequest(value: unknown): ActivityRequest | null {
   if (body.type === "COMMENT" && (!body.relatedId || !body.sourceEventId)) return null;
   return { type: body.type, recipientUid: body.recipientUid, relatedId: body.relatedId, sourceEventId: body.sourceEventId };
 }
+
+/** A comment notification is only eligible for the most recently committed comment. */
+export function isCurrentComment(lastCommentId: unknown, sourceEventId: string): boolean {
+  return typeof lastCommentId === "string" && lastCommentId.length > 0 && lastCommentId === sourceEventId;
+}
