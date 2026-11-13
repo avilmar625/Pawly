@@ -91,14 +91,10 @@ async function firestoreRequest(
   path: string,
   init: RequestInit = {}
 ): Promise<Response> {
-  return fetch(`${firestoreRoot(env)}/${encodeDocumentPath(path)}`, {
-    ...init,
-    headers: {
-      authorization: `Bearer ${accessToken}`,
-      ...(init.body ? { "content-type": "application/json" } : {}),
-      ...init.headers
-    }
-  });
+  const headers = new Headers(init.headers);
+  headers.set("authorization", `Bearer ${accessToken}`);
+  if (init.body) headers.set("content-type", "application/json");
+  return fetch(`${firestoreRoot(env)}/${encodeDocumentPath(path)}`, { ...init, headers });
 }
 
 async function readDocument(env: Env, accessToken: string, path: string): Promise<any | null> {
@@ -211,7 +207,8 @@ async function claimDispatch(
           actorUid: { stringValue: actorUid },
           recipientUid: { stringValue: input.recipientUid },
           type: { stringValue: input.type },
-          createdAt: { timestampValue: new Date().toISOString() }
+          createdAt: { timestampValue: new Date().toISOString() },
+          expiresAt: { timestampValue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() }
         }
       })
     }
@@ -266,6 +263,9 @@ async function handleActivityNotification(request: Request, env: Env): Promise<R
   } catch {
     return json({ error: "La sesión no es válida o ha caducado." }, 401);
   }
+
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (contentLength > 4096) return json({ error: "Petición demasiado grande." }, 413);
 
   let input: ActivityRequest;
   try {
