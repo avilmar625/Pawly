@@ -11,10 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.pawly.app.MainActivity
 import com.pawly.app.R
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 /**
  * Schedules local care reminders and persists their source data so Android can
@@ -26,12 +23,8 @@ internal object CareReminderScheduler {
     private const val PREFS = "pawly_care_reminders"
     private const val PREFIX = "reminder:"
 
-    private fun parseDateTime(value: String): Long? = runCatching {
-        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.ROOT).apply {
-            isLenient = false
-            timeZone = TimeZone.getDefault()
-        }.parse(value.replace("|", " "))?.time
-    }.getOrNull()
+    private fun parseDateTime(value: String): Long? =
+        CareReminderDateTimeParser.parseMillis(value)
 
     fun schedule(context: Context, dogName: String, careName: String, dateTime: String): Boolean {
         val triggerAt = parseDateTime(dateTime) ?: return false
