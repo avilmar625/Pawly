@@ -63,7 +63,6 @@ async function googleAccessToken(env: Env): Promise<string> {
   })
     .setProtectedHeader({ alg: "RS256", typ: "JWT" })
     .setIssuer(env.FIREBASE_CLIENT_EMAIL)
-    .setSubject(env.FIREBASE_CLIENT_EMAIL)
     .setAudience("https://oauth2.googleapis.com/token")
     .setIssuedAt()
     .setExpirationTime("1h")
@@ -110,7 +109,7 @@ async function verifyFirebaseUser(token: string, env: Env): Promise<string> {
     audience: env.FIREBASE_PROJECT_ID,
     algorithms: ["RS256"]
   });
-  if (typeof payload.sub !== "string" || payload.sub.length === 0 || payload.sub.length > 128 || payload.email_verified !== true) {
+  if (typeof payload.sub !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(payload.sub) || payload.email_verified !== true) {
     throw new Error("Token de usuario no válido.");
   }
   return payload.sub;
@@ -272,9 +271,9 @@ async function handleActivityNotification(request: Request, env: Env): Promise<R
     const body = await request.json() as Record<string, unknown>;
     if (
       !["LIKE", "COMMENT", "FOLLOW"].includes(String(body.type)) ||
-      typeof body.recipientUid !== "string" || body.recipientUid.length < 1 || body.recipientUid.length > 128 ||
-      typeof body.relatedId !== "string" || body.relatedId.length > 128 ||
-      typeof body.sourceEventId !== "string" || body.sourceEventId.length > 128
+      typeof body.recipientUid !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(body.recipientUid) ||
+      typeof body.relatedId !== "string" || (body.relatedId !== "" && !/^[A-Za-z0-9_-]{1,128}$/.test(body.relatedId)) ||
+      typeof body.sourceEventId !== "string" || (body.sourceEventId !== "" && !/^[A-Za-z0-9_-]{1,128}$/.test(body.sourceEventId))
     ) return json({ error: "Datos de actividad no válidos." }, 400);
     input = body as unknown as ActivityRequest;
   } catch {
