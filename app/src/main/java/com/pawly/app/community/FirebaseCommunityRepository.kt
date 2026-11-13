@@ -80,57 +80,53 @@ class FirebaseCommunityRepository private constructor(
         CommunityInputRules.validatePassword(password)
         val normalized = cleanName.lowercase()
         val result = auth.createUserWithEmailAndPassword(cleanEmail, password).await()
-        val uid = result.user?.uid ?: error("No se pudo crear la cuenta.")
+        val uid = result.user?.uid ?: error("Firebase no devolvió el identificador de la cuenta.")
         val usernameRef = db.collection("usernames").document(normalized)
         val reservationRef = db.collection("usernameReservations").document(uid)
         val userRef = db.collection("users").document(uid)
+
         try {
-            db.runTransaction { transaction ->
-                check(!transaction.get(usernameRef).exists()) { "Ese nombre de usuario ya está ocupado." }
-                check(!transaction.get(reservationRef).exists()) { "La cuenta ya tiene un nombre reservado." }
-                transaction.set(usernameRef, mapOf("uid" to uid))
-                transaction.set(reservationRef, mapOf("username" to normalized))
-            }.await()
-            val profile = PawlyUser(
-                uid = uid, username = cleanName, usernameLower = normalized,
-                displayName = cleanName, isPublic = false
-            )
-            userRef.set(
-                mapOf(
-                    "uid" to uid,
-                    "username" to cleanName,
-                    "usernameLower" to normalized,
-                    "displayName" to cleanName,
-                    "bio" to "",
-                    "photoUrl" to "",
-                    "isPublic" to false,
-                    "followersCount" to 0,
-                    "followingCount" to 0,
-                    "accountType" to "personal",
-                    "professionalCategory" to "",
-                    "professionalLocation" to "",
-                    "professionalDescription" to "",
-                    "professionalContact" to "",
-                    "dogProfiles" to emptyList<Map<String, Any>>(),
-                    "createdAt" to FieldValue.serverTimestamp()
-                )
-            ).await()
-            cachedMyProfileState = profile
-            cachedMyDogsState = emptyList()
-            result.user?.sendEmailVerification()?.await()
+            // One atomic batch: the three Firestore rules validate the related documents
+            // through getAfter/existsAfter, avoiding a partially-created account.
+            val batch = db.batch()
+            batch.set(usernameRef, mapOf("uid" to uid))
+            batch.set(reservationRef, mapOf("username" to normalized))
+            batch.set(userRef, mapOf(
+                "uid" to uid,
+                "username" to cleanName,
+                "usernameLower" to normalized,
+                "displayName" to cleanName,
+                "bio" to "",
+                "photoUrl" to "",
+                "isPublic" to false,
+                "followersCount" to 0,
+                "followingCount" to 0,
+                "accountType" to "personal",
+                "professionalCategory" to "",
+                "professionalLocation" to "",
+                "professionalDescription" to "",
+                "professionalContact" to "",
+                "dogProfiles" to emptyList<Map<String, Any>>(),
+                "createdAt" to FieldValue.serverTimestamp()
+            ))
+            batch.commit().await()
         } catch (error: Exception) {
-            runCatching {
-                val cleanup = db.batch()
-                cleanup.delete(userRef)
-                cleanup.delete(usernameRef)
-                cleanup.delete(reservationRef)
-                cleanup.commit().await()
-            }
+            // Do not leave an Auth account without a matching Pawly profile.
             runCatching { result.user?.delete()?.await() }
             cachedMyProfileState = null
             cachedMyDogsState = null
             throw error
         }
+
+        cachedMyProfileState = PawlyUser(
+            uid = uid, username = cleanName, usernameLower = normalized,
+            displayName = cleanName, isPublic = false
+        )
+        cachedMyDogsState = emptyList()
+
+        // Email delivery is best-effort. A mail-provider/network failure must not
+        // delete a valid account after the Firestore batch has already succeeded.
+        runCatching { result.user?.sendEmailVerification()?.await() }
     }
 
         suspend fun signIn(email: String, password: String) {
