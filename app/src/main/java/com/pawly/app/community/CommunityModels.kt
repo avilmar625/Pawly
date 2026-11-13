@@ -89,3 +89,22 @@ data class PawlyNotification(
     val createdAt: Long = 0,
     val read: Boolean = false
 )
+
+
+/** A community-submitted place; only approved records are visible to everyone. */
+data class PawlyCommunityPlace(
+    val id: String,
+    val name: String,
+    val category: String,
+    val location: String,
+    val description: String,
+    val authorUid: String,
+    val createdAt: Long
+)
+
+data class PawlyContactMatch(
+    val uid: String,
+    val displayName: String,
+    val username: String,
+    val photoUrl: String
+)
