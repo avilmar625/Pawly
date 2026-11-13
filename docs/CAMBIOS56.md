@@ -38,6 +38,11 @@ Los recordatorios siguen siendo locales al dispositivo. No se sincronizan entre 
 
 ### 4. Fechas estructuradas para eventos
 
+- Se extrae el análisis estricto de fecha/hora a `EventDateParser`, una utilidad pura que no depende de Firebase ni de Compose.
+- Se añaden pruebas para años bisiestos, fechas imposibles, horas inválidas y zona horaria explícita. Esto facilita reutilizar la misma regla de negocio al portar eventos a iOS.
+
+
+
 - Los eventos nuevos conservan `dateText` para compatibilidad visual y añaden `startAt` (Timestamp Firestore) y `timeZoneId`.
 - La fecha se valida estrictamente como `DD/MM/AAAA HH:mm` (también admite el separador visual `·`).
 - No se permiten fechas pasadas.
