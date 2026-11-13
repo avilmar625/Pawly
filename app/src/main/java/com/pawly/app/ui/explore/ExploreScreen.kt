@@ -21,6 +21,7 @@ import android.location.Geocoder
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -142,7 +143,7 @@ private suspend fun loadNearbyPlaces(latitude: Double, longitude: Double, catego
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit, elegantDesign: Boolean = false) {
+internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit, elegantDesign: Boolean = false, repository: FirebaseCommunityRepository? = null) {
     val context = LocalContext.current
     var currentCoordinates by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var currentAddress by remember { mutableStateOf<String?>(null) }
@@ -261,6 +262,45 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         explorePreferences.edit().putString("custom_collections", names.toString())
             .putString("collection_contents", content.toString())
             .putString("collection_descriptions", descriptions.toString()).apply()
+    }
+    var collectionsLoaded by remember { mutableStateOf(false) }
+    var collectionSyncMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(repository) {
+        val repo = repository
+        if (repo == null || repo.currentUid == null) {
+            collectionsLoaded = true
+        } else {
+            runCatching { repo.loadExploreCollections() }
+                .onSuccess { remote ->
+                    if (remote.isNotEmpty()) {
+                        customCollections = remote.map { it.name }
+                        collectionContents = remote.associate { it.name to it.entries }
+                        collectionDescriptions = remote.associate { it.name to it.description }
+                        persistCollections()
+                    } else if (customCollections.isNotEmpty()) {
+                        repo.syncExploreCollections(customCollections.map { name ->
+                            PawlyExploreCollection(name, collectionDescriptions[name].orEmpty(), collectionContents[name].orEmpty())
+                        })
+                    }
+                    collectionSyncMessage = "Colecciones sincronizadas con tu cuenta Pawly."
+                }
+                .onFailure { collectionSyncMessage = "No se han podido sincronizar las colecciones. Se conservan en este dispositivo." }
+            collectionsLoaded = true
+        }
+    }
+    LaunchedEffect(customCollections, collectionContents, collectionDescriptions, collectionsLoaded, repository) {
+        val repo = repository
+        if (collectionsLoaded && repo?.currentUid != null) {
+            runCatching {
+                repo.syncExploreCollections(customCollections.map { name ->
+                    PawlyExploreCollection(name, collectionDescriptions[name].orEmpty(), collectionContents[name].orEmpty())
+                })
+            }.onFailure {
+                collectionSyncMessage = "Sin conexión: los cambios de las colecciones siguen guardados en este dispositivo."
+            }.onSuccess {
+                collectionSyncMessage = "Colecciones sincronizadas con tu cuenta Pawly."
+            }
+        }
     }
     val filters = listOf("Todo", "Naturaleza", "Playas", "Comer", "Alojarse")
     val places = listOf(
@@ -596,7 +636,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                             }
                         }
                     }
-                    Text(tr("Se guardan en este dispositivo y no se sincronizan con otros móviles."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(collectionSyncMessage ?: if (repository?.currentUid != null) tr("Tus colecciones se sincronizan con tu cuenta Pawly.") else tr("Inicia sesión para sincronizar tus colecciones entre dispositivos."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             },
             confirmButton = { TextButton(onClick = { viewingCollection = null }) { Text(tr("Cerrar")) } }
