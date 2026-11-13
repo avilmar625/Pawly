@@ -47,6 +47,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
     var discoveryPhone by remember { mutableStateOf("") }
     var phoneDiscoveryEnabled by remember { mutableStateOf(false) }
     var contactMatches by remember { mutableStateOf(emptyList<PawlyContactMatch>()) }
+    var selectedContactNumbers by remember { mutableStateOf(emptyList<String>()) }
     var contactMatchStatus by remember { mutableStateOf<String?>(null) }
     var phoneDiscoveryBusy by remember { mutableStateOf(false) }
     val contactPicker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -60,8 +61,10 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
             if (!number.isNullOrBlank()) {
                 phoneDiscoveryBusy = true
                 scope.launch {
-                    runCatching { repo.findContactMatches(listOf(number)) }
-                        .onSuccess { contactMatches = it; contactMatchStatus = if (it.isEmpty()) "No hemos encontrado una cuenta pública asociada a ese teléfono." else "Contactos de Pawly encontrados." }
+                    val updatedNumbers = (selectedContactNumbers + number).distinct().take(30)
+                    selectedContactNumbers = updatedNumbers
+                    runCatching { repo.findContactMatches(updatedNumbers) }
+                        .onSuccess { contactMatches = it; contactMatchStatus = if (it.isEmpty()) "No hemos encontrado cuentas públicas entre los contactos seleccionados." else "Contactos de Pawly encontrados." }
                         .onFailure { contactMatchStatus = it.localizedMessage ?: "No se ha podido consultar el contacto." }
                     phoneDiscoveryBusy = false
                 }
@@ -214,6 +217,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                         Icon(Icons.Default.PeopleAlt, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(27.dp))
                     }
                     Text(tr("Elige un contacto con el selector seguro del teléfono. Su número se envía cifrado en tránsito al servicio de Pawly, se transforma mediante HMAC y no se guarda en claro ni se muestra a otros usuarios."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Selecciona manualmente los contactos que quieras comprobar. Pawly no lee ni carga toda tu agenda."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(
                         onClick = { contactPicker.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) },
                         modifier = Modifier.fillMaxWidth(),
@@ -221,6 +225,12 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                     ) {
                         Icon(Icons.Default.ContactPhone, null)
                         Text("  " + tr("Buscar un contacto de mi agenda"))
+                    }
+                    if (selectedContactNumbers.isNotEmpty()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("${selectedContactNumbers.size}/30 " + tr("contactos seleccionados"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(onClick = { selectedContactNumbers = emptyList(); contactMatches = emptyList(); contactMatchStatus = null }) { Text(tr("Limpiar")) }
+                        }
                     }
                     if (phoneDiscoveryBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
                     contactMatchStatus?.let { Text(tr(it), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
