@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "jose";
 import { isCurrentComment, parseActivityRequest, type ActivityRequest } from "./activity-validation";
 import { shouldSuppressDispatch } from "./dispatch-state";
+import { distanceKm, normalizePhone } from "./privacy-utils";
 
 interface Env {
   FIREBASE_PROJECT_ID: string;
@@ -422,14 +423,6 @@ function decodeFirestoreBoolean(value: any): boolean {
   return value?.booleanValue === true;
 }
 
-function normalizePhone(raw: string): string | null {
-  let value = raw.trim().replace(/[().\\s-]/g, "");
-  if (value.startsWith("00")) value = "+" + value.slice(2);
-  if (!value.startsWith("+") && /^\\d{9}$/.test(value)) value = "+34" + value;
-  if (!/^\\+[1-9]\\d{7,14}$/.test(value)) return null;
-  return value;
-}
-
 async function phoneDigest(secret: string, phone: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
@@ -564,15 +557,6 @@ async function handleContactMatches(request: Request, env: Env): Promise<Respons
   } catch {
     return json({ error: "No se pudieron consultar los contactos." }, 502);
   }
-}
-
-function distanceKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
-  const rad = (value: number) => value * Math.PI / 180;
-  const dLat = rad(bLat - aLat);
-  const dLon = rad(bLon - aLon);
-  const h = Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLon / 2) ** 2;
-  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 async function listLostPetSubscriptions(env: Env, accessToken: string): Promise<any[]> {
