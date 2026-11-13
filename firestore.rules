@@ -678,7 +678,7 @@ service cloud.firestore {
 
     // Community suggestions are moderated before appearing in Explore.
     match /communityPlaces/{placeId} {
-      allow get, list: if verified() && resource.data.status == 'approved';
+      allow get, list: if admin() || (verified() && resource.data.status == 'approved');
       allow create: if verified()
         && request.resource.data.keys().hasOnly(['name', 'category', 'location', 'description', 'authorUid', 'status', 'createdAt'])
         && request.resource.data.name is string && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 80
