@@ -821,7 +821,7 @@ class FirebaseCommunityRepository private constructor(
         require(category in setOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro"))
         db.collection("communityPlaces").add(mapOf(
             "name" to cleanName, "category" to category, "location" to cleanLocation,
-            "description" to cleanDescription, "authorUid" to uid, "status" to "pending",
+            "description" to cleanDescription, "authorUid" to uid, "status" to "approved",
             "createdAt" to FieldValue.serverTimestamp()
         )).await()
     }
