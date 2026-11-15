@@ -71,7 +71,8 @@ internal data class PawlyMapMarker(
     val latitude: Double,
     val longitude: Double,
     val title: String,
-    val description: String = ""
+    val description: String = "",
+    val eventId: String = ""
 )
 
 /** Native OSM map. It does not depend on WebView, Leaflet CDNs or a Google Maps API key. */
@@ -82,10 +83,12 @@ internal fun PawlyOpenStreetMap(
     centerLongitude: Double,
     zoom: Double = 12.0,
     markers: List<PawlyMapMarker> = emptyList(),
-    onMapTap: ((Double, Double) -> Unit)? = null
+    onMapTap: ((Double, Double) -> Unit)? = null,
+    onMarkerClick: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val latestOnMapTap by rememberUpdatedState(onMapTap)
+    val latestOnMarkerClick by rememberUpdatedState(onMarkerClick)
     val mapView = remember(context) {
         Configuration.getInstance().userAgentValue = context.packageName
         MapView(context).apply {
@@ -121,6 +124,10 @@ internal fun PawlyOpenStreetMap(
                     title = point.title
                     snippet = point.description
                     setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    setOnMarkerClickListener { _, _ ->
+                        latestOnMarkerClick?.invoke(point.eventId)
+                        latestOnMarkerClick != null
+                    }
                 })
             }
             map.invalidate()
@@ -149,6 +156,10 @@ internal fun PawlyEventsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var reportEventId by remember { mutableStateOf<String?>(null) }
+    var selectedEvent by remember { mutableStateOf<PawlyEvent?>(null) }
+    var eventAttendees by remember { mutableStateOf(emptyList<PawlyUser>()) }
+    var attendeesLoading by remember { mutableStateOf(false) }
+    var attendeesError by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
@@ -223,14 +234,15 @@ internal fun PawlyEventsScreen(
             val mapMarkers = mapPoints.mapNotNull { event ->
                 val lat = event.latitude ?: return@mapNotNull null
                 val lon = event.longitude ?: return@mapNotNull null
-                PawlyMapMarker(lat, lon, event.title, event.location)
+                PawlyMapMarker(lat, lon, event.title, event.location, event.id)
             }
             PawlyOpenStreetMap(
                 modifier = Modifier.fillMaxWidth().height(280.dp).clip(RoundedCornerShape(22.dp)),
                 centerLatitude = centerLat,
                 centerLongitude = centerLon,
                 zoom = if (mapMarkers.size > 1) 11.0 else 13.0,
-                markers = mapMarkers
+                markers = mapMarkers,
+                onMarkerClick = { eventId -> selectedEvent = visible.firstOrNull { it.id == eventId } }
             )
             Text("© OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(onClick = {
@@ -307,6 +319,40 @@ internal fun PawlyEventsScreen(
             }
         }
     }
+    LaunchedEffect(selectedEvent?.id) {
+        val eventId = selectedEvent?.id ?: return@LaunchedEffect
+        attendeesLoading = true
+        attendeesError = null
+        eventAttendees = emptyList()
+        runCatching { repository.loadEventInterestedUsers(eventId) }
+            .onSuccess { eventAttendees = it }
+            .onFailure { attendeesError = it.localizedMessage ?: tr("No se pudo cargar la lista de personas interesadas.") }
+        attendeesLoading = false
+    }
+    selectedEvent?.let { event ->
+        EventDetailsDialog(
+            event = event,
+            attendees = eventAttendees,
+            loading = attendeesLoading,
+            error = attendeesError,
+            onDismiss = { selectedEvent = null },
+            onToggleInterest = {
+                scope.launch {
+                    runCatching { repository.toggleEventInterest(event.id) }
+                        .onSuccess {
+                            events = events.map { item ->
+                                if (item.id == event.id) item.copy(
+                                    interestedByMe = !item.interestedByMe,
+                                    interestedCount = (item.interestedCount + if (item.interestedByMe) -1 else 1).coerceAtLeast(0)
+                                ) else item
+                            }
+                            selectedEvent = events.firstOrNull { it.id == event.id }
+                        }
+                        .onFailure { attendeesError = it.localizedMessage ?: tr("No se pudo actualizar tu interés.") }
+                }
+            }
+        )
+    }
     if (reportEventId != null) ReportDialog(
         repo = repository,
         targetId = reportEventId!!,
@@ -334,6 +380,72 @@ internal fun PawlyEventsScreen(
                     }
             }
         }
+    )
+}
+
+
+@Composable
+private fun EventDetailsDialog(
+    event: PawlyEvent,
+    attendees: List<PawlyUser>,
+    loading: Boolean,
+    error: String?,
+    onDismiss: () -> Unit,
+    onToggleInterest: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(event.title, fontWeight = FontWeight.Bold)
+                Text("${tr(event.category)} · ${event.dateText}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text(event.description, style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+                    Text(event.location, style = MaterialTheme.typography.bodySmall)
+                }
+                Text("${tr("Organiza")} ${event.organizerName}", style = MaterialTheme.typography.labelMedium)
+                HorizontalDivider()
+                Text("${tr("Personas interesadas")} · ${event.interestedCount}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                when {
+                    loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
+                    error != null -> Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    attendees.isEmpty() -> Text(tr("Todavía no hay personas interesadas con perfil público."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    else -> attendees.forEach { user ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (user.photoUrl.isNotBlank()) {
+                                AsyncImage(model = user.photoUrl, contentDescription = null, modifier = Modifier.size(42.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                            } else {
+                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+                                    Icon(Icons.Default.Pets, null, modifier = Modifier.padding(10.dp), tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(user.displayName.ifBlank { user.username }, fontWeight = FontWeight.SemiBold)
+                                if (user.username.isNotBlank()) Text("@${user.username}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onToggleInterest) {
+                Text(if (event.interestedByMe) tr("Ya no me interesa") else tr("Me interesa"))
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } }
     )
 }
 
