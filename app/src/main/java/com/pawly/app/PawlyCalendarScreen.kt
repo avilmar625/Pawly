@@ -2,6 +2,8 @@ package com.pawly.app
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
+import android.provider.CalendarContract
 import java.util.Calendar
 import java.util.Date
 import org.json.JSONObject
@@ -101,6 +103,17 @@ internal fun PawlyCalendarScreen(
                 Text(tr("TU AGENDA PAWLY"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
                 Text(tr("Calendario"), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
                 Text(tr("Eventos, planes y recordatorios para que nada importante se os pase."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FilledTonalButton(onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW).setData(CalendarContract.CONTENT_URI)
+                        runCatching { context.startActivity(Intent.createChooser(intent, tr("Abrir calendario"))) }
+                    }) {
+                        Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(tr("Abrir Google Calendar"))
+                    }
+                    Text(tr("Elige tu cuenta en la app de calendario."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+                }
             }
         }
         item {
