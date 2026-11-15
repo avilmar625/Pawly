@@ -676,7 +676,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Community suggestions are moderated before appearing in Explore.
+    // Community places are published after strict field validation; admins can still moderate them.
     match /communityPlaces/{placeId} {
       allow get, list: if admin() || (verified() && resource.data.status == 'approved');
       allow create: if verified()
@@ -730,7 +730,14 @@ service cloud.firestore {
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
-        allow read: if signedIn();
+        // A user can always read their own RSVP; other users only see RSVPs
+        // when the attendee has chosen a public profile and neither side blocked the other.
+        allow read: if signedIn() && (
+          request.auth.uid == uid
+          || (exists(/databases/$(database)/documents/users/$(uid))
+            && get(/databases/$(database)/documents/users/$(uid)).data.isPublic == true
+            && !blockedEitherWay(uid))
+        );
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
           && request.resource.data.uid == uid
