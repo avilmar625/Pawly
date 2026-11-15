@@ -678,7 +678,8 @@ service cloud.firestore {
 
     // Community places are published after strict field validation; admins can still moderate them.
     match /communityPlaces/{placeId} {
-      allow get, list: if admin() || (verified() && resource.data.status == 'approved');
+      // Any signed-in member can browse approved places; publishing still requires verified email.
+      allow get, list: if admin() || (signedIn() && resource.data.status == 'approved');
       allow create: if verified()
         && request.resource.data.keys().hasOnly(['name', 'category', 'location', 'description', 'authorUid', 'status', 'createdAt'])
         && request.resource.data.name is string && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 80
@@ -732,7 +733,11 @@ service cloud.firestore {
       match /interested/{uid} {
         // A user can always read their own RSVP; other users only see RSVPs
         // when the attendee has chosen a public profile and neither side blocked the other.
-        allow read: if signedIn() && (
+        // RSVP records contain only a UID and timestamp. Listing is allowed to signed-in
+        // members so one private attendee cannot make the whole Firestore query fail.
+        // Profile details remain protected by /users/{uid} rules and are loaded only if public.
+        allow list: if signedIn();
+        allow get: if signedIn() && (
           request.auth.uid == uid
           || (exists(/databases/$(database)/documents/users/$(uid))
             && get(/databases/$(database)/documents/users/$(uid)).data.isPublic == true
