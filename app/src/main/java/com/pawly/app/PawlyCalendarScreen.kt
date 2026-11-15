@@ -1,9 +1,11 @@
 package com.pawly.app
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import java.util.Calendar
 import java.util.Date
 import org.json.JSONObject
+import com.pawly.app.care.CareReminderScheduler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private data class AgendaReminder(val id: String, val title: String, val date: Long, val category: String)
+private data class AgendaReminder(val id: String, val title: String, val date: Long, val category: String, val raw: String = "")
 
 @Composable
 internal fun PawlyCalendarScreen(
@@ -37,7 +39,8 @@ internal fun PawlyCalendarScreen(
     onRemindersChange: (List<String>) -> Unit,
     repository: FirebaseCommunityRepository?,
     healthDates: Map<String, String> = emptyMap(),
-    diaryEntries: List<String> = emptyList()
+    diaryEntries: List<String> = emptyList(),
+    dogName: String = "tu mascota"
 ) {
     val context = LocalContext.current
     var events by remember { mutableStateOf(emptyList<PawlyEvent>()) }
@@ -58,7 +61,7 @@ internal fun PawlyCalendarScreen(
     val daysInMonth = month.getActualMaximum(Calendar.DAY_OF_MONTH)
     val parsedReminders = remember(reminders) { reminders.mapNotNull { runCatching {
         val j = JSONObject(it)
-        AgendaReminder(j.optString("id"), j.optString("title"), j.optLong("date"), j.optString("category", "Personal"))
+        AgendaReminder(j.optString("id"), j.optString("title"), j.optLong("date"), j.optString("category", "Personal"), it)
     }.getOrNull() } }
     fun dayKey(value: Long): String = Calendar.getInstance().apply { timeInMillis = value }.let {
         "${it.get(Calendar.YEAR)}-${it.get(Calendar.MONTH)}-${it.get(Calendar.DAY_OF_MONTH)}"
@@ -162,7 +165,14 @@ internal fun PawlyCalendarScreen(
             AgendaRow(Icons.Default.Event, event.title, "${event.dateText} · ${event.location}", MaterialTheme.colorScheme.primary)
         }
         items(remindersForDay, key = { "reminder-" + it.id }) { reminder ->
-            AgendaRow(if (reminder.category == "Recuerdo") Icons.Default.AutoStories else Icons.Default.Pets, reminder.title, reminder.category, if (reminder.category == "Recuerdo") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary)
+            if (reminder.raw.isNotBlank()) {
+                AgendaReminderRow(reminder, onDelete = {
+                    onRemindersChange(reminders.filterNot { raw -> runCatching { JSONObject(raw).optString("id") == reminder.id }.getOrDefault(false) })
+                    CareReminderScheduler.cancel(context, dogName, "Agenda: ${reminder.title}")
+                })
+            } else {
+                AgendaRow(if (reminder.category == "Recuerdo") Icons.Default.AutoStories else Icons.Default.Pets, reminder.title, reminder.category, if (reminder.category == "Recuerdo") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary)
+            }
         }
         item {
             Text(tr("Próximos eventos de la Comunidad"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -175,13 +185,34 @@ internal fun PawlyCalendarScreen(
         initialDate = selectedDate,
         onDismiss = { showAdd = false },
         onSave = { title, date, category ->
-            val item = JSONObject().put("id", java.util.UUID.randomUUID().toString()).put("title", title).put("date", date).put("category", category).toString()
-            onRemindersChange(listOf(item) + reminders)
-            selectedDate = date
-            monthAnchor = date
-            showAdd = false
+            val id = java.util.UUID.randomUUID().toString()
+            val item = JSONObject().put("id", id).put("title", title).put("date", date).put("category", category).toString()
+            val dateTime = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT).format(Date(date))
+            if (CareReminderScheduler.schedule(context, dogName, "Agenda: $title", dateTime)) {
+                onRemindersChange(listOf(item) + reminders)
+                selectedDate = date
+                monthAnchor = date
+                showAdd = false
+                true
+            } else false
         }
     )
+}
+
+@Composable
+private fun AgendaReminderRow(reminder: AgendaReminder, onDelete: () -> Unit) {
+    Surface(shape = RoundedCornerShape(17.dp), color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.tertiaryContainer) {
+                Icon(Icons.Default.NotificationsActive, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(10.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(reminder.title, fontWeight = FontWeight.SemiBold)
+                Text("${reminder.category} · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(Date(reminder.date))}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            IconButton(onClick = onDelete) { Icon(Icons.Default.DeleteOutline, tr("Eliminar recordatorio"), tint = MaterialTheme.colorScheme.error) }
+        }
+    }
 }
 
 @Composable
@@ -195,11 +226,14 @@ private fun AgendaRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tit
 }
 
 @Composable
-private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, onSave: (String, Long, String) -> Unit) {
+private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, onSave: (String, Long, String) -> Boolean) {
     val context = LocalContext.current
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Personal") }
     var date by remember { mutableLongStateOf(initialDate) }
+    var hour by remember { mutableIntStateOf(9) }
+    var minute by remember { mutableIntStateOf(0) }
+    var saveError by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Nuevo recordatorio")) },
@@ -208,14 +242,16 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
                 OutlinedTextField(value = title, onValueChange = { title = it.take(100) }, label = { Text(tr("Qué no quieres olvidar")) }, singleLine = true)
                 OutlinedButton(onClick = {
                     val initial = Calendar.getInstance().apply { timeInMillis = date }
-                    DatePickerDialog(context, { _, y, m, d -> date = Calendar.getInstance().apply { set(y, m, d, 12, 0, 0) }.timeInMillis }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).show()
+                    DatePickerDialog(context, { _, y, m, d -> date = Calendar.getInstance().apply { set(y, m, d, hour, minute, 0) }.timeInMillis }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).apply { datePicker.minDate = System.currentTimeMillis() }.show()
                 }, modifier = Modifier.fillMaxWidth()) { Text(java.text.DateFormat.getDateInstance().format(Date(date))) }
+                OutlinedButton(onClick = { TimePickerDialog(context, { _, h, m -> hour = h; minute = m; date = Calendar.getInstance().apply { timeInMillis = date; set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }.timeInMillis }, hour, minute, true).show() }, modifier = Modifier.fillMaxWidth()) { Text(String.format(java.util.Locale.ROOT, "%02d:%02d", hour, minute)) }
+                if (saveError != null) Text(saveError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     listOf("Personal", "Veterinario", "Cuidado", "Paseo", "Viaje").forEach { value -> FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value)) }) }
                 }
             }
         },
-        confirmButton = { Button(onClick = { onSave(title.trim(), date, category) }, enabled = title.trim().length >= 2) { Text(tr("Guardar")) } },
+        confirmButton = { Button(onClick = { if (!onSave(title.trim(), date, category)) saveError = tr("Elige una fecha y hora futuras para programar el aviso.") }, enabled = title.trim().length >= 2 && date > System.currentTimeMillis()) { Text(tr("Guardar")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
     )
 }
