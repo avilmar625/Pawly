@@ -68,6 +68,7 @@ internal fun DiaryScreen(
     petId: String? = null,
     repository: FirebaseCommunityRepository? = null
 ) {
+    val context = LocalContext.current
     var note by remember { mutableStateOf("") }
     var memoryTitle by remember { mutableStateOf("") }
     var memoryCategory by remember { mutableStateOf("Paseos") }
