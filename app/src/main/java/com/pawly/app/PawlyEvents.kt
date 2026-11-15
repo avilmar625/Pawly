@@ -353,10 +353,8 @@ internal fun PawlyEventsScreen(
             onFollow = onFollow,
             onAddToCalendar = {
                 val begin = event.startAt
-                val end = begin + 2 * 60 * 60 * 1000L
                 val insert = Intent(Intent.ACTION_INSERT).setData(CalendarContract.Events.CONTENT_URI)
                     .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
-                    .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
                     .putExtra(CalendarContract.Events.TITLE, event.title)
                     .putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
                     .putExtra(CalendarContract.Events.DESCRIPTION, event.description)
