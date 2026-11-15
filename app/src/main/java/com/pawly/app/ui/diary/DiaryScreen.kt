@@ -30,6 +30,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -69,6 +71,8 @@ internal fun DiaryScreen(
     repository: FirebaseCommunityRepository? = null
 ) {
     val context = LocalContext.current
+    val photoConfigErrorText = tr("Configura la subida de fotografías para guardar imágenes en el diario.")
+    val diarySaveErrorText = tr("No se pudo guardar el recuerdo.")
     var note by remember { mutableStateOf("") }
     var memoryTitle by remember { mutableStateOf("") }
     var memoryCategory by remember { mutableStateOf("Paseos") }
@@ -190,7 +194,7 @@ internal fun DiaryScreen(
                                 runCatching {
                                     val urls = selectedPhotos.map { uri ->
                                         repository?.uploadImage(uri, "diary-photos")
-                                            ?: error(tr("Configura la subida de fotografías para guardar imágenes en el diario."))
+                                            ?: error(photoConfigErrorText)
                                     }
                                     val record = JSONObject()
                                         .put("pawlyDiaryVersion", 1)
@@ -201,7 +205,7 @@ internal fun DiaryScreen(
                                         .put("photos", JSONArray(urls))
                                     updateEntries(listOf(record.toString()) + visibleEntries)
                                     memoryTitle = ""; note = ""; selectedPhotos = emptyList()
-                                }.onFailure { photoUploadError = it.localizedMessage ?: tr("No se pudo guardar el recuerdo.") }
+                                }.onFailure { photoUploadError = it.localizedMessage ?: diarySaveErrorText }
                                 photoUploadBusy = false
                             }
                         },
