@@ -33,6 +33,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.PersonRemove
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Pets
@@ -481,7 +485,7 @@ private fun EventDetailsDialog(
                 OutlinedButton(onClick = onAddToCalendar) {
                     Icon(Icons.Default.EventAvailable, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text(tr("Google Calendar"))
+                    Text(tr("Añadir al calendario"))
                 }
                 Button(onClick = onToggleInterest) {
                     Text(if (event.interestedByMe) tr("Ya no me interesa") else tr("Me interesa"))
