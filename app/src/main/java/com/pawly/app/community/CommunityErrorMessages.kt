@@ -9,7 +9,7 @@ internal fun Throwable.toPawlyMessage(fallback: String): String {
     val authCode = (this as? FirebaseAuthException)?.errorCode.orEmpty()
     val firestoreCode = (this as? FirebaseFirestoreException)?.code
     if (firestoreCode == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-        return "Firebase ha rechazado la operación por las reglas de Firestore. Actualiza y publica el archivo firestore.rules de la rama cambios59-experiencia desde Firebase Console y vuelve a intentarlo."
+        return "Firebase ha rechazado la operación por las reglas de Firestore. Descarga y publica el archivo firestore.rules de la rama cambios60-comunidad-calendario en Firebase Console. Si el error ocurre al crear la cuenta, la autenticación se ha creado pero no se ha podido guardar el perfil y Pawly revierte esa alta."
     }
     if (firestoreCode == FirebaseFirestoreException.Code.UNAVAILABLE || this is FirebaseNetworkException) {
         return "No hay conexión con Firebase. Comprueba Internet e inténtalo de nuevo."
