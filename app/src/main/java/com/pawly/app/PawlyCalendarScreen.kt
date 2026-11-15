@@ -35,7 +35,9 @@ private data class AgendaReminder(val id: String, val title: String, val date: L
 internal fun PawlyCalendarScreen(
     reminders: List<String>,
     onRemindersChange: (List<String>) -> Unit,
-    repository: FirebaseCommunityRepository?
+    repository: FirebaseCommunityRepository?,
+    healthDates: Map<String, String> = emptyMap(),
+    diaryEntries: List<String> = emptyList()
 ) {
     val context = LocalContext.current
     var events by remember { mutableStateOf(emptyList<PawlyEvent>()) }
@@ -61,10 +63,28 @@ internal fun PawlyCalendarScreen(
     fun dayKey(value: Long): String = Calendar.getInstance().apply { timeInMillis = value }.let {
         "${it.get(Calendar.YEAR)}-${it.get(Calendar.MONTH)}-${it.get(Calendar.DAY_OF_MONTH)}"
     }
+    val healthReminders = remember(healthDates) {
+        healthDates.mapNotNull { (name, value) ->
+            runCatching {
+                val date = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT)
+                    .parse(value.replace("|", " "))?.time ?: return@runCatching null
+                AgendaReminder("health-$name-$date", name, date, "Cuidado")
+            }.getOrNull()
+        }
+    }
+    val diaryMemories = remember(diaryEntries) {
+        diaryEntries.mapIndexedNotNull { index, raw ->
+            runCatching {
+                val json = JSONObject(raw)
+                if (json.optInt("pawlyDiaryVersion") != 1) return@runCatching null
+                AgendaReminder("diary-$index", json.optString("title").ifBlank { "Recuerdo" }, json.optLong("date"), "Recuerdo")
+            }.getOrNull()
+        }
+    }
     val selectedKey = dayKey(selectedDate)
     val eventsForDay = events.filter { it.startAt > 0 && dayKey(it.startAt) == selectedKey }
-    val remindersForDay = parsedReminders.filter { dayKey(it.date) == selectedKey }
-    val daysWithItems = (events.mapNotNull { it.startAt.takeIf { v -> v > 0 } } + parsedReminders.map { it.date }).map(::dayKey).toSet()
+    val remindersForDay = (parsedReminders + healthReminders + diaryMemories).filter { dayKey(it.date) == selectedKey }
+    val daysWithItems = (events.mapNotNull { it.startAt.takeIf { v -> v > 0 } } + (parsedReminders + healthReminders + diaryMemories).map { it.date }).map(::dayKey).toSet()
     LazyColumn(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(18.dp),
@@ -123,7 +143,7 @@ internal fun PawlyCalendarScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(tr("Tu día"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(tr("Eventos y recordatorios de esta fecha"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Eventos, cuidados y recuerdos de esta fecha"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 FilledTonalButton(onClick = { showAdd = true }) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(5.dp)); Text(tr("Añadir")) }
             }
@@ -142,7 +162,7 @@ internal fun PawlyCalendarScreen(
             AgendaRow(Icons.Default.Event, event.title, "${event.dateText} · ${event.location}", MaterialTheme.colorScheme.primary)
         }
         items(remindersForDay, key = { "reminder-" + it.id }) { reminder ->
-            AgendaRow(Icons.Default.Pets, reminder.title, reminder.category, MaterialTheme.colorScheme.tertiary)
+            AgendaRow(if (reminder.category == "Recuerdo") Icons.Default.AutoStories else Icons.Default.Pets, reminder.title, reminder.category, if (reminder.category == "Recuerdo") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary)
         }
         item {
             Text(tr("Próximos eventos de la Comunidad"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
