@@ -424,7 +424,7 @@ private fun PawlyMainApp(
                     onEntriesChange = { diaryEntries = it },
                     repository = cloudRepository
                 )
-                Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository)
+                Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository, healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") }, diaryEntries = diaryEntries)
                 Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
                 Tab.MORE -> MoreHubScreen(
                     onLearn = { selected = Tab.LEARN },
