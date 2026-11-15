@@ -230,9 +230,9 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
     val context = LocalContext.current
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Personal") }
-    var date by remember { mutableLongStateOf(initialDate) }
     var hour by remember { mutableIntStateOf(9) }
     var minute by remember { mutableIntStateOf(0) }
+    var date by remember { mutableLongStateOf(Calendar.getInstance().apply { timeInMillis = initialDate; set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis) }
     var saveError by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
