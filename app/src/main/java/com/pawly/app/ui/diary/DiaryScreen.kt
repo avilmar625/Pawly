@@ -253,7 +253,7 @@ internal fun DiaryScreen(
             }
         }
         item {
-            Text(if (sharedPetOwnerUid != null) "Los recuerdos pertenecen al perfil compartido y respetan sus permisos de acceso." else "Los recuerdos se sincronizan con tu cuenta cuando hay conexión. No se incluyen fotografías en las entradas.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            Text(if (sharedPetOwnerUid != null) "Los recuerdos pertenecen al perfil compartido y respetan sus permisos de acceso." else "Los recuerdos se guardan en tu espacio personal. Las fotografías se alojan en Cloudinary y se muestran junto a cada historia.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
