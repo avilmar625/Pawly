@@ -431,7 +431,7 @@ service cloud.firestore {
         && request.resource.data.sharedPetId is string
         && exists(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId))
         && get(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId)).data.ownerUid == request.auth.uid
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.role in ['editor', 'reader'];
       allow read: if verified() && (resource.data.ownerUid == request.auth.uid || resource.data.inviteeUid == request.auth.uid);
       allow update: if verified() && (
@@ -612,7 +612,7 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 254
         && request.resource.data.requestedAt == request.time
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.source == 'android';
       allow read: if (signedIn() && requestId == request.auth.uid) || admin();
       allow update, delete: if admin();
@@ -686,7 +686,7 @@ service cloud.firestore {
         && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 120
         && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 500
         && request.resource.data.authorUid == request.auth.uid
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.createdAt == request.time;
       allow update: if admin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
@@ -730,7 +730,7 @@ service cloud.firestore {
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
-        allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/events/$(eventId)).data.organizerUid == request.auth.uid);
+        allow read: if signedIn();
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
           && request.resource.data.uid == uid
@@ -1109,7 +1109,7 @@ service cloud.firestore {
         && request.resource.data.sharedPetId is string
         && exists(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId))
         && get(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId)).data.ownerUid == request.auth.uid
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.role in ['editor', 'reader'];
       allow read: if verified() && (resource.data.ownerUid == request.auth.uid || resource.data.inviteeUid == request.auth.uid);
       allow update: if verified() && (
@@ -1290,7 +1290,7 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 254
         && request.resource.data.requestedAt == request.time
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.source == 'android';
       allow read: if (signedIn() && requestId == request.auth.uid) || admin();
       allow update, delete: if admin();
@@ -1352,7 +1352,7 @@ service cloud.firestore {
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
-        allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/events/$(eventId)).data.organizerUid == request.auth.uid);
+        allow read: if signedIn();
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
           && request.resource.data.uid == uid
@@ -1732,7 +1732,7 @@ service cloud.firestore {
         && request.resource.data.sharedPetId is string
         && exists(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId))
         && get(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId)).data.ownerUid == request.auth.uid
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.role in ['editor', 'reader'];
       allow read: if verified() && (resource.data.ownerUid == request.auth.uid || resource.data.inviteeUid == request.auth.uid);
       allow update: if verified() && (
@@ -1913,7 +1913,7 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 254
         && request.resource.data.requestedAt == request.time
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.source == 'android';
       allow read: if (signedIn() && requestId == request.auth.uid) || admin();
       allow update, delete: if admin();
@@ -1975,7 +1975,7 @@ service cloud.firestore {
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
-        allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/events/$(eventId)).data.organizerUid == request.auth.uid);
+        allow read: if signedIn();
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
           && request.resource.data.uid == uid
@@ -2354,7 +2354,7 @@ service cloud.firestore {
         && request.resource.data.sharedPetId is string
         && exists(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId))
         && get(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId)).data.ownerUid == request.auth.uid
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.role in ['editor', 'reader'];
       allow read: if verified() && (resource.data.ownerUid == request.auth.uid || resource.data.inviteeUid == request.auth.uid);
       allow update: if verified() && (
@@ -2535,7 +2535,7 @@ service cloud.firestore {
         && request.resource.data.email is string
         && request.resource.data.email.size() <= 254
         && request.resource.data.requestedAt == request.time
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'approved'
         && request.resource.data.source == 'android';
       allow read: if (signedIn() && requestId == request.auth.uid) || admin();
       allow update, delete: if admin();
@@ -2597,7 +2597,7 @@ service cloud.firestore {
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
-        allow read: if signedIn() && (request.auth.uid == uid || get(/databases/$(database)/documents/events/$(eventId)).data.organizerUid == request.auth.uid);
+        allow read: if signedIn();
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
           && request.resource.data.uid == uid
