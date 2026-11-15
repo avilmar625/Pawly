@@ -177,6 +177,8 @@ internal fun PawlyEventsScreen(
     val defaultPublishErrorMessage = tr("No se pudo publicar el evento.")
     val attendeesLoadErrorText = tr("No se pudo cargar la lista de personas interesadas.")
     val interestUpdateErrorText = tr("No se pudo actualizar tu interés.")
+    val chooserTitle = tr("Añadir a mi calendario")
+    val calendarErrorMessage = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.")
     LaunchedEffect(repository) {
         runCatching { repository.loadEvents() }
             .onSuccess { events = it; error = null }
@@ -359,8 +361,8 @@ internal fun PawlyEventsScreen(
                     .putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
                     .putExtra(CalendarContract.Events.DESCRIPTION, event.description)
                     .putExtra(CalendarContract.Events.EVENT_TIMEZONE, event.timeZoneId.ifBlank { java.util.TimeZone.getDefault().id })
-                runCatching { context.startActivity(Intent.createChooser(insert, tr("Añadir a mi calendario"))) }
-                    .onFailure { error = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.") }
+                runCatching { context.startActivity(Intent.createChooser(insert, chooserTitle)) }
+                    .onFailure { error = calendarErrorMessage }
             },
             onToggleInterest = {
                 scope.launch {
