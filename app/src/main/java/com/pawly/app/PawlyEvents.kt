@@ -2,6 +2,7 @@ package com.pawly.app
 
 
 import android.content.Intent
+import android.provider.CalendarContract
 import android.net.Uri
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
@@ -147,7 +148,11 @@ internal fun PawlyOpenStreetMap(
 internal fun PawlyEventsScreen(
     repository: FirebaseCommunityRepository,
     mapOnly: Boolean = false,
-    elegantDesign: Boolean = false
+    elegantDesign: Boolean = false,
+    followingIds: Set<String> = emptySet(),
+    onOpenProfile: (String) -> Unit = {},
+    onMessage: (String) -> Unit = {},
+    onFollow: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -272,7 +277,7 @@ internal fun PawlyEventsScreen(
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 28.dp)) {
             items(visible, key = { it.id }) { event ->
-                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = if (elegantDesign) 2.dp else 0.dp) {
+                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = if (elegantDesign) 2.dp else 0.dp, modifier = Modifier.fillMaxWidth().clickable { selectedEvent = event }) {
                     Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = CircleShape) {
@@ -338,6 +343,23 @@ internal fun PawlyEventsScreen(
             loading = attendeesLoading,
             error = attendeesError,
             onDismiss = { selectedEvent = null },
+            onOpenProfile = onOpenProfile,
+            onMessage = onMessage,
+            followingIds = followingIds,
+            onFollow = onFollow,
+            onAddToCalendar = {
+                val begin = event.startAt
+                val end = begin + 2 * 60 * 60 * 1000L
+                val insert = Intent(Intent.ACTION_INSERT).setData(CalendarContract.Events.CONTENT_URI)
+                    .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, begin)
+                    .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, end)
+                    .putExtra(CalendarContract.Events.TITLE, event.title)
+                    .putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
+                    .putExtra(CalendarContract.Events.DESCRIPTION, event.description)
+                    .putExtra(CalendarContract.Events.EVENT_TIMEZONE, event.timeZoneId.ifBlank { java.util.TimeZone.getDefault().id })
+                runCatching { context.startActivity(Intent.createChooser(insert, tr("Añadir a mi calendario"))) }
+                    .onFailure { error = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.") }
+            },
             onToggleInterest = {
                 scope.launch {
                     runCatching { repository.toggleEventInterest(event.id) }
@@ -394,6 +416,11 @@ private fun EventDetailsDialog(
     loading: Boolean,
     error: String?,
     onDismiss: () -> Unit,
+    onOpenProfile: (String) -> Unit,
+    onMessage: (String) -> Unit,
+    followingIds: Set<String>,
+    onFollow: (String) -> Unit,
+    onAddToCalendar: () -> Unit,
     onToggleInterest: () -> Unit
 ) {
     AlertDialog(
@@ -423,7 +450,7 @@ private fun EventDetailsDialog(
                     attendees.isEmpty() -> Text(tr("Todavía no hay personas interesadas con perfil público."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     else -> attendees.forEach { user ->
                         Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(10.dp),
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onOpenProfile(user.uid) }.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -434,9 +461,15 @@ private fun EventDetailsDialog(
                                     Icon(Icons.Default.Pets, null, modifier = Modifier.padding(10.dp), tint = MaterialTheme.colorScheme.primary)
                                 }
                             }
-                            Column(Modifier.weight(1f)) {
+                            Column(Modifier.weight(1f).clickable { onOpenProfile(user.uid) }) {
                                 Text(user.displayName.ifBlank { user.username }, fontWeight = FontWeight.SemiBold)
                                 if (user.username.isNotBlank()) Text("@${user.username}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            IconButton(onClick = { onMessage(user.uid) }) { Icon(Icons.Default.ChatBubbleOutline, tr("Enviar mensaje")) }
+                            IconButton(onClick = { onFollow(user.uid) }) {
+                                Icon(if (user.uid in followingIds) Icons.Default.PersonRemove else Icons.Default.PersonAdd,
+                                    if (user.uid in followingIds) tr("Dejar de seguir") else tr("Seguir"),
+                                    tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -444,8 +477,15 @@ private fun EventDetailsDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onToggleInterest) {
-                Text(if (event.interestedByMe) tr("Ya no me interesa") else tr("Me interesa"))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(onClick = onAddToCalendar) {
+                    Icon(Icons.Default.EventAvailable, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(tr("Google Calendar"))
+                }
+                Button(onClick = onToggleInterest) {
+                    Text(if (event.interestedByMe) tr("Ya no me interesa") else tr("Me interesa"))
+                }
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } }
