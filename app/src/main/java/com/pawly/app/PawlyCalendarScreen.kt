@@ -48,6 +48,7 @@ internal fun PawlyCalendarScreen(
     dogName: String = "tu mascota"
 ) {
     val context = LocalContext.current
+    val openCalendarChooserTitle = tr("Abrir calendario")
     var events by remember { mutableStateOf(emptyList<PawlyEvent>()) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var selectedDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -106,7 +107,11 @@ internal fun PawlyCalendarScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     FilledTonalButton(onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).setData(CalendarContract.CONTENT_URI)
-                        runCatching { context.startActivity(Intent.createChooser(intent, tr("Abrir calendario"))) }
+                        try {
+                            context.startActivity(Intent.createChooser(intent, openCalendarChooserTitle))
+                        } catch (_: Exception) {
+                            loadError = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.")
+                        }
                     }) {
                         Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
