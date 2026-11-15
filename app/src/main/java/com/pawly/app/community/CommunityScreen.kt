@@ -522,8 +522,42 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 }
             }
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
-            page == CommunityPage.EVENTS -> PawlyEventsScreen(repository = repo, elegantDesign = elegantDesign)
-            page == CommunityPage.MAP -> PawlyEventsScreen(repository = repo, mapOnly = true, elegantDesign = elegantDesign)
+            page == CommunityPage.EVENTS -> PawlyEventsScreen(
+                repository = repo, elegantDesign = elegantDesign, followingIds = followingIds,
+                onOpenProfile = { selectedUser = it },
+                onMessage = { id ->
+                    scope.launch {
+                        runCatching {
+                            val conversationId = repo.startConversation(id)
+                            chat = PawlyConversation(id = conversationId, otherUserId = id)
+                        }.onFailure { notice = it.localizedMessage ?: "No se pudo iniciar la conversación." }
+                    }
+                },
+                onFollow = { id ->
+                    scope.launch {
+                        runCatching { repo.follow(id, id !in followingIds) }
+                            .onFailure { notice = it.localizedMessage ?: "No se pudo actualizar el seguimiento." }
+                    }
+                }
+            )
+            page == CommunityPage.MAP -> PawlyEventsScreen(
+                repository = repo, mapOnly = true, elegantDesign = elegantDesign, followingIds = followingIds,
+                onOpenProfile = { selectedUser = it },
+                onMessage = { id ->
+                    scope.launch {
+                        runCatching {
+                            val conversationId = repo.startConversation(id)
+                            chat = PawlyConversation(id = conversationId, otherUserId = id)
+                        }.onFailure { notice = it.localizedMessage ?: "No se pudo iniciar la conversación." }
+                    }
+                },
+                onFollow = { id ->
+                    scope.launch {
+                        runCatching { repo.follow(id, id !in followingIds) }
+                            .onFailure { notice = it.localizedMessage ?: "No se pudo actualizar el seguimiento." }
+                    }
+                }
+            )
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
             page == CommunityPage.NOTIFICATIONS -> NotificationsScreen(repo, onOpenProfile = { selectedUser = it })
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
