@@ -166,6 +166,8 @@ internal fun PawlyEventsScreen(
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
     val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
     val defaultPublishErrorMessage = tr("No se pudo publicar el evento.")
+    val attendeesLoadErrorText = tr("No se pudo cargar la lista de personas interesadas.")
+    val interestUpdateErrorText = tr("No se pudo actualizar tu interés.")
     LaunchedEffect(repository) {
         runCatching { repository.loadEvents() }
             .onSuccess { events = it; error = null }
@@ -326,7 +328,7 @@ internal fun PawlyEventsScreen(
         eventAttendees = emptyList()
         runCatching { repository.loadEventInterestedUsers(eventId) }
             .onSuccess { eventAttendees = it }
-            .onFailure { attendeesError = it.localizedMessage ?: tr("No se pudo cargar la lista de personas interesadas.") }
+            .onFailure { attendeesError = it.localizedMessage ?: attendeesLoadErrorText }
         attendeesLoading = false
     }
     selectedEvent?.let { event ->
@@ -348,7 +350,7 @@ internal fun PawlyEventsScreen(
                             }
                             selectedEvent = events.firstOrNull { it.id == event.id }
                         }
-                        .onFailure { attendeesError = it.localizedMessage ?: tr("No se pudo actualizar tu interés.") }
+                        .onFailure { attendeesError = it.localizedMessage ?: interestUpdateErrorText }
                 }
             }
         )
