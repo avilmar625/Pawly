@@ -49,6 +49,7 @@ internal fun PawlyCalendarScreen(
 ) {
     val context = LocalContext.current
     val openCalendarChooserTitle = tr("Abrir calendario")
+    val calendarUnavailableText = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.")
     var events by remember { mutableStateOf(emptyList<PawlyEvent>()) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var selectedDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -110,7 +111,7 @@ internal fun PawlyCalendarScreen(
                         try {
                             context.startActivity(Intent.createChooser(intent, openCalendarChooserTitle))
                         } catch (_: Exception) {
-                            loadError = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.")
+                            loadError = calendarUnavailableText
                         }
                     }) {
                         Icon(Icons.Default.CalendarMonth, null, modifier = Modifier.size(18.dp))
