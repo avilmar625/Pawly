@@ -62,7 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 internal enum class Tab(val label: String) {
-    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda")
+    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), CALENDAR("Calendario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda")
 }
 
 @Composable
@@ -208,6 +208,13 @@ private fun PawlyMainApp(
         }.getOrDefault(emptyList())
     }
     var diaryEntries by remember(preferences) { mutableStateOf(storedEntries) }
+    val storedCalendarReminders = remember(preferences) {
+        runCatching {
+            val json = JSONArray(preferences.getString("calendar_reminders", "[]") ?: "[]")
+            List(json.length()) { index -> json.getString(index) }
+        }.getOrDefault(emptyList())
+    }
+    var calendarReminders by remember(preferences) { mutableStateOf(storedCalendarReminders) }
 
     LaunchedEffect(preferences, dogName) { preferences.edit().putString("dog_name", dogName).apply() }
     LaunchedEffect(preferences, dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
@@ -270,6 +277,11 @@ private fun PawlyMainApp(
         diaryEntries.forEach { entry -> json.put(entry) }
         preferences.edit().putString("diary_entries", json.toString()).apply()
     }
+    LaunchedEffect(preferences, calendarReminders) {
+        val json = JSONArray()
+        calendarReminders.forEach { json.put(it) }
+        preferences.edit().putString("calendar_reminders", json.toString()).apply()
+    }
 
     CompositionLocalProvider(LocalPawlyLanguage provides language) {
     Scaffold(
@@ -288,7 +300,7 @@ private fun PawlyMainApp(
                 ) {
                     listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
                         val label = PawlyI18n.text(tab.label, language)
-                        val active = selected == tab || (tab == Tab.MORE && selected == Tab.SERVICES)
+                        val active = selected == tab || (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.CALENDAR))
                         val tabTint = when (tab) {
                             Tab.HOME -> Color(0xFF26836B)
                             Tab.EXPLORE -> Color(0xFF3979B8)
@@ -304,6 +316,7 @@ private fun PawlyMainApp(
                             Tab.HEALTH -> Icons.Filled.FavoriteBorder
                             Tab.DIARY -> Icons.Filled.AutoStories
                             Tab.COMMUNITY -> Icons.Filled.Groups
+                            Tab.CALENDAR -> Icons.Filled.CalendarMonth
                             Tab.MORE -> Icons.Filled.MoreHoriz
                             Tab.SERVICES -> Icons.Filled.WorkspacePremium
                             Tab.LOST -> Icons.Filled.ReportProblem
@@ -411,10 +424,12 @@ private fun PawlyMainApp(
                     onEntriesChange = { diaryEntries = it },
                     repository = cloudRepository
                 )
+                Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository)
                 Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
                 Tab.MORE -> MoreHubScreen(
                     onLearn = { selected = Tab.LEARN },
                     onDiary = { selected = Tab.DIARY },
+                    onCalendar = { selected = Tab.CALENDAR },
                     onSettings = { showSettings = true },
                     onProfessionals = { selected = Tab.SERVICES },
                     onLostPet = { selected = Tab.LOST },
