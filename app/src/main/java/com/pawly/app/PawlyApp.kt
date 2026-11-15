@@ -408,7 +408,8 @@ private fun PawlyMainApp(
                     dogName = dogName,
                     elegantDesign = elegantDesign,
                     entries = diaryEntries,
-                    onEntriesChange = { diaryEntries = it }
+                    onEntriesChange = { diaryEntries = it },
+                    repository = cloudRepository
                 )
                 Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
                 Tab.MORE -> MoreHubScreen(
