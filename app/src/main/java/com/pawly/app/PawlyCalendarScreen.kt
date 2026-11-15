@@ -237,6 +237,7 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
     var minute by remember { mutableIntStateOf(0) }
     var date by remember { mutableLongStateOf(Calendar.getInstance().apply { timeInMillis = initialDate; set(Calendar.HOUR_OF_DAY, 9); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis) }
     var saveError by remember { mutableStateOf<String?>(null) }
+    val reminderDateErrorText = tr("Elige una fecha y hora futuras para programar el aviso.")
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(tr("Nuevo recordatorio")) },
@@ -254,7 +255,7 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
                 }
             }
         },
-        confirmButton = { Button(onClick = { if (!onSave(title.trim(), date, category)) saveError = tr("Elige una fecha y hora futuras para programar el aviso.") }, enabled = title.trim().length >= 2 && date > System.currentTimeMillis()) { Text(tr("Guardar")) } },
+        confirmButton = { Button(onClick = { if (!onSave(title.trim(), date, category)) saveError = reminderDateErrorText }, enabled = title.trim().length >= 2 && date > System.currentTimeMillis()) { Text(tr("Guardar")) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } }
     )
 }
