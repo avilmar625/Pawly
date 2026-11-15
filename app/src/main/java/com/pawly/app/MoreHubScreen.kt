@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.sp
 internal fun MoreHubScreen(
     onLearn: () -> Unit,
     onDiary: () -> Unit,
+    onCalendar: () -> Unit,
     onSettings: () -> Unit,
     onProfessionals: () -> Unit,
     onLostPet: () -> Unit,
@@ -83,6 +85,7 @@ internal fun MoreHubScreen(
         MoreSectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
         PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
         MoreDestinationCard(Icons.Filled.AutoStories, t("Diario de recuerdos"), t("Guarda momentos, pequeñas historias y fotografías."), onDiary, Color(0xFF8C5AA7), Color(0xFFF2E9F8))
+        MoreDestinationCard(Icons.Filled.CalendarMonth, t("Calendario y agenda"), t("Eventos de la Comunidad y recordatorios para no olvidar nada."), onCalendar, Color(0xFF397A83), Color(0xFFE3F3F4))
         MoreDestinationCard(Icons.Filled.MenuBook, t("Aprender"), t("Artículos, consejos y recursos para su bienestar."), onLearn, Color(0xFF3674A8), Color(0xFFE6F1FB))
         MoreSectionLabel(t("AYUDA Y CUENTA"))
         MoreDestinationCard(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend, Color(0xFFB16C27), Color(0xFFFFF0DB))
