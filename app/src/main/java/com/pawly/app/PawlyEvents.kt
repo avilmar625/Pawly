@@ -361,8 +361,11 @@ internal fun PawlyEventsScreen(
                     .putExtra(CalendarContract.Events.EVENT_LOCATION, event.location)
                     .putExtra(CalendarContract.Events.DESCRIPTION, event.description)
                     .putExtra(CalendarContract.Events.EVENT_TIMEZONE, event.timeZoneId.ifBlank { java.util.TimeZone.getDefault().id })
-                runCatching { context.startActivity(Intent.createChooser(insert, chooserTitle)) }
-                    .onFailure { error = calendarErrorMessage }
+                try {
+                    context.startActivity(Intent.createChooser(insert, chooserTitle))
+                } catch (_: Exception) {
+                    error = calendarErrorMessage
+                }
             },
             onToggleInterest = {
                 scope.launch {
@@ -487,8 +490,18 @@ private fun EventDetailsDialog(
                     Spacer(Modifier.width(5.dp))
                     Text(tr("Añadir al calendario"))
                 }
-                Button(onClick = onToggleInterest) {
-                    Text(if (event.interestedByMe) tr("Ya no me interesa") else tr("Me interesa"))
+                if (event.interestedByMe) {
+                    OutlinedButton(onClick = onToggleInterest) {
+                        Icon(Icons.Default.PersonRemove, null, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(tr("Quitar interés"))
+                    }
+                } else {
+                    Button(onClick = onToggleInterest) {
+                        Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(5.dp))
+                        Text(tr("Me interesa"))
+                    }
                 }
             }
         },
