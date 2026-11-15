@@ -104,9 +104,9 @@ internal fun PawlyCalendarScreen(
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
                 Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { monthAnchor = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, -1) }.timeInMillis }) { Icon(Icons.Default.ChevronLeft, tr("Mes anterior")) }
+                        IconButton(onClick = { val target = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, -1) }; monthAnchor = target.timeInMillis; selectedDate = target.timeInMillis }) { Icon(Icons.Default.ChevronLeft, tr("Mes anterior")) }
                         Text(java.text.DateFormatSymbols.getInstance().let { it.months[monthIndex].replaceFirstChar { ch -> ch.uppercase() } } + " $monthYear", modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                        IconButton(onClick = { monthAnchor = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, 1) }.timeInMillis }) { Icon(Icons.Default.ChevronRight, tr("Mes siguiente")) }
+                        IconButton(onClick = { val target = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, 1) }; monthAnchor = target.timeInMillis; selectedDate = target.timeInMillis }) { Icon(Icons.Default.ChevronRight, tr("Mes siguiente")) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         listOf("L", "M", "X", "J", "V", "S", "D").forEach { Text(it, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 11.sp) }
