@@ -188,7 +188,12 @@ internal fun DiaryScreen(
                     OutlinedButton(onClick = { photoPicker.launch("image/*") }, enabled = canEditSharedDiary, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.AddPhotoAlternate, null); Spacer(Modifier.width(7.dp)); Text(tr("Añadir fotografías (hasta 8)"))
                     }
-                    if (selectedPhotos.isNotEmpty()) Text(tr("${selectedPhotos.size} fotografías seleccionadas"), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                    if (selectedPhotos.isNotEmpty()) {
+                        Text(tr("${selectedPhotos.size} fotografías seleccionadas"), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            selectedPhotos.forEach { uri -> AsyncImage(model = uri, contentDescription = tr("Vista previa de fotografía"), modifier = Modifier.size(76.dp).clip(RoundedCornerShape(12.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
+                        }
+                    }
                     if (photoUploadError != null) Text(photoUploadError!!, color = Color(0xFFFFC4BC), style = MaterialTheme.typography.labelSmall)
                     Button(
                         onClick = {
@@ -261,8 +266,8 @@ internal fun DiaryScreen(
                     else Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Peach)
                     }
                     if (record.text.isNotBlank()) Text(record.text, style = MaterialTheme.typography.bodyMedium)
-                    record.photos.forEach { url ->
-                        AsyncImage(model = url, contentDescription = tr("Fotografía del recuerdo"), modifier = Modifier.fillMaxWidth().heightIn(max = 240.dp).clip(RoundedCornerShape(14.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+                    if (record.photos.isNotEmpty()) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        record.photos.forEach { url -> AsyncImage(model = url, contentDescription = tr("Fotografía del recuerdo"), modifier = Modifier.width(190.dp).height(150.dp).clip(RoundedCornerShape(14.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
                     }
                     Text(if (sharedPetOwnerUid != null) tr("Recuerdo del perfil compartido") else tr("Guardado en tu espacio personal"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 }
