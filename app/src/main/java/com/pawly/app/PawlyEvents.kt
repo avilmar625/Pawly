@@ -349,6 +349,7 @@ internal fun PawlyEventsScreen(
                                 ) else item
                             }
                             selectedEvent = events.firstOrNull { it.id == event.id }
+                            runCatching { repository.loadEventInterestedUsers(event.id) }.onSuccess { eventAttendees = it }
                         }
                         .onFailure { attendeesError = it.localizedMessage ?: interestUpdateErrorText }
                 }
