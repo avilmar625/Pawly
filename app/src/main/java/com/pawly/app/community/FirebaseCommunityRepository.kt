@@ -945,6 +945,20 @@ class FirebaseCommunityRepository private constructor(
         db.collection("events").add(eventData).await()
     }
 
+    /** Public attendee directory for a community event. Only public profiles are returned. */
+    suspend fun loadEventInterestedUsers(eventId: String): List<PawlyUser> {
+        requireUid()
+        val event = db.collection("events").document(eventId)
+        check(event.get().await().exists()) { "El evento ya no está disponible." }
+        val attendeeDocs = event.collection("interested").limit(200).get().await().documents
+        val users = attendeeDocs.mapNotNull { attendee ->
+            runCatching {
+                db.collection("users").document(attendee.id).get().await().toPawlyUser()
+            }.getOrNull()?.takeIf { it.isPublic }
+        }
+        return users.sortedBy { it.displayName.ifBlank { it.username }.lowercase() }
+    }
+
     suspend fun toggleEventInterest(eventId: String) {
         val uid = requireVerifiedUid()
         val event = db.collection("events").document(eventId)
