@@ -76,6 +76,7 @@ internal fun DiaryScreen(
     var note by remember { mutableStateOf("") }
     var memoryTitle by remember { mutableStateOf("") }
     var memoryCategory by remember { mutableStateOf("Paseos") }
+    var diaryFilter by remember { mutableStateOf("Todos") }
     var memoryDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var selectedPhotos by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var photoUploadBusy by remember { mutableStateOf(false) }
@@ -118,6 +119,9 @@ internal fun DiaryScreen(
                     .onFailure { diarySyncMessage = "No se pudo sincronizar el cambio" }
             }
         }
+    }
+    val filteredEntries = remember(visibleEntries, diaryFilter) {
+        if (diaryFilter == "Todos") visibleEntries else visibleEntries.filter { parseDiaryRecord(it).category == diaryFilter }
     }
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -223,8 +227,15 @@ internal fun DiaryScreen(
         }
         if (diarySyncMessage != null) item { Text(diarySyncMessage!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
         item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · ${visibleEntries.size} recuerdos guardados") }
-        item { Text(tr("Organiza vuestra historia por categorías, fechas y fotografías."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-        if (visibleEntries.isEmpty()) {
+        item {
+            Text(tr("Organiza vuestra historia por categorías, fechas y fotografías."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("Todos", "Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").forEach { value ->
+                    FilterChip(selected = diaryFilter == value, onClick = { diaryFilter = value }, label = { Text(tr(value)) })
+                }
+            }
+        }
+        if (filteredEntries.isEmpty()) {
             item {
                 Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
                     Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -235,7 +246,7 @@ internal fun DiaryScreen(
                 }
             }
         }
-        items(visibleEntries) { entry ->
+        items(filteredEntries) { entry ->
             val record = remember(entry) { parseDiaryRecord(entry) }
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -246,7 +257,8 @@ internal fun DiaryScreen(
                             Text(record.title.ifBlank { tr("Un recuerdo especial") }, fontWeight = FontWeight.Bold)
                             Text("${tr(record.category)} · ${java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(record.dateMillis))}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                         }
-                        Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Peach)
+                        if (canEditSharedDiary) IconButton(onClick = { updateEntries(visibleEntries - entry) }) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Eliminar recuerdo"), tint = MaterialTheme.colorScheme.error) }
+                    else Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Peach)
                     }
                     if (record.text.isNotBlank()) Text(record.text, style = MaterialTheme.typography.bodyMedium)
                     record.photos.forEach { url ->
