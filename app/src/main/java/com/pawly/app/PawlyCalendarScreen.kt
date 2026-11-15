@@ -19,6 +19,9 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.AutoStories
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -242,7 +245,7 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
                 OutlinedTextField(value = title, onValueChange = { title = it.take(100) }, label = { Text(tr("Qué no quieres olvidar")) }, singleLine = true)
                 OutlinedButton(onClick = {
                     val initial = Calendar.getInstance().apply { timeInMillis = date }
-                    DatePickerDialog(context, { _, y, m, d -> date = Calendar.getInstance().apply { set(y, m, d, hour, minute, 0) }.timeInMillis }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).apply { datePicker.minDate = System.currentTimeMillis() }.show()
+                    DatePickerDialog(context, { _, y, m, d -> date = Calendar.getInstance().apply { set(y, m, d, hour, minute, 0) }.timeInMillis }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).apply { datePicker.minDate = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis }.show()
                 }, modifier = Modifier.fillMaxWidth()) { Text(java.text.DateFormat.getDateInstance().format(Date(date))) }
                 OutlinedButton(onClick = { TimePickerDialog(context, { _, h, m -> hour = h; minute = m; date = Calendar.getInstance().apply { timeInMillis = date; set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }.timeInMillis }, hour, minute, true).show() }, modifier = Modifier.fillMaxWidth()) { Text(String.format(java.util.Locale.ROOT, "%02d:%02d", hour, minute)) }
                 if (saveError != null) Text(saveError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
