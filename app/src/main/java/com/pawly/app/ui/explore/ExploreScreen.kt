@@ -444,7 +444,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                         communityPlacesLoading = true
                         runCatching { repo.submitCommunityPlace(name, category, location, description) }
                             .onSuccess {
-                                communityPlacesMessage = "¡Gracias! Tu propuesta queda pendiente de revisión antes de aparecer públicamente."
+                                communityPlacesMessage = "¡Gracias! El lugar ya está publicado en las recomendaciones de la comunidad."
                                 communityPlaces = runCatching { repo.loadCommunityPlaces() }.getOrDefault(communityPlaces)
                             }
                             .onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido enviar la propuesta." }
@@ -778,7 +778,7 @@ private fun CommunityPlacesPanel(
                     Text(tr("Aportar"))
                 }
             }
-            Text(tr("Las propuestas se revisan antes de publicarse para mantener la calidad y evitar spam."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text(tr("Las propuestas válidas se publican automáticamente. La comunidad puede denunciar contenido incorrecto y el equipo de moderación puede retirarlo."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (places.isEmpty()) {
                 Text(tr("Todavía no hay lugares aprobados por la comunidad. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -831,7 +831,7 @@ private fun CommunityPlacesPanel(
                 TextButton(
                     onClick = { onSubmit(name.trim(), category, location.trim(), description.trim()); dialog = false },
                     enabled = name.trim().length >= 3 && location.trim().length >= 3 && description.trim().length >= 10 && enabled && !loading
-                ) { Text(tr("Enviar a revisión")) }
+                ) { Text(tr("Publicar lugar")) }
             },
             dismissButton = { TextButton(onClick = { dialog = false }) { Text(tr("Cancelar")) } }
         )
