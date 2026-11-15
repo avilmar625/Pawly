@@ -43,10 +43,11 @@ internal fun PawlyCalendarScreen(
     var selectedDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var monthAnchor by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showAdd by remember { mutableStateOf(false) }
+    val eventLoadErrorText = tr("No se pudieron cargar los eventos.")
     LaunchedEffect(repository) {
         if (repository != null) runCatching { repository.loadEvents() }
             .onSuccess { events = it }
-            .onFailure { loadError = it.localizedMessage ?: tr("No se pudieron cargar los eventos.") }
+            .onFailure { loadError = it.localizedMessage ?: eventLoadErrorText }
     }
     val month = remember(monthAnchor) { Calendar.getInstance().apply { timeInMillis = monthAnchor; set(Calendar.DAY_OF_MONTH, 1) } }
     val monthYear = month.get(Calendar.YEAR)
@@ -81,7 +82,7 @@ internal fun PawlyCalendarScreen(
                 Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { monthAnchor = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, -1) }.timeInMillis }) { Icon(Icons.Default.ChevronLeft, tr("Mes anterior")) }
-                        Text(java.text.DateFormatSymbols.getInstance().let { it.months[monthIndex].replaceFirstChar(Char::uppercase) } + " $monthYear", modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                        Text(java.text.DateFormatSymbols.getInstance().let { it.months[monthIndex].replaceFirstChar { ch -> ch.uppercase() } } + " $monthYear", modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                         IconButton(onClick = { monthAnchor = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, 1) }.timeInMillis }) { Icon(Icons.Default.ChevronRight, tr("Mes siguiente")) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
