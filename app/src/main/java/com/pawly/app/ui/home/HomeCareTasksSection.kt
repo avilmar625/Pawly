@@ -46,6 +46,7 @@ internal fun HomeCareTasksSection(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val language = LocalPawlyLanguage.current
+    val locale = PawlyI18n.locale(language)
     val savedLocalMessage = PawlyI18n.text("Guardado en este dispositivo", language)
     val loadingMessage = PawlyI18n.text("Cargando cuidados…", language)
     val localRoutinesSyncedMessage = PawlyI18n.text("Rutinas locales sincronizadas", language)
@@ -195,7 +196,7 @@ internal fun HomeCareTasksSection(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${tr("HOY PARA")} ${petName.uppercase(Locale.getDefault())}",
+                    Text("${tr("HOY PARA")} ${petName.uppercase(locale)}",
                         color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                     Text("$completedCount/$totalCount ${tr("cuidados completados")}",
@@ -311,8 +312,8 @@ internal fun HomeCareTasksSection(
         if (!upcomingTitle.isNullOrBlank() && !upcomingDate.isNullOrBlank()) {
             val upcomingLabel = runCatching {
                 val date = LocalDate.parse(upcomingDate)
-                val dayLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d", Locale.getDefault()))
-                    .replaceFirstChar { it.uppercase(Locale.getDefault()) }
+                val dayLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d", locale))
+                    .replaceFirstChar { it.uppercase(locale) }
                 val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, date)
                 val relative = when (daysUntil) {
                     0L -> todayLabel
@@ -386,7 +387,7 @@ internal fun HomeCareTasksSection(
                             Column(Modifier.weight(1f)) {
                                 Text("${log.actorName} · ${log.taskTitle}", style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(SimpleDateFormat("dd MMM · HH:mm", Locale.getDefault()).format(Date(log.occurredAt)),
+                                Text(SimpleDateFormat("dd MMM · HH:mm", locale).format(Date(log.occurredAt)),
                                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
