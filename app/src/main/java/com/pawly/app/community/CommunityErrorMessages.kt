@@ -22,9 +22,9 @@ internal fun Throwable.toPawlyMessage(fallback: String): String {
         }
         val accountWasCreated = message?.contains("La cuenta de acceso ya se ha creado", ignoreCase = true) == true
         return if (accountWasCreated) {
-            "Firestore ha rechazado el guardado del perfil. Tu cuenta de acceso ya está creada y no se ha borrado. Publica las reglas de firestore.rules de la rama cambios60-comunidad-calendario y después inicia sesión con el mismo correo y contraseña para completar tu perfil."
+            "Firestore ha rechazado el guardado del perfil. Tu cuenta de acceso ya está creada y no se ha borrado. Publica el archivo firestore.rules actualizado de este repositorio en Firebase Console y después inicia sesión con el mismo correo y contraseña para completar tu perfil."
         } else {
-            "Firebase ha rechazado la operación por las reglas de Firestore. Publica el archivo firestore.rules de la rama cambios60-comunidad-calendario en Firebase Console."
+            "Firebase ha rechazado la operación por las reglas de Firestore. Publica el archivo firestore.rules actualizado de este repositorio en Firebase Console."
         }
     }
     if (networkFailure) {
