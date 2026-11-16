@@ -42,6 +42,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import com.pawly.app.care.domain.CareTaskSchedule
 import java.util.UUID
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.data.FirebasePetCareRepository
@@ -426,6 +429,8 @@ private fun PetCarePlanSection(
     val context = LocalContext.current
     val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
     val today = remember { LocalDate.now().toString() }
+    val todayDate = remember(today) { LocalDate.parse(today) }
+    val weekdayLocale = PawlyI18n.locale(LocalPawlyLanguage.current)
     var tasks by remember(petName, localStorageScope, petId) {
         mutableStateOf(PetCareLocalStore.loadTasks(context, petName, localStorageScope).map {
             if (it.frequency == "Diario" && it.completed && it.completedOn != today) it.copy(completed = false, completedOn = "") else it
@@ -479,6 +484,7 @@ private fun PetCarePlanSection(
     var title by remember { mutableStateOf("") }
     var responsible by remember { mutableStateOf("") }
     var frequency by remember { mutableStateOf("Diario") }
+    var selectedDays by remember { mutableStateOf(setOf<Int>()) }
     var action by remember { mutableStateOf("Otro") }
     LaunchedEffect(initialAction) {
         if (!initialAction.isNullOrBlank()) {
@@ -557,7 +563,9 @@ private fun PetCarePlanSection(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(tr("Rutinas"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(tr("${tasks.count { it.completed }} de ${tasks.size} marcadas como hechas"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val dueToday = tasks.filter { CareTaskSchedule.isDueOn(it, todayDate) }
+                    val completedToday = dueToday.count { CareTaskSchedule.isCompleteOn(it, todayDate) }
+                    Text(tr("$completedToday de ${dueToday.size} rutinas previstas hoy completadas"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Text(tr("Añadir")) }
@@ -575,13 +583,23 @@ private fun PetCarePlanSection(
             Card {
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     androidx.compose.material3.Checkbox(
-                        checked = task.completed,
-                        enabled = canEdit,
+                        checked = CareTaskSchedule.isCompleteOn(task, todayDate),
+                        enabled = canEdit && CareTaskSchedule.isDueOn(task, todayDate),
                         onCheckedChange = { checked -> requestTaskToggle(task, checked) }
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(task.title, fontWeight = FontWeight.SemiBold)
-                        Text("${task.action} · ${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val weekdayLabel = CareTaskSchedule.normalizeDays(task.daysOfWeek).joinToString(", ") { day ->
+                            DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, weekdayLocale)
+                                .replace(".", "").replaceFirstChar { it.uppercase(weekdayLocale) }
+                        }
+                        Text(
+                            "${task.action} · ${task.frequency}" +
+                                (weekdayLabel.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "") +
+                                " · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         if (task.dose.isNotBlank() || task.time.isNotBlank()) {
                             Text(listOf(task.dose, task.time).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         }
@@ -674,7 +692,48 @@ private fun PetCarePlanSection(
                     }
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("Diario", "Semanal", "Puntual").forEach { item ->
-                            FilterChip(selected = frequency == item, onClick = { frequency = item }, label = { Text(item) })
+                            FilterChip(
+                                selected = frequency == item,
+                                onClick = {
+                                    frequency = item
+                                    selectedDays = if (item == "Semanal") {
+                                        selectedDays.ifEmpty { setOf(LocalDate.now().dayOfWeek.value) }
+                                    } else emptySet()
+                                },
+                                label = { Text(tr(item)) }
+                            )
+                        }
+                    }
+                    if (frequency == "Semanal") {
+                        Text(tr("Días de la semana"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            (1..7).forEach { day ->
+                                val label = DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, weekdayLocale)
+                                    .replace(".", "").replaceFirstChar { it.uppercase(weekdayLocale) }
+                                FilterChip(
+                                    selected = day in selectedDays,
+                                    onClick = {
+                                        selectedDays = if (day in selectedDays) selectedDays - day else selectedDays + day
+                                    },
+                                    label = { Text(label) }
+                                )
+                            }
+                        }
+                        if (selectedDays.isEmpty()) {
+                            Text(
+                                tr("Selecciona al menos un día para la rutina semanal."),
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        } else {
+                            Text(
+                                CareTaskSchedule.daysLabel(selectedDays.toList()).let { tr("Se repetirá: ") + it },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelSmall
+                            )
                         }
                     }
                 }
@@ -684,7 +743,8 @@ private fun PetCarePlanSection(
                     if (title.isNotBlank()) {
                         val newTask = CareTask(
                             UUID.randomUUID().toString(), title.trim().take(80), responsible.trim().take(60),
-                            frequency, false, dose.trim().take(80), time.trim().take(5), "", action
+                            frequency, false, dose.trim().take(80), time.trim().take(5), "", action,
+                            daysOfWeek = if (frequency == "Semanal") CareTaskSchedule.normalizeDays(selectedDays.toList()) else emptyList()
                         )
                         tasks = tasks + newTask
                         PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
@@ -699,10 +759,13 @@ private fun PetCarePlanSection(
                                     .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
                             }
                         }
-                        title = ""; responsible = ""; frequency = "Diario"; action = "Otro"
+                        title = ""; responsible = ""; frequency = "Diario"; selectedDays = emptySet(); action = "Otro"
                         dose = ""; time = ""; reminderEnabled = false; showAdd = false
                     }
-                }, enabled = canEdit && title.isNotBlank() && (!reminderEnabled || time.matches(Regex("\\d{2}:\\d{2}"))) && (!reminderEnabled || action == "Medicación")) { Text(tr("Guardar")) }
+                }, enabled = canEdit && title.isNotBlank() &&
+                    (frequency != "Semanal" || selectedDays.isNotEmpty()) &&
+                    (!reminderEnabled || time.matches(Regex("\\d{2}:\\d{2}"))) &&
+                    (!reminderEnabled || action == "Medicación")) { Text(tr("Guardar")) }
             },
             dismissButton = { TextButton(onClick = { showAdd = false }) { Text(tr("Cancelar")) } }
         )
