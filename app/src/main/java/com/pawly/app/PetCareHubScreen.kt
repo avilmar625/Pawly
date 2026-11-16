@@ -2,6 +2,7 @@ package com.pawly.app
 
 import android.content.Intent
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.People
@@ -287,6 +289,7 @@ private fun PetPassportSection(
         }
     }
     var showAdd by remember { mutableStateOf(false) }
+    var editingEntry by remember { mutableStateOf<PassportEntry?>(null) }
     var selectedType by remember { mutableStateOf("Vacuna") }
     LaunchedEffect(initialType) {
         if (!initialType.isNullOrBlank()) {
@@ -455,7 +458,18 @@ private fun PetPassportSection(
             }
         }
         items(entries.sortedByDescending { it.date }, key = { it.id }) { entry ->
-            Card {
+            Card(modifier = Modifier.fillMaxWidth().clickable(enabled = canEdit) {
+                editingEntry = entry
+                selectedType = entry.type
+                title = entry.title
+                detail = entry.detail
+                date = entry.date
+                if (entry.type.equals("Peso", true)) {
+                    val raw = Regex("[0-9]+([.,][0-9]+)?").find(entry.title)?.value ?: Regex("[0-9]+([.,][0-9]+)?").find(entry.detail)?.value
+                    weightKg = raw?.replace(",", ".")?.toFloatOrNull() ?: 10f
+                }
+                showAdd = true
+            }) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
                     Icon(Icons.Default.HealthAndSafety, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp))
                     Spacer(Modifier.width(10.dp))
@@ -463,8 +477,9 @@ private fun PetPassportSection(
                         Text(entry.title, fontWeight = FontWeight.SemiBold)
                         Text(entry.type + " · " + entry.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (canEdit) Text(tr("Toca para editar"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
-                    TextButton(enabled = canEdit, onClick = {
+                    IconButton(onClick = {
                         entries = entries.filterNot { it.id == entry.id }
                         PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
                         cloudRepository?.let { repo ->
@@ -474,7 +489,7 @@ private fun PetPassportSection(
                                     .onFailure { syncMessage = "No se pudo sincronizar la eliminación; conserva la copia local" }
                             }
                         }
-                    }) { Icon(Icons.Default.DeleteOutline, contentDescription = "Eliminar registro") }
+                    }, enabled = canEdit) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Eliminar registro")) }
                 }
             }
         }
