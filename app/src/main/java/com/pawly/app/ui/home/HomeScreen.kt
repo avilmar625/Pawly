@@ -257,14 +257,43 @@ private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit:
                 modifier = Modifier.fillMaxSize(),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
-        } else {
+        } else if (photoUrl?.startsWith("https://") == true) {
             AsyncImage(
-                model = photoUrl?.takeIf { it.startsWith("https://") }
-                    ?: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=1200&h=800&fit=crop&crop=faces",
-                contentDescription = "Perro disfrutando al aire libre",
+                model = photoUrl,
+                contentDescription = tr("Foto de $name"),
                 modifier = Modifier.fillMaxSize(),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
+        } else {
+            // Never show a stock dog as if it were the user's pet.
+            // A branded illustrated placeholder keeps the hero polished until a real photo is added.
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.linearGradient(
+                        if (elegantDesign) listOf(Color(0xFF173F35), Color(0xFF477A61), Color(0xFFB0B98B))
+                        else listOf(Color(0xFF214B3C), Color(0xFF4F8067), Color(0xFF8FA58B))
+                    )
+                )
+            ) {
+                Box(
+                    Modifier.align(Alignment.TopEnd).offset(x = 34.dp, y = (-42).dp)
+                        .size(190.dp).background(Color.White.copy(alpha = .08f), CircleShape)
+                )
+                Box(
+                    Modifier.align(Alignment.CenterEnd).offset(x = 28.dp, y = 34.dp)
+                        .size(122.dp).background(Color.White.copy(alpha = .07f), CircleShape)
+                )
+                Column(
+                    Modifier.align(Alignment.TopEnd).padding(top = 22.dp, end = 25.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(Icons.Filled.Pets, contentDescription = null,
+                        tint = Color.White.copy(alpha = .20f), modifier = Modifier.size(66.dp))
+                    Text("PAWLY", color = Color.White.copy(alpha = .42f),
+                        fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                }
+            }
         }
         Box(
             Modifier.fillMaxSize().background(
