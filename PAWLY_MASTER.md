@@ -661,3 +661,12 @@ Implementado en la rama `cambios72-rediseño-integral-pawly`, manteniendo `main`
 - El workflow de validación Firestore completó con éxito para el commit `99336b9`.
 - Las ejecuciones Android disparadas por los commits sucesivos fueron canceladas automáticamente por nuevos pushes a la misma rama antes de terminar. Por tanto, no se considera que el APK compile.
 - Se ha dejado que el último push de código dispare una nueva ejecución; revisar su resultado antes de distribuir o fusionar.
+
+
+## Actualización de validación previa a prueba doméstica — 16/11/2026
+
+- La ejecución Android anterior (run 43919723673) completó la validación del Worker Cloudflare, pero falló en `:app:lintDebug` por `NonObservableLocale` en `PetCareHubScreen.kt` al usar `Locale.getDefault()` desde Compose.
+- Corregido usando `LocalLocale.current`, que es observable por Compose.
+- Afinado el registro de peso: al seleccionar el tipo `Peso`, el campo principal se etiqueta `Peso en kg`; la gráfica prioriza el valor numérico del título y solo recurre a las notas si el título no contiene uno.
+- La nueva revisión requiere volver a ejecutar lint, tests y empaquetado. No declarar compilación validada hasta que la ejecución posterior termine correctamente.
+- Para la prueba manual: verificar alta de peso con y sin decimales, orden cronológico de la gráfica, carga de foto de mascota propia/compartida, sincronización de salud, creación de cuenta/login, publicación y mensajería, y acciones de mapa/teléfono en Explorar y Eventos.
