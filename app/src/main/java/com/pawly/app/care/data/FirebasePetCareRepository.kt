@@ -162,7 +162,8 @@ class FirebasePetCareRepository(
         "dose" to task.dose.trim().take(80),
         "time" to task.time.trim().take(5),
         "completedOn" to task.completedOn.trim().take(10),
-        "action" to task.action
+        "action" to task.action,
+        "daysOfWeek" to com.pawly.app.care.domain.CareTaskSchedule.normalizeDays(task.daysOfWeek)
     )
 
     override suspend fun savePassportEntry(petId: String, entry: PassportEntry) {
@@ -202,6 +203,8 @@ class FirebasePetCareRepository(
         require(task.responsible.length <= 80 && task.frequency.length <= 80)
         require(task.dose.length <= 80 && (task.time.isBlank() || task.time.matches(Regex("\\d{2}:\\d{2}"))))
         require(task.completedOn.length <= 10 && task.action in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro"))
+        require(task.daysOfWeek.isEmpty() || task.frequency == "Semanal")
+        require(task.daysOfWeek == com.pawly.app.care.domain.CareTaskSchedule.normalizeDays(task.daysOfWeek))
         tasks(petId).document(task.id).set(taskData(task)).await()
     }
 
@@ -224,7 +227,10 @@ class FirebasePetCareRepository(
             CareTask(doc.id, title, doc.getString("responsible").orEmpty(),
                 doc.getString("frequency").orEmpty(), doc.getBoolean("completed") ?: false,
                 doc.getString("dose").orEmpty(), doc.getString("time").orEmpty(), doc.getString("completedOn").orEmpty(),
-                doc.getString("action")?.takeIf { it in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro") } ?: "Otro")
+                doc.getString("action")?.takeIf { it in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro") } ?: "Otro",
+                daysOfWeek = com.pawly.app.care.domain.CareTaskSchedule.normalizeDays(
+                    (doc.get("daysOfWeek") as? List<*>)?.mapNotNull { (it as? Number)?.toInt() }.orEmpty()
+                ))
         }
 
     suspend fun loadCareLogs(petId: String, limit: Long = 30): List<CareLogEntry> {
