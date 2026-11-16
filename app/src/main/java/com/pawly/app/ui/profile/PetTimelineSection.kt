@@ -191,15 +191,17 @@ internal fun PetTimelineSection(
                 careSyncSucceeded = false
             }
         }
-        val communityEvents = eventRepository?.let { repository ->
-            runCatching { repository.loadEvents() }.getOrDefault(emptyList())
-        }.orEmpty()
+        val eventLoadResult = eventRepository?.let { repository ->
+            runCatching { repository.loadEvents() }
+        }
+        val communityEvents = eventLoadResult?.getOrDefault(emptyList()).orEmpty()
         timelineItems = buildPetTimelineItems(
             entries, logs, diaryEntries, calendarReminders, healthDates, communityEvents
         )
+        val eventsSynced = eventRepository == null || eventLoadResult?.isSuccess == true
         syncLabel = when {
-            storageScope.isNullOrBlank() -> savedLocalLabel
-            careSyncSucceeded -> syncedLabel
+            storageScope.isNullOrBlank() && eventRepository == null -> savedLocalLabel
+            careSyncSucceeded && eventsSynced -> syncedLabel
             else -> offlineLabel
         }
     }
@@ -207,7 +209,7 @@ internal fun PetTimelineSection(
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(tr("TODO VUESTRO"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             Text(tr("La historia de") + " " + petName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-            Text(tr("Salud, cuidados, recuerdos y citas en orden cronológico."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text(tr("Salud, cuidados, recuerdos, citas y eventos comunitarios en orden cronológico."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
         Text(syncLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         Row(
