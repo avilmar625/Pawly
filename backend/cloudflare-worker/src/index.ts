@@ -745,6 +745,56 @@ export async function handleCommunityPlaceSubmission(
   }
 }
 
+export async function handleEventAttendees(
+  request: Request,
+  env: Env,
+  dependencies: { verifyUser?: (request: Request, env: Env) => Promise<string | null>; getAccessToken?: (env: Env) => Promise<string> } = {}
+): Promise<Response> {
+  const uid = await (dependencies.verifyUser ?? verifiedRequestUser)(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 8192) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { eventId?: unknown; pageToken?: unknown };
+    if (typeof body.eventId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(body.eventId) ||
+      (body.pageToken !== undefined && (typeof body.pageToken !== "string" || body.pageToken.length > 6000))) {
+      return json({ error: "Evento o cursor no válido." }, 400);
+    }
+    const accessToken = await (dependencies.getAccessToken ?? googleAccessToken)(env);
+    const event = await readDocument(env, accessToken, `events/${body.eventId}`);
+    if (!event || decodeFirestoreString(event.fields?.organizerUid) !== uid) {
+      return json({ error: "Solo la persona organizadora puede consultar los asistentes." }, 403);
+    }
+    const url = new URL(`${firestoreRoot(env)}/events/${encodeURIComponent(body.eventId)}/interested`);
+    url.searchParams.set("pageSize", "12");
+    if (typeof body.pageToken === "string" && body.pageToken) url.searchParams.set("pageToken", body.pageToken);
+    const listResponse = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
+    if (!listResponse.ok) throw new Error("No se pudieron consultar las respuestas de asistencia.");
+    const page = await listResponse.json() as { documents?: any[]; nextPageToken?: string };
+    // At most 12 attendees × 3 reads + event + list + token = 39 external
+    // subrequests, safely below the Workers Free limit of 50.
+    const attendees = await Promise.all((page.documents ?? []).map(async document => {
+      const attendeeUid = decodeFirestoreString(document.fields?.uid) || String(document.name ?? "").split("/").pop() || "";
+      if (!attendeeUid || attendeeUid === uid) return null;
+      const [blockedByMe, blockedMe, profile] = await Promise.all([
+        readDocument(env, accessToken, `users/${uid}/blocked/${attendeeUid}`),
+        readDocument(env, accessToken, `users/${attendeeUid}/blocked/${uid}`),
+        readDocument(env, accessToken, `users/${attendeeUid}`)
+      ]);
+      if (blockedByMe || blockedMe || !profile) return null;
+      return {
+        uid: attendeeUid,
+        displayName: decodeFirestoreString(profile.fields?.displayName) || "Usuario privado",
+        username: decodeFirestoreString(profile.fields?.username),
+        photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
+      };
+    }));
+    return json({ attendees: attendees.filter(Boolean), nextPageToken: page.nextPageToken ?? "" });
+  } catch {
+    return json({ error: "No se pudo cargar la lista privada de asistentes." }, 502);
+  }
+}
+
 async function listLostPetSubscriptions(
   env: Env, accessToken: string, pageToken: string
 ): Promise<{ documents: any[]; nextPageToken: string }> {
@@ -864,6 +914,9 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/v1/community-places") {
       return handleCommunityPlaceSubmission(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/events/attendees") {
+      return handleEventAttendees(request, env);
     }
     if (request.method === "POST" && url.pathname === "/v1/phone/verify") {
       return handlePhoneVerification(request, env);

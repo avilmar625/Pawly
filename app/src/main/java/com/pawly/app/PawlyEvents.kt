@@ -170,11 +170,13 @@ internal fun PawlyEventsScreen(
     var reportEventId by remember { mutableStateOf<String?>(null) }
     var selectedEvent by remember { mutableStateOf<PawlyEvent?>(null) }
     var eventAttendees by remember { mutableStateOf(emptyList<PawlyEventAttendee>()) }
+    var attendeeNextPageToken by remember { mutableStateOf("") }
     var attendeesLoading by remember { mutableStateOf(false) }
     var attendeesError by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(selectedEvent?.id) {
         eventAttendees = emptyList()
+        attendeeNextPageToken = ""
         attendeesError = null
         attendeesLoading = false
     }
@@ -396,13 +398,18 @@ internal fun PawlyEventsScreen(
             event = event,
             canViewAttendees = repository.currentUid == event.organizerUid,
             attendees = eventAttendees,
+            hasMoreAttendees = attendeeNextPageToken.isNotBlank(),
             attendeesLoading = attendeesLoading,
             attendeesError = attendeesError,
             onLoadAttendees = {
                 if (!attendeesLoading) scope.launch {
                     attendeesLoading = true
-                    runCatching { repository.loadEventAttendees(event.id) }
-                        .onSuccess { eventAttendees = it; attendeesError = null }
+                    runCatching { repository.loadEventAttendees(event.id, attendeeNextPageToken) }
+                        .onSuccess {
+                            eventAttendees = eventAttendees + it.attendees
+                            attendeeNextPageToken = it.nextPageToken
+                            attendeesError = null
+                        }
                         .onFailure { attendeesError = it.localizedMessage ?: attendeesLoadErrorText }
                     attendeesLoading = false
                 }
@@ -475,6 +482,7 @@ private fun EventDetailsDialog(
     event: PawlyEvent,
     canViewAttendees: Boolean,
     attendees: List<PawlyEventAttendee>,
+    hasMoreAttendees: Boolean,
     attendeesLoading: Boolean,
     attendeesError: String?,
     onLoadAttendees: () -> Unit,
@@ -507,7 +515,7 @@ private fun EventDetailsDialog(
                     OutlinedButton(onClick = onLoadAttendees, enabled = !attendeesLoading) {
                         Icon(Icons.Default.Groups, null, modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(tr("Ver asistentes"))
+                        Text(tr(if (attendees.isEmpty()) "Ver asistentes" else "Ver más asistentes"))
                     }
                     if (attendeesLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     if (attendeesError != null) Text(attendeesError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -521,7 +529,10 @@ private fun EventDetailsDialog(
                             }
                         }
                     }
-                    if (attendees.isNotEmpty()) Text(tr("Se muestran hasta 50 personas. Los perfiles bloqueados se ocultan."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    if (hasMoreAttendees) {
+                        TextButton(onClick = onLoadAttendees, enabled = !attendeesLoading) { Text(tr("Cargar más asistentes")) }
+                    }
+                    if (attendees.isNotEmpty()) Text(tr("La lista se pagina y oculta los perfiles bloqueados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                 } else {
                     Text(
                         tr("Por privacidad, solo la persona organizadora puede consultar la lista de asistentes. Aquí se muestra el número total de personas interesadas."),

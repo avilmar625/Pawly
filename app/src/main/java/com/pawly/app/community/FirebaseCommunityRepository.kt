@@ -1086,33 +1086,24 @@ class FirebaseCommunityRepository private constructor(
         }.await()
     }
 
-    /**
-     * Only the event organizer can list interested members. Blocked relationships are
-     * filtered before profile data is returned, so a blocked member is not exposed.
-     */
-    suspend fun loadEventAttendees(eventId: String): List<PawlyEventAttendee> {
-        val uid = requireVerifiedUid()
+    /** The Worker enforces organizer-only access and filters blocks in both directions. */
+    suspend fun loadEventAttendees(eventId: String, pageToken: String = ""): PawlyEventAttendeePage {
         require(eventId.isNotBlank() && eventId.length <= 128)
-        val eventRef = db.collection("events").document(eventId)
-        val eventSnapshot = eventRef.get().await()
-        check(eventSnapshot.getString("organizerUid") == uid) {
-            "Solo la persona organizadora puede consultar la lista de asistentes."
-        }
-        val attendeeDocs = eventRef.collection("interested").limit(50).get().await().documents
-        return attendeeDocs.mapNotNull { attendee ->
-            val attendeeUid = attendee.getString("uid") ?: attendee.id
-            if (attendeeUid.isBlank() || attendeeUid == uid) return@mapNotNull null
-            val blockedByMe = db.collection("users").document(uid).collection("blocked").document(attendeeUid).get().await().exists()
-            val blockedMe = db.collection("users").document(attendeeUid).collection("blocked").document(uid).get().await().exists()
-            if (blockedByMe || blockedMe) return@mapNotNull null
-            val profile = runCatching { db.collection("users").document(attendeeUid).get().await() }.getOrNull()
-            PawlyEventAttendee(
-                uid = attendeeUid,
-                displayName = profile?.getString("displayName")?.takeIf { it.isNotBlank() } ?: "Usuario privado",
-                username = profile?.getString("username").orEmpty(),
-                photoUrl = profile?.getString("photoUrl").orEmpty()
-            )
-        }
+        val response = postBackend("/v1/events/attendees", JSONObject()
+            .put("eventId", eventId)
+            .put("pageToken", pageToken))
+        val rows = response.optJSONArray("attendees") ?: org.json.JSONArray()
+        val attendees = List(rows.length()) { index ->
+            rows.getJSONObject(index).let { row ->
+                PawlyEventAttendee(
+                    uid = row.optString("uid"),
+                    displayName = row.optString("displayName"),
+                    username = row.optString("username"),
+                    photoUrl = row.optString("photoUrl")
+                )
+            }
+        }.filter { it.uid.isNotBlank() }
+        return PawlyEventAttendeePage(attendees, response.optString("nextPageToken"))
     }
 
     suspend fun isAdmin(): Boolean {

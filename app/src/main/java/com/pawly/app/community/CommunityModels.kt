@@ -119,6 +119,11 @@ data class PawlyEventAttendee(
     val photoUrl: String = ""
 )
 
+data class PawlyEventAttendeePage(
+    val attendees: List<PawlyEventAttendee>,
+    val nextPageToken: String
+)
+
 
 /** Consent and verification state for private phone-contact discovery. */
 data class PawlyPhoneDiscoveryStatus(

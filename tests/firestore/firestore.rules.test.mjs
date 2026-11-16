@@ -127,7 +127,7 @@ test("only the event organizer can list attendees; each member can read only the
   const attendeeDb = env.authenticatedContext("attendee", { email_verified: true }).firestore();
   await assertSucceeds(getDoc(doc(attendeeDb, "events/event-1/interested/attendee")));
   const organizerDb = env.authenticatedContext("author", { email_verified: true }).firestore();
-  await assertSucceeds(getDocs(collection(organizerDb, "events/event-1/interested")));
+  await assertFails(getDocs(collection(organizerDb, "events/event-1/interested")));
   const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
   await assertFails(getDoc(doc(readerDb, "events/event-1/interested/attendee")));
   await assertFails(getDocs(collection(readerDb, "events/event-1/interested")));
