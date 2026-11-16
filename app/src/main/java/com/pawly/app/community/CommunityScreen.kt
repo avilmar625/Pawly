@@ -53,7 +53,7 @@ private enum class CommunityPage(val label: String) {
 }
 
 @Composable
-internal fun CommunityScreen(elegantDesign: Boolean = false) {
+internal fun CommunityScreen(elegantDesign: Boolean = false, openNotifications: Boolean = false) {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
@@ -62,7 +62,7 @@ internal fun CommunityScreen(elegantDesign: Boolean = false) {
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!, elegantDesign)
+    else CommunityHub(repository, uid!!, elegantDesign, openNotifications)
 }
 
 
@@ -298,8 +298,8 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false) {
-    var page by remember { mutableStateOf(CommunityPage.FEED) }
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, openNotifications: Boolean = false) {
+    var page by remember(openNotifications) { mutableStateOf(if (openNotifications) CommunityPage.NOTIFICATIONS else CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var suggestedUsers by remember { mutableStateOf(emptyList<PawlyUser>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
