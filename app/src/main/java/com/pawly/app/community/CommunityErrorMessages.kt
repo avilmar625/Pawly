@@ -4,14 +4,25 @@ import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.firestore.FirebaseFirestoreException
 
-/** Converts common Firebase failures into concise, actionable Spanish messages. */
+/** Converts Firebase failures, including wrapped causes, into concise Spanish guidance. */
 internal fun Throwable.toPawlyMessage(fallback: String): String {
-    val authCode = (this as? FirebaseAuthException)?.errorCode.orEmpty()
-    val firestoreCode = (this as? FirebaseFirestoreException)?.code
-    if (firestoreCode == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-        return "Firebase ha rechazado la operación por las reglas de Firestore. Descarga y publica el archivo firestore.rules de la rama cambios60-comunidad-calendario en Firebase Console. Si el error ocurre al crear la cuenta, la autenticación se ha creado pero no se ha podido guardar el perfil y Pawly revierte esa alta."
+    val causes = generateSequence(this) { it.cause }.take(8).toList()
+    val authCode = causes.filterIsInstance<FirebaseAuthException>().firstOrNull()?.errorCode.orEmpty()
+    val firestoreCode = causes.filterIsInstance<FirebaseFirestoreException>().firstOrNull()?.code
+    val networkFailure = causes.any {
+        it is FirebaseNetworkException ||
+            (it is FirebaseFirestoreException && it.code == FirebaseFirestoreException.Code.UNAVAILABLE)
     }
-    if (firestoreCode == FirebaseFirestoreException.Code.UNAVAILABLE || this is FirebaseNetworkException) {
+
+    if (firestoreCode == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+        val accountWasCreated = message?.contains("La cuenta de acceso ya se ha creado", ignoreCase = true) == true
+        return if (accountWasCreated) {
+            "Firestore ha rechazado el guardado del perfil. Tu cuenta de acceso ya está creada y no se ha borrado. Publica las reglas de firestore.rules de la rama cambios60-comunidad-calendario y después inicia sesión con el mismo correo y contraseña para completar tu perfil."
+        } else {
+            "Firebase ha rechazado la operación por las reglas de Firestore. Publica el archivo firestore.rules de la rama cambios60-comunidad-calendario en Firebase Console."
+        }
+    }
+    if (networkFailure) {
         return "No hay conexión con Firebase. Comprueba Internet e inténtalo de nuevo."
     }
     return when (authCode) {
@@ -23,8 +34,6 @@ internal fun Throwable.toPawlyMessage(fallback: String): String {
         "ERROR_USER_DISABLED" -> "Esta cuenta está desactivada. Contacta con el equipo de Pawly."
         "ERROR_TOO_MANY_REQUESTS" -> "Se han realizado demasiados intentos. Espera un poco y vuelve a probar."
         "ERROR_OPERATION_NOT_ALLOWED" -> "Este método de acceso no está activado en Firebase Authentication."
-        else -> {
-            localizedMessage?.takeIf { it.isNotBlank() } ?: fallback
-        }
+        else -> localizedMessage?.takeIf { it.isNotBlank() } ?: fallback
     }
 }
