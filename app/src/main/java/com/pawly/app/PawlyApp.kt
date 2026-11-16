@@ -2,6 +2,8 @@ package com.pawly.app
 
 import com.pawly.app.care.data.PetShareInvitation
 import com.pawly.app.care.data.PetCareLocalStore
+import com.pawly.app.care.data.FirebasePetCareRepository
+import com.pawly.app.care.data.FirebasePetProfileRepository
 import com.pawly.app.care.export.PetCarePdfExporter
 import com.google.firebase.auth.FirebaseAuth
 import androidx.credentials.ClearCredentialStateRequest
@@ -281,12 +283,14 @@ private fun PawlyMainApp(
                     .apply()
                 profileSyncStatus = "Copia restaurada localmente. Sincronizando los datos compatibles…"
                 runCatching {
-                    cloudRepository?.saveHomePetState(snapshot.petName, snapshot.dogProfiles)
-                    val careRepository = FirebasePetCareRepository()
-                    careRepository.ensureSharedPet(snapshot.petName, snapshot.petName)
-                    careRepository.savePassportEntries(snapshot.petName, snapshot.passportEntries)
-                    careRepository.saveCareTasks(snapshot.petName, snapshot.careTasks)
-                    FirebasePetProfileRepository().replaceDiary(snapshot.petName, snapshot.diaryEntries)
+                    if (cloudRepository != null && !storageScope.isNullOrBlank()) {
+                        cloudRepository.saveHomePetState(snapshot.petName, snapshot.dogProfiles)
+                        val careRepository = FirebasePetCareRepository()
+                        careRepository.ensureSharedPet(snapshot.petName, snapshot.petName)
+                        careRepository.savePassportEntries(snapshot.petName, snapshot.passportEntries)
+                        careRepository.saveCareTasks(snapshot.petName, snapshot.careTasks)
+                        FirebasePetProfileRepository().replaceDiary(snapshot.petName, snapshot.diaryEntries)
+                    }
                 }.onSuccess {
                     profileSyncStatus = "Copia restaurada y sincronizada. El historial compartido de cuidadores se conserva."
                 }.onFailure {
