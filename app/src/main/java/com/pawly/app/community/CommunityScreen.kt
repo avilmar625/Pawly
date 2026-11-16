@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -105,6 +106,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
     var register by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var username by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -140,7 +142,14 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
         )
         OutlinedTextField(
             password, { password = it }, label = { Text(tr("Contraseña (mín. 6 caracteres)")) },
-            visualTransformation = PasswordVisualTransformation(), singleLine = true,
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = tr(if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña"))
+                }
+            },
+            singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
         )
@@ -428,28 +437,70 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 }
                 Icon(Icons.Default.ExpandMore, null)
             }
-            DropdownMenu(expanded = communityMenuExpanded, onDismissRequest = { communityMenuExpanded = false }, modifier = Modifier.fillMaxWidth(.9f)) {
+            DropdownMenu(
+                expanded = communityMenuExpanded,
+                onDismissRequest = { communityMenuExpanded = false },
+                modifier = Modifier.fillMaxWidth(.94f).heightIn(max = 520.dp)
+            ) {
+                Text(
+                    tr("EXPLORA LA COMUNIDAD"),
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.1.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
+                    val selected = page == item
+                    val icon = when (item) {
+                        CommunityPage.FEED -> Icons.Default.DynamicFeed
+                        CommunityPage.SEARCH -> Icons.Default.People
+                        CommunityPage.MESSAGES -> Icons.Default.Chat
+                        CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
+                        CommunityPage.EVENTS -> Icons.Default.Event
+                        CommunityPage.MAP -> Icons.Default.Map
+                        CommunityPage.PROFILE -> Icons.Default.Person
+                        CommunityPage.MODERATION -> Icons.Default.Shield
+                    }
                     DropdownMenuItem(
                         text = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(tr(item.label), modifier = Modifier.weight(1f))
-                                if (item == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
-                                    Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
-                                }
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(tr(item.label), fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                Text(
+                                    tr(when (item) {
+                                        CommunityPage.FEED -> "Publicaciones y novedades"
+                                        CommunityPage.SEARCH -> "Descubre personas y perros"
+                                        CommunityPage.EVENTS -> "Quedadas y planes compartidos"
+                                        CommunityPage.MAP -> "Lugares y eventos en el mapa"
+                                        CommunityPage.MESSAGES -> "Conversaciones privadas"
+                                        CommunityPage.NOTIFICATIONS -> "Actividad y avisos nuevos"
+                                        CommunityPage.PROFILE -> "Tu perfil y tus mascotas"
+                                        CommunityPage.MODERATION -> "Revisar contenido denunciado"
+                                    }),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         },
                         leadingIcon = {
-                            Icon(when (item) {
-                                CommunityPage.FEED -> Icons.Default.DynamicFeed
-                                CommunityPage.SEARCH -> Icons.Default.People
-                                CommunityPage.MESSAGES -> Icons.Default.Chat
-                                CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
-                                CommunityPage.EVENTS -> Icons.Default.Event
-                                CommunityPage.MAP -> Icons.Default.Map
-                                CommunityPage.PROFILE -> Icons.Default.Person
-                                CommunityPage.MODERATION -> Icons.Default.Shield
-                            }, null)
+                            Surface(
+                                shape = RoundedCornerShape(11.dp),
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Icon(icon, null,
+                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(9.dp).size(20.dp))
+                            }
+                        },
+                        trailingIcon = {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                if (item == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
+                                    Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
+                                }
+                                if (selected) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                            }
                         },
                         onClick = { page = item; selectedUser = null; chat = null; communityMenuExpanded = false }
                     )
