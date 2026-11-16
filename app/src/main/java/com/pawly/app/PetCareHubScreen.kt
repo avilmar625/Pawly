@@ -75,6 +75,7 @@ internal fun PetCareHubScreen(
     onOpenCalendar: () -> Unit = {},
     diaryEntries: List<String> = emptyList(),
     calendarReminders: List<String> = emptyList(),
+    eventRepository: FirebaseCommunityRepository? = null,
     initialSection: String? = null,
     initialPassportType: String? = null,
     initialCareAction: String? = null,
@@ -191,6 +192,7 @@ internal fun PetCareHubScreen(
                 diaryEntries = diaryEntries,
                 calendarReminders = calendarReminders,
                 healthDates = dates,
+                eventRepository = eventRepository,
                 onOpenHealth = { section = "Pasaporte" },
                 onOpenDiary = onOpenDiary,
                 onOpenCalendar = onOpenCalendar
