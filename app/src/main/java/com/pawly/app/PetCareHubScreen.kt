@@ -72,15 +72,17 @@ internal fun PetCareHubScreen(
     onCloseSharedPet: () -> Unit = {},
     onOpenDiary: () -> Unit = {},
     onOpenCalendar: () -> Unit = {},
+    diaryEntries: List<String> = emptyList(),
+    calendarReminders: List<String> = emptyList(),
     initialSection: String? = null,
     initialPassportType: String? = null,
     initialCareAction: String? = null,
     onInitialActionConsumed: () -> Unit = {}
 ) {
-    var section by remember { mutableStateOf("Agenda") }
+    var section by remember { mutableStateOf("Todo") }
     var sharedPhotoUrl by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
     LaunchedEffect(sharedPetOwnerUid, petId) {
-        section = if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte"
+        section = if (sharedPetOwnerUid == null) "Todo" else "Pasaporte"
         sharedPhotoUrl = if (sharedPetOwnerUid == null) null else runCatching {
             FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).loadProfile(petId)?.photoUrl
         }.getOrNull()
@@ -134,7 +136,7 @@ internal fun PetCareHubScreen(
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val sections = if (sharedPetOwnerUid == null) {
-                    listOf("Agenda", "Pasaporte", "Cuidados", "Compartir", "Diario", "Citas")
+                    listOf("Todo", "Agenda", "Pasaporte", "Cuidados", "Compartir", "Diario", "Citas")
                 } else {
                     listOf("Pasaporte", "Cuidados")
                 }
@@ -158,6 +160,7 @@ internal fun PetCareHubScreen(
                         leadingIcon = {
                             Icon(
                                 when (item) {
+                                    "Todo" -> Icons.Default.Pets
                                     "Agenda", "Citas" -> Icons.Default.CalendarMonth
                                     "Pasaporte" -> Icons.Default.HealthAndSafety
                                     "Diario" -> Icons.Default.AutoStories
@@ -173,6 +176,16 @@ internal fun PetCareHubScreen(
             }
         }
         when (section) {
+            "Todo" -> PetTimelineSection(
+                petName = petName,
+                storageScope = storageScope,
+                diaryEntries = diaryEntries,
+                calendarReminders = calendarReminders,
+                healthDates = dates,
+                onOpenHealth = { section = "Pasaporte" },
+                onOpenDiary = onOpenDiary,
+                onOpenCalendar = onOpenCalendar
+            )
             "Agenda" -> HealthScreen(
                 dogName = petName,
                 medicineDone = medicineDone,
