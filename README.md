@@ -15,12 +15,12 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 
 - **Inicio:** selector para varios perfiles, perfil editable con foto de cámara o galería, tareas cotidianas y resumen actualizado.
 - **Explorar:** búsqueda y filtros por categorías, lugares cercanos de OpenStreetMap y colecciones personales que se sincronizan con Firestore al iniciar sesión. Los favoritos rápidos siguen guardándose localmente.
-- **Comunidad local:** lugares propuestos por miembros, con aprobación de moderación antes de mostrarse en Explorar.
+- **Comunidad local:** las propuestas válidas se publican automáticamente en Explorar; se pueden denunciar y retirar mediante moderación posterior.
 - **Mascotas perdidas:** avisos con ubicación aproximada y notificaciones push voluntarias por radio de 5, 10 o 20 km mediante Cloudflare Worker.
 - **Contactos:** selección manual de teléfonos del sistema y coincidencia HMAC; no se carga la agenda completa ni se guardan teléfonos en claro.
 - **Profesionales:** directorio de perfiles profesionales públicos de Pawly; el contacto solo se muestra con consentimiento explícito.
 - **Salud:** fechas por mascota y recordatorios locales con fecha y hora para vacunas, desparasitación y revisiones. Android puede retrasar avisos por ahorro de batería; no ofrece pautas veterinarias.
-- **Diario:** recuerdos de texto persistentes, con recuento actualizado.
+- **Diario:** recuerdos persistentes por mascota; la sincronización depende del área y de la conexión configurada.
 - **Persistencia y sincronización:** la app conserva datos locales para uso sin conexión y sincroniza con Firebase las áreas conectadas cuando hay sesión y red. No todas las preferencias, recordatorios o marcas diarias se sincronizan.
 
 ## Exportación y uso compartido
@@ -180,14 +180,15 @@ La pantalla de acceso se muestra aunque falte Firebase, pero el inicio de sesió
 
 Las cuentas creadas con correo reciben un enlace de verificación. Hasta verificarlo se permite entrar y completar el perfil, pero las operaciones sociales que modifican contenido (publicar, seguir, comentar, bloquear y enviar mensajes) permanecen protegidas.
 
-## Próximas mejoras
+## Próximas mejoras pendientes
 
-1. Completar la preparación legal y el borrado completo de cuentas y datos.
-2. Añadir pasaporte sanitario privado, documentos y exportación para veterinarios.
-3. Compartir el cuidado de mascotas con familiares y cuidadores.
-4. Construir un directorio local con verificación y fecha de actualización.
-5. Añadir backend de confianza para push y alertas de proximidad.
-6. Migrar persistencia local a Room y extraer lógica a ViewModels.
+1. Implementar el borrado completo de cuentas y datos desde un backend de confianza, incluida la revocación de sesiones y la eliminación en proveedores externos.
+2. Completar la sincronización multidispositivo de agenda, recordatorios, tareas diarias y preferencias que todavía permanecen locales.
+3. Extraer autenticación, perfiles y comunidad de `FirebaseCommunityRepository` hacia repositorios especializados y ViewModels.
+4. Incorporar pruebas de integración de Firestore para los flujos críticos (registro, inicio de sesión, eventos, recomendaciones, asistentes y eliminación).
+5. Añadir conexión OAuth real con Google Calendar si se quiere sincronización bidireccional desde Pawly.
+6. Completar la preparación multiplataforma: módulo Kotlin Multiplatform y app iOS nativa, manteniendo interfaces nativas.
+7. Desplegar y operar el backend de confianza para notificaciones push y alertas de proximidad; no activar servicios de pago de Firebase Storage ni Blaze como requisito de la app.
 
 ## Principios de producto
 
@@ -297,3 +298,15 @@ Detalles: [docs/CHANGES51.md](docs/CHANGES51.md).
 - Los eventos deben tener fecha futura; las coordenadas siguen siendo opcionales y se validan antes de publicar.
 - El mapa usa un CDN alternativo para Leaflet, evita recargas innecesarias, ajusta el encuadre a los marcadores y ofrece una alternativa para abrir OpenStreetMap en el navegador.
 - Estas mejoras se integran sobre la rama de arquitectura sin reemplazar sus controles de moderación, seguridad, búsqueda ni colecciones de Explorar.
+
+## Cambios60 · Comunidad, eventos y calendario
+
+- Las recomendaciones válidas se publican directamente con estado `approved`; la moderación es posterior (denuncias y retirada), no una cola de aprobación manual.
+- La ficha del evento muestra asistentes con perfil público. Desde los perfiles se puede abrir la ficha de usuario, seguir y comenzar una conversación, sujeto a las reglas de privacidad y bloqueo.
+- Los registros de interés contienen únicamente UID y fecha. Los perfiles privados no se muestran en el directorio de asistentes.
+- Los eventos se pueden añadir al calendario del dispositivo mediante el intent estándar de Android. El botón **Abrir Google Calendar** abre la aplicación de calendario disponible para que la persona elija su cuenta.
+- **Límite de integración:** abrir Google Calendar no concede a Pawly acceso OAuth ni sincroniza calendarios en segundo plano. La conexión real con Google Calendar API requiere un flujo de consentimiento OAuth y configuración adicional.
+- Si el guardado del perfil falla tras crear una cuenta, Pawly conserva la cuenta de Firebase Authentication. El siguiente inicio de sesión intenta completar el perfil; no se debe repetir el registro con el mismo correo.
+- Las alertas de mascotas perdidas guardan celdas geográficas enteras de precisión aproximada (alrededor de 1 km), en lugar de coordenadas exactas.
+- La solicitud de eliminación se registra con estado `pending`. Sigue siendo una solicitud pendiente de procesamiento, no un borrado automático de la cuenta y sus datos.
+
