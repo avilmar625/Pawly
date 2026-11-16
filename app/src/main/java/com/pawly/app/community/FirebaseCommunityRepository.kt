@@ -105,8 +105,17 @@ class FirebaseCommunityRepository private constructor(
         val userRef = db.collection("users").document(uid)
 
         try {
-            // One atomic batch: the three Firestore rules validate the related documents
-            // through getAfter/existsAfter, avoiding a partially-created account.
+            // The username is checked after Authentication succeeds because username
+            // documents are readable only by authenticated users. A collision is the
+            // one case where we can safely roll back the brand-new Auth account.
+            val existingUsername = usernameRef.get().await()
+            if (existingUsername.exists()) {
+                runCatching { result.user?.delete()?.await() }
+                error("Ese nombre de usuario ya está en uso. Elige otro.")
+            }
+
+            // Keep all three profile documents atomic. Firestore rules validate the
+            // related writes through getAfter/existsAfter.
             val batch = db.batch()
             batch.set(usernameRef, mapOf("uid" to uid))
             batch.set(reservationRef, mapOf("username" to normalized))
@@ -130,11 +139,20 @@ class FirebaseCommunityRepository private constructor(
             ))
             batch.commit().await()
         } catch (error: Exception) {
-            // Do not leave an Auth account without a matching Pawly profile.
-            runCatching { result.user?.delete()?.await() }
             cachedMyProfileState = null
             cachedMyDogsState = null
-            throw error
+
+            // A Firestore/rules/network failure must NOT delete the Authentication
+            // account. The user can retry sign-in; ensureMyProfile() will provision
+            // the missing profile once Firestore is reachable and its rules are live.
+            if (error.message?.contains("Ese nombre de usuario ya está en uso") == true) {
+                throw error
+            }
+            throw IllegalStateException(
+                "La cuenta de acceso ya se ha creado, pero Pawly no ha podido guardar el perfil. " +
+                    "No vuelvas a registrarte: inicia sesión con el mismo correo y contraseña para completar el perfil.",
+                error
+            )
         }
 
         cachedMyProfileState = PawlyUser(
