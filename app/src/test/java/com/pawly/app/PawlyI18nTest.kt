@@ -70,6 +70,17 @@ class PawlyI18nTest {
     }
 
     @Test
+    fun weeklyRoutineControlsAndReminderProgressAreLocalized() {
+        assertEquals("Days of the week", PawlyI18n.text("Días de la semana", "en"))
+        assertEquals("Dies de la setmana", PawlyI18n.text("Días de la semana", "ca"))
+        assertEquals("Jours de la semaine", PawlyI18n.text("Días de la semana", "fr"))
+        assertEquals("Asteko egunak", PawlyI18n.text("Días de la semana", "eu"))
+        assertEquals("Reminder time (HH:mm)", PawlyI18n.text("Hora del aviso (HH:mm)", "en"))
+        assertEquals("Rappels les jours sélectionnés", PawlyI18n.text("Avisos en los días seleccionados", "fr"))
+        assertEquals("3 of 5 routines scheduled for today completed", PawlyI18n.careRoutineProgress(3, 5, "en"))
+    }
+
+    @Test
     fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
         assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
         assertEquals("Texto nuevo", PawlyI18n.text("Texto nuevo", "en"))
