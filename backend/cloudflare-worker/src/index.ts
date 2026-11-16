@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "jose";
 import { isCurrentComment, parseActivityRequest, type ActivityRequest } from "./activity-validation";
 import { shouldSuppressDispatch } from "./dispatch-state";
+import { parseCommunityPlaceInput, communityPlaceDailyLimitId } from "./community-place-policy";
 import { distanceKm, parseBearerToken } from "./privacy-utils";
 
 interface Env {
@@ -442,6 +443,68 @@ async function deleteFirestoreDocument(env: Env, token: string, path: string): P
   if (!response.ok && response.status !== 404) throw new Error("No se pudo retirar el registro privado.");
 }
 
+async function handleCommunityPlaceSubmission(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 4096) return json({ error: "Petición demasiado grande." }, 413);
+    const input = parseCommunityPlaceInput(JSON.parse(raw));
+    if (!input) return json({ error: "La propuesta de lugar no es válida." }, 400);
+    const accessToken = await googleAccessToken(env);
+    const placeId = uid + "_" + input.submissionId;
+    const existing = await readDocument(env, accessToken, `communityPlaces/${placeId}`);
+    if (existing) {
+      if (decodeFirestoreString(existing.fields?.authorUid) !== uid) return json({ error: "Identificador de propuesta no válido." }, 409);
+      return json({ id: placeId, status: decodeFirestoreString(existing.fields?.status) || "pending", duplicate: true });
+    }
+
+    // One proposal per verified account per UTC day. The create-only document is
+    // an atomic reservation: concurrent requests cannot bypass the daily limit.
+    const limitId = communityPlaceDailyLimitId(uid, new Date());
+    const limitResponse = await fetch(`${firestoreRoot(env)}/communityPlaceSubmissionLimits?documentId=${encodeURIComponent(limitId)}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ fields: {
+        uid: { stringValue: uid },
+        createdAt: { timestampValue: new Date().toISOString() },
+        expiresAt: { timestampValue: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() }
+      } })
+    });
+    if (limitResponse.status === 409) return json({ error: "Ya has enviado una propuesta de lugar hoy. Podrás aportar otra mañana." }, 429);
+    if (!limitResponse.ok) return json({ error: "No se pudo reservar el envío de la propuesta." }, 502);
+
+    const created = await fetch(`${firestoreRoot(env)}/communityPlaces?documentId=${encodeURIComponent(placeId)}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ fields: {
+        name: { stringValue: input.name },
+        category: { stringValue: input.category },
+        location: { stringValue: input.location },
+        latitude: { doubleValue: input.latitude },
+        longitude: { doubleValue: input.longitude },
+        description: { stringValue: input.description },
+        authorUid: { stringValue: uid },
+        status: { stringValue: "pending" },
+        createdAt: { timestampValue: new Date().toISOString() }
+      } })
+    });
+    if (!created.ok) {
+      await deleteFirestoreDocument(env, accessToken, `communityPlaceSubmissionLimits/${limitId}`);
+      if (created.status === 409) {
+        const duplicate = await readDocument(env, accessToken, `communityPlaces/${placeId}`);
+        if (duplicate && decodeFirestoreString(duplicate.fields?.authorUid) === uid) {
+          return json({ id: placeId, status: decodeFirestoreString(duplicate.fields?.status) || "pending", duplicate: true });
+        }
+      }
+      return json({ error: "No se pudo guardar la propuesta. Inténtalo de nuevo." }, 502);
+    }
+    return json({ id: placeId, status: "pending" }, 201);
+  } catch {
+    return json({ error: "No se pudo enviar la propuesta de lugar." }, 502);
+  }
+}
+
 async function listLostPetSubscriptions(env: Env, accessToken: string): Promise<any[]> {
   const all: any[] = [];
   let pageToken = "";
@@ -544,6 +607,9 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/v1/lost-pet-alerts") {
       return handleLostPetAlert(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/community-places") {
+      return handleCommunityPlaceSubmission(request, env);
     }
     return json({ error: "Ruta no encontrada." }, 404);
   }
