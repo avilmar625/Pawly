@@ -65,7 +65,7 @@ Explorar añade búsquedas directas en Google Maps para parques caninos, protect
 
 Aprender añade guías de adopción responsable y actuación ante perros perdidos o encontrados. Si existe una ficha de mascota en Comunidad, muestra una selección de contenidos basada en la edad y características que la persona haya introducido. Salud permite programar avisos locales con fecha y hora para vacunación, desparasitación y revisiones. Android puede retrasarlos por ahorro de batería; los avisos se vuelven a programar al abrir Pawly. Tras reinstalar la app o borrar sus datos habrá que configurarlos de nuevo. Las fechas y pautas sanitarias deben proceder del veterinario.
 
-Las reglas de Firestore han cambiado para validar las nuevas categorías. Despliega la versión actualizada antes de probar las publicaciones: `firebase deploy --only firestore:rules`. El envío automático de push entre usuarios sigue necesitando un backend de confianza; no se simula desde el cliente ni se expone una clave de servidor.
+Las reglas de Firestore han cambiado para validar las nuevas categorías. Despliega la versión actualizada antes de probar las publicaciones: `firebase deploy --only firestore:rules`. El backend de push ya está implementado en `backend/cloudflare-worker`, pero requiere desplegarlo y configurar sus secretos antes de que funcione en producción. Consulta `docs/CLOUDFLARE_SETUP.md`.
 
 ## Rediseño visual (cambios26)
 
@@ -167,8 +167,9 @@ Pawly sigue siendo un proyecto en desarrollo y **no está lista para producción
 - `docs/RELEASE_CHECKLIST.md`: requisitos técnicos, de Play Console, privacidad, moderación y operación.
 - `docs/COMMUNITY_GUIDELINES.md`: normas de uso y procedimiento de moderación que debe ponerse en marcha.
 - `docs/ACCOUNT_DELETION_OPERATIONS.md`: alcance real y trabajo pendiente para eliminación completa.
+- `docs/CLOUDFLARE_SETUP.md`: despliegue del backend gratuito y conexión de Android.
 
-La pantalla de perfil permite registrar una solicitud de eliminación en Firestore, pero **no borra automáticamente** la cuenta ni todos los datos. Sigue siendo bloqueante implementar la cascada de borrado en un backend seguro y publicar el recurso web externo exigido por Google Play. No anunciar esta función como eliminación completada.
+La pantalla de perfil registra una solicitud de eliminación, pero **no borra automáticamente** la cuenta ni todos los datos. Sigue siendo bloqueante implementar y probar la cascada en Firebase Authentication, Firestore y Cloudinary, y publicar el recurso web externo exigido por Google Play. No anunciar esta función como eliminación completada.
 
 Los perfiles multi-especie ya se guardan en la Comunidad; otras pantallas y contenidos todavía tienen elementos diseñados principalmente para perros. Revisar la coherencia de todas las especies antes de una campaña generalista.
 
@@ -188,7 +189,7 @@ Las cuentas creadas con correo reciben un enlace de verificación. Hasta verific
 4. Incorporar pruebas de integración de Firestore para los flujos críticos (registro, inicio de sesión, eventos, recomendaciones, asistentes y eliminación).
 5. Añadir conexión OAuth real con Google Calendar si se quiere sincronización bidireccional desde Pawly.
 6. Completar la preparación multiplataforma: módulo Kotlin Multiplatform y app iOS nativa, manteniendo interfaces nativas.
-7. Desplegar y operar el backend de confianza para notificaciones push y alertas de proximidad; no activar servicios de pago de Firebase Storage ni Blaze como requisito de la app.
+7. Desplegar y operar el Cloudflare Worker gratuito para notificaciones push, alertas de proximidad y propuestas moderadas; no activar Firebase Blaze ni servicios de pago como requisito de la app.
 
 ## Principios de producto
 
@@ -227,7 +228,7 @@ Para activar esta función hay que desplegar las reglas e índices de Firestore 
 npx --yes firebase-tools deploy --only firestore:rules,firestore:indexes
 ```
 
-La función requiere iniciar sesión y verificar el correo electrónico. La invitación no envía un push por sí sola: el backend de notificaciones sigue pendiente. No se han cambiado las reglas de acceso del pasaporte privado existente.
+La función requiere iniciar sesión y verificar el correo electrónico. La invitación no envía un push por sí sola: el backend requiere que el Cloudflare Worker esté desplegado y configurado. No se han cambiado las reglas de acceso del pasaporte privado existente.
 
 
 ## cambios24 · Mensajería enriquecida
@@ -244,7 +245,7 @@ firebase use
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-La subida de imágenes en mensajes reutiliza Cloudinary. Las notificaciones push automáticas siguen necesitando una función backend de confianza; no se han añadido credenciales privadas ni se ha activado facturación.
+La subida de imágenes en mensajes reutiliza Cloudinary. Las notificaciones push automáticas utilizan el Cloudflare Worker, que todavía debe desplegarse y configurarse con secretos en la cuenta del propietario.
 
 
 ### Permisos de perfiles compartidos
@@ -260,7 +261,7 @@ En la pestaña de compartir se puede invitar con dos niveles: **Puede editar** o
 - Se amplían las reglas de Firestore para proteger ficha y Diario compartidos. Despliega las reglas antes de probar.
 - Si Firebase o Cloudinary no están disponibles, se conserva la copia local.
 
-Limitaciones: Cloudinary unsigned entrega URLs públicas para quien las conozca; no hay cifrado privado E2E. Agenda rápida y checks del día siguen siendo locales. Push automático requiere backend confiable y Blaze/Cloud Functions, que no se activa. El borrado integral de cuentas también necesita backend y operación. Requiere pruebas físicas y revisión legal antes de publicar.
+Limitaciones: Cloudinary unsigned entrega URLs públicas para quien las conozca; no hay cifrado privado E2E. Agenda rápida y checks del día siguen siendo locales. Push automático requiere desplegar el Worker gratuito de Cloudflare; no requiere Blaze ni Firebase Cloud Functions. El borrado integral de cuentas también necesita backend y operación. Requiere pruebas físicas y revisión legal antes de publicar.
 
 
 ## cambios36 · Preparación de Firebase y multimedia
