@@ -13,15 +13,17 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 
 ## Funcionalidades actuales
 
-- **Inicio:** selector para varios perfiles, perfil editable con foto de cámara o galería, tareas cotidianas y resumen actualizado.
-- **Explorar:** búsqueda y filtros por categorías, lugares cercanos de OpenStreetMap y colecciones personales que se sincronizan con Firestore al iniciar sesión. Los favoritos rápidos siguen guardándose localmente.
-- **Comunidad local:** las propuestas válidas se publican automáticamente en Explorar; se pueden denunciar y retirar mediante moderación posterior.
+- **Hoy:** panel de bienvenida, rutinas diarias, accesos rápidos a paseo/peso/foto, evolución del peso registrada en el pasaporte y acceso al diario, agenda, comunidad y exploración.
+- **Onboarding:** primera configuración en tres pasos para crear el perfil de la mascota, elegir una foto y decidir sobre notificaciones; el perfil nace privado.
+- **Mi perro:** salud, pasaporte, rutinas y cuidado compartido conservan sus pantallas y datos. Las entradas de tipo Peso alimentan el resumen de evolución.
+- **Explorar:** búsqueda y filtros por categorías, lugares cercanos de OpenStreetMap y colecciones personales sincronizadas con Firestore.
+- **Lugares de la comunidad:** las propuestas se envían al Worker y quedan en estado `pending` hasta moderación; el autor puede editar o eliminar sus lugares y denunciar recomendaciones ajenas.
+- **Eventos:** publicación, interés, contador y lista de asistentes para la persona organizadora. La lista no es pública; los perfiles bloqueados se filtran.
 - **Mascotas perdidas:** avisos con ubicación aproximada y notificaciones push voluntarias por radio de 5, 10 o 20 km mediante Cloudflare Worker.
-- **Contactos:** se puede abrir el selector seguro de Android para buscar por nombre. La coincidencia automática por teléfono está desactivada hasta verificar la titularidad del número.
-- **Profesionales:** directorio de perfiles profesionales públicos de Pawly; el contacto solo se muestra con consentimiento explícito.
-- **Salud:** fechas por mascota y recordatorios locales con fecha y hora para vacunas, desparasitación y revisiones. Android puede retrasar avisos por ahorro de batería; no ofrece pautas veterinarias.
-- **Diario:** recuerdos persistentes por mascota; la sincronización depende del área y de la conexión configurada.
-- **Persistencia y sincronización:** la app conserva datos locales para uso sin conexión y sincroniza con Firebase las áreas conectadas cuando hay sesión y red. No todas las preferencias, recordatorios o marcas diarias se sincronizan.
+- **Contactos:** búsqueda por nombre y coincidencia por teléfono con consentimiento mutuo, verificación Firebase PNV, índice HMAC no reversible y límites diarios. El modo de pruebas SIM-less es gratuito; la verificación real en producción es facturable y permanece desactivada por defecto.
+- **Profesionales:** directorio de perfiles profesionales públicos; el contacto solo se muestra con consentimiento explícito.
+- **Diario y calendario:** recuerdos, agenda y recordatorios conservan sus accesos actuales. Algunas preferencias y marcas diarias siguen siendo locales.
+- **Persistencia:** Firebase/Firestore para las áreas conectadas, Cloudinary para fotos y vídeos y Cloudflare Workers Free como backend de confianza. No se usa Firebase Storage ni se requiere Blaze para el backend Worker.
 
 ## Exportación y uso compartido
 
@@ -84,7 +86,7 @@ La rama `cambios25` inicia una capa de preferencias globales accesible desde el 
 - Preferencia de idioma guardada localmente: español, catalán, francés e inglés. Se ha incorporado un catálogo compartido y se han traducido las pantallas principales; pueden quedar textos externos, mensajes del backend o cadenas dinámicas heredadas en su idioma original.
 - Los ajustes de apariencia e idioma se conservan en el dispositivo y no se envían a Firebase.
 
-El acceso social ya incluye correo/contraseña y Google mediante Android Credential Manager + Firebase Authentication, además de recuperación de contraseña por correo. Google requiere OAuth configurado y el `google-services.json` local. No se muestran proveedores ficticios: Apple y teléfono quedan pendientes de configuración y desarrollo específico.
+El acceso social incluye correo/contraseña y Google mediante Android Credential Manager + Firebase Authentication. La búsqueda por teléfono es una función de descubrimiento de contactos separada del inicio de sesión: utiliza Firebase Phone Number Verification (PNV), consentimiento mutuo y un Worker que solo guarda hashes HMAC. El modo de pruebas SIM-less no cuesta; la verificación real de producción es facturable y se mantiene desactivada por defecto para respetar el plan gratuito.
 
 El rediseño global se inicia con una barra superior común y un panel de ajustes. El modo oscuro y la adaptación de todas las pantallas heredadas todavía necesitan una pasada de coherencia visual. Consulta [docs/CHANGES25.md](docs/CHANGES25.md).
 
@@ -315,9 +317,9 @@ Detalles: [docs/CHANGES51.md](docs/CHANGES51.md).
 
 ## Auditoría de seguridad (cambios62)
 
-- La búsqueda por teléfono queda desactivada hasta disponer de verificación real de titularidad sin activar servicios de pago.
-- Las propuestas de lugares se crean mediante el Worker y permanecen pendientes de aprobación; se limita el envío a una propuesta diaria por cuenta verificada.
-- La lista de asistentes a eventos no se expone. Solo se muestra el contador agregado.
+- La búsqueda por teléfono se conserva: requiere verificación PNV, opt-in y un máximo de tres lotes diarios de hasta 30 contactos; solo se devuelve un máximo de diez coincidencias y se filtran bloqueos. La verificación real de producción tiene coste y queda desactivada por defecto; el token SIM-less solo sirve para pruebas.
+- Las propuestas de lugares se crean mediante el Worker y permanecen pendientes de aprobación; se limita el envío a una propuesta diaria por cuenta verificada. El autor puede editar y retirar sus lugares.
+- La lista de asistentes se conserva para la persona organizadora; otros usuarios solo pueden leer su propia inscripción. La app filtra perfiles bloqueados antes de mostrarlos.
 - Los recursos nuevos de Cloudinary registran su identificador público y tipo en Firestore para preparar la eliminación de medios por cuenta. El borrado integral aún no está operativo.
 - El Worker pagina los avisos de mascotas perdidas y limita cada ejecución para respetar el máximo de 50 subpeticiones externas del plan gratuito.
 - El despliegue del Worker y sus secretos requieren configuración explícita en la cuenta del propietario; el código de GitHub por sí solo no lo despliega.

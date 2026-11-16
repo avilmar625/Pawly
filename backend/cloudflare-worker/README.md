@@ -1,39 +1,39 @@
-# Pawly API — Cloudflare Workers (plan gratuito)
+# Pawly API — Cloudflare Workers Free
 
-Backend de confianza para notificaciones de actividad, avisos de mascotas perdidas y propuestas moderadas de lugares. Se ejecuta en Cloudflare Workers y no utiliza Firebase Cloud Functions.
+Backend de confianza de Pawly para notificaciones FCM, avisos de mascotas perdidas, moderación de lugares y descubrimiento privado de contactos. No utiliza Firebase Cloud Functions ni Firebase Storage.
 
-## Estado real
+## Estado de despliegue
 
-- El código y los tests están en este repositorio.
-- **El Worker no está desplegado todavía en ninguna cuenta de Cloudflare.**
-- Para conectarlo a la app hay que desplegarlo con Wrangler, configurar los secretos y añadir su URL a `PAWLY_BACKEND_URL` en el `local.properties` local de Android.
-- La búsqueda por teléfono está desactivada: no se puede registrar ni buscar un número sin demostrar su titularidad.
-- La eliminación completa de cuentas todavía no está implementada. El índice de recursos Cloudinary ya se registra para facilitar esa tarea, pero no existe aún un proceso que elimine en cascada Firestore, Cloudinary y Firebase Authentication.
+- El Worker y sus pruebas están versionados en este repositorio.
+- **Todavía no está desplegado en una cuenta de Cloudflare.** La conexión real requiere que el propietario inicie sesión en Cloudflare y configure los secretos indicados abajo.
+- La app solo utilizará este backend cuando `PAWLY_BACKEND_URL` apunte a la URL real del Worker.
+- No se han añadido credenciales privadas a GitHub ni a la app.
 
-## Funciones implementadas en el Worker
+## Funciones del Worker
 
 - Verifica Firebase ID tokens y exige correo verificado.
-- Comprueba en Firestore que likes, comentarios y seguimientos existen realmente antes de enviar notificaciones.
-- Comprueba bloqueos en ambos sentidos.
-- Envía notificaciones FCM HTTP v1 y limpia tokens no registrados.
-- Gestiona envíos idempotentes para evitar notificaciones duplicadas.
-- Envía avisos de mascotas perdidas según radios consentidos de 5, 10 o 20 km, usando celdas geográficas aproximadas.
-- Procesa los destinatarios de avisos por lotes paginados. Cada ejecución procesa como máximo cuatro candidatos y consulta como máximo dos dispositivos por destinatario, para mantenerse por debajo del límite de 50 subpeticiones externas del plan Free.
-- Recibe propuestas de lugares con coordenadas exactas, valida el contenido y limita a una propuesta por cuenta verificada y día UTC. Las propuestas se crean como `pending`; solo moderación puede aprobarlas.
-- No contiene endpoints de búsqueda por teléfono.
+- Comprueba en Firestore el origen de likes, comentarios y follows; respeta bloqueos, idempotencia y tokens FCM.
+- Envía alertas de mascotas perdidas por radios voluntarios de 5, 10 o 20 km, con coordenadas aproximadas y paginación.
+- Limita cada ejecución de alertas para respetar el máximo de 50 subpeticiones externas por invocación en Workers Free.
+- Recibe propuestas de lugares verificadas, limita a una propuesta diaria por cuenta y las guarda como `pending`.
+- Verifica tokens Firebase Phone Number Verification (PNV), extrae el número verificado en el servidor y crea un índice HMAC. Nunca guarda números en claro.
+- Permite activar/desactivar voluntariamente la búsqueda por teléfono.
+- Busca hasta 30 contactos por lote, máximo 3 lotes diarios por cuenta y 10 coincidencias devueltas. Respeta bloqueos en ambos sentidos.
+- Los documentos `phoneDirectory` y `phoneDiscoveryLimits` solo son accesibles para el backend con cuenta de servicio; las reglas de Firestore niegan el acceso directo desde el cliente.
 
 ## Límites del plan gratuito
 
-La documentación de Cloudflare indica 100.000 peticiones diarias y 50 subpeticiones externas por invocación para Workers Free. El Worker pagina los destinatarios de alertas para no superar ese límite. Las cuotas de Firestore y Firebase Cloud Messaging son independientes y también deben supervisarse.
+Workers Free incluye 100.000 peticiones al día, 10 ms de CPU por petición y 50 subpeticiones externas por invocación. El flujo de contactos se mantiene por debajo de ese máximo: consulta privada, reserva de cuota, una consulta por hashes y hasta diez candidatos con comprobación de bloqueo. Las cuotas de Firestore y FCM son independientes.
 
-## Requisitos previos
+## Requisitos
 
-1. Cuenta gratuita de Cloudflare con un subdominio `workers.dev` habilitado.
+1. Cuenta gratuita de Cloudflare con `workers.dev` habilitado.
 2. Proyecto Firebase `pawly-83dca`.
-3. Cuenta de servicio dedicada de Google para el Worker, con permisos mínimos de lectura/escritura de Firestore y envío de Firebase Cloud Messaging.
-4. Wrangler instalado mediante las dependencias del proyecto.
+3. Número de proyecto Firebase (Firebase Console → Configuración del proyecto → General).
+4. Cuenta de servicio Google dedicada al Worker, con permisos mínimos para leer/escribir Firestore y enviar FCM.
+5. Cuenta Cloudinary existente; el Worker no necesita Cloudinary para las funciones actuales.
 
-## Despliegue inicial
+## Configuración y despliegue
 
 Desde la raíz del repositorio:
 
@@ -43,57 +43,68 @@ npm ci
 npx wrangler login
 npx wrangler secret put FIREBASE_CLIENT_EMAIL
 npx wrangler secret put FIREBASE_PRIVATE_KEY
+npx wrangler secret put PHONE_DISCOVERY_HMAC_SECRET
 npm run check
 npm test
 npm run deploy
 ```
 
-Al ejecutar cada `wrangler secret put`, pega el valor solicitado en el terminal. La clave privada PEM debe mantenerse como secreto de Cloudflare. No subas el JSON de la cuenta de servicio, claves privadas ni secretos a GitHub.
+Genera el secreto HMAC localmente con `openssl rand -hex 32` y pégalo cuando Wrangler lo solicite. No lo envíes por chat ni lo guardes en GitHub. La clave privada de Firebase tampoco debe salir de Cloudflare.
 
-El identificador de Firebase ya está definido como variable no secreta en `wrangler.toml`. El Worker utiliza estas variables/secretos:
+Configura estas variables en `wrangler.toml` o en Cloudflare Workers → Settings → Variables:
 
-| Nombre | Tipo | Contenido |
+| Nombre | Tipo | Valor |
 |---|---|---|
-| `FIREBASE_PROJECT_ID` | Variable Wrangler | `pawly-83dca` |
-| `FIREBASE_CLIENT_EMAIL` | Secreto Wrangler | Correo de la cuenta de servicio |
-| `FIREBASE_PRIVATE_KEY` | Secreto Wrangler | Clave privada PEM de la cuenta de servicio |
+| `FIREBASE_PROJECT_ID` | Variable | `pawly-83dca` |
+| `FIREBASE_PROJECT_NUMBER` | Variable | Número de proyecto Firebase, no el ID |
+| `FIREBASE_CLIENT_EMAIL` | Secreto | Correo de la cuenta de servicio |
+| `FIREBASE_PRIVATE_KEY` | Secreto | Clave privada PEM de la cuenta de servicio |
+| `PHONE_DISCOVERY_HMAC_SECRET` | Secreto | Secreto aleatorio de al menos 32 caracteres |
 
-No configures `PHONE_MATCH_HMAC_SECRET`: la búsqueda por teléfono se ha retirado.
+No configures `ALLOW_PNV_TEST_TOKENS=true` en el Worker de producción. Solo se permite en un Worker de pruebas aislado y temporal para aceptar los tokens SIM-less ficticios de desarrollo. Los tokens de prueba incluyen `test_number=true` y el Worker de producción los rechaza.
 
-Tras desplegar, Wrangler mostrará una URL similar a:
+Tras el despliegue, Wrangler mostrará una URL similar a:
 
 ```
 https://pawly-api.<tu-subdominio>.workers.dev
 ```
 
-Comprueba el servicio:
+Comprueba:
 
 ```bash
 curl https://pawly-api.<tu-subdominio>.workers.dev/health
 ```
 
-Debe responder `{"service":"pawly-api","status":"ok"}`.
+La respuesta esperada es `{"service":"pawly-api","status":"ok"}`.
 
 ## Conectar Android
 
-Añade la URL real del Worker a `local.properties` (en la raíz del proyecto Android):
+Añade a `local.properties` en la raíz del proyecto:
 
 ```properties
 PAWLY_BACKEND_URL=https://pawly-api.<tu-subdominio>.workers.dev
 ```
 
-Después sincroniza Gradle y recompila. Esta propiedad se incorpora a `BuildConfig`; no se debe escribir la URL ficticia del ejemplo ni subir el archivo `local.properties` al repositorio.
+No uses la URL ficticia del ejemplo: sustituye por la URL exacta que devuelva Wrangler. Sin este valor, las acciones seguras del Worker mostrarán un error de configuración y no fingirán que se han completado.
+
+## Verificación telefónica sin costes sorpresa
+
+- Para pruebas locales, genera un token SIM-less en Firebase Console → Security → Phone Verification → Testing y guárdalo en `local.properties` como `FPNV_TEST_TOKEN=...`. El token dura 7 días, no requiere SIM ni facturación y solo sirve para probar el flujo con un número ficticio.
+- En debug, la app usa ese token solo si está configurado. En release el token siempre se compila vacío.
+- La verificación real de Firebase PNV en producción es facturable. Por decisión del proyecto, `PHONE_VERIFICATION_PRODUCTION_ENABLED` permanece en `false`; no se inicia una verificación real ni se generan cargos.
+- Si en el futuro se autoriza explícitamente el coste, se podrá habilitar en `local.properties` con `PHONE_VERIFICATION_PRODUCTION_ENABLED=true` en una build release. El Worker seguirá rechazando tokens de prueba.
+- La búsqueda solo funciona si el usuario verifica su propio número y activa el consentimiento. El otro usuario también debe haberlo activado. La app consulta el número seleccionado en el selector de Android; no lee ni sube toda la agenda.
 
 ## Lugares de la comunidad
 
-El cliente llama a `POST /v1/community-places`. El Worker comprueba el ID token, valida nombre/categoría/dirección/coordenadas y reserva una única propuesta diaria por usuario. La creación usa estado `pending`. El cliente no puede crear lugares directamente en Firestore. Las reglas permiten que el autor edite su propuesta/publicación y elimine su propio lugar; el equipo de moderación gestiona aprobación, rechazo y retirada.
+La app llama a `POST /v1/community-places`. El Worker verifica la cuenta, valida nombre/categoría/dirección/coordenadas y limita el envío a una propuesta diaria. Se crea como `pending`; el equipo moderador decide aprobar o rechazar. El autor puede editar y eliminar su propuesta aprobada o pendiente y denunciar lugares de otros usuarios.
 
-Configura una política TTL de Firestore sobre `communityPlaceSubmissionLimits.expiresAt` para limpiar reservas de más de 90 días. Sin TTL, el límite sigue funcionando pero los documentos de cuota se acumulan.
+Configura TTL de Firestore sobre `communityPlaceSubmissionLimits.expiresAt` para limpiar límites de 90 días y sobre `phoneDiscoveryLimits.expiresAt` para limpiar reservas de búsqueda de 45 días.
 
-## Privacidad y eliminación de cuenta
+## Eventos y privacidad
 
-- No se verifica la titularidad de teléfonos; por eso la búsqueda telefónica está deshabilitada.
-- Los registros de asistentes a eventos son privados; la app solo muestra el contador de interés.
-- Las imágenes y vídeos nuevos registran su `public_id` y tipo en `cloudinaryAssets`, bajo el UID propietario. Esto es un índice para la futura cascada de borrado, no significa que el borrado esté ya automatizado.
-- **No publiques Pawly como lista para producción mientras la eliminación de cuenta no borre y verifique todos los datos y recursos multimedia.** Consulta `docs/ACCOUNT_DELETION_OPERATIONS.md`.
+La inscripción a eventos sigue disponible. El documento de inscripción individual solo puede consultarlo su propietario; la lista solo puede enumerarla la persona organizadora. El cliente filtra los usuarios bloqueados en cualquiera de los dos sentidos antes de presentar los asistentes.
 
+## Eliminación de cuenta
+
+El borrado integral de cuenta todavía no está implementado. La app registra una solicitud y las nuevas subidas multimedia se indexan por propietario, pero aún falta eliminar de forma idempotente todas las subcolecciones Firestore, recursos Cloudinary y la cuenta Firebase Authentication. No presentar Pawly como listo para producción hasta completar y probar esa cascada. Consulta `docs/ACCOUNT_DELETION_OPERATIONS.md`.

@@ -84,7 +84,7 @@ El archivo `firebase.json` ya apunta a `firestore.rules` y `firestore.indexes.js
 - Explorar: colecciones personales privadas sincronizadas entre dispositivos bajo `users/{uid}/exploreCollections`; los favoritos rápidos siguen siendo locales.
 - Lugares de la comunidad: propuestas pendientes en `communityPlaces`, visibles solo tras aprobación administrativa.
 - Avisos de mascotas perdidas: publicaciones `LOST`, alertas con ubicación aproximada en `lostPetAlerts` y preferencias de radio en `lostPetSubscriptions`.
-- Contactos: directorio privado `phoneDirectory` indexado mediante HMAC; no contiene números en claro.
+- Contactos: directorio privado `phoneDirectory` indexado mediante HMAC; no contiene números en claro. La búsqueda requiere PNV, consentimiento mutuo y el Worker desplegado.
 - Chat: mensajes de texto, fotos y vídeos; acceso restringido a los dos participantes.
 - Mascotas compartidas: invitaciones, miembros y roles; el propietario y los editores pueden modificar los registros permitidos, los lectores solo consultan.
 - Pasaporte sanitario, rutinas, ficha básica y Diario: espacio de mascota compartido bajo `sharedPets/{ownerUid}_{petId}`, con las reglas de miembro/rol correspondientes.
@@ -159,7 +159,7 @@ Firestore almacena las URL HTTPS y los metadatos; los bytes no se guardan en Fir
 
 Pawly registra el token FCM del dispositivo y declara el servicio Android que puede recibir mensajes. **Eso no significa que la app ya envíe notificaciones push a otros usuarios.**
 
-El repositorio incluye un emisor de confianza en `backend/cloudflare-worker`, compatible con el plan gratuito de Cloudflare Workers y sin Firebase Cloud Functions. Verifica el Firebase ID token, comprueba la interacción en Firestore, respeta bloqueos y envía por FCM HTTP v1. **No estará operativo hasta que el propietario despliegue el Worker y configure los secretos** siguiendo `backend/cloudflare-worker/README.md`. Requiere una cuenta de servicio Firebase dedicada con permisos mínimos; su clave privada debe almacenarse como secreto de Cloudflare, nunca en Android ni en GitHub. No hace falta activar Blaze para desplegar Workers, aunque Firestore/FCM conservan sus propias cuotas y condiciones.
+El repositorio incluye un backend en `backend/cloudflare-worker`, compatible con Workers Free y sin Firebase Cloud Functions. Además de FCM, procesa alertas de mascotas perdidas, propuestas pendientes de lugares y búsqueda privada de contactos con PNV/HMAC. **No estará operativo hasta que el propietario despliegue el Worker y configure los secretos** siguiendo `backend/cloudflare-worker/README.md`. Requiere una cuenta de servicio Firebase dedicada; su clave privada y el secreto HMAC deben almacenarse en Cloudflare, nunca en Android ni en GitHub. No hace falta activar Blaze para desplegar Workers, aunque las cuotas de Firestore/FCM son independientes.
 
 ## 8. Compilar y probar
 
@@ -184,15 +184,16 @@ Prueba con dos cuentas distintas y verificadas:
 9. Publicar una alerta de mascota perdida desde un dispositivo y comprobar que solo los usuarios con suscripción activada y dentro del radio reciben FCM.
 10. Enviar una propuesta de lugar y verificar que no aparece hasta que un administrador la apruebe.
 11. Crear un perfil profesional público y comprobar que aparece en el directorio; desactivar la publicación del contacto y verificar que deja de mostrarse.
-12. Registrar voluntariamente un teléfono en una cuenta, activar el secreto HMAC del Worker y probar el selector de contactos con otra cuenta pública.
+12. En debug, añadir un token SIM-less de Firebase PNV a `local.properties`, verificar el flujo con un número ficticio y confirmar que el Worker de pruebas acepta `test_number=true`. No usarlo para buscar personas reales.
 
 No uses información veterinaria real durante las pruebas iniciales. Comprueba también el consumo y los límites del plan gratuito de Cloudinary desde su Dashboard.
 
 ## 9. Qué no está listo para producción
 
 - Las cargas unsigned de Cloudinary no autentican al usuario y las URLs son públicas para quien las conozca.
-- El Worker de Cloudflare para notificaciones push está implementado en el repositorio, pero no desplegado ni configurado. No hay todavía backend para firmar subidas, aplicar moderación ni eliminar archivos de Cloudinary.
-- Hasta desplegar y configurar el Worker con los secretos `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` y `PHONE_MATCH_HMAC_SECRET`, no estarán operativos los avisos push ni la búsqueda por teléfono.
+- El Worker de Cloudflare está implementado en el repositorio, pero todavía no desplegado ni configurado. Hasta hacerlo no estarán operativos los avisos push, la moderación de lugares ni la búsqueda por teléfono.
+- Para contactos, el Worker requiere `FIREBASE_PROJECT_NUMBER`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` y `PHONE_DISCOVERY_HMAC_SECRET`. Los tokens SIM-less son solo para debug; la verificación real PNV en producción es facturable y está desactivada por defecto.
+- El borrado integral de cuenta y archivos Cloudinary sigue pendiente.
 - La solicitud de eliminación de cuenta no borra automáticamente todas las subcolecciones y archivos multimedia.
 - No hay cifrado de extremo a extremo para chat ni multimedia.
 - Algunas preferencias, recordatorios y estados diarios permanecen locales.
