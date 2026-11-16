@@ -293,6 +293,18 @@ internal fun HomeCareTasksSection(
                 }
         }
         if (!upcomingTitle.isNullOrBlank() && !upcomingDate.isNullOrBlank()) {
+            val upcomingLabel = runCatching {
+                val date = LocalDate.parse(upcomingDate)
+                val dayLabel = date.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d", Locale.getDefault()))
+                    .replaceFirstChar { it.uppercase(Locale.getDefault()) }
+                val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, date)
+                val relative = when (daysUntil) {
+                    0L -> "hoy"
+                    1L -> "mañana"
+                    else -> "dentro de $daysUntil días"
+                }
+                "$dayLabel · $relative"
+            }.getOrDefault(upcomingDate)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Próximamente", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Surface(
@@ -310,13 +322,13 @@ internal fun HomeCareTasksSection(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                if (upcomingType.equals("Vacuna", true)) Icons.Filled.HealthAndSafety else Icons.Filled.CalendarMonth,
+                                if (upcomingType?.contains("vacun", ignoreCase = true) == true) Icons.Filled.HealthAndSafety else Icons.Filled.CalendarMonth,
                                 null,
                                 tint = Color(0xFF315A45)
                             )
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(upcomingDate, color = Color(0xFF67574E), style = MaterialTheme.typography.labelSmall)
+                            Text(upcomingLabel, color = Color(0xFF67574E), style = MaterialTheme.typography.labelSmall)
                             Text(upcomingTitle, color = Color(0xFF263A30), fontWeight = FontWeight.Bold)
                         }
                         Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFF315A45))
