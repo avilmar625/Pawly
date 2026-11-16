@@ -216,6 +216,8 @@ class FirebasePetCareRepository(
             require(task.title.length <= 120 && task.responsible.length <= 80 && task.frequency.length <= 80)
             require(task.dose.length <= 80 && (task.time.isBlank() || task.time.matches(Regex("\\d{2}:\\d{2}"))))
             require(task.completedOn.length <= 10 && task.action in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro"))
+            require(task.daysOfWeek.isEmpty() || task.frequency == "Semanal")
+            require(task.daysOfWeek == com.pawly.app.care.domain.CareTaskSchedule.normalizeDays(task.daysOfWeek))
             batch.set(tasks(petId).document(task.id), taskData(task))
         }
         if (careTasks.isNotEmpty()) batch.commit().await()
