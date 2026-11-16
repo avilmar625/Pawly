@@ -438,13 +438,14 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 loading = communityPlacesLoading,
                 message = communityPlacesMessage,
                 enabled = repository != null,
+                repository = repository,
                 onSubmit = { name, category, location, description, latitude, longitude ->
                     val repo = repository ?: return@CommunityPlacesPanel
                     scope.launch {
                         communityPlacesLoading = true
                         runCatching { repo.submitCommunityPlace(name, category, location, description, latitude, longitude) }
                             .onSuccess {
-                                communityPlacesMessage = "¡Gracias! El lugar ya está publicado en las recomendaciones de la comunidad."
+                                communityPlacesMessage = "¡Gracias! Tu propuesta se ha enviado y estará visible cuando el equipo la apruebe."
                                 communityPlaces = runCatching { repo.loadCommunityPlaces() }.getOrDefault(communityPlaces)
                             }
                             .onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido enviar la propuesta." }
@@ -757,9 +758,11 @@ private fun CommunityPlacesPanel(
     message: String?,
     enabled: Boolean,
     onSubmit: (String, String, String, String, Double?, Double?) -> Unit,
-    onOpenPlace: (PawlyCommunityPlace) -> Unit
+    onOpenPlace: (PawlyCommunityPlace) -> Unit,
+    repository: FirebaseCommunityRepository?
 ) {
     var dialog by remember { mutableStateOf(false) }
+    var reportPlaceId by remember { mutableStateOf<String?>(null) }
     var name by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Parque") }
     var location by remember { mutableStateOf("") }
@@ -784,7 +787,7 @@ private fun CommunityPlacesPanel(
                     Text(tr("Aportar"))
                 }
             }
-            Text(tr("Las propuestas válidas se publican automáticamente. La comunidad puede denunciar contenido incorrecto y el equipo de moderación puede retirarlo."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Text(tr("Las propuestas se revisan antes de aparecer públicamente. Puedes denunciar un lugar si detectas información incorrecta."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (places.isEmpty()) {
                 Text(tr("Todavía no hay lugares aprobados por la comunidad. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -814,12 +817,24 @@ private fun CommunityPlacesPanel(
                             Text(place.category + " · " + place.location, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                             Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
+                        IconButton(onClick = { reportPlaceId = place.id }) {
+                            Icon(Icons.Default.Flag, contentDescription = tr("Denunciar lugar"), tint = MaterialTheme.colorScheme.error)
+                        }
                         Icon(Icons.Default.OpenInNew, contentDescription = tr("Abrir en el mapa"), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     }
                 }
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
         }
+    }
+    if (reportPlaceId != null && repository != null) {
+        ReportDialog(
+            repo = repository,
+            targetId = reportPlaceId!!,
+            type = "place",
+            onDismiss = { reportPlaceId = null },
+            onDone = { reportPlaceId = null }
+        )
     }
     if (dialog) {
         AlertDialog(
