@@ -289,7 +289,7 @@ private fun PawlyMainApp(
                         careRepository.ensureSharedPet(snapshot.petName, snapshot.petName)
                         careRepository.savePassportEntries(snapshot.petName, snapshot.passportEntries)
                         careRepository.saveCareTasks(snapshot.petName, snapshot.careTasks)
-                        FirebasePetProfileRepository().replaceDiary(snapshot.petName, snapshot.diaryEntries)
+                        FirebasePetProfileRepository(ownerUid = storageScope).replaceDiary(snapshot.petName, snapshot.diaryEntries)
                     }
                 }.onSuccess {
                     profileSyncStatus = "Copia restaurada y sincronizada. El historial compartido de cuidadores se conserva."

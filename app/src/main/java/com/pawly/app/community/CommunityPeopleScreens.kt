@@ -134,7 +134,7 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
         FirebasePhoneNumberVerification.getInstance().getVerifiedPhoneNumber(activity)
             .addOnSuccessListener { result ->
                 scope.launch {
-                    runCatching { repo.verifyPhoneNumberToken(result.token) }
+                    runCatching { repo.verifyPhoneNumberToken(result.getToken()) }
                         .onSuccess {
                             phoneVerified = it.verified
                             phoneDiscoveryEnabled = it.enabled

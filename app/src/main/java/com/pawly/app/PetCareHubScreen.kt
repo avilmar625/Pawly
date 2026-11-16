@@ -24,6 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
@@ -246,7 +248,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                                 putExtra(Intent.EXTRA_SUBJECT, "Ficha de emergencia de $petName")
                                 putExtra(Intent.EXTRA_TEXT, message)
                             }
-                            runCatching { context.startActivity(Intent.createChooser(send, tr("Compartir ficha de emergencia"))) }
+                            runCatching { context.startActivity(Intent.createChooser(send, "Compartir ficha de emergencia")) }
                         },
                         enabled = emergencyEntries.isNotEmpty()
                     ) { Text(tr("Compartir ficha con veterinario o persona de confianza")) }
@@ -306,6 +308,8 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
         item {
             Text(tr("Este historial no sustituye a la cartilla oficial ni a la historia clínica de tu veterinario. Los documentos adjuntos y la exportación PDF se incorporarán en una fase posterior."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+
         if (careLogs.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -331,8 +335,6 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                 }
             }
         }
-    }
-
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },

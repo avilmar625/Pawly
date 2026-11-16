@@ -504,7 +504,7 @@ private fun EventDetailsDialog(
                 Text("${tr("Personas interesadas")} · ${event.interestedCount}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 if (canViewAttendees) {
                     OutlinedButton(onClick = onLoadAttendees, enabled = !attendeesLoading) {
-                        Icon(Icons.Default.People, null, modifier = Modifier.size(17.dp))
+                        Icon(Icons.Default.Groups, null, modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(tr("Ver asistentes"))
                     }
