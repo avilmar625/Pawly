@@ -828,7 +828,8 @@ class FirebaseCommunityRepository private constructor(
             .documents.map { doc ->
                 PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
                     doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
-                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L)
+                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
+                    doc.getDouble("latitude"), doc.getDouble("longitude"))
             }.sortedByDescending { it.createdAt }
     }
 
@@ -838,7 +839,8 @@ class FirebaseCommunityRepository private constructor(
             .documents.map { doc ->
                 PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
                     doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
-                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L)
+                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
+                    doc.getDouble("latitude"), doc.getDouble("longitude"))
             }.sortedByDescending { it.createdAt }
     }
 
@@ -848,15 +850,19 @@ class FirebaseCommunityRepository private constructor(
             .update("status", if (approve) "approved" else "rejected").await()
     }
 
-    suspend fun submitCommunityPlace(name: String, category: String, location: String, description: String) {
+    suspend fun submitCommunityPlace(name: String, category: String, location: String, description: String, latitude: Double?, longitude: Double?) {
         val uid = requireVerifiedUid()
         val cleanName = name.trim()
         val cleanLocation = location.trim()
         val cleanDescription = description.trim()
         require(cleanName.length in 3..80 && cleanLocation.length in 3..120 && cleanDescription.length in 10..500)
         require(category in setOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro"))
+        require(latitude != null && longitude != null && latitude in -90.0..90.0 && longitude in -180.0..180.0) {
+            "Selecciona el punto exacto del lugar en el mapa."
+        }
         db.collection("communityPlaces").add(mapOf(
             "name" to cleanName, "category" to category, "location" to cleanLocation,
+            "latitude" to latitude, "longitude" to longitude,
             "description" to cleanDescription, "authorUid" to uid, "status" to "approved",
             "createdAt" to FieldValue.serverTimestamp()
         )).await()
