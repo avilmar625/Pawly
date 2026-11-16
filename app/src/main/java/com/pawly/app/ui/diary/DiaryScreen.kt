@@ -79,6 +79,7 @@ internal fun DiaryScreen(
     var memoryTitle by remember { mutableStateOf("") }
     var memoryCategory by remember { mutableStateOf("Paseos") }
     var diaryFilter by remember { mutableStateOf("Todos") }
+    var newestFirst by remember { mutableStateOf(true) }
     var memoryDate by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var selectedPhotos by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var photoUploadBusy by remember { mutableStateOf(false) }
@@ -128,8 +129,10 @@ internal fun DiaryScreen(
             }
         }
     }
-    val filteredEntries = remember(visibleEntries, diaryFilter) {
-        if (diaryFilter == "Todos") visibleEntries else visibleEntries.filter { parseDiaryRecord(it).category == diaryFilter }
+    val filteredEntries = remember(visibleEntries, diaryFilter, newestFirst) {
+        val matching = if (diaryFilter == "Todos") visibleEntries
+            else visibleEntries.filter { parseDiaryRecord(it).category == diaryFilter }
+        matching.sortedBy { parseDiaryRecord(it).dateMillis }.let { if (newestFirst) it.reversed() else it }
     }
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -242,6 +245,20 @@ internal fun DiaryScreen(
         item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · ${visibleEntries.size} recuerdos guardados") }
         item {
             Text(tr("Organiza vuestra historia por categorías, fechas y fotografías."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    tr("${filteredEntries.size} recuerdos"),
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.labelMedium
+                )
+                TextButton(onClick = { newestFirst = !newestFirst }) {
+                    Icon(if (newestFirst) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text(tr(if (newestFirst) "Más recientes" else "Más antiguos"))
+                }
+            }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf("Todos", "Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").forEach { value ->
                     FilterChip(selected = diaryFilter == value, onClick = { diaryFilter = value }, label = { Text(tr(value)) })
