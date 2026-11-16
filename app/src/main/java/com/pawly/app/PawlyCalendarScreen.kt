@@ -269,7 +269,7 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
                 OutlinedButton(onClick = {
                     val initial = Calendar.getInstance().apply { timeInMillis = date }
                     DatePickerDialog(context, { _, y, m, d -> date = Calendar.getInstance().apply { set(y, m, d, hour, minute, 0) }.timeInMillis }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).apply { datePicker.minDate = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis }.show()
-                }, modifier = Modifier.fillMaxWidth()) { Text(java.text.DateFormat.getDateInstance(locale).format(Date(date))) }
+                }, modifier = Modifier.fillMaxWidth()) { Text(java.text.DateFormat.getDateInstance(java.text.DateFormat.DEFAULT, locale).format(Date(date))) }
                 OutlinedButton(onClick = { TimePickerDialog(context, { _, h, m -> hour = h; minute = m; date = Calendar.getInstance().apply { timeInMillis = date; set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }.timeInMillis }, hour, minute, true).show() }, modifier = Modifier.fillMaxWidth()) { Text(String.format(java.util.Locale.ROOT, "%02d:%02d", hour, minute)) }
                 if (saveError != null) Text(saveError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
