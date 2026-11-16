@@ -52,6 +52,9 @@ internal fun HomeScreen(
     onCalendar: () -> Unit = {},
     onCommunity: () -> Unit = {},
     onHealth: () -> Unit = {},
+    onWeight: () -> Unit = onHealth,
+    onPhoto: () -> Unit = onDiary,
+    onFood: () -> Unit = onHealth,
     storageScope: String? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -137,7 +140,10 @@ internal fun HomeScreen(
                 medicineDone = medicineDone,
                 onWalkToggle = onWalkToggle,
                 onMedicineToggle = onMedicineToggle,
-                onOpenCalendar = onCalendar
+                onOpenCalendar = onCalendar,
+                onWeight = onWeight,
+                onPhoto = onPhoto,
+                onFood = onFood
             )
         }
         if (nextPassportEntry != null) {
@@ -148,17 +154,6 @@ internal fun HomeScreen(
                     date = nextPassportEntry.first,
                     onClick = onHealth
                 )
-            }
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                Text(tr("Accesos rápidos"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    HomeQuickAction(Icons.Filled.DirectionsWalk, "Paseo", Color(0xFFE2F1E6), { onWalkToggle(!walkDone) }, Modifier.weight(1f))
-                    HomeQuickAction(Icons.Filled.MonitorWeight, "Peso", Color(0xFFDDF1EE), onHealth, Modifier.weight(1f))
-                    HomeQuickAction(Icons.Filled.PhotoCamera, "Foto", Color(0xFFFFE9DF), onDiary, Modifier.weight(1f))
-                    HomeQuickAction(Icons.Filled.Restaurant, "Comida", Color(0xFFE4EBC1), onHealth, Modifier.weight(1f))
-                }
             }
         }
         item {
