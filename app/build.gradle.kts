@@ -84,7 +84,7 @@ android {
             buildConfigField("String", "FPNV_TEST_TOKEN", buildConfigString("FPNV_TEST_TOKEN"))
         }
         getByName("release") {
-            buildConfigField("String", "FPNV_TEST_TOKEN", "\"\\\"\\\"")
+            buildConfigField("String", "FPNV_TEST_TOKEN", "\"\\"")
             // CI remains unsigned. Local builds become signed when all four
             // RELEASE_* values are supplied in the developer's local.properties.
             if (hasCompleteReleaseSigning) {
