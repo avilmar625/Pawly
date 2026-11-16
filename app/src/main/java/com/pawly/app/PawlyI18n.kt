@@ -582,11 +582,60 @@ internal object PawlyI18n {
         else -> Locale("es", "ES")
     }
 
+    private val homeCa = mapOf(
+        "Guardado en este dispositivo" to "Desat en aquest dispositiu", "Cargando cuidados…" to "Carregant les cures…",
+        "Rutinas locales sincronizadas" to "Rutines locals sincronitzades", "Cuidados sincronizados" to "Cures sincronitzades",
+        "Sin conexión: se conserva la copia local" to "Sense connexió: es conserva la còpia local",
+        "Cambios sincronizados" to "Canvis sincronitzats", "Guardado localmente; sincronización pendiente" to "Desat localment; sincronització pendent",
+        "cuidados completados" to "cures completades", "Solo falta" to "Només falta", "Aún quedan" to "Encara queden",
+        "cuidados por completar" to "cures per completar", "Lo de hoy" to "Les cures d'avui", "Ver agenda" to "Veure agenda",
+        "Paseo diario" to "Passeig diari", "Un rato para explorar y olfatear" to "Una estona per explorar i ensumar",
+        "Comprueba la toma de hoy" to "Comprova la dosi d'avui",
+        "No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados." to "No hi ha cures programades per avui. Pots afegir rutines a La meva mascota → Cures.",
+        "Próximamente" to "Properament", "hoy" to "avui", "mañana" to "demà", "dentro de" to "d'aquí a", "días" to "dies",
+        "Registrar rápido" to "Registre ràpid", "En casa de" to "A casa de", "ya registró" to "ja ha registrat",
+        "Comprueba que no se vaya a administrar dos veces." to "Comprova que no s'administri dues vegades.",
+        "Registrar igualmente" to "Registrar igualment", "No, ya está dada" to "No, ja s'ha administrat",
+        "¡Todo listo! Qué buen equipo." to "Tot a punt! Quin bon equip."
+    )
+    private val homeFr = mapOf(
+        "Guardado en este dispositivo" to "Enregistré sur cet appareil", "Cargando cuidados…" to "Chargement des soins…",
+        "Rutinas locales sincronizadas" to "Routines locales synchronisées", "Cuidados sincronizados" to "Soins synchronisés",
+        "Sin conexión: se conserva la copia local" to "Hors ligne : la copie locale est conservée",
+        "Cambios sincronizados" to "Modifications synchronisées", "Guardado localmente; sincronización pendiente" to "Enregistré localement ; synchronisation en attente",
+        "cuidados completados" to "soins terminés", "Solo falta" to "Il ne reste que", "Aún quedan" to "Il reste encore",
+        "cuidados por completar" to "soins à terminer", "Lo de hoy" to "Aujourd'hui", "Ver agenda" to "Voir le calendrier",
+        "Paseo diario" to "Promenade quotidienne", "Un rato para explorar y olfatear" to "Un moment pour explorer et renifler",
+        "Comprueba la toma de hoy" to "Vérifiez la prise du jour",
+        "No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados." to "Aucun soin prévu aujourd'hui. Vous pouvez ajouter des routines dans Mon animal → Soins.",
+        "Próximamente" to "À venir", "hoy" to "aujourd'hui", "mañana" to "demain", "dentro de" to "dans", "días" to "jours",
+        "Registrar rápido" to "Ajout rapide", "En casa de" to "Chez", "ya registró" to "a déjà enregistré",
+        "Comprueba que no se vaya a administrar dos veces." to "Vérifiez que le médicament ne sera pas administré deux fois.",
+        "Registrar igualmente" to "Enregistrer quand même", "No, ya está dada" to "Non, c'est déjà fait",
+        "¡Todo listo! Qué buen equipo." to "Tout est prêt ! Quelle belle équipe."
+    )
+    private val homeEn = mapOf(
+        "Guardado en este dispositivo" to "Saved on this device", "Cargando cuidados…" to "Loading care tasks…",
+        "Rutinas locales sincronizadas" to "Local routines synced", "Cuidados sincronizados" to "Care tasks synced",
+        "Sin conexión: se conserva la copia local" to "Offline: your local copy is preserved",
+        "Cambios sincronizados" to "Changes synced", "Guardado localmente; sincronización pendiente" to "Saved locally; sync pending",
+        "cuidados completados" to "care tasks completed", "Solo falta" to "Only", "Aún quedan" to "There are still",
+        "cuidados por completar" to "care tasks left", "Lo de hoy" to "Today's care", "Ver agenda" to "View schedule",
+        "Paseo diario" to "Daily walk", "Un rato para explorar y olfatear" to "Time to explore and sniff around",
+        "Comprueba la toma de hoy" to "Check today's dose",
+        "No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados." to "No care tasks are scheduled today. Add routines in My pet → Care.",
+        "Próximamente" to "Coming up", "hoy" to "today", "mañana" to "tomorrow", "dentro de" to "in", "días" to "days",
+        "Registrar rápido" to "Quick add", "En casa de" to "At", "ya registró" to "already recorded",
+        "Comprueba que no se vaya a administrar dos veces." to "Please check that the medication will not be given twice.",
+        "Registrar igualmente" to "Record anyway", "No, ya está dada" to "No, it has already been given",
+        "¡Todo listo! Qué buen equipo." to "All done! What a great team."
+    )
+
     fun text(value: String, language: String): String = when (language) {
         "eu" -> euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: dynamicText(value, language) ?: value
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: homeCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: homeFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: homeEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
         else -> value
     }
 }
