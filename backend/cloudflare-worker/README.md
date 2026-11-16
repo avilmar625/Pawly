@@ -1,72 +1,99 @@
-# Pawly API — Cloudflare Workers
+# Pawly API — Cloudflare Workers (plan gratuito)
 
-Backend de confianza para notificaciones de actividad, alertas de mascotas perdidas y búsqueda de contactos mediante HMAC. Está diseñado para el plan gratuito de Cloudflare Workers y no utiliza Firebase Cloud Functions.
+Backend de confianza para notificaciones de actividad, avisos de mascotas perdidas y propuestas moderadas de lugares. Se ejecuta en Cloudflare Workers y no utiliza Firebase Cloud Functions.
 
-## Qué hace
+## Estado real
 
-- Verifica el Firebase ID token del usuario con las claves públicas oficiales de Firebase Authentication.
-- Comprueba en Firestore que el like, comentario o seguimiento existe realmente.
+- El código y los tests están en este repositorio.
+- **El Worker no está desplegado todavía en ninguna cuenta de Cloudflare.**
+- Para conectarlo a la app hay que desplegarlo con Wrangler, configurar los secretos y añadir su URL a `PAWLY_BACKEND_URL` en el `local.properties` local de Android.
+- La búsqueda por teléfono está desactivada: no se puede registrar ni buscar un número sin demostrar su titularidad.
+- La eliminación completa de cuentas todavía no está implementada. El índice de recursos Cloudinary ya se registra para facilitar esa tarea, pero no existe aún un proceso que elimine en cascada Firestore, Cloudinary y Firebase Authentication.
+
+## Funciones implementadas en el Worker
+
+- Verifica Firebase ID tokens y exige correo verificado.
+- Comprueba en Firestore que likes, comentarios y seguimientos existen realmente antes de enviar notificaciones.
 - Comprueba bloqueos en ambos sentidos.
-- Obtiene los tokens FCM del destinatario mediante paginación acotada (hasta 500 dispositivos) y envía el mensaje mediante FCM HTTP v1.
-- Para comentarios, exige que el identificador coincida con el último comentario registrado en la publicación, además de comprobar autoría y existencia.
-- Registra un identificador idempotente en `pushDispatches`, con estado, lease temporal y recuperación condicional de envíos fallidos o abandonados.
-- Elimina tokens FCM que FCM devuelve como no registrados.
-- Envía avisos de mascotas perdidas a usuarios que han activado voluntariamente un radio de 5, 10 o 20 km. Se almacena una ubicación redondeada (~1 km), se respetan bloqueos y el envío se realiza por FCM.
-- Permite descubrir contactos mediante HMAC-SHA256. El teléfono se procesa en memoria; Firestore solo conserva un hash HMAC y el UID. No se expone el número ni se sube la agenda completa.
-- Mantiene el directorio de teléfonos inaccesible desde clientes; las operaciones pasan por el Worker autenticado.
+- Envía notificaciones FCM HTTP v1 y limpia tokens no registrados.
+- Gestiona envíos idempotentes para evitar notificaciones duplicadas.
+- Envía avisos de mascotas perdidas según radios consentidos de 5, 10 o 20 km, usando celdas geográficas aproximadas.
+- Procesa los destinatarios de avisos por lotes paginados. Cada ejecución procesa como máximo cuatro candidatos y consulta como máximo dos dispositivos por destinatario, para mantenerse por debajo del límite de 50 subpeticiones externas del plan Free.
+- Recibe propuestas de lugares con coordenadas exactas, valida el contenido y limita a una propuesta por cuenta verificada y día UTC. Las propuestas se crean como `pending`; solo moderación puede aprobarlas.
+- No contiene endpoints de búsqueda por teléfono.
 
-El cliente nunca recibe ni contiene la clave privada de la cuenta de servicio.
+## Límites del plan gratuito
 
-## Requisitos de configuración
+La documentación de Cloudflare indica 100.000 peticiones diarias y 50 subpeticiones externas por invocación para Workers Free. El Worker pagina los destinatarios de alertas para no superar ese límite. Las cuotas de Firestore y Firebase Cloud Messaging son independientes y también deben supervisarse.
 
-1. Crear una cuenta gratuita de Cloudflare y autenticar Wrangler.
-2. En Google Cloud Console del proyecto Firebase `pawly-83dca`, crear una cuenta de servicio dedicada para Pawly API.
-3. Asignarle los permisos mínimos necesarios para leer los documentos de usuarios/publicaciones y gestionar `pushDispatches`, además del permiso de envío de Firebase Cloud Messaging. Revisar los roles IAM efectivos antes de producción.
-4. Generar una clave JSON de esa cuenta de servicio y guardar el archivo fuera del repositorio.
-5. No subir nunca el JSON ni la clave privada a GitHub.
+## Requisitos previos
 
-Configurar secretos en Cloudflare:
+1. Cuenta gratuita de Cloudflare con un subdominio `workers.dev` habilitado.
+2. Proyecto Firebase `pawly-83dca`.
+3. Cuenta de servicio dedicada de Google para el Worker, con permisos mínimos de lectura/escritura de Firestore y envío de Firebase Cloud Messaging.
+4. Wrangler instalado mediante las dependencias del proyecto.
+
+## Despliegue inicial
+
+Desde la raíz del repositorio:
 
 ```bash
 cd backend/cloudflare-worker
-npm install
+npm ci
 npx wrangler login
 npx wrangler secret put FIREBASE_CLIENT_EMAIL
 npx wrangler secret put FIREBASE_PRIVATE_KEY
-openssl rand -hex 32 | npx wrangler secret put PHONE_MATCH_HMAC_SECRET
 npm run check
+npm test
 npm run deploy
 ```
 
-El ID del proyecto está en `wrangler.toml`. La clave privada debe pegarse completa como valor secreto PEM; Wrangler la almacena como secreto, no en el repositorio.
+Al ejecutar cada `wrangler secret put`, pega el valor solicitado en el terminal. La clave privada PEM debe mantenerse como secreto de Cloudflare. No subas el JSON de la cuenta de servicio, claves privadas ni secretos a GitHub.
 
-## Nuevos servicios y consentimiento
+El identificador de Firebase ya está definido como variable no secreta en `wrangler.toml`. El Worker utiliza estas variables/secretos:
 
-- **Mascotas perdidas:** Android crea el aviso y `lostPetAlerts/{postId}` después de publicar la entrada `LOST`. El Worker comprueba autoría y estado, calcula distancias y envía FCM solo a suscripciones activas dentro del radio. La ubicación se redondea a dos decimales antes de almacenarse; no se guarda la coordenada GPS exacta. Las personas receptoras eligen el radio y pueden desactivarlo desde Más → He perdido a mi mascota.
-- **Contactos:** cada persona decide si quiere ser localizable y registra manualmente su teléfono. El Worker normaliza el número y genera un HMAC con `PHONE_MATCH_HMAC_SECRET`; el número original no se persiste. La búsqueda usa el selector de teléfonos del sistema y devuelve solo perfiles públicos con consentimiento. El secreto debe permanecer estable.
-- **Lugares de la comunidad:** las propuestas quedan en `communityPlaces` con estado `pending`. Solo una cuenta con custom claim `admin=true` puede aprobarlas o rechazarlas; el cliente solo consulta documentos `approved`. Revisa las propuestas en Firestore o con una herramienta administrativa protegida.
-- **Profesionales:** los perfiles profesionales publicados se muestran en el directorio de Pawly. La insignia identifica un tipo de cuenta, no acredita títulos ni colegiación. El contacto solo se muestra cuando el profesional activa expresamente su publicación.
+| Nombre | Tipo | Contenido |
+|---|---|---|
+| `FIREBASE_PROJECT_ID` | Variable Wrangler | `pawly-83dca` |
+| `FIREBASE_CLIENT_EMAIL` | Secreto Wrangler | Correo de la cuenta de servicio |
+| `FIREBASE_PRIVATE_KEY` | Secreto Wrangler | Clave privada PEM de la cuenta de servicio |
+
+No configures `PHONE_MATCH_HMAC_SECRET`: la búsqueda por teléfono se ha retirado.
+
+Tras desplegar, Wrangler mostrará una URL similar a:
+
+```
+https://pawly-api.<tu-subdominio>.workers.dev
+```
+
+Comprueba el servicio:
+
+```bash
+curl https://pawly-api.<tu-subdominio>.workers.dev/health
+```
+
+Debe responder `{"service":"pawly-api","status":"ok"}`.
 
 ## Conectar Android
 
-Añadir la URL HTTPS del Worker a `local.properties`:
+Añade la URL real del Worker a `local.properties` (en la raíz del proyecto Android):
 
 ```properties
 PAWLY_BACKEND_URL=https://pawly-api.<tu-subdominio>.workers.dev
 ```
 
-No incluir barras ni rutas al final. Después, volver a compilar Android. Si la propiedad está vacía, Pawly conserva la experiencia actual sin intentar enviar push.
+Después sincroniza Gradle y recompila. Esta propiedad se incorpora a `BuildConfig`; no se debe escribir la URL ficticia del ejemplo ni subir el archivo `local.properties` al repositorio.
 
-## Límites y seguridad
+## Lugares de la comunidad
 
-- El endpoint de actividad solo admite los tres tipos de interacción definidos; no acepta texto arbitrario ni tokens FCM aportados por el cliente.
-- Los teléfonos se procesan en memoria y no se guardan en claro. El hash HMAC no es reversible sin el secreto, que nunca debe guardarse en Android ni en Git.
-- El radio se calcula en el servidor con una ubicación redondeada; los avisos no garantizan entrega instantánea ni sustituyen otros medios de búsqueda.
-- Las reglas de Firestore siguen siendo obligatorias. El Worker no las sustituye.
-- Los envíos completados quedan marcados como `sent`; los fallidos se pueden reintentar y los procesos abandonados se recuperan al expirar un lease de cinco minutos. Los registros antiguos sin estado se tratan como completados para evitar duplicados tras la actualización. La entrega FCM es *at-least-once*: si un proceso falla después de entregar a algunos dispositivos pero antes de guardar el resultado, un reintento puede duplicar esa notificación.
-- Para limpiar automáticamente `pushDispatches` después de 30 días, configurar una política TTL de Firestore sobre el campo `expiresAt` de esa colección. Sin esa política, el campo por sí solo no elimina documentos.
-- El límite gratuito de Workers aplica a las peticiones y CPU; Firestore y FCM tienen sus propias cuotas.
-- No se incluye aquí el borrado de cuentas. No se debe presentar el borrado como automático hasta completar y probar la cascada de datos, medios Cloudinary y autenticación.
-- No se ha desplegado este Worker desde GitHub: el propietario de la cuenta debe configurar los secretos y ejecutar el despliegue.
+El cliente llama a `POST /v1/community-places`. El Worker comprueba el ID token, valida nombre/categoría/dirección/coordenadas y reserva una única propuesta diaria por usuario. La creación usa estado `pending`. El cliente no puede crear lugares directamente en Firestore. Las reglas permiten que el autor edite su propuesta/publicación y elimine su propio lugar; el equipo de moderación gestiona aprobación, rechazo y retirada.
 
-Antes de producción, probar con un proyecto Firebase de pruebas y una cuenta de servicio dedicada; comprobar especialmente permisos IAM, tokens caducados, bloqueos, duplicados y tokens FCM inválidos.
+Configura una política TTL de Firestore sobre `communityPlaceSubmissionLimits.expiresAt` para limpiar reservas de más de 90 días. Sin TTL, el límite sigue funcionando pero los documentos de cuota se acumulan.
+
+## Privacidad y eliminación de cuenta
+
+- No se verifica la titularidad de teléfonos; por eso la búsqueda telefónica está deshabilitada.
+- Los registros de asistentes a eventos son privados; la app solo muestra el contador de interés.
+- Las imágenes y vídeos nuevos registran su `public_id` y tipo en `cloudinaryAssets`, bajo el UID propietario. Esto es un índice para la futura cascada de borrado, no significa que el borrado esté ya automatizado.
+- **No publiques Pawly como lista para producción mientras la eliminación de cuenta no borre y verifique todos los datos y recursos multimedia.** Consulta `docs/ACCOUNT_DELETION_OPERATIONS.md`.
+
