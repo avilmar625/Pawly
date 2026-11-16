@@ -332,6 +332,26 @@ private fun PetPassportSection(
         }
     }
 
+    pendingMedicationConfirmation?.let { (task, previousLog) ->
+        AlertDialog(
+            onDismissRequest = { pendingMedicationConfirmation = null },
+            title = { Text(tr("¿Registrar otra toma?")) },
+            text = {
+                Text(tr("${previousLog.actorName} ya registró «${task.title}» hoy. Comprueba que no se vaya a administrar dos veces."))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingMedicationConfirmation = null
+                    saveTaskCompletion(task, true)
+                }) { Text(tr("Registrar igualmente")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingMedicationConfirmation = null }) {
+                    Text(tr("No, ya está dada"))
+                }
+            }
+        )
+    }
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
@@ -447,6 +467,48 @@ private fun PetCarePlanSection(
     var dose by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
     var reminderEnabled by remember { mutableStateOf(false) }
+    var pendingMedicationConfirmation by remember { mutableStateOf<Pair<CareTask, CareLogEntry>?>(null) }
+
+    fun saveTaskCompletion(task: CareTask, checked: Boolean) {
+        val updated = task.copy(completed = checked, completedOn = if (checked) today else "")
+        tasks = tasks.map { if (it.id == task.id) updated else it }
+        PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
+        if (checked) {
+            val localLog = CareLogEntry(
+                UUID.randomUUID().toString(), task.title, task.action, "local", "Tú",
+                System.currentTimeMillis()
+            )
+            careLogs = (listOf(localLog) + careLogs).take(100)
+            PetCareLocalStore.saveCareLogs(context, petName, careLogs, localStorageScope)
+        }
+        cloudRepository?.let { repo ->
+            coroutineScope.launch {
+                runCatching {
+                    repo.saveCareTask(petId, updated)
+                    if (checked) repo.logCareAction(petId, task.title, task.action)
+                    repo.loadCareLogs(petId)
+                }
+                    .onSuccess { logs ->
+                        if (checked) careLogs = logs
+                        PetCareLocalStore.saveCareLogs(context, petName, careLogs, localStorageScope)
+                        syncMessage = "Cambios sincronizados"
+                    }
+                    .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
+            }
+        }
+    }
+
+    fun requestTaskToggle(task: CareTask, checked: Boolean) {
+        if (checked && task.action.equals("Medicación", ignoreCase = true)) {
+            val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            val duplicate = com.pawly.app.care.domain.CareDuplicateGuard.findRecentMedicationLog(careLogs, task, currentUid)
+            if (duplicate != null) {
+                pendingMedicationConfirmation = task to duplicate
+                return
+            }
+        }
+        saveTaskCompletion(task, checked)
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -491,34 +553,7 @@ private fun PetCarePlanSection(
                     androidx.compose.material3.Checkbox(
                         checked = task.completed,
                         enabled = canEdit,
-                        onCheckedChange = { checked ->
-                            val updated = task.copy(completed = checked, completedOn = if (checked) today else "")
-                            tasks = tasks.map { if (it.id == task.id) updated else it }
-                            PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
-                            if (checked) {
-                                val localLog = CareLogEntry(
-                                    UUID.randomUUID().toString(), task.title, task.action, "local", "Tú",
-                                    System.currentTimeMillis()
-                                )
-                                careLogs = (listOf(localLog) + careLogs).take(100)
-                                PetCareLocalStore.saveCareLogs(context, petName, careLogs, localStorageScope)
-                            }
-                            cloudRepository?.let { repo ->
-                                coroutineScope.launch {
-                                    runCatching {
-                                        repo.saveCareTask(petId, updated)
-                                        if (checked) repo.logCareAction(petId, task.title, task.action)
-                                        repo.loadCareLogs(petId)
-                                    }
-                                        .onSuccess { logs ->
-                                            if (checked) careLogs = logs
-                                            PetCareLocalStore.saveCareLogs(context, petName, careLogs, localStorageScope)
-                                            syncMessage = "Cambios sincronizados"
-                                        }
-                                        .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
-                                }
-                            }
-                        }
+                        onCheckedChange = { checked -> requestTaskToggle(task, checked) }
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(task.title, fontWeight = FontWeight.SemiBold)
