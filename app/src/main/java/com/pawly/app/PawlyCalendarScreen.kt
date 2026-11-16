@@ -48,6 +48,8 @@ internal fun PawlyCalendarScreen(
     dogName: String = "tu mascota"
 ) {
     val context = LocalContext.current
+    val language = LocalPawlyLanguage.current
+    val locale = PawlyI18n.locale(language)
     val openCalendarChooserTitle = tr("Abrir calendario")
     val calendarUnavailableText = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.")
     var events by remember { mutableStateOf(emptyList<PawlyEvent>()) }
@@ -127,7 +129,7 @@ internal fun PawlyCalendarScreen(
                 Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { val target = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, -1) }; monthAnchor = target.timeInMillis; selectedDate = target.timeInMillis }) { Icon(Icons.Default.ChevronLeft, tr("Mes anterior")) }
-                        Text(java.text.DateFormatSymbols.getInstance().let { it.months[monthIndex].replaceFirstChar { ch -> ch.uppercase() } } + " $monthYear", modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+                        Text(java.text.DateFormatSymbols.getInstance(locale).let { it.months[monthIndex].replaceFirstChar { ch -> ch.uppercase() } } + " $monthYear", modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                         IconButton(onClick = { val target = Calendar.getInstance().apply { timeInMillis = monthAnchor; add(Calendar.MONTH, 1) }; monthAnchor = target.timeInMillis; selectedDate = target.timeInMillis }) { Icon(Icons.Default.ChevronRight, tr("Mes siguiente")) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -158,7 +160,7 @@ internal fun PawlyCalendarScreen(
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(tr("Seleccionado: ") + java.text.DateFormat.getDateInstance(java.text.DateFormat.FULL).format(Date(selectedDate)), modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        Text(tr("Seleccionado: ") + java.text.DateFormat.getDateInstance(java.text.DateFormat.FULL, locale).format(Date(selectedDate)), modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         TextButton(onClick = { selectedDate = System.currentTimeMillis(); monthAnchor = selectedDate }) { Text(tr("Hoy")) }
                     }
                 }
@@ -250,6 +252,7 @@ private fun AgendaRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tit
 @Composable
 private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, onSave: (String, Long, String) -> Boolean) {
     val context = LocalContext.current
+    val locale = PawlyI18n.locale(LocalPawlyLanguage.current)
     var title by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Personal") }
     var hour by remember { mutableIntStateOf(9) }
@@ -266,7 +269,7 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
                 OutlinedButton(onClick = {
                     val initial = Calendar.getInstance().apply { timeInMillis = date }
                     DatePickerDialog(context, { _, y, m, d -> date = Calendar.getInstance().apply { set(y, m, d, hour, minute, 0) }.timeInMillis }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).apply { datePicker.minDate = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis }.show()
-                }, modifier = Modifier.fillMaxWidth()) { Text(java.text.DateFormat.getDateInstance().format(Date(date))) }
+                }, modifier = Modifier.fillMaxWidth()) { Text(java.text.DateFormat.getDateInstance(locale).format(Date(date))) }
                 OutlinedButton(onClick = { TimePickerDialog(context, { _, h, m -> hour = h; minute = m; date = Calendar.getInstance().apply { timeInMillis = date; set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }.timeInMillis }, hour, minute, true).show() }, modifier = Modifier.fillMaxWidth()) { Text(String.format(java.util.Locale.ROOT, "%02d:%02d", hour, minute)) }
                 if (saveError != null) Text(saveError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
