@@ -208,6 +208,30 @@ class FirebasePetCareRepository(
                     doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
             }
 
+    /**
+     * One-time, non-destructive migration for older passport records that were
+     * saved before createdAtOrder existed. Prefer the device's persisted order
+     * for same-day records; never rewrite records that already have an order.
+     */
+    suspend fun backfillPassportEntryOrder(petId: String, preferredLocalOrder: List<String>) {
+        require(petId.isNotBlank())
+        val documents = passport(petId).get().await().documents
+        val missing = documents.filter { it.getLong("createdAtOrder") == null }
+        if (missing.isEmpty()) return
+        val localIndex = preferredLocalOrder.withIndex().associate { it.value to it.index }
+        val orderedMissing = missing.sortedWith(
+            compareBy<com.google.firebase.firestore.DocumentSnapshot> { it.getString("date").orEmpty() }
+                .thenBy { localIndex[it.id] ?: Int.MAX_VALUE }
+                .thenBy { it.id }
+        )
+        val batch = db.batch()
+        val baseOrder = System.currentTimeMillis() * 1_000_000L
+        orderedMissing.forEachIndexed { index, document ->
+            batch.update(document.reference, "createdAtOrder", baseOrder + index)
+        }
+        batch.commit().await()
+    }
+
     override suspend fun deletePassportEntry(petId: String, entryId: String) {
         require(petId.isNotBlank() && entryId.isNotBlank())
         passport(petId).document(entryId).delete().await()
