@@ -146,6 +146,7 @@ private suspend fun loadNearbyPlaces(latitude: Double, longitude: Double, catego
 @Composable
 internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> Unit, elegantDesign: Boolean = false, repository: FirebaseCommunityRepository? = null) {
     val context = LocalContext.current
+    val locale = PawlyI18n.locale(LocalPawlyLanguage.current)
     val scope = rememberCoroutineScope()
     var communityPlaces by remember { mutableStateOf(emptyList<PawlyCommunityPlace>()) }
     var communityPlacesMessage by remember { mutableStateOf<String?>(null) }
@@ -165,12 +166,12 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     var nearbyPlaces by remember { mutableStateOf(emptyList<NearbyPlace>()) }
     var placesLoading by remember { mutableStateOf(false) }
     var placesError by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(currentCoordinates) {
+    LaunchedEffect(currentCoordinates, locale) {
         val point = currentCoordinates ?: return@LaunchedEffect
         currentAddress = withContext(Dispatchers.IO) {
             runCatching {
                 @Suppress("DEPRECATION")
-                Geocoder(context, Locale.getDefault()).getFromLocation(point.first, point.second, 1)
+                Geocoder(context, locale).getFromLocation(point.first, point.second, 1)
                     ?.firstOrNull()?.getAddressLine(0)
             }.getOrNull()
         }
