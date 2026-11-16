@@ -179,6 +179,7 @@ internal fun PawlyEventsScreen(
     val attendeesLoadErrorText = tr("No se pudo cargar la lista de personas interesadas.")
     val chooserTitle = tr("Añadir a mi calendario")
     val calendarErrorMessage = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.")
+    val interestUpdateErrorText = tr("No se pudo actualizar tu interés.")
     LaunchedEffect(repository) {
         runCatching { repository.loadEvents() }
             .onSuccess { events = it; error = null }
@@ -411,7 +412,7 @@ internal fun PawlyEventsScreen(
                             }
                             selectedEvent = events.firstOrNull { it.id == event.id }
                         }
-                        .onFailure { error = it.localizedMessage ?: tr("No se pudo actualizar tu interés.") }
+                        .onFailure { error = it.localizedMessage ?: interestUpdateErrorText }
                 }
             }
         )
