@@ -36,6 +36,19 @@ const json = (body: unknown, status = 200): Response =>
     }
   });
 
+async function mapInBatches<T, R>(
+  values: T[],
+  batchSize: number,
+  mapper: (value: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = [];
+  for (let offset = 0; offset < values.length; offset += batchSize) {
+    const batch = values.slice(offset, offset + batchSize);
+    results.push(...await Promise.all(batch.map(mapper)));
+  }
+  return results;
+}
+
 function decodeFirestoreString(value: any): string {
   return typeof value?.stringValue === "string" ? value.stringValue : "";
 }
@@ -325,7 +338,9 @@ export async function handlePhoneDiscoveryMatches(request: Request, env: Env): P
       const candidateUid = decodeFirestoreString(fields?.uid);
       return candidateUid && candidateUid !== uid && decodeFirestoreBoolean(fields?.enabled) ? [candidateUid] : [];
     }))].slice(0, PHONE_MATCH_RESULT_LIMIT);
-    const matches = await Promise.all(candidateUids.map(async candidateUid => {
+    // Two candidates at a time × three Firestore reads each keeps simultaneous
+    // outgoing connections at six, the Workers Free per-invocation ceiling.
+    const matches = await mapInBatches(candidateUids, 2, async candidateUid => {
       const [blockedByMe, blockedMe, profile] = await Promise.all([
         readDocument(env, accessToken, `users/${uid}/blocked/${candidateUid}`),
         readDocument(env, accessToken, `users/${candidateUid}/blocked/${uid}`),
@@ -338,7 +353,7 @@ export async function handlePhoneDiscoveryMatches(request: Request, env: Env): P
         username: decodeFirestoreString(profile.fields?.username),
         photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
       };
-    }));
+    });
     return json({ matches: matches.filter(Boolean), checked: phones.length, truncated: candidateUids.length >= PHONE_MATCH_RESULT_LIMIT });
   } catch (error) {
     const message = error instanceof Error ? error.message : "No se pudieron buscar coincidencias.";
@@ -773,7 +788,9 @@ export async function handleEventAttendees(
     const page = await listResponse.json() as { documents?: any[]; nextPageToken?: string };
     // At most 12 attendees × 3 reads + event + list + token = 39 external
     // subrequests, safely below the Workers Free limit of 50.
-    const attendees = await Promise.all((page.documents ?? []).map(async document => {
+    // Each attendee requires three independent reads; process two attendees at a
+    // time to stay within Cloudflare's six simultaneous outgoing connections.
+    const attendees = await mapInBatches(page.documents ?? [], 2, async document => {
       const attendeeUid = decodeFirestoreString(document.fields?.uid) || String(document.name ?? "").split("/").pop() || "";
       if (!attendeeUid || attendeeUid === uid) return null;
       const [blockedByMe, blockedMe, profile] = await Promise.all([
@@ -788,7 +805,7 @@ export async function handleEventAttendees(
         username: decodeFirestoreString(profile.fields?.username),
         photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
       };
-    }));
+    });
     return json({ attendees: attendees.filter(Boolean), nextPageToken: page.nextPageToken ?? "" });
   } catch {
     return json({ error: "No se pudo cargar la lista privada de asistentes." }, 502);
