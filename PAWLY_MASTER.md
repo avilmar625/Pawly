@@ -467,3 +467,5 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - La barra inferior conserva cinco destinos y adopta un único tono verde bosque; Diario y Calendario muestran activo «Mi perro» y Aprender/Profesionales/Ayuda se agrupan visualmente bajo «Más», sin eliminar sus pantallas ni callbacks.
 - Paleta crema/verde/salvia/coral y tipografía/contornos ya estaban en `PawlyTheme`; se mantienen y se aplican con más coherencia a la navegación.
 - Pendiente: build Android, lint, pruebas y revisión visual en emulador/teléfono. Los cambios están en la rama de trabajo y PR Draft #19; no fusionados.
+
+- La tarjeta de actividad compartida de Hoy ahora usa el encabezado «En casa de [mascota]» y muestra hasta tres registros recientes, acercándose al bloque de convivencia de la referencia sin inventar actividad cuando no hay logs.
