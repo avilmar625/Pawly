@@ -17,5 +17,6 @@ class PetRoutinePreferenceKeysTest {
         val scope = PetRoutinePreferenceKeys.scope("Nala")
         assertNotEquals(PetRoutinePreferenceKeys.day(scope), PetRoutinePreferenceKeys.walkDone(scope))
         assertNotEquals(PetRoutinePreferenceKeys.walkDone(scope), PetRoutinePreferenceKeys.medicineDone(scope))
+        assertNotEquals(PetRoutinePreferenceKeys.photoPath(scope), PetRoutinePreferenceKeys.day(scope))
     }
 }
