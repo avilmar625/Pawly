@@ -157,11 +157,27 @@ test("shared care logs are visible to members and can only be created by editors
   }));
 });
 
-test("shared medication routines accept dose, time, category and daily completion metadata", async () => {
+test("shared care routines accept optional ISO weekdays and reject invalid schedules", async () => {
   const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  // Legacy documents remain valid without the optional field.
   await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/tasks/medication"), {
     id: "medication", title: "Antibiótico", responsible: "Alex", frequency: "Diario",
     completed: false, dose: "1 comprimido", time: "08:30", completedOn: "", action: "Medicación"
+  }));
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/tasks/walk-weekly"), {
+    id: "walk-weekly", title: "Paseo largo", responsible: "Alex", frequency: "Semanal",
+    completed: false, dose: "", time: "", completedOn: "", action: "Paseo",
+    daysOfWeek: [1, 3, 5]
+  }));
+  await assertFails(setDoc(doc(editorDb, "sharedPets/owner_pet/tasks/invalid-weekday"), {
+    id: "invalid-weekday", title: "Rutina inválida", responsible: "Alex", frequency: "Semanal",
+    completed: false, dose: "", time: "", completedOn: "", action: "Otro",
+    daysOfWeek: [1, 8]
+  }));
+  await assertFails(setDoc(doc(editorDb, "sharedPets/owner_pet/tasks/non-weekly-days"), {
+    id: "non-weekly-days", title: "Rutina diaria", responsible: "Alex", frequency: "Diario",
+    completed: false, dose: "", time: "", completedOn: "", action: "Otro",
+    daysOfWeek: [1, 3]
   }));
   const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
   await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/tasks/other"), {
