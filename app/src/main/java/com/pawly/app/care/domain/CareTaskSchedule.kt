@@ -2,6 +2,7 @@ package com.pawly.app.care.domain
 
 import com.pawly.app.care.model.CareTask
 import java.time.LocalDate
+import java.time.ZonedDateTime
 import java.time.temporal.WeekFields
 
 /**
@@ -35,6 +36,34 @@ internal object CareTaskSchedule {
             }
             else -> completedDate == date
         }
+    }
+
+    /**
+     * Returns the next local wall-clock occurrence for a weekly reminder.
+     * The supplied ZonedDateTime carries the device zone, so daylight-saving
+     * changes are evaluated using calendar days rather than fixed 24-hour spans.
+     */
+    fun nextWeeklyReminderAt(
+        timeOfDay: String,
+        days: List<Int>,
+        now: ZonedDateTime = ZonedDateTime.now()
+    ): ZonedDateTime? {
+        if (!timeOfDay.matches(Regex("\\d{2}:\\d{2}"))) return null
+        val parts = timeOfDay.split(":")
+        val hour = parts[0].toIntOrNull()?.takeIf { it in 0..23 } ?: return null
+        val minute = parts[1].toIntOrNull()?.takeIf { it in 0..59 } ?: return null
+        val selectedDays = normalizeDays(days)
+        if (selectedDays.isEmpty()) return null
+        return (0L..7L)
+            .map { offset ->
+                now.plusDays(offset)
+                    .withHour(hour)
+                    .withMinute(minute)
+                    .withSecond(0)
+                    .withNano(0)
+            }
+            .filter { candidate -> candidate.isAfter(now) && candidate.dayOfWeek.value in selectedDays }
+            .minByOrNull { it.toInstant() }
     }
 
     fun daysLabel(days: List<Int>): String = normalizeDays(days).joinToString(", ") { day ->
