@@ -880,34 +880,13 @@ class FirebaseCommunityRepository private constructor(
     }
 
     /** Raw contact numbers are sent only over TLS to the trusted Worker and never stored. */
-    suspend fun loadPhoneDiscoveryEnabled(): Boolean {
-        val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')
-        check(baseUrl.isNotBlank()) { "El servicio seguro de Pawly todavía no está configurado." }
-        val token = auth.currentUser?.getIdToken(false)?.await()?.token ?: error("Inicia sesión de nuevo.")
-        val request = Request.Builder().url("$baseUrl/v1/contact-discovery").header("Authorization", "Bearer $token").get().build()
-        return withContext(Dispatchers.IO) {
-            backendHttpClient.newCall(request).execute().use { response ->
-                val body = response.body?.string().orEmpty()
-                if (!response.isSuccessful) throw IllegalStateException("No se pudo consultar la preferencia de contactos.")
-                JSONObject(body).optBoolean("enabled", false)
-            }
-        }
-    }
+    suspend fun loadPhoneDiscoveryEnabled(): Boolean = false
 
-    suspend fun setPhoneDiscovery(phone: String, enabled: Boolean) {
-        if (enabled) require(phone.trim().length in 7..24) { "Introduce un teléfono válido." }
-        postBackend("/v1/contact-discovery", JSONObject().put("enabled", enabled).put("phone", phone.trim()))
-    }
+    suspend fun setPhoneDiscovery(phone: String, enabled: Boolean): Unit =
+        error("La búsqueda por teléfono está desactivada hasta verificar la titularidad del número.")
 
-    suspend fun findContactMatches(phoneNumbers: List<String>): List<PawlyContactMatch> {
-        require(phoneNumbers.size in 1..30) { "Selecciona entre 1 y 30 contactos." }
-        val response = postBackend("/v1/contact-matches", JSONObject().put("phoneNumbers", org.json.JSONArray(phoneNumbers)))
-        val items = response.optJSONArray("matches") ?: org.json.JSONArray()
-        return List(items.length()) { i ->
-            val item = items.getJSONObject(i)
-            PawlyContactMatch(item.optString("uid"), item.optString("displayName"), item.optString("username"), item.optString("photoUrl"))
-        }.filter { it.uid.isNotBlank() }
-    }
+    suspend fun findContactMatches(phoneNumbers: List<String>): List<PawlyContactMatch> =
+        error("La búsqueda por teléfono está desactivada hasta verificar la titularidad del número.")
 
     private suspend fun postBackend(path: String, payload: JSONObject): JSONObject {
         val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')
