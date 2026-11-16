@@ -735,18 +735,9 @@ service cloud.firestore {
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
-        // A user can always read their own RSVP; other users only see RSVPs
-        // when the attendee has chosen a public profile and neither side blocked the other.
-        // RSVP records contain only a UID and timestamp. Listing is allowed to signed-in
-        // members so one private attendee cannot make the whole Firestore query fail.
-        // Profile details remain protected by /users/{uid} rules and are loaded only if public.
-        allow list: if signedIn();
-        allow get: if signedIn() && (
-          request.auth.uid == uid
-          || (exists(/databases/$(database)/documents/users/$(uid))
-            && get(/databases/$(database)/documents/users/$(uid)).data.isPublic == true
-            && !blockedEitherWay(uid))
-        );
+        // Private RSVP: no user can enumerate attendees or infer blocked users.
+        allow list: if false;
+        allow get: if signedIn() && request.auth.uid == uid;
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
           && request.resource.data.uid == uid
