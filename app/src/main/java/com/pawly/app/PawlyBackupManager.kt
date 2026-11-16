@@ -63,7 +63,8 @@ internal object PawlyBackupManager {
                 tasks.forEach { put(JSONObject().put("id", it.id).put("title", it.title)
                     .put("responsible", it.responsible).put("frequency", it.frequency)
                     .put("completed", it.completed).put("dose", it.dose).put("time", it.time)
-                    .put("completedOn", it.completedOn).put("action", it.action)) }
+                    .put("completedOn", it.completedOn).put("action", it.action)
+                    .put("daysOfWeek", JSONArray(it.daysOfWeek))) }
             })
             .put("careLogs", JSONArray().apply {
                 logs.forEach { put(JSONObject().put("id", it.id).put("taskTitle", it.taskTitle)
@@ -130,7 +131,12 @@ internal object PawlyBackupManager {
             CareTask(row.optString("id"), row.optString("title"), row.optString("responsible"),
                 row.optString("frequency"), row.optBoolean("completed"), row.optString("dose"),
                 row.optString("time"), row.optString("completedOn"),
-                row.optString("action").takeIf { it in allowed } ?: "Otro")
+                row.optString("action").takeIf { it in allowed } ?: "Otro",
+                daysOfWeek = com.pawly.app.care.domain.CareTaskSchedule.normalizeDays(
+                    row.optJSONArray("daysOfWeek")?.let { days ->
+                        List(days.length()) { index -> days.optInt(index, 0) }
+                    }.orEmpty()
+                ))
         }.filter { it.id.isNotBlank() && it.title.isNotBlank() }.take(450)
     }
 
