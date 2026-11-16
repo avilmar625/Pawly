@@ -70,6 +70,8 @@ internal fun PetCareHubScreen(
     sharedPetOwnerUid: String? = null,
     onOpenSharedPet: (PetShareInvitation) -> Unit = {},
     onCloseSharedPet: () -> Unit = {},
+    onOpenDiary: () -> Unit = {},
+    onOpenCalendar: () -> Unit = {},
     initialSection: String? = null,
     initialPassportType: String? = null,
     initialCareAction: String? = null,
@@ -131,17 +133,36 @@ internal fun PetCareHubScreen(
                 }
             }
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                (if (sharedPetOwnerUid == null) listOf("Agenda", "Pasaporte", "Cuidados", "Compartir") else listOf("Pasaporte", "Cuidados")).forEach { item ->
+                val sections = if (sharedPetOwnerUid == null) {
+                    listOf("Agenda", "Pasaporte", "Cuidados", "Compartir", "Diario", "Citas")
+                } else {
+                    listOf("Pasaporte", "Cuidados")
+                }
+                sections.forEach { item ->
+                    val label = when (item) {
+                        "Pasaporte" -> tr("Salud")
+                        "Diario" -> tr("Diario")
+                        "Citas" -> tr("Citas")
+                        else -> tr(item)
+                    }
                     FilterChip(
                         selected = section == item,
-                        onClick = { section = item },
-                        label = { Text(item) },
+                        onClick = {
+                            when (item) {
+                                "Diario" -> onOpenDiary()
+                                "Citas" -> onOpenCalendar()
+                                else -> section = item
+                            }
+                        },
+                        label = { Text(label) },
                         leadingIcon = {
                             Icon(
                                 when (item) {
-                                    "Agenda" -> Icons.Default.CalendarMonth
+                                    "Agenda", "Citas" -> Icons.Default.CalendarMonth
                                     "Pasaporte" -> Icons.Default.HealthAndSafety
-                                    else -> Icons.Default.People
+                                    "Diario" -> Icons.Default.AutoStories
+                                    "Cuidados", "Compartir" -> Icons.Default.People
+                                    else -> Icons.Default.Pets
                                 },
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp)
