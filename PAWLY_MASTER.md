@@ -458,3 +458,12 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - Ejecutar CI (tests/lint/build) en HEAD actualizado y corregir cualquier error.
 - Probar en emulador/dispositivo: publicar recomendación con pin, filtrar Playa/Parque, abrir mapa, autenticar email/Google y ordenar eventos con y sin fecha.
 - No se ha probado la interacción en dispositivo real todavía.
+
+
+### Rediseño visual alineado con el PDF — 2026-11-16
+- La cabecera de Hoy deja de usar una portada fotográfica de 150–176 dp y pasa a una identidad compacta: avatar circular con foto real o inicial, nombre de la mascota y acceso a edición.
+- El bloque de progreso y las tareas del día ya estaban implementados dentro de `HomeCareTasksSection`; se conserva el cálculo a partir de rutinas y marcas reales, no de valores ficticios.
+- La próxima cita se ha movido dentro del bloque de cuidados, después de las tareas y antes de las acciones rápidas, como en la referencia.
+- La barra inferior conserva cinco destinos y adopta un único tono verde bosque; Diario y Calendario muestran activo «Mi perro» y Aprender/Profesionales/Ayuda se agrupan visualmente bajo «Más», sin eliminar sus pantallas ni callbacks.
+- Paleta crema/verde/salvia/coral y tipografía/contornos ya estaban en `PawlyTheme`; se mantienen y se aplican con más coherencia a la navegación.
+- Pendiente: build Android, lint, pruebas y revisión visual en emulador/teléfono. Los cambios están en la rama de trabajo y PR Draft #19; no fusionados.
