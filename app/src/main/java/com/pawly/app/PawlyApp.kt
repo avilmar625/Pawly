@@ -229,6 +229,74 @@ private fun PawlyMainApp(
         }.getOrDefault(emptyList())
     }
     var calendarReminders by remember(preferences) { mutableStateOf(storedCalendarReminders) }
+    var pendingBackupJson by remember { mutableStateOf("") }
+    val backupSaveLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { output ->
+                output.write(pendingBackupJson.toByteArray(Charsets.UTF_8))
+            } ?: error("No se pudo abrir el destino de la copia.")
+        }.onSuccess {
+            profileSyncStatus = "Copia de seguridad guardada correctamente."
+        }.onFailure {
+            profileSyncStatus = "No se pudo guardar la copia: ${it.localizedMessage ?: "error"}"
+        }
+    }
+    val backupImportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) coroutineScope.launch {
+            runCatching {
+                val raw = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                        ?: error("No se pudo leer el archivo.")
+                }
+                PawlyBackupManager.restore(context, raw, storageScope)
+            }.onSuccess { snapshot ->
+                val previousPet = dogName
+                dogName = snapshot.petName
+                dogProfiles = snapshot.dogProfiles
+                diaryEntries = snapshot.diaryEntries
+                calendarReminders = snapshot.calendarReminders
+                val retainedDates = healthDates.filterKeys { !it.startsWith("$previousPet|") }
+                healthDates = retainedDates + snapshot.healthDates.mapKeys { (key, _) -> "${snapshot.petName}|$key" }
+                walkDone = false
+                medicineDone = false
+                homePetCloudReady = true
+                snapshot.photoBytes?.let { bytes ->
+                    runCatching {
+                        val destination = File(context.filesDir, "dog-profile-restored-${System.currentTimeMillis()}.jpg")
+                        destination.writeBytes(bytes)
+                        dogPhotoPath = destination.absolutePath
+                    }
+                }
+                preferences.edit()
+                    .putString("dog_name", snapshot.petName)
+                    .putStringSet("dog_profiles", snapshot.dogProfiles)
+                    .putString("diary_entries", JSONArray(snapshot.diaryEntries).toString())
+                    .putString("calendar_reminders", JSONArray(snapshot.calendarReminders).toString())
+                    .putString("health_dates", JSONArray().apply {
+                        healthDates.forEach { (key, value) -> put(JSONArray().put(key).put(value)) }
+                    }.toString())
+                    .putString("routine_day", todayRoutineKey)
+                    .putBoolean("walk_done", false)
+                    .putBoolean("medicine_done", false)
+                    .apply()
+                profileSyncStatus = "Copia restaurada localmente. Sincronizando los datos compatibles…"
+                runCatching {
+                    cloudRepository?.saveHomePetState(snapshot.petName, snapshot.dogProfiles)
+                    val careRepository = FirebasePetCareRepository()
+                    careRepository.ensureSharedPet(snapshot.petName, snapshot.petName)
+                    careRepository.savePassportEntries(snapshot.petName, snapshot.passportEntries)
+                    careRepository.saveCareTasks(snapshot.petName, snapshot.careTasks)
+                    FirebasePetProfileRepository().replaceDiary(snapshot.petName, snapshot.diaryEntries)
+                }.onSuccess {
+                    profileSyncStatus = "Copia restaurada y sincronizada. El historial compartido de cuidadores se conserva."
+                }.onFailure {
+                    profileSyncStatus = "Copia restaurada localmente; sincronización pendiente: ${it.localizedMessage ?: "sin conexión"}"
+                }
+            }.onFailure {
+                profileSyncStatus = "No se pudo restaurar la copia: ${it.localizedMessage ?: "archivo no válido"}"
+            }
+        }
+    }
 
     LaunchedEffect(preferences, dogName) { preferences.edit().putString("dog_name", dogName).apply() }
     LaunchedEffect(preferences, dogProfiles) { preferences.edit().putStringSet("dog_profiles", dogProfiles.toSet()).apply() }
@@ -486,6 +554,19 @@ private fun PawlyMainApp(
                             }.onFailure { profileSyncStatus = "No se pudo generar el informe: " + (it.localizedMessage ?: "error desconocido") }
                         }
                     },
+                    onExportBackup = {
+                        runCatching {
+                            val petDates = healthDates.filterKeys { it.startsWith("$dogName|") }
+                                .mapKeys { (key, _) -> key.removePrefix("$dogName|") }
+                            pendingBackupJson = PawlyBackupManager.create(
+                                context, dogName, dogProfiles, diaryEntries, calendarReminders,
+                                petDates, storageScope, dogPhotoPath
+                            )
+                            val safeName = dogName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "mascota" }
+                            backupSaveLauncher.launch("pawly-backup-$safeName.json")
+                        }.onFailure { profileSyncStatus = "No se pudo preparar la copia: ${it.localizedMessage ?: "error"}" }
+                    },
+                    onImportBackup = { backupImportLauncher.launch("application/json") },
                     onInviteFriend = {
                         val invite = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
