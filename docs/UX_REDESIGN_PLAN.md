@@ -128,3 +128,29 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - Las fotos locales se guardan con una clave independiente por mascota; se migra la clave global antigua a la primera mascota activa para conservar los datos existentes.
 - Al renombrar una mascota y al restaurar una copia se conserva la asociación de la foto con el perfil correspondiente.
 - Validación manual pendiente: cambiar entre dos mascotas con fotos diferentes, cerrar/reabrir la app y comprobar que no se cruzan las imágenes.
+
+
+## Mejoras de Explorar, autenticación, Comunidad y Eventos — 2026-11-16
+
+### Recomendaciones y puntos exactos
+- `CommunityPlacesPanel` ya exigía nombre, dirección, descripción y coordenadas para publicar una recomendación. El formulario incluye mapa OpenStreetMap interactivo con selección del punto exacto y campos de latitud/longitud; la fila abre Maps/OpenStreetMap.
+- Se añadió un filtro propio de categorías a las recomendaciones de la comunidad (Todos, Playa, Parque, Ruta, Restaurante, Alojamiento, Veterinario, Otro), con recuento y estado vacío por categoría. Así una recomendación de Playa se consulta en Playa y no mezclada con las demás.
+- La acción de mapa ahora es explícita y rotulada «Mapa», además de poder tocar la fila.
+
+### Autenticación
+- Se detectó un problema de estado de UI: Firebase Authentication puede aceptar las credenciales y establecer `currentUser`, mientras el aprovisionamiento/carga del perfil de Firestore falla. El catch anterior dejaba la pantalla de acceso abierta, aunque existía una sesión válida.
+- Se modificó el flujo de email/contraseña y Google para comprobar `repo.currentUid` en el catch; si la sesión ya existe, continúa a la app y conserva el detalle del error como estado. Si Firebase Auth no creó sesión, muestra el error sin avanzar.
+- Credential Manager ya incluía limpieza de sesión antigua y segundo intento con selector de cuentas no autorizadas. Esta actualización no puede demostrar que el proveedor de Google funcione en el emulador: hace falta probarlo con Google Play Services y una cuenta añadida.
+- El mapeo de errores ya diferencia credenciales incorrectas, correo inválido, cuenta desactivada, exceso de intentos, método no habilitado, Firestore PERMISSION_DENIED y falta de red.
+
+### Comunidad
+- El selector de secciones se ha convertido en una tarjeta de navegación más visual: icono en contenedor, sección activa, descripción contextual y contador de avisos, manteniendo todas las páginas y el acceso de moderación condicionado a admin.
+
+### Eventos
+- Ya existía selector de orden cronológico «Más próximos primero / Más lejanos primero».
+- Se corrigió la inversión del comparador: los eventos con fecha válida se ordenan ascendente/descendente, mientras que los eventos sin fecha permanecen al final en ambos modos. No se eliminan eventos sin fecha.
+
+### Validación pendiente
+- Ejecutar CI (tests/lint/build) en HEAD actualizado y corregir cualquier error.
+- Probar en emulador/dispositivo: publicar recomendación con pin, filtrar Playa/Parque, abrir mapa, autenticar email/Google y ordenar eventos con y sin fecha.
+- No se ha probado la interacción en dispositivo real todavía.
