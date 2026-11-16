@@ -1,25 +1,16 @@
 package com.pawly.app
 
-import org.json.JSONArray
-import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
-import java.time.ZoneId
 
 class DiaryAnniversaryTest {
     @Test fun findsEntryFromSameCalendarDayInPreviousYear() {
         val date = LocalDate.of(2025, 11, 16)
-        val millis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val raw = JSONObject()
-            .put("pawlyDiaryVersion", 1)
-            .put("title", "Primera tarde en la playa")
-            .put("date", millis)
-            .put("photos", JSONArray().put("https://example.com/photo.jpg"))
-            .toString()
+        val record = DiaryRecordData("Primera tarde en la playa", date, listOf("https://example.com/photo.jpg"))
 
-        val result = findDiaryAnniversary(listOf(raw), LocalDate.of(2026, 11, 16))
+        val result = selectDiaryAnniversary(listOf(record), LocalDate.of(2026, 11, 16))
 
         assertEquals("Primera tarde en la playa", result?.title)
         assertEquals(date, result?.date)
@@ -27,10 +18,15 @@ class DiaryAnniversaryTest {
     }
 
     @Test fun doesNotInventAnniversaryWhenNoMatchingDateExists() {
-        val date = LocalDate.of(2025, 11, 15)
-        val millis = date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        val raw = JSONObject().put("pawlyDiaryVersion", 1).put("title", "Otro día").put("date", millis).toString()
+        val record = DiaryRecordData("Otro día", LocalDate.of(2025, 11, 15))
 
-        assertNull(findDiaryAnniversary(listOf(raw), LocalDate.of(2026, 11, 16)))
+        assertNull(selectDiaryAnniversary(listOf(record), LocalDate.of(2026, 11, 16)))
+    }
+
+    @Test fun selectsTheMostRecentMatchingAnniversary() {
+        val older = DiaryRecordData("Recuerdo antiguo", LocalDate.of(2023, 11, 16))
+        val newer = DiaryRecordData("Recuerdo reciente", LocalDate.of(2025, 11, 16))
+
+        assertEquals("Recuerdo reciente", selectDiaryAnniversary(listOf(older, newer), LocalDate.of(2026, 11, 16))?.title)
     }
 }
