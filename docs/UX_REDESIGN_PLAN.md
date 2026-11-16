@@ -190,3 +190,5 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 
 - El test de agregación usa JSON real para diario y recordatorios. Se añade `org.json:json` como dependencia solo de tests JVM para evitar depender de los stubs Android de `org.json` durante pruebas locales.
 - La lista de cronología usa scroll vertical propio para que los historiales largos no queden cortados.
+
+- Primera compilación del bloque de localización detectó llamadas composables `tr()` dentro de `remember`, `runCatching` y callbacks de sincronización. Se corrigió calculando las cadenas en el contexto composable y reutilizando valores ya traducidos dentro de efectos/callbacks. La nueva ejecución CI está en curso; no se declara corregido hasta que compile.
