@@ -175,12 +175,33 @@ internal fun PetTimelineSection(
         }
     }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(tr("TODO VUESTRO"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-            Text(tr("La historia de") + " " + petName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-            Text(tr("Salud, cuidados, recuerdos y citas en orden cronológico."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-        }
+        PawlyPageHeader(
+            eyebrow = "Mi perro",
+            title = "La historia de $petName",
+            subtitle = "Salud, cuidados, recuerdos y citas en orden cronológico."
+        )
         Text(syncLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            listOf(
+                Triple("Salud", timelineItems.count { it.category == "Salud" }, Icons.Filled.HealthAndSafety),
+                Triple("Cuidados", timelineItems.count { it.category == "Cuidado" }, Icons.Filled.CheckCircle),
+                Triple("Diario", timelineItems.count { it.category == "Diario" }, Icons.Filled.AutoStories),
+                Triple("Citas", timelineItems.count { it.category == "Cita" }, Icons.Filled.CalendarMonth)
+            ).forEach { (label, count, icon) ->
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(15.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Column(Modifier.padding(vertical = 10.dp, horizontal = 5.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Text(count.toString(), fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
+                        Text(tr(label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                    }
+                }
+            }
+        }
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
