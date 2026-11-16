@@ -274,13 +274,18 @@ private fun PetPassportSection(
         try {
             repo.ensureSharedPet(petId, petName)
             canEdit = repo.canEditSharedPet(petId)
+            val localEntryOrder = entries.map { it.id }
             val remoteEntries = repo.loadPassportEntries(petId)
             if (remoteEntries.isEmpty() && entries.isNotEmpty()) {
                 repo.savePassportEntries(petId, entries)
                 syncMessage = "Historial local sincronizado con tu cuenta"
             } else {
-                entries = remoteEntries
-                PetCareLocalStore.saveEntries(context, petName, remoteEntries, localStorageScope)
+                // Older cloud entries did not store creation order. Recover their
+                // same-day order from this device's local history before backfilling.
+                repo.backfillPassportEntryOrder(petId, localEntryOrder)
+                val orderedEntries = repo.loadPassportEntries(petId)
+                entries = orderedEntries
+                PetCareLocalStore.saveEntries(context, petName, orderedEntries, localStorageScope)
                 syncMessage = "Sincronizado con tu cuenta"
             }
         } catch (error: Exception) {
