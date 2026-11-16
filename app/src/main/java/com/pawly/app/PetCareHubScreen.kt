@@ -178,6 +178,7 @@ internal fun PetCareHubScreen(
         when (section) {
             "Todo" -> PetTimelineSection(
                 petName = petName,
+                petId = petId,
                 storageScope = storageScope,
                 diaryEntries = diaryEntries,
                 calendarReminders = calendarReminders,
