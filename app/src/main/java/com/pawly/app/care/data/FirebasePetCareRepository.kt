@@ -225,9 +225,10 @@ class FirebasePetCareRepository(
                 .thenBy { it.id }
         )
         val batch = db.batch()
-        val baseOrder = System.currentTimeMillis() * 1_000_000L
+        // Legacy records predate the ordering field, so keep them before the
+        // newer records that already have a positive creation-order value.
         orderedMissing.forEachIndexed { index, document ->
-            batch.update(document.reference, "createdAtOrder", baseOrder + index)
+            batch.update(document.reference, "createdAtOrder", -1_000_000_000_000L + index)
         }
         batch.commit().await()
     }
