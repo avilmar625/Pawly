@@ -155,7 +155,7 @@ internal fun HomeCareTasksSection(
 
     fun requestTaskToggle(task: CareTask, checked: Boolean) {
         if (!canEdit || task.id in pendingIds) return
-        if (checked && task.action.equals(tr("Medicación"), ignoreCase = true)) {
+        if (checked && task.action.equals("Medicación", ignoreCase = true)) {
             val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
             val duplicate = com.pawly.app.care.domain.CareDuplicateGuard.findRecentMedicationLog(
                 logs = logs,
@@ -245,9 +245,9 @@ internal fun HomeCareTasksSection(
             orderedVisibleTasks.forEach { task ->
                     val complete = isComplete(task)
                     val icon = when (task.action) {
-                        tr("Paseo") -> Icons.Filled.DirectionsWalk
-                        tr("Comida") -> Icons.Filled.Restaurant
-                        tr("Medicación") -> Icons.Filled.Medication
+                        "Paseo" -> Icons.Filled.DirectionsWalk
+                        "Comida" -> Icons.Filled.Restaurant
+                        "Medicación" -> Icons.Filled.Medication
                         "Higiene" -> Icons.Filled.Bathtub
                         else -> Icons.Filled.CheckCircle
                     }
@@ -269,8 +269,8 @@ internal fun HomeCareTasksSection(
                         ) {
                             Box(Modifier.size(44.dp).background(
                                 when (task.action) {
-                                    tr("Medicación") -> Color(0xFFF3DCCF)
-                                    tr("Comida") -> Color(0xFFE4EBC1)
+                                    "Medicación" -> Color(0xFFF3DCCF)
+                                    "Comida" -> Color(0xFFE4EBC1)
                                     else -> Color(0xFFDDEBE3)
                                 }, RoundedCornerShape(14.dp)
                             ), contentAlignment = Alignment.Center) {
@@ -342,13 +342,13 @@ internal fun HomeCareTasksSection(
         Text(tr("Registrar rápido"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), Color(0xFFE2F1E6), {
-                val task = visibleTasks.firstOrNull { it.action == tr("Paseo") }
+                val task = visibleTasks.firstOrNull { it.action == "Paseo" }
                 if (task != null) toggleTask(task, !isComplete(task)) else onWalkToggle(!walkDone)
             }, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.MonitorWeight, tr("Peso"), Color(0xFFDDF1EE), onWeight, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.PhotoCamera, tr("Foto"), Color(0xFFFFE9DF), onPhoto, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.Restaurant, tr("Comida"), Color(0xFFE4EBC1), {
-                val task = visibleTasks.firstOrNull { it.action == tr("Comida") }
+                val task = visibleTasks.firstOrNull { it.action == "Comida" }
                 if (task != null) toggleTask(task, !isComplete(task)) else onFood()
             }, Modifier.weight(1f))
         }
