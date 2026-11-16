@@ -77,7 +77,6 @@ internal fun HomeScreen(
                 ) {
                     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
                         Icon(Icons.Filled.NotificationsNone, contentDescription = tr("Notificaciones"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
-                        Box(Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp).size(7.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
                     }
                 }
                 Spacer(Modifier.width(8.dp))
