@@ -36,8 +36,9 @@ internal fun Throwable.toPawlyMessage(fallback: String): String {
     }
     return when (authCode) {
         "ERROR_INVALID_EMAIL" -> "El correo electrónico no tiene un formato válido."
-        "ERROR_USER_NOT_FOUND", "ERROR_WRONG_PASSWORD", "ERROR_INVALID_CREDENTIAL" ->
-            "El correo o la contraseña no son correctos."
+        "ERROR_USER_NOT_FOUND", "ERROR_WRONG_PASSWORD", "ERROR_INVALID_CREDENTIAL",
+        "ERROR_INVALID_LOGIN_CREDENTIALS", "ERROR_INVALID_PASSWORD", "ERROR_EMAIL_NOT_FOUND" ->
+            "El correo o la contraseña no son correctos. Comprueba los datos o restablece la contraseña."
         "ERROR_EMAIL_ALREADY_IN_USE" -> "Ya existe una cuenta con ese correo. Prueba a iniciar sesión."
         "ERROR_WEAK_PASSWORD" -> "La contraseña es demasiado sencilla. Utiliza al menos 6 caracteres."
         "ERROR_USER_DISABLED" -> "Esta cuenta está desactivada. Contacta con el equipo de Pawly."
