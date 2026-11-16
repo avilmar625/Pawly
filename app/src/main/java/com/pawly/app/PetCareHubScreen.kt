@@ -77,11 +77,14 @@ internal fun PetCareHubScreen(
 ) {
     var section by remember { mutableStateOf("Agenda") }
     var sharedPhotoUrl by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(sharedPetOwnerUid, petId, initialSection, initialPassportType, initialCareAction) {
-        section = initialSection ?: if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte"
+    LaunchedEffect(sharedPetOwnerUid, petId) {
+        section = if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte"
         sharedPhotoUrl = if (sharedPetOwnerUid == null) null else runCatching {
             FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).loadProfile(petId)?.photoUrl
         }.getOrNull()
+    }
+    LaunchedEffect(initialSection) {
+        if (!initialSection.isNullOrBlank()) section = initialSection
     }
     Column(Modifier.fillMaxSize()) {
         if (sharedPetOwnerUid != null) {
