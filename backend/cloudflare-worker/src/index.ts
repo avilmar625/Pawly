@@ -564,6 +564,7 @@ async function handleLostPetAlert(request: Request, env: Env): Promise<Response>
       const subLat = decodeFirestoreNumber(fields.latCell) / 100;
       const subLon = decodeFirestoreNumber(fields.lonCell) / 100;
       if (![5, 10, 20].includes(radius) || distanceKm(latitude, longitude, subLat, subLon) > radius) continue;
+      processedRecipients++;
       const [blockA, blockB] = await Promise.all([
         readDocument(env, accessToken, `users/${uid}/blocked/${recipientUid}`),
         readDocument(env, accessToken, `users/${recipientUid}/blocked/${uid}`)
