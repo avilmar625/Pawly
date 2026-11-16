@@ -1,0 +1,113 @@
+# Pawly UX redesign — cambios65
+
+## Objetivo
+
+Actualizar la experiencia visual de Pawly usando como referencia el PDF "Pawly — pantalla Hoy y navegación" (16-11-2026), sin retirar pantallas ni funciones existentes.
+
+## Dirección visual
+
+- Base cálida: crema / marfil para el fondo.
+- Primario: verde bosque profundo.
+- Secundarios: verde salvia y coral suave.
+- Superficies claras, bordes finos, radios generosos y sombras discretas.
+- Tipografía con jerarquía clara; títulos concisos y datos importantes legibles.
+- Fotografía real de la mascota como protagonista, evitando imágenes genéricas que puedan confundirse con la mascota del usuario.
+- Estados vacíos, carga, error y offline diseñados con el mismo lenguaje visual.
+- Soporte completo para modo oscuro, idioma y ajustes simple/elegante.
+
+## Navegación: preservar y reorganizar
+
+La barra inferior ya tiene cinco destinos visibles: Hoy, Explorar, Mi perro, Comunidad y Más. No sustituirla por una navegación nueva que oculte funciones.
+
+Dentro de Mi perro, proponer una navegación secundaria:
+- Todo: línea de tiempo combinada.
+- Salud: agenda sanitaria, pasaporte, peso, medicación y ficha de emergencia.
+- Diario: recuerdos y fotos.
+- Citas: calendario, citas y recordatorios.
+
+Las áreas actuales Pasaporte, Cuidados y Compartir deben seguir accesibles dentro de Salud o desde accesos contextuales claros. Profesionales, Aprender y Ayuda siguen accesibles desde Más. Eventos deben seguir disponibles desde calendario y comunidad.
+
+## Hoy — estructura de referencia
+
+1. Cabecera: fecha, selector de mascota, foto/identidad y notificaciones.
+2. Tarjeta de progreso diario calculada desde tareas reales y completadas.
+3. Lo de hoy: medicación, comida, paseos y otros cuidados, mostrando responsable y hora.
+4. Próximamente: próxima cita, vacuna o recordatorio con fecha real.
+5. Registrar rápido: Paseo, Peso, Foto, Comida. Cada botón abre su flujo de creación/registro real.
+6. Cuidado compartido: actividad reciente y responsable, solo si existen datos compartidos.
+7. Recuerdo del día: “hace un año” solo cuando existe un recuerdo con fecha equivalente.
+8. Sugerencias de Explorar/Aprender sin desplazar las acciones prioritarias.
+
+No usar contenido ficticio para rellenar tarjetas. Ocultar o sustituir por un estado vacío útil cuando no existan datos.
+
+## Cuidado compartido y medicación
+
+Ya existen modelos `CareTask`, `CareLogEntry`, roles owner/editor/reader y sincronización. La integración del panel Hoy debe reutilizar esos contratos.
+
+Pendiente de especificar y probar:
+- Tareas de hoy por fecha local, frecuencia y mascota.
+- Responsable, hora y dosis visibles.
+- Registro idempotente de cada toma/acción con actor y timestamp.
+- Protección contra doble registro y confirmación explícita cuando otra persona ya registró la toma.
+- Permisos de edición coherentes con owner/editor/reader.
+- Offline: cola/estado pendiente sin mostrar falsamente sincronización.
+- Alarmas locales y política de notificaciones sin duplicados.
+- Compatibilidad con datos antiguos; no borrar ni reinterpretar tareas existentes.
+
+La pauta actual solo tiene una dosis y hora por tarea y recordatorio diario básico. Una pauta completa de múltiples tomas requiere ampliar modelo, persistencia, reglas, scheduler y migración compatible.
+
+## Peso
+
+Se ha extraído el parser a `care/domain/WeightMeasurementParser.kt`. Debe validar coma/punto decimal, unidad opcional y rango permitido. Próxima fase: introducir un modelo numérico estructurado para nuevas entradas sin romper las entradas antiguas en texto libre; la gráfica debe usar fechas y valores, no deducir datos de cadenas arbitrarias.
+
+## Copias de seguridad
+
+La copia JSON v1 es local y parcial. No presentarla como backup integral de la cuenta. Futuro trabajo:
+- inventario de todas las fuentes de datos locales/remotas;
+- exportación versionada por cuenta y mascota;
+- metadatos de medios y estrategia de exportación de Cloudinary;
+- restauración con vista previa, validación, conflictos e idempotencia;
+- cifrado opcional para datos personales;
+- pruebas de ida/vuelta y compatibilidad de versiones;
+- excluir tokens, credenciales, contraseñas y secretos.
+
+## Propuesta de implementación por bloques
+
+### Bloque 1 — fiabilidad y datos
+- Verificar parser de peso y CI.
+- Auditar cómo se guardan las tareas y logs y sus permisos.
+- Definir un estado diario por mascota y cuenta; evitar que las marcas de una mascota se apliquen a otra.
+- Corregir flujos de acceso rápido que hoy solo navegan a una pantalla general.
+
+### Bloque 2 — Mi perro
+- Construir línea de tiempo Todo con datos de salud, diario y citas.
+- Añadir filtros Salud/Diario/Citas.
+- Mantener accesos a Pasaporte, Cuidados y Compartir.
+- No duplicar registros ni alterar rutas Firestore sin migración.
+
+### Bloque 3 — Hoy visual y funcional
+- Rediseñar HomeScreen según el PDF.
+- Alimentar el progreso desde tareas reales.
+- Próximamente desde agenda/recordatorios reales.
+- Actividad compartida desde CareLogEntry.
+- Recuerdo anual desde fechas reales del diario.
+- Acciones rápidas con flujos funcionales.
+
+### Bloque 4 — extras diferenciadores
+- Widget Android.
+- Seguimiento de paseos y rachas.
+- Inventario de comida/pienso.
+- Gastos de mascota.
+Cada función requiere diseño de datos, privacidad, persistencia y tests antes de la UI.
+
+## Criterios de aceptación
+
+- Las cinco pestañas inferiores siguen visibles.
+- Ningún destino actual ni acción existente desaparece.
+- Los registros creados antes de la actualización siguen accesibles.
+- La mascota seleccionada y sus datos no se mezclan con otra mascota.
+- La UI funciona en tema claro/oscuro, español/otros idiomas existentes y pantallas pequeñas.
+- Todos los botones hacen lo que anuncian.
+- Los estados de sincronización reflejan el resultado real.
+- Unit tests, lint, APK debug y bundle release pasan.
+- Prueba manual de Android en emulador y dispositivo físico antes de cerrar el bloque.
