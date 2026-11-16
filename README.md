@@ -301,12 +301,22 @@ Detalles: [docs/CHANGES51.md](docs/CHANGES51.md).
 
 ## Cambios60 · Comunidad, eventos y calendario
 
-- Las recomendaciones válidas se publican directamente con estado `approved`; la moderación es posterior (denuncias y retirada), no una cola de aprobación manual.
+- Las propuestas de lugares pasan por Cloudflare Worker, tienen un límite de una por cuenta y día, y quedan en estado `pending` hasta que moderación las apruebe. El autor puede editar o retirar sus propios lugares y denunciar recomendaciones ajenas.
 - La ficha del evento muestra asistentes con perfil público. Desde los perfiles se puede abrir la ficha de usuario, seguir y comenzar una conversación, sujeto a las reglas de privacidad y bloqueo.
-- Los registros de interés contienen únicamente UID y fecha. Los perfiles privados no se muestran en el directorio de asistentes.
+- Los registros de interés son privados; la app muestra el contador agregado, no la identidad de los asistentes.
 - Los eventos se pueden añadir al calendario del dispositivo mediante el intent estándar de Android. El botón **Abrir Google Calendar** abre la aplicación de calendario disponible para que la persona elija su cuenta.
 - **Límite de integración:** abrir Google Calendar no concede a Pawly acceso OAuth ni sincroniza calendarios en segundo plano. La conexión real con Google Calendar API requiere un flujo de consentimiento OAuth y configuración adicional.
 - Si el guardado del perfil falla tras crear una cuenta, Pawly conserva la cuenta de Firebase Authentication. El siguiente inicio de sesión intenta completar el perfil; no se debe repetir el registro con el mismo correo.
 - Las alertas de mascotas perdidas guardan celdas geográficas enteras de precisión aproximada (alrededor de 1 km), en lugar de coordenadas exactas.
-- La solicitud de eliminación se registra con estado `pending`. Sigue siendo una solicitud pendiente de procesamiento, no un borrado automático de la cuenta y sus datos.
+- La eliminación de cuenta todavía no ejecuta una cascada completa. No presentar la solicitud como un borrado completado.
 
+
+
+## Auditoría de seguridad (cambios62)
+
+- La búsqueda por teléfono queda desactivada hasta disponer de verificación real de titularidad sin activar servicios de pago.
+- Las propuestas de lugares se crean mediante el Worker y permanecen pendientes de aprobación; se limita el envío a una propuesta diaria por cuenta verificada.
+- La lista de asistentes a eventos no se expone. Solo se muestra el contador agregado.
+- Los recursos nuevos de Cloudinary registran su identificador público y tipo en Firestore para preparar la eliminación de medios por cuenta. El borrado integral aún no está operativo.
+- El Worker pagina los avisos de mascotas perdidas y limita cada ejecución para respetar el máximo de 50 subpeticiones externas del plan gratuito.
+- El despliegue del Worker y sus secretos requieren configuración explícita en la cuenta del propietario; el código de GitHub por sí solo no lo despliega.
