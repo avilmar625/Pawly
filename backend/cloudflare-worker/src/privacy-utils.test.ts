@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distanceKm, normalizePhone } from "./privacy-utils";
+import { distanceKm, normalizePhone, parseBearerToken } from "./privacy-utils";
 
 describe("normalizePhone", () => {
   it("normalizes Spanish national numbers and international prefixes", () => {
@@ -22,5 +22,18 @@ describe("distanceKm", () => {
     const distance = distanceKm(36.7213, -4.4214, 36.6203, -4.4994);
     expect(distance).toBeGreaterThan(10);
     expect(distance).toBeLessThan(20);
+  });
+});
+
+describe("parseBearerToken", () => {
+  it("accepts a standard bearer authorization header", () => {
+    expect(parseBearerToken("Bearer abc.def.ghi")).toBe("abc.def.ghi");
+    expect(parseBearerToken("bearer   token-value")).toBe("token-value");
+  });
+  it("rejects missing, malformed, or multi-part values", () => {
+    expect(parseBearerToken(null)).toBeNull();
+    expect(parseBearerToken("Basic abc")).toBeNull();
+    expect(parseBearerToken("Bearer ")).toBeNull();
+    expect(parseBearerToken("Bearer token extra")).toBeNull();
   });
 });
