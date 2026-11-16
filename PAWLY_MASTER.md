@@ -405,3 +405,11 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 ### Cambios visuales adicionales — 2026-11-16
 - En `HomePetHero`, si el usuario no ha añadido foto, se muestra un placeholder ilustrado con identidad Pawly en vez de una fotografía de stock de un perro que podría confundirse con la mascota real. Si existe una URL HTTPS de foto, se mantiene como imagen principal.
 - Pendiente: comprobar visualmente en distintos tamaños de pantalla y modo oscuro; todavía no se ha ejecutado la app en dispositivo.
+
+
+### Revisión de cambios65 mediante Pull Request
+- PR borrador abierta para revisión/CI: https://github.com/avilmar625/Pawly/pull/19
+- Base: `main`; head: `cambios65-hoy-cuidados-diseno`.
+- El PR incluye el historial completo desde la base común: 86 commits, 155 archivos, 17.771 adiciones y 741 eliminaciones. Es un borrador amplio, no una propuesta lista para fusionar.
+- No se ha fusionado. La PR se mantiene en Draft expresamente para revisar y ejecutar validaciones.
+- Tras crearla, la consulta disponible de ejecuciones asociadas al commit no devolvió runs y el estado combinado no devolvió checks. CI **no confirmado**; revisar la pestaña Checks/Actions de la PR directamente antes de considerar cualquier merge.
