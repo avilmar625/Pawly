@@ -400,3 +400,8 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 3. Completar «Mi perro» como línea de tiempo con filtros sin retirar Pasaporte, Cuidados, Compartir, Diario ni Calendario.
 4. Auditar sincronización offline, colisiones, doble registro y restauración de copias.
 5. Pulir diseño de Hoy contra el PDF adjunto y revisar tema oscuro, idiomas y pantallas pequeñas.
+
+
+### Cambios visuales adicionales — 2026-11-16
+- En `HomePetHero`, si el usuario no ha añadido foto, se muestra un placeholder ilustrado con identidad Pawly en vez de una fotografía de stock de un perro que podría confundirse con la mascota real. Si existe una URL HTTPS de foto, se mantiene como imagen principal.
+- Pendiente: comprobar visualmente en distintos tamaños de pantalla y modo oscuro; todavía no se ha ejecutado la app en dispositivo.
