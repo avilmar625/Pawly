@@ -482,3 +482,7 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - Los textos de Hoy/cuidados y las etiquetas nuevas de navegación están localizados en español, catalán, francés e inglés. Se añadieron tests unitarios para verificar claves de navegación y estados de cuidado.
 - La cronología unificada «Todo» no está terminada; sigue siendo un bloque pendiente de producto, no debe darse por implementado.
 - Último commit de trabajo registrado: `2f52a5f0348a1b6db22f6ceac268683f0c1fbedc`. Revalidar CI sobre este HEAD: las últimas ejecuciones visibles de Android fueron canceladas por nuevos commits después de completar tests unitarios en un HEAD anterior; no hay APK/AAB confirmado para este HEAD.
+
+- Se implementó «Mi perro → Todo» como cronología de pasaporte sanitario, logs de cuidados, recuerdos del diario y recordatorios/fechas sanitarias, ordenada por fecha descendente. Intenta hidratar pasaporte y logs desde Firebase y conserva fallback local.
+- La cronología es parcial: no incluye todavía eventos comunitarios ni todo lo que puede aparecer en el calendario externo. No afirmar que sea un historial total.
+- Nuevos tests: agregación/orden y JSON inválido de cronología. Validación CI y manual pendiente para el HEAD más reciente.
