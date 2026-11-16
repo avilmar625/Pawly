@@ -22,28 +22,37 @@
 
 ## 2. Estado Git comprobado el 2026-11-16
 
-### Rama Android de trabajo más avanzada localizada
+### Rama Android de continuidad actual
 
-- `cambios64-funciones-integradas-hoy` es la rama con mayor avance documental y de código encontrada para Android.
-- Comparación GitHub: está **44 commits por delante de `main`**, sin commits de `main` por delante; su base común coincide con el HEAD de `main` en el momento de la consulta.
-- También está **43 commits por delante de `cambios63-consolidacion-main`**, sin divergencia respecto a esa base.
-- `cambios63-consolidacion-main` es, por tanto, una base anterior; no debe confundirse con la rama de trabajo más reciente.
-- `main` no contiene todavía esos 44 commits de trabajo. No se ha hecho merge ni se debe asumir que `main` es la versión más completa.
-- La actividad más reciente visible en `main` incluye commits del 16-11-2026 sobre límites de Cloudflare para alertas de mascotas perdidas y un ajuste de texto de error de eventos. La rama cambios64 incluye trabajo adicional posterior a la base común.
+- **Rama activa:** `cambios66-estabilizacion-y-lint`.
+- **HEAD comprobado:** `297d933085c5ecbd26ec8d6b8432a8da413636e2` — `fix(ui): align bottom navigation with Pawly reference` (16-11-2026 12:50:16 UTC).
+- **Base directa:** `cambios65-hoy-cuidados-diseno`, en el commit `ad5e83e79a9a52baf3068f85fe1c45b78c58e4af`.
+- La rama 66 conserva el contenido de cambios65 y añade: uso de la configuración observable de idioma para fechas/textos del panel Hoy; publicación del informe completo de Android Lint en el log de CI; y el orden de navegación inferior de acuerdo con el PDF: Hoy, Mi perro, Comunidad, Explorar y Más.
+- **No modificar cambios65 ni main para continuar este trabajo**: desarrollar en cambios66 y crear ramas posteriores desde el HEAD verificado de esa rama.
 
-**Decisión de continuidad:** usar `cambios64-funciones-integradas-hoy` como rama de auditoría y desarrollo Android provisional. No fusionar ni mover referencias hasta revisar CI, comparar los archivos afectados y confirmar compilación/pruebas.
+### Rama anterior y Pull Request
+
+- `cambios65-hoy-cuidados-diseno` contiene el rediseño Hoy/Mi perro y la integración funcional descrita en las secciones históricas de este documento.
+- PR #19 (`[WIP] Pawly cambios65 — Hoy, cuidados compartidos y rediseño`) sigue **abierto, Draft y sin fusionar**, con base `main` y head cambios65. No darlo por integrado.
+- `main` no contiene todavía las mejoras de cambios65/66. No asumir que main es la versión más completa ni fusionar hasta superar CI y pruebas manuales.
+
+### Estado de validación comprobado
+
+- En cambios65, el workflow Android del 16-11-2026 terminó con tests Kotlin superados, pero Android Lint falló con **8 errores, 72 advertencias y 3 hints**. El primer error informado fue `NonObservableLocale` en `HomeCareTasksSection.kt`; por ello se omitieron los pasos de APK Debug y AAB Release.
+- En cambios66 se reemplazaron las cuatro lecturas de `Locale.getDefault()` de `HomeCareTasksSection.kt` por `PawlyI18n.locale(language)`, que sigue el idioma observable de la app. El workflow ahora imprime `lint-results-debug.txt` completo para conocer todos los diagnósticos, no solo el primero.
+- Firestore Emulator pasó en el commit `cb8e9ae758e8a3701fc815126434c15369f978bb` (run 43869984594). **No equivale a validar el HEAD actual** tras el ajuste de navegación.
+- Para el HEAD `297d933...`, Android build y Firestore validation se han vuelto a lanzar; al redactar este estado, Android build estaba pendiente y Firestore validation en curso. No afirmar que cambios66 compila ni que tiene APK/AAB hasta consultar Actions de nuevo.
+- Los cambios siguen sin prueba manual en emulador, Redmi/iPhone o servicios externos reales.
 
 ### Otras ramas importantes
 
-- `cambios56-arquitectura`: hito de arquitectura y endurecimiento de seguridad; contratos iniciales, pruebas y documentación.
-- `cambios57`, `cambios58-integracion`, `cambios59-experiencia`, `cambios60-comunidad-calendario`, `cambios61-lugares-comunidad-eventos`, `cambios62-auditoria-gratis-seguridad`, `cambios63-consolidacion-main`: evolución incremental de integración, experiencia, comunidad, calendario, lugares, eventos, seguridad y consolidación.
-- `integracion-cambios57`: rama auxiliar de integración; no asumir que sea la principal.
-- `ios-funciones`: port iOS SwiftUI con una cobertura funcional amplia en su propia rama, pero divergente y basado en una historia Android anterior. No es una continuación directa de cambios64.
-- `ios`: rama iOS anterior, también divergente.
-- `ios-iphone`: prototipo SwiftUI inicial, con Inicio/Explorar/Salud/Diario/Comunidad de alcance local y menos completo.
-- Existen además ramas históricas `cambios1` a `cambios64...`. No borrar ramas históricas como limpieza automática.
+- `cambios56-arquitectura`: hito de arquitectura y endurecimiento de seguridad.
+- `cambios57`, `cambios58-integracion`, `cambios59-experiencia`, `cambios60-comunidad-calendario`, `cambios61-lugares-comunidad-eventos`, `cambios62-auditoria-gratis-seguridad`, `cambios63-consolidacion-main` y `cambios64-funciones-integradas-hoy`: evolución incremental hasta la base de cambios65.
+- `ios-funciones`: port iOS SwiftUI amplio pero divergente; no es una continuación directa de cambios66. Debe auditarse y probarse por separado en Xcode/iPhone.
+- `ios` e `ios-iphone`: líneas iOS anteriores/prototipo, no sustituir por ellas la rama funcional sin comparar.
+- Existen ramas históricas `cambios1` a `cambios65...`. No borrar ramas históricas como limpieza automática.
 
-## 3. Arquitectura Android actual (cambios64)
+## 3. Arquitectura Android actual (cambios65/66)
 
 Aplicación Android nativa con Kotlin, Jetpack Compose y Navigation Compose. El repositorio contiene un único módulo Gradle `:app`; todavía no existe un módulo Kotlin Multiplatform compartido.
 
@@ -79,7 +88,7 @@ Aplicación Android nativa con Kotlin, Jetpack Compose y Navigation Compose. El 
 
 ## 4. Arquitectura iOS: ramas separadas y estado real
 
-No existe una aplicación iOS integrada en `cambios64-funciones-integradas-hoy`: no se encontraron `ios/`, `iosApp/` ni `shared/` en esa rama.
+No existe una aplicación iOS integrada en `cambios66-estabilizacion-y-lint`: no se encontraron `ios/`, `iosApp/` ni `shared/` en esa rama.
 
 Hay dos líneas de trabajo iOS identificadas:
 
@@ -102,7 +111,7 @@ La documentación y el código inspeccionados incluyen:
 
 ### Decisión iOS
 
-No hacer merge directo de `ios-funciones` con cambios64: el historial está divergente y puede sobrescribir o perder mejoras Android recientes. La futura consolidación debe portar por funcionalidades, comparar esquemas y reglas Firestore, preservar el trabajo iOS y probarlo en Xcode/iPhone. No convertir la app Android a KMP de golpe.
+No hacer merge directo de `ios-funciones` con cambios66: el historial está divergente y puede sobrescribir o perder mejoras Android recientes. La futura consolidación debe portar por funcionalidades, comparar esquemas y reglas Firestore, preservar el trabajo iOS y probarlo en Xcode/iPhone. No convertir la app Android a KMP de golpe.
 
 ## 5. Funcionalidades Android: inventario documental
 
@@ -491,3 +500,34 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - La validación de esta nueva cronología y del nuevo test queda pendiente de la ejecución CI del último HEAD.
 
 - Primera compilación del bloque de localización detectó llamadas composables `tr()` dentro de `remember`, `runCatching` y callbacks de sincronización. Se corrigió calculando las cadenas en el contexto composable y reutilizando valores ya traducidos dentro de efectos/callbacks. La nueva ejecución CI está en curso; no se declara corregido hasta que compile.
+
+
+## 14. Continuidad cambios66 — 16-11-2026
+
+### Cambios realizados en `cambios66-estabilizacion-y-lint`
+
+- Rama creada directamente desde el HEAD de cambios65, sin modificar cambios65 ni main.
+- `HomeCareTasksSection.kt`: las cuatro llamadas a `Locale.getDefault()` se sustituyen por una única instancia local de `PawlyI18n.locale(language)`. Cabecera, fecha de próxima cita y hora de actividad siguen el idioma elegido en Pawly y se actualizan cuando cambia.
+- `.github/workflows/android.yml`: si `lintDebug` falla, se imprime el informe de texto completo `lint-results-debug.txt`. No se ha reducido el umbral de Lint ni se ha añadido una baseline para ocultar avisos.
+- `PawlyApp.kt`: orden de la barra inferior alineado con el PDF: **Hoy → Mi perro → Comunidad → Explorar → Más**. No se elimina ningún destino ni pantalla secundaria.
+- La paleta de `PawlyTheme.kt` ya coincide con la referencia cálida: `Cream #FFF8F0`, `Paper #FFFEFB`, verde bosque `#173F35`, salvia/lima `#E4EBC1` y coral suave `#F3DCCF`. No se cambia el tema innecesariamente.
+
+### Funciones conservadas en cambios65/66
+
+- Hoy: identidad compacta de mascota (foto local/HTTPS o inicial), progreso calculado, tareas reales, próxima entrada sanitaria, acciones rápidas, actividad compartida y recuerdo anual cuando existe.
+- Mi perro: cronología Todo que mezcla pasaporte, logs de cuidados, Diario, recordatorios de calendario y fechas sanitarias. La cronología es parcial: no incluye todos los eventos comunitarios ni todos los calendarios externos.
+- Salud: Agenda, Pasaporte, Cuidados y Compartir; roles owner/editor/reader y exportación PDF siguen accesibles.
+- Diario y Calendario reutilizan sus pantallas. Los accesos rápidos Peso, Foto y Comida abren respectivamente el alta de peso, selector de foto del Diario y flujo de creación de cuidado Comida.
+- Más conserva Aprender, Profesionales, Ayuda para mascota perdida, ficha PDF, backup/restauración JSON, Diario, Calendario, invitación, contacto, ajustes, información legal y cierre de sesión.
+- Explorar, Lugares, colecciones, teléfonos/contactos, Eventos, Comunidad, mensajería, moderación, Cloudinary y Worker siguen presentes. No simplificar estas áreas eliminando acciones.
+
+### Limitaciones y pruebas que siguen pendientes
+
+- Revisar los ocho errores Lint iniciales con el informe completo de la próxima ejecución. El error NonObservableLocale ya tiene una corrección de código, pero aún no se declara resuelto hasta que Lint termine sin errores.
+- Ejecutar correctamente `testDebugUnitTest`, `lintDebug`, `assembleDebug` y `bundleRelease` para el mismo HEAD; comprobar los artefactos de CI.
+- Prueba Android real: login/registro por correo y Google, cambio de mascota y persistencia al cerrar, Cloudinary foto/vídeo, peso, foto, comida, recordatorios, cronología, cuidado compartido con owner/editor/reader, lugares/teléfonos/eventos y restauración de backup.
+- Prueba iOS separada en la rama `ios-funciones`; no se debe asumir paridad ni compilación por los cambios Android.
+- La confirmación de posible doble medicación es una defensa UX, no una operación atómica entre cuidadores. Las rutinas semanales no permiten aún elegir días concretos. El backup JSON sigue siendo local y parcial, no una copia integral de Firestore, chats, eventos y medios Cloudinary.
+- Mantener el coste bajo: no activar Firebase Blaze, Firebase Storage ni Workers Paid sin autorización expresa.
+- No fusionar PR #19 ni la futura PR de cambios66 hasta revisar CI completo, pruebas manuales y seguridad.
+
