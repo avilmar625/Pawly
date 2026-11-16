@@ -310,31 +310,6 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
         }
     }
 
-        if (careLogs.isNotEmpty()) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(tr("Últimos cuidados registrados"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(tr("Así podéis comprobar quién ha hecho cada paseo, comida o toma."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            items(careLogs.take(10), key = { "care-log-${it.id}" }) { log ->
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f))) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(9.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(log.taskTitle, fontWeight = FontWeight.SemiBold)
-                            Text("${log.action} · ${log.actorName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Text(
-                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(log.occurredAt)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
@@ -533,6 +508,31 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
         }
     }
 
+        if (careLogs.isNotEmpty()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("Últimos cuidados registrados"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(tr("Así podéis comprobar quién ha hecho cada paseo, comida o toma."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            items(careLogs.take(10), key = { "care-log-${it.id}" }) { log ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f))) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(log.taskTitle, fontWeight = FontWeight.SemiBold)
+                            Text("${log.action} · ${log.actorName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(
+                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(log.occurredAt)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
