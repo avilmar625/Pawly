@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.EventAvailable
@@ -181,6 +182,18 @@ internal fun PawlyEventsScreen(
         attendeeNextPageToken = ""
         attendeesError = null
         attendeesLoading = false
+        val openedEvent = selectedEvent
+        if (openedEvent != null && repository.currentUid == openedEvent.organizerUid) {
+            attendeesLoading = true
+            runCatching { repository.loadEventAttendees(openedEvent.id) }
+                .onSuccess {
+                    eventAttendees = it.attendees
+                    attendeeNextPageToken = it.nextPageToken
+                    attendeesError = null
+                }
+                .onFailure { attendeesError = it.localizedMessage ?: attendeesLoadErrorText }
+            attendeesLoading = false
+        }
     }
     var category by remember { mutableStateOf("Todos") }
     var sortAscending by remember { mutableStateOf(true) }
@@ -287,7 +300,7 @@ internal fun PawlyEventsScreen(
                     DropdownMenuItem(
                         text = { Text(tr("Más lejanos primero"), fontWeight = if (!sortAscending && !sortByInterested) FontWeight.Bold else FontWeight.Normal) },
                         leadingIcon = { Icon(Icons.Default.Event, null) },
-                        trailingIcon = { if (!sortAscending) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                        trailingIcon = { if (!sortAscending && !sortByInterested) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = { sortAscending = false; sortByInterested = false; sortMenuExpanded = false }
                     )
                     DropdownMenuItem(
