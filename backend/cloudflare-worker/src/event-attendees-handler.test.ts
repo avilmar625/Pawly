@@ -46,6 +46,7 @@ describe("POST /v1/events/attendees", () => {
       if (url.endsWith("/users/blocked/blocked/organizer")) {
         return new Response(JSON.stringify({ name: "blocked" }), { status: 200 });
       }
+      if (url.endsWith("/users/blocked")) return new Response("missing", { status: 404 });
       if (url.endsWith("/users/visible")) {
         return new Response(JSON.stringify({ fields: {
           displayName: { stringValue: "Persona visible" },
@@ -74,7 +75,7 @@ describe("POST /v1/events/attendees", () => {
       }],
       nextPageToken: "cursor-2"
     });
-    expect(calls).toHaveLength(8);
+    expect(calls).toHaveLength(9);
   });
 
   it("rejects a non-organizer before reading the attendee collection", async () => {
