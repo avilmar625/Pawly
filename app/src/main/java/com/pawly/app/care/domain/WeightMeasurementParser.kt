@@ -9,7 +9,7 @@ package com.pawly.app.care.domain
  */
 internal object WeightMeasurementParser {
     private val weightPattern = Regex(
-        """(?<![\\d.,])(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*(?:kg)?""",
+        """(?<![\d.,])(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:kg)?""",
         RegexOption.IGNORE_CASE
     )
 
