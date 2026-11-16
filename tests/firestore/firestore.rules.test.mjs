@@ -17,7 +17,8 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where
+  where,
+  writeBatch
 } from "firebase/firestore";
 
 const projectId = "demo-pawly";
@@ -56,6 +57,32 @@ beforeEach(async () => {
 
 after(async () => {
   await env.cleanup();
+});
+
+test("a new unverified email account can atomically create its private starter profile", async () => {
+  const db = env.authenticatedContext("new-user", { email_verified: false }).firestore();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "usernameReservations/new-user"), { username: "pawlyuser" });
+  batch.set(doc(db, "usernames/pawlyuser"), { uid: "new-user" });
+  batch.set(doc(db, "users/new-user"), {
+    uid: "new-user",
+    username: "pawlyuser",
+    usernameLower: "pawlyuser",
+    displayName: "pawlyuser",
+    bio: "",
+    photoUrl: "",
+    isPublic: false,
+    followersCount: 0,
+    followingCount: 0,
+    accountType: "personal",
+    professionalCategory: "",
+    professionalLocation: "",
+    professionalDescription: "",
+    professionalContactPublic: false,
+    dogProfiles: [],
+    createdAt: serverTimestamp()
+  });
+  await assertSucceeds(batch.commit());
 });
 
 test("only approved community places are readable by signed-in users", async () => {
