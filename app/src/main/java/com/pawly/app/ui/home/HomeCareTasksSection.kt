@@ -41,6 +41,7 @@ internal fun HomeCareTasksSection(
     upcomingTitle: String? = null,
     upcomingType: String? = null,
     upcomingDate: String? = null,
+    upcomingTime: String? = null,
     onUpcomingClick: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -310,6 +311,10 @@ internal fun HomeCareTasksSection(
                 }
                 "$dayLabel · $relative"
             }.getOrDefault(upcomingDate)
+            val upcomingDisplayLabel = listOf(
+                upcomingLabel,
+                upcomingTime?.takeIf { it.isNotBlank() }
+            ).filterNotNull().joinToString(" · ")
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(tr("Próximamente"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Surface(
@@ -333,7 +338,7 @@ internal fun HomeCareTasksSection(
                             )
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(upcomingLabel, color = Color(0xFF67574E), style = MaterialTheme.typography.labelSmall)
+                            Text(upcomingDisplayLabel, color = Color(0xFF67574E), style = MaterialTheme.typography.labelSmall)
                             Text(upcomingTitle, color = Color(0xFF263A30), fontWeight = FontWeight.Bold)
                         }
                         Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFF315A45))
