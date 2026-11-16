@@ -2,6 +2,7 @@ package com.pawly.app.care.data
 
 import android.content.Context
 import com.pawly.app.care.model.CareTask
+import com.pawly.app.care.model.CareLogEntry
 import com.pawly.app.care.model.PassportEntry
 import org.json.JSONArray
 import org.json.JSONObject
@@ -58,7 +59,10 @@ internal object PetCareLocalStore {
                 title = row.optString("title"),
                 responsible = row.optString("responsible"),
                 frequency = row.optString("frequency"),
-                completed = row.optBoolean("completed")
+                completed = row.optBoolean("completed"),
+                dose = row.optString("dose"),
+                time = row.optString("time"),
+                completedOn = row.optString("completedOn")
             )
         }
     }.getOrDefault(emptyList())
@@ -69,18 +73,44 @@ internal object PetCareLocalStore {
             json.put(
                 JSONObject().put("id", task.id).put("title", task.title)
                     .put("responsible", task.responsible).put("frequency", task.frequency)
-                    .put("completed", task.completed)
+                    .put("completed", task.completed).put("dose", task.dose)
+                    .put("time", task.time).put("completedOn", task.completedOn)
             )
         }
         preferences(context, storageScope).edit()
             .putString(key("care", petName), json.toString()).apply()
     }
 
+    fun loadCareLogs(context: Context, petName: String, storageScope: String? = null): List<CareLogEntry> = runCatching {
+        val raw = preferences(context, storageScope).getString(key("care_logs", petName), "[]") ?: "[]"
+        val json = JSONArray(raw)
+        List(json.length()) { index ->
+            val row = json.getJSONObject(index)
+            CareLogEntry(
+                id = row.optString("id"), taskTitle = row.optString("taskTitle"),
+                action = row.optString("action"), actorUid = row.optString("actorUid"),
+                actorName = row.optString("actorName"), occurredAt = row.optLong("occurredAt"),
+                note = row.optString("note")
+            )
+        }.sortedByDescending { it.occurredAt }
+    }.getOrDefault(emptyList())
+
+    fun saveCareLogs(context: Context, petName: String, logs: List<CareLogEntry>, storageScope: String? = null) {
+        val json = JSONArray()
+        logs.take(100).forEach { log ->
+            json.put(JSONObject().put("id", log.id).put("taskTitle", log.taskTitle)
+                .put("action", log.action).put("actorUid", log.actorUid)
+                .put("actorName", log.actorName).put("occurredAt", log.occurredAt)
+                .put("note", log.note))
+        }
+        preferences(context, storageScope).edit().putString(key("care_logs", petName), json.toString()).apply()
+    }
+
     /** Move legacy name-keyed local records when a profile is renamed. */
     fun renamePet(context: Context, oldName: String, newName: String, storageScope: String? = null) {
         if (oldName.trim().equals(newName.trim(), ignoreCase = true)) return
         val prefs = preferences(context, storageScope)
-        val prefixes = listOf("passport", "care")
+        val prefixes = listOf("passport", "care", "care_logs")
         val editor = prefs.edit()
         prefixes.forEach { prefix ->
             val oldKey = key(prefix, oldName)

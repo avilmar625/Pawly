@@ -300,7 +300,7 @@ service cloud.firestore {
         match /tasks/{taskId} {
           allow read, delete: if owner(uid);
           allow create, update: if owner(uid)
-            && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed'])
+            && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed', 'dose', 'time', 'completedOn'])
             && request.resource.data.id == taskId
             && request.resource.data.title is string
             && request.resource.data.title.size() > 0
@@ -309,7 +309,22 @@ service cloud.firestore {
             && request.resource.data.responsible.size() <= 80
             && request.resource.data.frequency is string
             && request.resource.data.frequency.size() <= 80
-            && request.resource.data.completed is bool;
+            && request.resource.data.completed is bool
+            && request.resource.data.dose is string && request.resource.data.dose.size() <= 80
+            && request.resource.data.time is string && request.resource.data.time.size() <= 5
+            && request.resource.data.completedOn is string && request.resource.data.completedOn.size() <= 10;
+        }
+        match /careLogs/{logId} {
+          allow read, delete: if owner(uid);
+          allow create: if owner(uid)
+            && request.resource.data.keys().hasOnly(['id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note'])
+            && request.resource.data.id == logId
+            && request.resource.data.actorUid == request.auth.uid
+            && request.resource.data.taskTitle is string && request.resource.data.taskTitle.size() > 0 && request.resource.data.taskTitle.size() <= 120
+            && request.resource.data.action in ['Paseo', 'Comida', 'Medicación', 'Higiene', 'Otro']
+            && request.resource.data.actorName is string && request.resource.data.actorName.size() <= 80
+            && request.resource.data.occurredAt == request.time
+            && request.resource.data.note is string && request.resource.data.note.size() <= 300;
         }
       }
     }
@@ -372,12 +387,30 @@ service cloud.firestore {
         allow read: if isMember();
         allow create, update: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
-          && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed'])
+          && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed', 'dose', 'time', 'completedOn'])
           && request.resource.data.id == taskId
           && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
           && request.resource.data.responsible is string && request.resource.data.responsible.size() <= 80
           && request.resource.data.frequency is string && request.resource.data.frequency.size() <= 80
-          && request.resource.data.completed is bool;
+          && request.resource.data.completed is bool
+          && request.resource.data.dose is string && request.resource.data.dose.size() <= 80
+          && request.resource.data.time is string && request.resource.data.time.size() <= 5
+          && request.resource.data.completedOn is string && request.resource.data.completedOn.size() <= 10;
+        allow delete: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
+      }
+      match /careLogs/{logId} {
+        allow read: if isMember();
+        allow create: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+          && request.resource.data.keys().hasOnly(['id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note'])
+          && request.resource.data.id == logId
+          && request.resource.data.actorUid == request.auth.uid
+          && request.resource.data.taskTitle is string && request.resource.data.taskTitle.size() > 0 && request.resource.data.taskTitle.size() <= 120
+          && request.resource.data.action in ['Paseo', 'Comida', 'Medicación', 'Higiene', 'Otro']
+          && request.resource.data.actorName is string && request.resource.data.actorName.size() <= 80
+          && request.resource.data.occurredAt == request.time
+          && request.resource.data.note is string && request.resource.data.note.size() <= 300;
         allow delete: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
       }

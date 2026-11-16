@@ -5,6 +5,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.domain.PetCareRepository
 import com.pawly.app.care.model.PassportEntry
+import com.pawly.app.care.model.CareLogEntry
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -142,6 +143,13 @@ class FirebasePetCareRepository(
             db.collection("sharedPets").document(sharedId(petId)).collection("tasks")
         }
 
+    private fun careLogs(petId: String) =
+        if (sharedPetOwnerUid == null) {
+            db.collection("users").document(uid()).collection("petCare").document(petId).collection("careLogs")
+        } else {
+            db.collection("sharedPets").document(sharedId(petId)).collection("careLogs")
+        }
+
     private fun passportData(entry: PassportEntry) = mapOf(
         "id" to entry.id, "type" to entry.type.trim().take(40),
         "title" to entry.title.trim(), "detail" to entry.detail.trim(), "date" to entry.date.trim()
@@ -150,7 +158,10 @@ class FirebasePetCareRepository(
     private fun taskData(task: CareTask) = mapOf(
         "id" to task.id, "title" to task.title.trim(),
         "responsible" to task.responsible.trim(), "frequency" to task.frequency.trim(),
-        "completed" to task.completed
+        "completed" to task.completed,
+        "dose" to task.dose.trim().take(80),
+        "time" to task.time.trim().take(5),
+        "completedOn" to task.completedOn.trim().take(10)
     )
 
     override suspend fun savePassportEntry(petId: String, entry: PassportEntry) {
@@ -188,6 +199,8 @@ class FirebasePetCareRepository(
         require(petId.isNotBlank() && task.id.isNotBlank())
         require(task.title.isNotBlank() && task.title.length <= 120)
         require(task.responsible.length <= 80 && task.frequency.length <= 80)
+        require(task.dose.length <= 80 && (task.time.isBlank() || task.time.matches(Regex("\\d{2}:\\d{2}"))))
+        require(task.completedOn.length <= 10)
         tasks(petId).document(task.id).set(taskData(task)).await()
     }
 
@@ -197,6 +210,8 @@ class FirebasePetCareRepository(
         careTasks.forEach { task ->
             require(task.id.isNotBlank() && task.title.isNotBlank())
             require(task.title.length <= 120 && task.responsible.length <= 80 && task.frequency.length <= 80)
+            require(task.dose.length <= 80 && (task.time.isBlank() || task.time.matches(Regex("\\d{2}:\\d{2}"))))
+            require(task.completedOn.length <= 10)
             batch.set(tasks(petId).document(task.id), taskData(task))
         }
         if (careTasks.isNotEmpty()) batch.commit().await()
@@ -206,8 +221,40 @@ class FirebasePetCareRepository(
         tasks(petId).get().await().documents.mapNotNull { doc ->
             val title = doc.getString("title") ?: return@mapNotNull null
             CareTask(doc.id, title, doc.getString("responsible").orEmpty(),
-                doc.getString("frequency").orEmpty(), doc.getBoolean("completed") ?: false)
+                doc.getString("frequency").orEmpty(), doc.getBoolean("completed") ?: false,
+                doc.getString("dose").orEmpty(), doc.getString("time").orEmpty(), doc.getString("completedOn").orEmpty())
         }
+
+    suspend fun loadCareLogs(petId: String, limit: Long = 30): List<CareLogEntry> {
+        require(petId.isNotBlank() && limit in 1..100)
+        return careLogs(petId).orderBy("occurredAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(limit).get().await().documents.mapNotNull { doc ->
+                val title = doc.getString("taskTitle") ?: return@mapNotNull null
+                CareLogEntry(
+                    id = doc.id, taskTitle = title, action = doc.getString("action").orEmpty(),
+                    actorUid = doc.getString("actorUid").orEmpty(), actorName = doc.getString("actorName").orEmpty(),
+                    occurredAt = doc.getTimestamp("occurredAt")?.toDate()?.time ?: 0L,
+                    note = doc.getString("note").orEmpty()
+                )
+            }
+    }
+
+    suspend fun logCareAction(petId: String, taskTitle: String, action: String, note: String = ""): CareLogEntry {
+        require(petId.isNotBlank() && taskTitle.isNotBlank() && taskTitle.length <= 120)
+        require(action in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro"))
+        require(note.length <= 300)
+        val actorUid = uid()
+        val actorName = auth.currentUser?.displayName?.takeIf { it.isNotBlank() }
+            ?: auth.currentUser?.email?.substringBefore("@")?.take(60).orEmpty().ifBlank { "Cuidador" }
+        val ref = careLogs(petId).document()
+        ref.set(mapOf(
+            "id" to ref.id, "taskTitle" to taskTitle.trim(), "action" to action,
+            "actorUid" to actorUid, "actorName" to actorName,
+            "occurredAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+            "note" to note.trim()
+        )).await()
+        return CareLogEntry(ref.id, taskTitle.trim(), action, actorUid, actorName, System.currentTimeMillis(), note.trim())
+    }
 
     override suspend fun deleteCareTask(petId: String, taskId: String) {
         require(petId.isNotBlank() && taskId.isNotBlank())

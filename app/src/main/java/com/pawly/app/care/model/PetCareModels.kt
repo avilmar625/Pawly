@@ -15,5 +15,19 @@ data class CareTask(
     val title: String,
     val responsible: String,
     val frequency: String,
-    val completed: Boolean
+    val completed: Boolean,
+    val dose: String = "",
+    val time: String = "",
+    val completedOn: String = ""
+)
+
+/** A timestamped record of who performed a shared pet-care action. */
+data class CareLogEntry(
+    val id: String,
+    val taskTitle: String,
+    val action: String,
+    val actorUid: String,
+    val actorName: String,
+    val occurredAt: Long,
+    val note: String = ""
 )
