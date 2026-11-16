@@ -203,8 +203,11 @@ internal fun PawlyEventsScreen(
         loading = false
     }
     val visible = events.filter { category == "Todos" || it.category == category }
-        .sortedWith(compareBy<PawlyEvent> { if (it.startAt > 0L) it.startAt else Long.MAX_VALUE }
-            .let { comparator -> if (sortAscending) comparator else comparator.reversed() })
+        .let { filtered ->
+            val dated = filtered.filter { it.startAt > 0L }.sortedBy { it.startAt }
+            val withoutDate = filtered.filter { it.startAt <= 0L }
+            (if (sortAscending) dated else dated.asReversed()) + withoutDate
+        }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp)) {
         if (elegantDesign && !mapOnly) {
             Box(Modifier.fillMaxWidth().height(128.dp).clip(RoundedCornerShape(24.dp))) {
