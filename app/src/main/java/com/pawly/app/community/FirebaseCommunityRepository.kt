@@ -834,8 +834,26 @@ class FirebaseCommunityRepository private constructor(
             "lonCell" to kotlin.math.round(longitude * 100.0).toInt(),
             "status" to "active", "createdAt" to FieldValue.serverTimestamp()
         )).await()
-        runCatching { postBackend("/v1/lost-pet-alerts", JSONObject().put("alertId", postId)) }
+        runCatching { dispatchLostPetAlert(postId) }
         return postId
+    }
+
+    /** Follow bounded Worker cursors so each execution stays under Cloudflare's Free subrequest limit. */
+    private suspend fun dispatchLostPetAlert(postId: String) {
+        var pageToken = ""
+        var offset = 0
+        var complete = false
+        var requests = 0
+        while (!complete && requests < 2000) {
+            val payload = JSONObject().put("alertId", postId).put("offset", offset)
+            if (pageToken.isNotBlank()) payload.put("pageToken", pageToken)
+            val response = postBackend("/v1/lost-pet-alerts", payload)
+            complete = response.optBoolean("complete", false)
+            pageToken = response.optString("pageToken").takeIf { it.isNotBlank() }.orEmpty()
+            offset = response.optInt("nextOffset", 0)
+            requests++
+        }
+        check(complete) { "El aviso se ha publicado, pero no se han podido completar todos los lotes de notificaciones." }
     }
 
     suspend fun loadCommunityPlaces(): List<PawlyCommunityPlace> {
