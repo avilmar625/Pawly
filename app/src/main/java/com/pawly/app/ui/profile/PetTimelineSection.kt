@@ -239,8 +239,18 @@ internal fun PetTimelineSection(
                     "Diario" -> Icons.Filled.AutoStories
                     else -> Icons.Filled.CalendarMonth
                 }
-                Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Surface(
+                    onClick = {
+                        when (item.category) {
+                            "Diario" -> onOpenDiary()
+                            "Cita" -> onOpenCalendar()
+                            else -> onOpenHealth()
+                        }
+                    },
+                    shape = RoundedCornerShape(18.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
                     Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(23.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -254,11 +264,6 @@ internal fun PetTimelineSection(
                     }
                 }
             }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            androidx.compose.material3.TextButton(onClick = onOpenHealth) { Text(tr("Salud")) }
-            androidx.compose.material3.TextButton(onClick = onOpenDiary) { Text(tr("Diario")) }
-            androidx.compose.material3.TextButton(onClick = onOpenCalendar) { Text(tr("Citas")) }
         }
     }
 }
