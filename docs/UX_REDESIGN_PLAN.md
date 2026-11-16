@@ -164,3 +164,13 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - Revisión de compilación y visual en dispositivo pendiente.
 
 - El bloque «Próximamente» presenta la fecha en formato legible según el idioma del dispositivo (día y número) y añade «hoy», «mañana» o el tiempo restante; reconoce variantes de texto de vacunas para usar el icono sanitario.
+
+
+## Actualización funcional y de localización — 16-11-2026
+- Los textos nuevos del panel Hoy/cuidados pasan por `tr()`; se han añadido traducciones explícitas para catalán, francés e inglés, incluidos estados offline/sync, progreso, próxima cita, acciones rápidas y confirmación de posible doble medicación.
+- Los identificadores persistidos de acción (`Paseo`, `Comida`, `Medicación`) permanecen en español como valores de dominio estables. Solo se traducen sus etiquetas visibles; no se usan cadenas traducidas para comparar datos guardados.
+- En «Mi perro» se añaden accesos secundarios directos a Diario y Citas, manteniendo Agenda, Pasaporte/Salud, Cuidados y Compartir. Diario y Citas reutilizan las pantallas existentes; no se duplican ni se sustituyen.
+- La vista «Todo» del PDF como cronología realmente unificada todavía no está implementada: requiere combinar entradas de pasaporte, rutinas/logs, diario y calendario con fechas/ordenación coherentes. No se etiqueta Agenda como Todo para no prometer una cronología que aún no existe.
+- Limitación de modelo detectada: las rutinas semanales solo guardan frecuencia «Semanal», sin días de semana configurables; no se puede calcular de forma fiable qué días concretos vencen. Hace falta ampliar modelo/UI/reglas/migración compatible antes de cambiar esa lógica.
+- El panel de Hoy muestra hasta tres registros de actividad reales. La salvaguarda de doble medicación sigue siendo una confirmación UX, no una exclusión atómica/transaccional entre cuidadores.
+- La copia JSON actual sigue siendo local y parcial; no se presenta como copia completa de todos los datos de la cuenta ni de medios Cloudinary.
