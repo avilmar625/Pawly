@@ -131,9 +131,20 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
         Column(Modifier.heightIn(max = 420.dp)) {
             LazyColumn(Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 items(comments, key = { it.id }) { comment ->
-                    Column {
-                        Text(comment.authorName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                        Text(comment.text, color = MaterialTheme.colorScheme.onSurface)
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f),
+                        shape = RoundedCornerShape(15.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(11.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(comment.authorName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            Text(comment.text, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
+                            if (comment.createdAt > 0L) Text(
+                                java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(comment.createdAt)),
+                                color = MaterialTheme.colorScheme.outline,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        }
                     }
                 }
             }
