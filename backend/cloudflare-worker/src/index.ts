@@ -430,15 +430,22 @@ async function deleteFirestoreDocument(env: Env, token: string, path: string): P
   if (!response.ok && response.status !== 404) throw new Error("No se pudo retirar el registro privado.");
 }
 
-async function handleCommunityPlaceSubmission(request: Request, env: Env): Promise<Response> {
-  const uid = await verifiedRequestUser(request, env);
+export async function handleCommunityPlaceSubmission(
+  request: Request,
+  env: Env,
+  dependencies: {
+    verifyUser?: (request: Request, env: Env) => Promise<string | null>;
+    getAccessToken?: (env: Env) => Promise<string>;
+  } = {}
+): Promise<Response> {
+  const uid = await (dependencies.verifyUser ?? verifiedRequestUser)(request, env);
   if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
   try {
     const raw = await request.text();
     if (new TextEncoder().encode(raw).byteLength > 4096) return json({ error: "Petición demasiado grande." }, 413);
     const input = parseCommunityPlaceInput(JSON.parse(raw));
     if (!input) return json({ error: "La propuesta de lugar no es válida." }, 400);
-    const accessToken = await googleAccessToken(env);
+    const accessToken = await (dependencies.getAccessToken ?? googleAccessToken)(env);
     const placeId = uid + "_" + input.submissionId;
     const existing = await readDocument(env, accessToken, `communityPlaces/${placeId}`);
     if (existing) {
