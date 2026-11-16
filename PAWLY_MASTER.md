@@ -413,3 +413,5 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - El PR incluye el historial completo desde la base común: 86 commits, 155 archivos, 17.771 adiciones y 741 eliminaciones. Es un borrador amplio, no una propuesta lista para fusionar.
 - No se ha fusionado. La PR se mantiene en Draft expresamente para revisar y ejecutar validaciones.
 - Tras crearla, la consulta disponible de ejecuciones asociadas al commit no devolvió runs y el estado combinado no devolvió checks. CI **no confirmado**; revisar la pestaña Checks/Actions de la PR directamente antes de considerar cualquier merge.
+
+- La misma protección de rol inicial se ha aplicado también al panel completo `PetCarePlanSection`: el usuario compartido no recibe acciones de edición hasta conocer su rol y la función de toggle vuelve a comprobar `canEdit`.
