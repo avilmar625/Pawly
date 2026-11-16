@@ -1,0 +1,33 @@
+# Copia este archivo como local.properties en la raíz del proyecto.
+# Sustituye los valores por los de tu propio proyecto/cuenta.
+# Este archivo y local.properties están excluidos de Git.
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
+
+# Crea DOS presets UNSIGNED distintos en Cloudinary:
+# - uno solo para imágenes (allowed_formats: jpg, jpeg, png, webp)
+# - otro solo para vídeo (allowed_formats: mp4, mov, webm, 3gp)
+CLOUDINARY_IMAGE_UPLOAD_PRESET=tu_preset_unsigned_imagenes
+CLOUDINARY_VIDEO_UPLOAD_PRESET=tu_preset_unsigned_videos
+
+# Compatibilidad temporal: si ya tenías CLOUDINARY_UPLOAD_PRESET configurado,
+# la app lo usa como fallback para ambos tipos mientras migras a los dos presets.
+# Cuando hayas creado los dos nuevos, elimina esta línea.
+# CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned_antiguo
+
+# URL del backend gratuito Cloudflare Workers (añádela tras desplegar el Worker).
+# PAWLY_BACKEND_URL=https://pawly-api.<tu-subdominio>.workers.dev
+
+# Token SIM-less de Firebase Phone Number Verification (solo debug, dura 7 días).
+# Se genera en Firebase Console > Security > Phone Verification > Testing.
+# Nunca se compila en release. No usar números ficticios para encontrar personas reales.
+# FPNV_TEST_TOKEN=
+
+# Mantener false para no activar verificaciones reales facturables en producción.
+PHONE_VERIFICATION_PRODUCTION_ENABLED=false
+
+# Opcional: firma local de la versión release.
+# Guarda el keystore fuera del repositorio y no compartas estas contraseñas.
+# RELEASE_STORE_FILE=/ruta/segura/pawly-upload.jks
+# RELEASE_STORE_PASSWORD=tu_password
+# RELEASE_KEY_ALIAS=tu_alias
+# RELEASE_KEY_PASSWORD=tu_password

@@ -297,14 +297,30 @@ class FirebaseCommunityRepository private constructor(
         return url
     }
 
-        suspend fun uploadImage(uri: Uri, folder: String): String {
+        private suspend fun registerCloudinaryAsset(uid: String, asset: CloudinaryUploadResult) {
+        require(asset.publicId.startsWith("pawly/") && asset.publicId.contains("/$uid/")) {
+            "Cloudinary ha devuelto un recurso fuera de la carpeta privada de esta cuenta."
+        }
+        db.collection("cloudinaryAssets").document(java.util.UUID.randomUUID().toString()).set(mapOf(
+            "uid" to uid,
+            "publicId" to asset.publicId,
+            "resourceType" to asset.resourceType,
+            "createdAt" to FieldValue.serverTimestamp()
+        )).await()
+    }
+
+    suspend fun uploadImage(uri: Uri, folder: String): String {
         val uid = requireVerifiedUid()
-        return CloudinaryImageUploader(appContext).upload(uri, folder, uid)
+        val asset = CloudinaryImageUploader(appContext).upload(uri, folder, uid)
+        registerCloudinaryAsset(uid, asset)
+        return asset.secureUrl
     }
 
     suspend fun uploadVideo(uri: Uri, folder: String): String {
         val uid = requireVerifiedUid()
-        return CloudinaryImageUploader(appContext).uploadVideo(uri, folder, uid)
+        val asset = CloudinaryImageUploader(appContext).uploadVideo(uri, folder, uid)
+        registerCloudinaryAsset(uid, asset)
+        return asset.secureUrl
     }
 
     suspend fun saveDog(dog: PawlyDog) {
@@ -822,7 +838,7 @@ class FirebaseCommunityRepository private constructor(
         return postId
     }
 
-    /** Follow bounded Worker cursors so every eligible subscriber can be notified without exceeding Cloudflare's 50 subrequest limit. */
+    /** Follow bounded Worker cursors so each execution stays under Cloudflare's Free subrequest limit. */
     private suspend fun dispatchLostPetAlert(postId: String) {
         var pageToken = ""
         var offset = 0
@@ -837,7 +853,7 @@ class FirebaseCommunityRepository private constructor(
             offset = response.optInt("nextOffset", 0)
             requests++
         }
-        check(complete) { "El aviso se ha publicado, pero el envío de notificaciones ha quedado pendiente por superar el límite de lotes." }
+        check(complete) { "El aviso se ha publicado, pero no se han podido completar todos los lotes de notificaciones." }
     }
 
     suspend fun loadCommunityPlaces(): List<PawlyCommunityPlace> {
@@ -847,7 +863,21 @@ class FirebaseCommunityRepository private constructor(
                 PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
                     doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
                     doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
-                    doc.getDouble("latitude"), doc.getDouble("longitude"))
+                    doc.getDouble("latitude"), doc.getDouble("longitude"), doc.getString("status") ?: "approved")
+            }.sortedByDescending { it.createdAt }
+    }
+
+    /** Includes this user's pending proposals so they can edit or withdraw them before review. */
+    suspend fun loadMyCommunityPlaces(): List<PawlyCommunityPlace> {
+        val uid = requireUid()
+        return db.collection("communityPlaces").whereEqualTo("authorUid", uid).limit(100).get().await()
+            .documents.map { doc ->
+                PawlyCommunityPlace(
+                    doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
+                    doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
+                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
+                    doc.getDouble("latitude"), doc.getDouble("longitude"), doc.getString("status") ?: "pending"
+                )
             }.sortedByDescending { it.createdAt }
     }
 
@@ -858,7 +888,7 @@ class FirebaseCommunityRepository private constructor(
                 PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
                     doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
                     doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
-                    doc.getDouble("latitude"), doc.getDouble("longitude"))
+                    doc.getDouble("latitude"), doc.getDouble("longitude"), doc.getString("status") ?: "pending")
             }.sortedByDescending { it.createdAt }
     }
 
@@ -866,6 +896,31 @@ class FirebaseCommunityRepository private constructor(
         requireUid()
         db.collection("communityPlaces").document(placeId)
             .update("status", if (approve) "approved" else "rejected").await()
+    }
+
+    suspend fun updateOwnCommunityPlace(
+        placeId: String, name: String, category: String, location: String,
+        description: String, latitude: Double, longitude: Double
+    ) {
+        val uid = requireVerifiedUid()
+        require(name.trim().length in 3..80 && location.trim().length in 3..120 && description.trim().length in 10..500)
+        require(category in setOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro"))
+        require(latitude in -90.0..90.0 && longitude in -180.0..180.0)
+        val ref = db.collection("communityPlaces").document(placeId)
+        check(ref.get().await().getString("authorUid") == uid) { "Solo puedes editar tus propias propuestas." }
+        ref.update(mapOf(
+            "name" to name.trim(), "category" to category, "location" to location.trim(),
+            "description" to description.trim(), "latitude" to latitude, "longitude" to longitude,
+            // Every edit returns the proposal to moderation, even if it was previously approved.
+            "status" to "pending"
+        )).await()
+    }
+
+    suspend fun deleteOwnCommunityPlace(placeId: String) {
+        val uid = requireVerifiedUid()
+        val ref = db.collection("communityPlaces").document(placeId)
+        check(ref.get().await().getString("authorUid") == uid) { "Solo puedes eliminar tus propias propuestas." }
+        ref.delete().await()
     }
 
     suspend fun submitCommunityPlace(name: String, category: String, location: String, description: String, latitude: Double?, longitude: Double?) {
@@ -902,14 +957,53 @@ class FirebaseCommunityRepository private constructor(
         return profiles.filter { it.uid != uid && it.uid !in blocked }
     }
 
-    /** Raw contact numbers are sent only over TLS to the trusted Worker and never stored. */
-    suspend fun loadPhoneDiscoveryEnabled(): Boolean = false
+    /** Phone numbers are never stored in Firestore in clear text; the Worker stores an HMAC index only. */
+    suspend fun loadPhoneDiscoveryStatus(): PawlyPhoneDiscoveryStatus {
+        val response = postBackend("/v1/phone/discovery/status", JSONObject())
+        return PawlyPhoneDiscoveryStatus(
+            verified = response.optBoolean("verified"),
+            enabled = response.optBoolean("enabled"),
+            testNumber = response.optBoolean("testNumber")
+        )
+    }
 
-    suspend fun setPhoneDiscovery(phone: String, enabled: Boolean): Unit =
-        error("La búsqueda por teléfono está desactivada hasta verificar la titularidad del número.")
+    suspend fun loadPhoneDiscoveryEnabled(): Boolean = loadPhoneDiscoveryStatus().enabled
 
-    suspend fun findContactMatches(phoneNumbers: List<String>): List<PawlyContactMatch> =
-        error("La búsqueda por teléfono está desactivada hasta verificar la titularidad del número.")
+    suspend fun verifyPhoneNumberToken(phoneToken: String): PawlyPhoneDiscoveryStatus {
+        require(phoneToken.length in 80..8000)
+        val response = postBackend("/v1/phone/verify", JSONObject().put("phoneToken", phoneToken))
+        return PawlyPhoneDiscoveryStatus(
+            verified = response.optBoolean("verified"),
+            enabled = response.optBoolean("enabled"),
+            testNumber = response.optBoolean("testNumber")
+        )
+    }
+
+    suspend fun setPhoneDiscovery(enabled: Boolean): PawlyPhoneDiscoveryStatus {
+        val response = postBackend("/v1/phone/discovery/settings", JSONObject().put("enabled", enabled))
+        return PawlyPhoneDiscoveryStatus(
+            verified = response.optBoolean("verified"),
+            enabled = response.optBoolean("enabled"),
+            testNumber = response.optBoolean("testNumber")
+        )
+    }
+
+    /** Contacts are normalized to E.164 on-device and sent only over TLS; the Worker never stores raw numbers. */
+    suspend fun findContactMatches(phoneNumbers: List<String>): List<PawlyContactMatch> {
+        require(phoneNumbers.size in 1..30)
+        val response = postBackend("/v1/phone/discovery/matches", JSONObject().put("phoneNumbers", org.json.JSONArray(phoneNumbers)))
+        val rows = response.optJSONArray("matches") ?: org.json.JSONArray()
+        return List(rows.length()) { index ->
+            rows.getJSONObject(index).let { row ->
+                PawlyContactMatch(
+                    uid = row.optString("uid"),
+                    displayName = row.optString("displayName"),
+                    username = row.optString("username"),
+                    photoUrl = row.optString("photoUrl")
+                )
+            }
+        }.filter { it.uid.isNotBlank() }
+    }
 
     private suspend fun postBackend(path: String, payload: JSONObject): JSONObject {
         val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')
@@ -989,20 +1083,6 @@ class FirebaseCommunityRepository private constructor(
         db.collection("events").add(eventData).await()
     }
 
-    /** Public attendee directory for a community event. Only public profiles are returned. */
-    suspend fun loadEventInterestedUsers(eventId: String): List<PawlyUser> {
-        requireUid()
-        val event = db.collection("events").document(eventId)
-        check(event.get().await().exists()) { "El evento ya no está disponible." }
-        val attendeeDocs = event.collection("interested").limit(200).get().await().documents
-        val users = attendeeDocs.mapNotNull { attendee ->
-            runCatching {
-                db.collection("users").document(attendee.id).get().await().toPawlyUser()
-            }.getOrNull()?.takeIf { it.isPublic }
-        }
-        return users.sortedBy { it.displayName.ifBlank { it.username }.lowercase() }
-    }
-
     suspend fun toggleEventInterest(eventId: String) {
         val uid = requireVerifiedUid()
         val event = db.collection("events").document(eventId)
@@ -1020,6 +1100,26 @@ class FirebaseCommunityRepository private constructor(
                 tx.update(event, "interestedCount", current + 1)
             }
         }.await()
+    }
+
+    /** The Worker enforces organizer-only access and filters blocks in both directions. */
+    suspend fun loadEventAttendees(eventId: String, pageToken: String = ""): PawlyEventAttendeePage {
+        require(eventId.isNotBlank() && eventId.length <= 128)
+        val response = postBackend("/v1/events/attendees", JSONObject()
+            .put("eventId", eventId)
+            .put("pageToken", pageToken))
+        val rows = response.optJSONArray("attendees") ?: org.json.JSONArray()
+        val attendees = List(rows.length()) { index ->
+            rows.getJSONObject(index).let { row ->
+                PawlyEventAttendee(
+                    uid = row.optString("uid"),
+                    displayName = row.optString("displayName"),
+                    username = row.optString("username"),
+                    photoUrl = row.optString("photoUrl")
+                )
+            }
+        }.filter { it.uid.isNotBlank() }
+        return PawlyEventAttendeePage(attendees, response.optString("nextPageToken"))
     }
 
     suspend fun isAdmin(): Boolean {

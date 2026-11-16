@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.ExpandMore
@@ -168,7 +169,17 @@ internal fun PawlyEventsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var reportEventId by remember { mutableStateOf<String?>(null) }
     var selectedEvent by remember { mutableStateOf<PawlyEvent?>(null) }
+    var eventAttendees by remember { mutableStateOf(emptyList<PawlyEventAttendee>()) }
+    var attendeeNextPageToken by remember { mutableStateOf("") }
+    var attendeesLoading by remember { mutableStateOf(false) }
+    var attendeesError by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(selectedEvent?.id) {
+        eventAttendees = emptyList()
+        attendeeNextPageToken = ""
+        attendeesError = null
+        attendeesLoading = false
+    }
     var category by remember { mutableStateOf("Todos") }
     var sortAscending by remember { mutableStateOf(true) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -192,8 +203,11 @@ internal fun PawlyEventsScreen(
         loading = false
     }
     val visible = events.filter { category == "Todos" || it.category == category }
-        .sortedWith(compareBy<PawlyEvent> { if (it.startAt > 0L) it.startAt else Long.MAX_VALUE }
-            .let { comparator -> if (sortAscending) comparator else comparator.reversed() })
+        .let { filtered ->
+            val dated = filtered.filter { it.startAt > 0L }.sortedBy { it.startAt }
+            val withoutDate = filtered.filter { it.startAt <= 0L }
+            (if (sortAscending) dated else dated.asReversed()) + withoutDate
+        }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp)) {
         if (elegantDesign && !mapOnly) {
             Box(Modifier.fillMaxWidth().height(128.dp).clip(RoundedCornerShape(24.dp))) {
@@ -385,6 +399,24 @@ internal fun PawlyEventsScreen(
     selectedEvent?.let { event ->
         EventDetailsDialog(
             event = event,
+            canViewAttendees = repository.currentUid == event.organizerUid,
+            attendees = eventAttendees,
+            hasMoreAttendees = attendeeNextPageToken.isNotBlank(),
+            attendeesLoading = attendeesLoading,
+            attendeesError = attendeesError,
+            onLoadAttendees = {
+                if (!attendeesLoading) scope.launch {
+                    attendeesLoading = true
+                    runCatching { repository.loadEventAttendees(event.id, attendeeNextPageToken) }
+                        .onSuccess {
+                            eventAttendees = eventAttendees + it.attendees
+                            attendeeNextPageToken = it.nextPageToken
+                            attendeesError = null
+                        }
+                        .onFailure { attendeesError = it.localizedMessage ?: attendeesLoadErrorText }
+                    attendeesLoading = false
+                }
+            },
             onDismiss = { selectedEvent = null },
             onAddToCalendar = {
                 val begin = event.startAt
@@ -451,6 +483,12 @@ internal fun PawlyEventsScreen(
 @Composable
 private fun EventDetailsDialog(
     event: PawlyEvent,
+    canViewAttendees: Boolean,
+    attendees: List<PawlyEventAttendee>,
+    hasMoreAttendees: Boolean,
+    attendeesLoading: Boolean,
+    attendeesError: String?,
+    onLoadAttendees: () -> Unit,
     onDismiss: () -> Unit,
     onAddToCalendar: () -> Unit,
     onToggleInterest: () -> Unit
@@ -476,11 +514,35 @@ private fun EventDetailsDialog(
                 Text("${tr("Organiza")} ${event.organizerName}", style = MaterialTheme.typography.labelMedium)
                 HorizontalDivider()
                 Text("${tr("Personas interesadas")} · ${event.interestedCount}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(
-                    tr("Por privacidad, la lista de asistentes no es pública. Solo se muestra el número total de personas interesadas."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (canViewAttendees) {
+                    OutlinedButton(
+                        onClick = onLoadAttendees,
+                        enabled = !attendeesLoading && (attendees.isEmpty() || hasMoreAttendees)
+                    ) {
+                        Icon(Icons.Default.Groups, null, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(tr(if (attendees.isEmpty()) "Ver asistentes" else if (hasMoreAttendees) "Ver más asistentes" else "Asistentes cargados"))
+                    }
+                    if (attendeesLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (attendeesError != null) Text(attendeesError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    attendees.forEach { attendee ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AsyncImage(model = attendee.photoUrl.takeIf { it.isNotBlank() }, contentDescription = null,
+                                modifier = Modifier.size(34.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                            Column(Modifier.weight(1f)) {
+                                Text(attendee.displayName, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                                if (attendee.username.isNotBlank()) Text("@${attendee.username}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                    if (attendees.isNotEmpty()) Text(tr("La lista se pagina y oculta los perfiles bloqueados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                } else {
+                    Text(
+                        tr("Por privacidad, solo la persona organizadora puede consultar la lista de asistentes. Aquí se muestra el número total de personas interesadas."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = {
@@ -596,9 +658,10 @@ private fun CreatePawlyEventDialog(
                 }
                 if (eventDateTimeMillis != null && !eventDateIsFuture) Text(tr("La fecha y hora deben ser futuras."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
                         FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value), maxLines = 1) })

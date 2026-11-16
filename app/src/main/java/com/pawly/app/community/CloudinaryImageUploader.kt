@@ -1,0 +1,196 @@
+package com.pawly.app
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.provider.OpenableColumns
+import com.pawly.app.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
+
+/**
+ * Metadata needed by the trusted account-deletion backend to remove owned Cloudinary assets.
+ */
+internal data class CloudinaryUploadResult(
+    val secureUrl: String,
+    val publicId: String,
+    val resourceType: String
+)
+
+/**
+ * Uploads user-selected images directly to Cloudinary using an unsigned preset.
+ * No Cloudinary API secret is ever stored in the Android application.
+ */
+internal class CloudinaryImageUploader(private val context: Context) {
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(5, TimeUnit.MINUTES)
+        .callTimeout(6, TimeUnit.MINUTES)
+        .build()
+
+    suspend fun upload(uri: Uri, folder: String, ownerUid: String): CloudinaryUploadResult = withContext(Dispatchers.IO) {
+        val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
+        val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
+        val uploadPreset = (servicePreferences.getString("cloudinary_image_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).trim()
+        require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
+            "Configura Cloudinary en Más → Ajustes → Servicios multimedia (o en local.properties antes de compilar) para subir fotografías."
+        }
+        require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
+        require(folder in setOf("profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos", "diary-photos")) {
+            "La carpeta de imágenes solicitada no está permitida."
+        }
+
+        val imageBytes = compressJpeg(uri)
+        require(imageBytes.size <= 8 * 1024 * 1024) { "La fotografía supera el límite de 8 MB después de comprimirla." }
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("upload_preset", uploadPreset)
+            .addFormDataPart("folder", "pawly/$folder/$ownerUid")
+            .addFormDataPart("file", "pawly-image.jpg", imageBytes.toRequestBody("image/jpeg".toMediaType()))
+            .build()
+        val request = Request.Builder()
+            .url("https://api.cloudinary.com/v1_1/$cloudName/image/upload")
+            .post(requestBody)
+            .build()
+
+        client.newCall(request).execute().use { response ->
+            val responseText = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                val message = runCatching {
+                    JSONObject(responseText).optJSONObject("error")?.optString("message")
+                }.getOrNull().orEmpty()
+                error(message.ifBlank { "Cloudinary rechazó la fotografía (HTTP ${response.code})." })
+            }
+            val payload = JSONObject(responseText)
+            val secureUrl = payload.optString("secure_url").takeIf { it.startsWith("https://") }
+                ?: error("Cloudinary no ha devuelto una URL segura para la imagen.")
+            val publicId = payload.optString("public_id").takeIf { it.isNotBlank() }
+                ?: error("Cloudinary no ha devuelto el identificador del recurso.")
+            CloudinaryUploadResult(secureUrl, publicId, "image")
+        }
+    }
+
+
+    suspend fun uploadVideo(uri: Uri, folder: String, ownerUid: String): CloudinaryUploadResult = withContext(Dispatchers.IO) {
+        val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
+        val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null) ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
+        val uploadPreset = (servicePreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).trim()
+        require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
+            "Configura Cloudinary en Más → Ajustes → Servicios multimedia (o en local.properties antes de compilar) para subir vídeos."
+        }
+        require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
+        require(folder in setOf("post-videos", "message-videos")) { "La carpeta de vídeos solicitada no está permitida." }
+        // Some Android document providers return a null or generic MIME type.
+        // Resolve the display name as a safe fallback instead of rejecting valid videos.
+        val resolver = context.contentResolver
+        val declaredMime = resolver.getType(uri)?.lowercase()
+        val displayName = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+        val extension = displayName?.substringAfterLast('.', "")?.lowercase().orEmpty()
+        val mime = declaredMime?.takeIf { it in setOf("video/mp4", "video/quicktime", "video/webm", "video/3gpp") }
+            ?: when (extension) {
+                "mp4", "m4v" -> "video/mp4"
+                "mov" -> "video/quicktime"
+                "webm" -> "video/webm"
+                "3gp", "3gpp" -> "video/3gpp"
+                else -> null
+            }
+        require(mime != null) {
+            "Formato de vídeo no admitido o no identificado. Utiliza MP4, MOV, WebM o 3GP."
+        }
+        val bytes = resolver.openInputStream(uri)?.use { readBounded(it, 40 * 1024 * 1024) }
+            ?: error("No se ha podido leer el vídeo seleccionado.")
+        val uploadExtension = when (mime) {
+            "video/quicktime" -> "mov"
+            "video/webm" -> "webm"
+            "video/3gpp" -> "3gp"
+            else -> "mp4"
+        }
+        val body = MultipartBody.Builder().setType(MultipartBody.FORM)
+            .addFormDataPart("upload_preset", uploadPreset)
+            .addFormDataPart("folder", "pawly/$folder/$ownerUid")
+            .addFormDataPart("file", "pawly-video.$uploadExtension", bytes.toRequestBody(mime!!.toMediaType()))
+            .build()
+        val request = Request.Builder()
+            .url("https://api.cloudinary.com/v1_1/$cloudName/video/upload")
+            .post(body).build()
+        client.newCall(request).execute().use { response ->
+            val responseText = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                val message = runCatching { JSONObject(responseText).optJSONObject("error")?.optString("message") }.getOrNull().orEmpty()
+                error(message.ifBlank { "Cloudinary rechazó el vídeo (HTTP " + response.code + ")." })
+            }
+            val payload = JSONObject(responseText)
+            val secureUrl = payload.optString("secure_url").takeIf { it.startsWith("https://") }
+                ?: error("Cloudinary no ha devuelto una URL segura para el vídeo.")
+            val publicId = payload.optString("public_id").takeIf { it.isNotBlank() }
+                ?: error("Cloudinary no ha devuelto el identificador del recurso.")
+            CloudinaryUploadResult(secureUrl, publicId, "video")
+        }
+    }
+
+    private fun readBounded(input: InputStream, maxBytes: Int): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(16 * 1024)
+        var total = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            total += read
+            require(total <= maxBytes) { "El vídeo supera el límite de 40 MB." }
+            output.write(buffer, 0, read)
+        }
+        return output.toByteArray()
+    }
+
+    private fun compressJpeg(uri: Uri): ByteArray {
+        val resolver = context.contentResolver
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        val boundsStream = resolver.openInputStream(uri)
+            ?: error("No se ha podido leer la fotografía seleccionada.")
+        boundsStream.use { BitmapFactory.decodeStream(it, null, bounds) }
+        require(bounds.outWidth > 0 && bounds.outHeight > 0) { "El archivo seleccionado no es una imagen válida." }
+
+        var sampleSize = 1
+        while (max(bounds.outWidth / sampleSize, bounds.outHeight / sampleSize) > 2048) {
+            sampleSize *= 2
+        }
+        val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+        val bitmap = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+            ?: error("No se ha podido procesar la fotografía.")
+
+        val longestSide = max(bitmap.width, bitmap.height)
+        val scale = minOf(1f, 1600f / longestSide.toFloat())
+        val resized = if (scale < 1f) {
+            Bitmap.createScaledBitmap(
+                bitmap,
+                (bitmap.width * scale).toInt().coerceAtLeast(1),
+                (bitmap.height * scale).toInt().coerceAtLeast(1),
+                true
+            )
+        } else bitmap
+
+        return try {
+            ByteArrayOutputStream().use { output ->
+                check(resized.compress(Bitmap.CompressFormat.JPEG, 82, output)) {
+                    "No se ha podido comprimir la fotografía."
+                }
+                output.toByteArray()
+            }
+        } finally {
+            if (resized !== bitmap) resized.recycle()
+            bitmap.recycle()
+        }
+    }
+}
