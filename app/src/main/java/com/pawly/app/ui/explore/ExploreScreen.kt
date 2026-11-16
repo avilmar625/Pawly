@@ -992,7 +992,8 @@ private fun NearbyPlaceCard(place: NearbyPlace, saved: Boolean, onSave: () -> Un
     Surface(
         shape = RoundedCornerShape(19.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
+        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
