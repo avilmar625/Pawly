@@ -56,6 +56,10 @@ internal fun HomeScreen(
     onWeight: () -> Unit = onHealth,
     onPhoto: () -> Unit = onDiary,
     onFood: () -> Unit = onHealth,
+    healthDates: Map<String, String> = emptyMap(),
+    calendarReminders: List<String> = emptyList(),
+    onOpenHealthAgenda: () -> Unit = onHealth,
+    onOpenPassport: () -> Unit = onHealth,
     storageScope: String? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -90,10 +94,13 @@ internal fun HomeScreen(
 
     val weightEntries = passportEntries.filter { it.type.equals("Peso", true) }
     val today = java.time.LocalDate.now()
-    val nextPassportEntry = passportEntries.mapNotNull { entry ->
-        val date = runCatching { java.time.LocalDate.parse(entry.date) }.getOrNull()
-        if (date != null && !date.isBefore(today) && !entry.type.equals("Peso", true)) date to entry else null
-    }.minByOrNull { it.first }
+    val nextUpcomingItem = remember(passportEntries, healthDates, calendarReminders) {
+        findNextHomeUpcomingItem(
+            passportEntries = passportEntries,
+            healthDates = healthDates,
+            calendarReminders = calendarReminders
+        )
+    }
     val diaryAnniversary = remember(diaryEntries, today) { findDiaryAnniversary(diaryEntries, today) }
 
     val parsedWeights = weightEntries.mapNotNull { entry ->
@@ -145,10 +152,17 @@ internal fun HomeScreen(
                 onWeight = onWeight,
                 onPhoto = onPhoto,
                 onFood = onFood,
-                upcomingTitle = nextPassportEntry?.second?.title,
-                upcomingType = nextPassportEntry?.second?.type,
-                upcomingDate = nextPassportEntry?.first?.toString(),
-                onUpcomingClick = onHealth
+                upcomingTitle = nextUpcomingItem?.title,
+                upcomingType = nextUpcomingItem?.type,
+                upcomingDate = nextUpcomingItem?.date?.toString(),
+                onUpcomingClick = {
+                    when (nextUpcomingItem?.destination) {
+                        HomeUpcomingDestination.PASSPORT -> onOpenPassport()
+                        HomeUpcomingDestination.HEALTH_AGENDA -> onOpenHealthAgenda()
+                        HomeUpcomingDestination.CALENDAR -> onCalendar()
+                        null -> onHealth()
+                    }
+                }
             )
         }
         item {
