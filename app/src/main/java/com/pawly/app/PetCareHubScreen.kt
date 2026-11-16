@@ -501,7 +501,7 @@ private fun PetPassportSection(
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
-            title = { Text(tr("Nuevo registro")) },
+            title = { Text(tr(if (editingEntry == null) "Nuevo registro" else "Editar registro")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -535,8 +535,13 @@ private fun PetPassportSection(
                 Button(onClick = {
                     val cleanTitle = title.trim()
                     if (cleanTitle.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) {
-                        val newEntry = PassportEntry(UUID.randomUUID().toString(), selectedType, cleanTitle.take(80), detail.trim().take(500), date.trim())
-                        entries = entries + newEntry
+                        val newEntry = editingEntry?.copy(
+                            type = selectedType,
+                            title = cleanTitle.take(80),
+                            detail = detail.trim().take(500),
+                            date = date.trim()
+                        ) ?: PassportEntry(UUID.randomUUID().toString(), selectedType, cleanTitle.take(80), detail.trim().take(500), date.trim())
+                        entries = if (editingEntry == null) entries + newEntry else entries.map { if (it.id == newEntry.id) newEntry else it }
                         PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
@@ -545,11 +550,11 @@ private fun PetPassportSection(
                                     .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
                             }
                         }
-                        title = ""; detail = ""; date = LocalDate.now().toString(); selectedType = "Vacuna"; showAdd = false
+                        title = ""; detail = ""; date = LocalDate.now().toString(); selectedType = "Vacuna"; editingEntry = null; showAdd = false
                     }
                 }, enabled = canEdit && title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text(tr("Guardar")) }
             },
-            dismissButton = { TextButton(onClick = { showAdd = false }) { Text(tr("Cancelar")) } }
+            dismissButton = { TextButton(onClick = { showAdd = false; editingEntry = null }) { Text(tr("Cancelar")) } }
         )
     }
 }
