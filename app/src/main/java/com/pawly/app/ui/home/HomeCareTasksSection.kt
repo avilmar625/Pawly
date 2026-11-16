@@ -60,7 +60,7 @@ internal fun HomeCareTasksSection(
     val scope = rememberCoroutineScope()
     var canEdit by remember(petName, storageScope) { mutableStateOf(storageScope.isNullOrBlank()) }
     var syncMessage by remember(petName, storageScope) {
-        mutableStateOf(if (storageScope.isNullOrBlank()) "Guardado en este dispositivo" else "Cargando cuidados…")
+        mutableStateOf(if (storageScope.isNullOrBlank()) tr("Guardado en este dispositivo") else tr("Cargando cuidados…"))
     }
     var loading by remember(petName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
     var pendingIds by remember(petName, storageScope) { mutableStateOf(emptySet<String>()) }
@@ -75,16 +75,16 @@ internal fun HomeCareTasksSection(
             val remoteTasks = repo.loadCareTasks(petName)
             if (remoteTasks.isEmpty() && tasks.isNotEmpty()) {
                 repo.saveCareTasks(petName, tasks)
-                syncMessage = "Rutinas locales sincronizadas"
+                syncMessage = tr("Rutinas locales sincronizadas")
             } else {
                 tasks = remoteTasks
                 PetCareLocalStore.saveTasks(context, petName, remoteTasks, storageScope)
-                syncMessage = "Cuidados sincronizados"
+                syncMessage = tr("Cuidados sincronizados")
             }
             logs = repo.loadCareLogs(petName)
             PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
         }.onFailure {
-            syncMessage = "Sin conexión: se conserva la copia local"
+            syncMessage = tr("Sin conexión: se conserva la copia local")
         }
         loading = false
     }
@@ -114,7 +114,7 @@ internal fun HomeCareTasksSection(
     val totalCount = if (tasks.isNotEmpty()) orderedVisibleTasks.size else 2
     val progress = if (totalCount == 0) 0f else completedCount.toFloat() / totalCount
     val nextCareLabel = if (tasks.isNotEmpty()) orderedVisibleTasks.firstOrNull { !isComplete(it) }?.title
-        else if (!walkDone) "Paseo" else if (!medicineDone) "Medicación" else null
+        else if (!walkDone) tr("Paseo") else if (!medicineDone) tr("Medicación") else null
 
     fun toggleTask(task: CareTask, checked: Boolean) {
         if (!canEdit || task.id in pendingIds) return
@@ -145,9 +145,9 @@ internal fun HomeCareTasksSection(
                     logs = remoteLogs
                     PetCareLocalStore.saveCareLogs(context, petName, remoteLogs, storageScope)
                 }
-                syncMessage = "Cambios sincronizados"
+                syncMessage = tr("Cambios sincronizados")
             }.onFailure {
-                syncMessage = "Guardado localmente; sincronización pendiente"
+                syncMessage = tr("Guardado localmente; sincronización pendiente")
             }
             pendingIds = pendingIds - task.id
         }
@@ -155,7 +155,7 @@ internal fun HomeCareTasksSection(
 
     fun requestTaskToggle(task: CareTask, checked: Boolean) {
         if (!canEdit || task.id in pendingIds) return
-        if (checked && task.action.equals("Medicación", ignoreCase = true)) {
+        if (checked && task.action.equals(tr("Medicación"), ignoreCase = true)) {
             val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
             val duplicate = com.pawly.app.care.domain.CareDuplicateGuard.findRecentMedicationLog(
                 logs = logs,
@@ -181,17 +181,17 @@ internal fun HomeCareTasksSection(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("HOY PARA ${petName.uppercase(Locale.getDefault())}",
+                    Text("${tr("HOY PARA")} ${petName.uppercase(Locale.getDefault())}",
                         color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                    Text("$completedCount de $totalCount hechas",
+                    Text("$completedCount/$totalCount ${tr("cuidados completados")}",
                         color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold)
                     Text(
                         when {
-                            totalCount == 0 || completedCount == totalCount -> "¡Todo listo! Qué buen equipo."
-                            completedCount == totalCount - 1 && !nextCareLabel.isNullOrBlank() -> "Solo falta $nextCareLabel."
-                            else -> "Aún quedan ${totalCount - completedCount} cuidados por completar."
+                            totalCount == 0 || completedCount == totalCount -> tr("¡Todo listo! Qué buen equipo.")
+                            completedCount == totalCount - 1 && !nextCareLabel.isNullOrBlank() -> "${tr("Solo falta")} $nextCareLabel."
+                            else -> "${tr("Aún quedan")} ${totalCount - completedCount} ${tr("cuidados por completar")}."
                         },
                         color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall
                     )
@@ -210,25 +210,25 @@ internal fun HomeCareTasksSection(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Lo de hoy", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+            Text(tr("Lo de hoy"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f))
             if (loading) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             } else {
                 TextButton(onClick = onOpenCalendar) {
-                    Text("Ver agenda")
+                    Text(tr("Ver agenda"))
                 }
             }
         }
 
         if (tasks.isEmpty()) {
             HomeRoutineRow(
-                Icons.Filled.DirectionsWalk, "Paseo diario", "Un rato para explorar y olfatear",
+                Icons.Filled.DirectionsWalk, tr("Paseo diario"), tr("Un rato para explorar y olfatear"),
                 walkDone, onWalkToggle, Color(0xFFE2F1E6), Color(0xFF287A4B)
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             HomeRoutineRow(
-                Icons.Filled.Medication, "Medicación", "Comprueba la toma de hoy",
+                Icons.Filled.Medication, tr("Medicación"), tr("Comprueba la toma de hoy"),
                 medicineDone, onMedicineToggle, Color(0xFFFCE8E8), Color(0xFFB54F5C)
             )
         } else if (visibleTasks.isEmpty()) {
@@ -237,7 +237,7 @@ internal fun HomeCareTasksSection(
                 color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Text("No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados.",
+                Text(tr("No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados."),
                     Modifier.fillMaxWidth().padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall)
             }
@@ -245,17 +245,17 @@ internal fun HomeCareTasksSection(
             orderedVisibleTasks.forEach { task ->
                     val complete = isComplete(task)
                     val icon = when (task.action) {
-                        "Paseo" -> Icons.Filled.DirectionsWalk
-                        "Comida" -> Icons.Filled.Restaurant
-                        "Medicación" -> Icons.Filled.Medication
+                        tr("Paseo") -> Icons.Filled.DirectionsWalk
+                        tr("Comida") -> Icons.Filled.Restaurant
+                        tr("Medicación") -> Icons.Filled.Medication
                         "Higiene" -> Icons.Filled.Bathtub
                         else -> Icons.Filled.CheckCircle
                     }
                     val subtitle = listOf(
-                        task.responsible.takeIf { it.isNotBlank() }?.let { "Responsable: $it" },
+                        task.responsible.takeIf { it.isNotBlank() }?.let { "${tr("Responsable")}: $it" },
                         task.time.takeIf { it.isNotBlank() },
                         task.dose.takeIf { it.isNotBlank() }
-                    ).filterNotNull().joinToString(" · ").ifBlank { "${task.action} · ${task.frequency}" }
+                    ).filterNotNull().joinToString(" · ").ifBlank { "${tr(task.action)} · ${tr(task.frequency)}" }
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = MaterialTheme.colorScheme.surface,
@@ -269,8 +269,8 @@ internal fun HomeCareTasksSection(
                         ) {
                             Box(Modifier.size(44.dp).background(
                                 when (task.action) {
-                                    "Medicación" -> Color(0xFFF3DCCF)
-                                    "Comida" -> Color(0xFFE4EBC1)
+                                    tr("Medicación") -> Color(0xFFF3DCCF)
+                                    tr("Comida") -> Color(0xFFE4EBC1)
                                     else -> Color(0xFFDDEBE3)
                                 }, RoundedCornerShape(14.dp)
                             ), contentAlignment = Alignment.Center) {
@@ -301,14 +301,14 @@ internal fun HomeCareTasksSection(
                     .replaceFirstChar { it.uppercase(Locale.getDefault()) }
                 val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, date)
                 val relative = when (daysUntil) {
-                    0L -> "hoy"
-                    1L -> "mañana"
-                    else -> "dentro de $daysUntil días"
+                    0L -> tr("hoy")
+                    1L -> tr("mañana")
+                    else -> "${tr("dentro de")} $daysUntil ${tr("días")}"
                 }
                 "$dayLabel · $relative"
             }.getOrDefault(upcomingDate)
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Próximamente", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(tr("Próximamente"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Surface(
                     onClick = onUpcomingClick,
                     shape = RoundedCornerShape(20.dp),
@@ -339,16 +339,16 @@ internal fun HomeCareTasksSection(
             }
         }
 
-        Text("Registrar rápido", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(tr("Registrar rápido"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            HomeCareQuickAction(Icons.Filled.DirectionsWalk, "Paseo", Color(0xFFE2F1E6), {
-                val task = visibleTasks.firstOrNull { it.action == "Paseo" }
+            HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), Color(0xFFE2F1E6), {
+                val task = visibleTasks.firstOrNull { it.action == tr("Paseo") }
                 if (task != null) toggleTask(task, !isComplete(task)) else onWalkToggle(!walkDone)
             }, Modifier.weight(1f))
-            HomeCareQuickAction(Icons.Filled.MonitorWeight, "Peso", Color(0xFFDDF1EE), onWeight, Modifier.weight(1f))
-            HomeCareQuickAction(Icons.Filled.PhotoCamera, "Foto", Color(0xFFFFE9DF), onPhoto, Modifier.weight(1f))
-            HomeCareQuickAction(Icons.Filled.Restaurant, "Comida", Color(0xFFE4EBC1), {
-                val task = visibleTasks.firstOrNull { it.action == "Comida" }
+            HomeCareQuickAction(Icons.Filled.MonitorWeight, tr("Peso"), Color(0xFFDDF1EE), onWeight, Modifier.weight(1f))
+            HomeCareQuickAction(Icons.Filled.PhotoCamera, tr("Foto"), Color(0xFFFFE9DF), onPhoto, Modifier.weight(1f))
+            HomeCareQuickAction(Icons.Filled.Restaurant, tr("Comida"), Color(0xFFE4EBC1), {
+                val task = visibleTasks.firstOrNull { it.action == tr("Comida") }
                 if (task != null) toggleTask(task, !isComplete(task)) else onFood()
             }, Modifier.weight(1f))
         }
@@ -363,7 +363,7 @@ internal fun HomeCareTasksSection(
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("En casa de $petName", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("${tr("En casa de")} $petName", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     logs.take(3).forEach { log ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             Box(Modifier.size(30.dp).background(Color(0xFFE4EBC1), CircleShape), contentAlignment = Alignment.Center) {
@@ -384,22 +384,22 @@ internal fun HomeCareTasksSection(
     pendingMedicationConfirmation?.let { (task, previousLog) ->
         AlertDialog(
             onDismissRequest = { pendingMedicationConfirmation = null },
-            title = { Text("¿Registrar otra toma?") },
+            title = { Text(tr("¿Registrar otra toma?")) },
             text = {
                 Text(
-                    "${previousLog.actorName} ya registró «${task.title}» hoy. " +
-                        "Comprueba que no se vaya a administrar dos veces."
+                    "${previousLog.actorName} ${tr("ya registró")} «${task.title}» ${tr("hoy")}. " +
+                        tr("Comprueba que no se vaya a administrar dos veces.")
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
                     pendingMedicationConfirmation = null
                     toggleTask(task, true)
-                }) { Text("Registrar igualmente") }
+                }) { Text(tr("Registrar igualmente")) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingMedicationConfirmation = null }) {
-                    Text("No, ya está dada")
+                    Text(tr("No, ya está dada"))
                 }
             }
         )
