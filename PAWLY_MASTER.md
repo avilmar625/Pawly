@@ -324,3 +324,42 @@ Probar todas las áreas del apartado 5 con checklist por flujo, cuenta, disposit
 8. Informar al usuario de la rama exacta, commit, estado CI, pruebas realizadas y qué debe probar personalmente.
 
 **Regla final:** “implementado” no significa “verificado”; “compila” no significa “funciona”; “está en GitHub” no significa “está desplegado”.
+
+
+## 13. Auditoría de código y UX (16-11-2026, rama cambios65)
+
+Se ha contrastado el inventario con los archivos reales de `cambios64`. Corrige y amplía las notas anteriores:
+
+### Funciones que YA existen (no duplicar)
+
+- **Onboarding:** `PawlyOnboardingDialog` tiene tres pasos: nombre de mascota/perfil privado, foto y notificaciones. Es básico, pero no es cierto que no exista onboarding.
+- **Peso:** el pasaporte admite entradas `Peso`; Inicio ya intenta mostrar evolución y un mini gráfico. El parseo de texto tenía una expresión regular mal escapada en Kotlin raw string, por lo que no reconocía bien los dígitos. En cambios65 se extrae a `care/domain/WeightMeasurementParser.kt` y se añaden pruebas para coma decimal, punto decimal, sin unidad y límites.
+- **Backup:** `PawlyBackupManager` exporta/restaura JSON v1 de datos locales de la mascota: perfiles/nombres, diario, agenda, fechas de salud, pasaporte, tareas, logs y foto de perfil (límite 5 MB). No es una copia integral de toda la cuenta ni de Firestore, comunidad, chats, eventos, colecciones, archivos multimedia ni recursos Cloudinary. La restauración escribe algunos datos compatibles en Firebase cuando hay sesión, pero no equivale a restauración completa multi-dispositivo.
+- **Cuidado compartido:** existen invitaciones, roles `owner/editor/reader`, tareas con responsable/frecuencia/dosis/hora, registros `CareLogEntry` con actor y hora y sincronización mediante Firebase. No es una función que haya que crear desde cero.
+- **Medicaciones:** el modelo admite dosis, hora y frecuencia Diario/Semanal/Puntual; hay recordatorio local para pauta diaria. No hay todavía una pauta clínica completa con múltiples tomas por día, dosis por toma, ciclos, adherencia, alertas de duplicidad en toda la superficie Hoy ni confirmación robusta de tareas desde el panel principal.
+- **Ficha de emergencia:** el pasaporte ya incluye Microchip, Alergia, Seguro, Veterinario habitual y Contacto de emergencia.
+- **Cartel de mascota perdida:** existe `LostPetPosterExporter`.
+- **Navegación:** ya hay cinco destinos visibles en la barra inferior (Hoy, Explorar, Mi perro, Comunidad, Más). Internamente se conservan diez destinos/estados: Aprender, Diario, Calendario, Profesionales y Ayuda se abren desde Más. La propuesta visual no requiere pasar de diez pantallas a cinco ni borrar destinos.
+- **Explorar:** hay búsqueda, mapa OpenStreetMap, lugares de comunidad, favoritos y colecciones; no reimplementar ni quitar teléfonos/acciones externas existentes.
+
+### Diferencia entre implementación y propuesta
+
+- No se localizaron widgets Android, inventario de comida/pienso, control de gastos, rutas GPS de paseo ni rachas semanales.
+- No se localizó un bloque funcional de recuerdo automático “hace un año” en Inicio.
+- La pantalla Hoy actual muestra paseo/medicación mediante dos booleanos locales diarios y no consume todavía toda la lista de tareas/actividad compartida. Los accesos “Peso” y “Foto” tampoco llevan a un formulario directo de medición o a crear una foto de diario: hoy llevan a las áreas Salud y edición de perfil, respectivamente.
+- El diseño PDF propone un lenguaje visual cálido (crema, verde bosque, salvia y coral), panel de progreso, tareas reales del día, próximos eventos, cuatro acciones rápidas (paseo/peso/foto/comida), actividad compartida y recuerdo anual. Es una referencia UX, no una captura de la app actual.
+
+### Decisiones de diseño para cambios65+
+
+1. Mantener cinco destinos visibles y los diez destinos funcionales existentes.
+2. Dentro de **Mi perro**, integrar vistas/filtros Todo, Salud, Diario y Citas; mantener Pasaporte, Cuidados y Compartir accesibles sin borrar ni degradar sus capacidades.
+3. Convertir Hoy en un dashboard derivado de los datos reales de cuidados, registros, agenda y recuerdos; evitar datos de ejemplo.
+4. Las acciones rápidas deben abrir directamente el flujo correspondiente. Si un flujo no existe, implementarlo antes de anunciarlo como acción disponible.
+5. Mantener accesibilidad, localización, modo oscuro, estilo simple/elegante y tamaños adaptables.
+6. No inferir “vacuna dentro de tres días”, pesos, responsables ni recuerdos si no hay registros reales.
+
+### Cambios ya iniciados en cambios65
+
+- Añadido `WeightMeasurementParser` como función pura y pruebas unitarias.
+- `HomeScreen` usa ahora el parser extraído.
+- CI debe validar el cambio antes de considerarlo cerrado.
