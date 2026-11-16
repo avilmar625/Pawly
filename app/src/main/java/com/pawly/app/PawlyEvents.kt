@@ -191,7 +191,7 @@ internal fun PawlyEventsScreen(
                     attendeeNextPageToken = it.nextPageToken
                     attendeesError = null
                 }
-                .onFailure { attendeesError = it.localizedMessage ?: attendeesLoadErrorText }
+                .onFailure { attendeesError = it.localizedMessage ?: "No se pudo cargar la lista de personas interesadas." }
             attendeesLoading = false
         }
     }
