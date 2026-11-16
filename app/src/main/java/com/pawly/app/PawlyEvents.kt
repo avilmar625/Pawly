@@ -513,7 +513,7 @@ private fun EventDetailsDialog(
                     if (attendeesError != null) Text(attendeesError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     attendees.forEach { attendee ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AsyncImage(model = attendee.photoUrl.ifBlank { null }, contentDescription = null,
+                            AsyncImage(model = attendee.photoUrl.takeIf { it.isNotBlank() }, contentDescription = null,
                                 modifier = Modifier.size(34.dp).clip(CircleShape), contentScale = ContentScale.Crop)
                             Column(Modifier.weight(1f)) {
                                 Text(attendee.displayName, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
