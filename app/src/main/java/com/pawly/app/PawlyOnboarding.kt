@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -36,6 +37,7 @@ internal fun PawlyOnboardingDialog(
     hasPhoto: Boolean,
     onPickPhoto: () -> Unit,
     onEnableNotifications: () -> Unit,
+    notificationsEnabled: Boolean = false,
     onFinish: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) }
@@ -86,9 +88,27 @@ internal fun PawlyOnboardingDialog(
                     else -> {
                         Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                         Text("Activa las notificaciones para recibir recordatorios de cuidados y avisos importantes. Puedes decidirlo ahora o más adelante en los ajustes del móvil.")
-                        OutlinedButton(onClick = onEnableNotifications, modifier = Modifier.fillMaxWidth()) {
-                            Text("Activar notificaciones")
+                        OutlinedButton(
+                            onClick = onEnableNotifications,
+                            enabled = !notificationsEnabled,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (notificationsEnabled) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Notificaciones activadas")
+                            } else {
+                                Icon(Icons.Default.NotificationsActive, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Activar notificaciones")
+                            }
                         }
+                        Text(
+                            if (notificationsEnabled) "¡Perfecto! Pawly puede enviarte avisos y recordatorios."
+                            else "Te pediremos permiso al sistema. También puedes activarlas más adelante desde los ajustes del móvil.",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
