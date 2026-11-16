@@ -1,0 +1,30 @@
+name: Pawly Firestore validation
+
+on:
+  push:
+    branches:
+      - cambios60-comunidad-calendario
+      - 'cambios*'
+  pull_request:
+    branches:
+      - main
+      - cambios60-comunidad-calendario
+  workflow_dispatch:
+
+jobs:
+  firestore-rules:
+    name: Test Firestore rules behavior with emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools
+      - name: Install rules test dependencies
+        working-directory: tests/firestore
+        run: npm install
+      - name: Run behavioral rules tests against emulator
+        run: firebase emulators:exec --only firestore --project demo-pawly "npm --prefix tests/firestore test"

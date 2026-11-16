@@ -8,7 +8,6 @@ interface Env {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_PRIVATE_KEY: string;
-  PHONE_MATCH_HMAC_SECRET?: string;
 }
 
 type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
@@ -168,13 +167,9 @@ async function verifyActivity(
 }
 
 async function listDeviceTokens(env: Env, accessToken: string, uid: string): Promise<Array<{ id: string; token: string }>> {
-  // The free Worker plan allows 50 external subrequests per invocation. Keep this
-  // fan-out bounded to the two most recently returned devices for each recipient.
   const url = new URL(`${firestoreRoot(env)}/users/${encodeURIComponent(uid)}/fcmTokens`);
   url.searchParams.set("pageSize", "2");
-  const response = await fetch(url.toString(), {
-    headers: { authorization: `Bearer ${accessToken}` }
-  });
+  const response = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
   if (!response.ok) throw new Error("No se pudieron consultar los dispositivos del destinatario.");
   const payload = await response.json() as { documents?: any[] };
   return (payload.documents ?? []).flatMap((doc) => {
@@ -435,15 +430,22 @@ async function deleteFirestoreDocument(env: Env, token: string, path: string): P
   if (!response.ok && response.status !== 404) throw new Error("No se pudo retirar el registro privado.");
 }
 
-async function handleCommunityPlaceSubmission(request: Request, env: Env): Promise<Response> {
-  const uid = await verifiedRequestUser(request, env);
+export async function handleCommunityPlaceSubmission(
+  request: Request,
+  env: Env,
+  dependencies: {
+    verifyUser?: (request: Request, env: Env) => Promise<string | null>;
+    getAccessToken?: (env: Env) => Promise<string>;
+  } = {}
+): Promise<Response> {
+  const uid = await (dependencies.verifyUser ?? verifiedRequestUser)(request, env);
   if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
   try {
     const raw = await request.text();
     if (new TextEncoder().encode(raw).byteLength > 4096) return json({ error: "Petición demasiado grande." }, 413);
     const input = parseCommunityPlaceInput(JSON.parse(raw));
     if (!input) return json({ error: "La propuesta de lugar no es válida." }, 400);
-    const accessToken = await googleAccessToken(env);
+    const accessToken = await (dependencies.getAccessToken ?? googleAccessToken)(env);
     const placeId = uid + "_" + input.submissionId;
     const existing = await readDocument(env, accessToken, `communityPlaces/${placeId}`);
     if (existing) {
@@ -500,7 +502,6 @@ async function handleCommunityPlaceSubmission(request: Request, env: Env): Promi
 async function listLostPetSubscriptions(
   env: Env, accessToken: string, pageToken: string
 ): Promise<{ documents: any[]; nextPageToken: string }> {
-  // Read one bounded page per invocation; the client follows the opaque cursor.
   const url = new URL(`${firestoreRoot(env)}/lostPetSubscriptions`);
   url.searchParams.set("pageSize", "500");
   if (pageToken) url.searchParams.set("pageToken", pageToken);
@@ -562,39 +563,38 @@ async function handleLostPetAlert(request: Request, env: Env): Promise<Response>
       const subLat = decodeFirestoreNumber(fields.latCell) / 100;
       const subLon = decodeFirestoreNumber(fields.lonCell) / 100;
       if (![5, 10, 20].includes(radius) || distanceKm(latitude, longitude, subLat, subLon) > radius) continue;
+      processedRecipients++;
       const [blockA, blockB] = await Promise.all([
         readDocument(env, accessToken, `users/${uid}/blocked/${recipientUid}`),
         readDocument(env, accessToken, `users/${recipientUid}/blocked/${uid}`)
       ]);
-      if (blockA || blockB) continue;
-      const claim = await fetch(`${firestoreRoot(env)}/lostPetPushes?documentId=${encodeURIComponent(body.alertId + "_" + recipientUid)}`, {
-        method: "POST", headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
-        body: JSON.stringify({ fields: {
-          alertId: { stringValue: body.alertId }, recipientUid: { stringValue: recipientUid },
-          createdAt: { timestampValue: new Date().toISOString() }
-        } })
-      });
-      if (claim.status === 409) continue;
-      if (!claim.ok) throw new Error("No se pudo registrar el envío del aviso.");
-      const devices = await listDeviceTokens(env, accessToken, recipientUid);
-      for (const device of devices) {
-        const result = await sendGenericPush(env, accessToken, device.token, "Mascota perdida cerca de ti",
-          `${dogName}: se ha publicado un aviso en tu zona. Abre Pawly para ver los detalles.`,
-          { type: "LOST_PET", relatedId: body.alertId });
-        if (result === "sent") delivered++;
-        else await firestoreRequest(env, accessToken, `users/${recipientUid}/fcmTokens/${device.id}`, { method: "DELETE" });
+      if (!blockA && !blockB) {
+        const claim = await fetch(`${firestoreRoot(env)}/lostPetPushes?documentId=${encodeURIComponent(body.alertId + "_" + recipientUid)}`, {
+          method: "POST", headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+          body: JSON.stringify({ fields: {
+            alertId: { stringValue: body.alertId }, recipientUid: { stringValue: recipientUid },
+            createdAt: { timestampValue: new Date().toISOString() }
+          } })
+        });
+        if (claim.status !== 409) {
+          if (!claim.ok) throw new Error("No se pudo registrar el envío del aviso.");
+          const devices = await listDeviceTokens(env, accessToken, recipientUid);
+          for (const device of devices) {
+            const result = await sendGenericPush(env, accessToken, device.token, "Mascota perdida cerca de ti",
+              `${dogName}: se ha publicado un aviso en tu zona. Abre Pawly para ver los detalles.`,
+              { type: "LOST_PET", relatedId: body.alertId });
+            if (result === "sent") delivered++;
+            else await firestoreRequest(env, accessToken, `users/${recipientUid}/fcmTokens/${device.id}`, { method: "DELETE" });
+          }
+        }
       }
-      processedRecipients++;
-      // Four recipients × bounded Firestore/FCM calls stays below the 50
-      // external-subrequest ceiling even when each has two registered devices.
       if (processedRecipients >= 4) break;
     }
     const pageFinished = nextOffset >= page.documents.length;
-    const complete = pageFinished && !page.nextPageToken;
     return json({
       accepted: true,
       delivered,
-      complete,
+      complete: pageFinished && !page.nextPageToken,
       pageToken: pageFinished ? page.nextPageToken : pageToken,
       nextOffset: pageFinished ? 0 : nextOffset
     });

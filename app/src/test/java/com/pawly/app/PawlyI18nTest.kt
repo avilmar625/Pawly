@@ -1,0 +1,77 @@
+package com.pawly.app
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class PawlyI18nTest {
+    @Test
+    fun translatesMainNavigationIntoEnglish() {
+        assertEquals("Home", PawlyI18n.text("Inicio", "en"))
+        assertEquals("Community", PawlyI18n.text("Comunidad", "en"))
+        assertEquals("More", PawlyI18n.text("Más", "en"))
+    }
+
+    @Test
+    fun translatesMainNavigationIntoCatalanAndFrench() {
+        assertEquals("Inici", PawlyI18n.text("Inicio", "ca"))
+        assertEquals("Communauté", PawlyI18n.text("Comunidad", "fr"))
+    }
+
+    @Test
+    fun translatesDynamicPetNamesWithoutLosingTheName() {
+        assertEquals("Shared profile · Nala", PawlyI18n.text("Perfil compartido · Nala", "en"))
+        assertEquals("Profil partagé · Nala", PawlyI18n.text("Perfil compartido · Nala", "fr"))
+    }
+
+    @Test
+    fun translatesSharedPetInvitationDynamically() {
+        assertEquals(
+            "Alex wants to share Nala's profile with you.",
+            PawlyI18n.text("Alex quiere compartir contigo el perfil de Nala.", "en")
+        )
+    }
+    @Test
+    fun translatesBasqueAndNewCommunityNavigation() {
+        assertEquals("Hasiera", PawlyI18n.text("Inicio", "eu"))
+        assertEquals("Ekitaldiak", PawlyI18n.text("Eventos", "eu"))
+        assertEquals("Events", PawlyI18n.text("Eventos", "en"))
+        assertEquals("Esdeveniments", PawlyI18n.text("Eventos", "ca"))
+        assertEquals("Événements", PawlyI18n.text("Eventos", "fr"))
+        assertEquals("Frantsesa", PawlyI18n.text("Français", "eu"))
+        assertEquals("Mapa", PawlyI18n.text("Mapa", "eu"))
+        assertEquals("Sortu ekitaldia", PawlyI18n.text("Crear evento", "eu"))
+        assertEquals("Interesatzen zait", PawlyI18n.text("Me interesa", "eu"))
+        assertEquals("Ekitaldi guztiak", PawlyI18n.text("Todos los eventos", "eu"))
+        assertEquals("Deskribapena", PawlyI18n.text("Descripción", "eu"))
+        assertEquals("Argitaratu", PawlyI18n.text("Publicar", "eu"))
+        assertEquals("Latitudea", PawlyI18n.text("Latitud", "eu"))
+        assertEquals("Longitudea", PawlyI18n.text("Longitud", "eu"))
+        assertEquals("Couldn't publish the event.", PawlyI18n.text("No se pudo publicar el evento.", "en"))
+        assertEquals("No s'ha pogut publicar l'esdeveniment.", PawlyI18n.text("No se pudo publicar el evento.", "ca"))
+        assertEquals("Impossible de publier l’événement.", PawlyI18n.text("No se pudo publicar el evento.", "fr"))
+    }
+
+    @Test
+    fun eventReportingIsTranslatedInEverySupportedLanguage() {
+        assertEquals("Denunciar evento", PawlyI18n.text("Denunciar evento", "es"))
+        assertEquals("Report event", PawlyI18n.text("Denunciar evento", "en"))
+        assertEquals("Denuncia l'esdeveniment", PawlyI18n.text("Denunciar evento", "ca"))
+        assertEquals("Signaler l’événement", PawlyI18n.text("Denunciar evento", "fr"))
+        assertEquals("Salatu ekitaldia", PawlyI18n.text("Denunciar evento", "eu"))
+    }
+
+    @Test
+    fun professionalContactConsentIsTranslatedInAllSupportedLanguages() {
+        assertEquals("Mostrar contacto profesional en tu perfil público", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "es"))
+        assertEquals("Show professional contact on your public profile", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "en"))
+        assertEquals("Mostra el contacte professional al teu perfil públic", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "ca"))
+        assertEquals("Afficher le contact professionnel sur votre profil public", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "fr"))
+        assertEquals("Erakutsi kontaktu profesionala zure profil publikoan", PawlyI18n.text("Mostrar contacto profesional en tu perfil público", "eu"))
+    }
+
+    @Test
+    fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
+        assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
+        assertEquals("Texto nuevo", PawlyI18n.text("Texto nuevo", "en"))
+    }
+}
