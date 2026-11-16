@@ -110,8 +110,23 @@ class FirebaseCommunityRepository private constructor(
             // one case where we can safely roll back the brand-new Auth account.
             val existingUsername = usernameRef.get().await()
             if (existingUsername.exists()) {
-                runCatching { result.user?.delete()?.await() }
-                error("Ese nombre de usuario ya está en uso. Elige otro.")
+                // The Auth account was created before the username collision could be
+                // checked (username documents are private to signed-in users). Roll it
+                // back and explicitly clear the local session so the UI cannot mistake
+                // a deleted Firebase user for a successful login.
+                val rollbackError = runCatching { result.user?.delete()?.await() }.exceptionOrNull()
+                auth.signOut()
+                cachedMyProfileState = null
+                cachedMyDogsState = null
+                if (rollbackError != null) {
+                    throw IllegalStateException(
+                        "Ese nombre de usuario ya está en uso. La sesión temporal se ha cerrado, " +
+                            "pero Firebase no ha confirmado la eliminación de la cuenta recién creada. " +
+                            "Puedes volver a iniciar sesión con el mismo correo para completar un perfil privado.",
+                        rollbackError
+                    )
+                }
+                throw IllegalArgumentException("Ese nombre de usuario ya está en uso. Elige otro.")
             }
 
             // Keep all three profile documents atomic. Firestore rules validate the
