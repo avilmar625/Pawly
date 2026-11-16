@@ -127,6 +127,18 @@ test("only the event organizer can list attendees; each member can read only the
   await assertFails(getDocs(collection(readerDb, "events/event-1/interested")));
 });
 
+test("phone discovery hashes and rate-limit reservations are inaccessible to clients", async () => {
+  const db = env.authenticatedContext("verified-user", { email_verified: true }).firestore();
+  await assertFails(getDoc(doc(db, "phoneDirectory/private-hash")));
+  await assertFails(setDoc(doc(db, "phoneDirectory/forged-hash"), {
+    uid: "verified-user", phoneHash: "forged-hash", enabled: true
+  }));
+  await assertFails(getDoc(doc(db, "phoneDiscoveryLimits/verified-user_20261116_0")));
+  await assertFails(setDoc(doc(db, "phoneDiscoveryLimits/forged"), {
+    uid: "verified-user", day: "20261116"
+  }));
+});
+
 test("account deletion requests must be pending and belong to the caller", async () => {
   const db = env.authenticatedContext("requester", { email_verified: true }).firestore();
   await assertSucceeds(setDoc(doc(db, "accountDeletionRequests/requester"), {

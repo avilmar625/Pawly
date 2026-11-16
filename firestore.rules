@@ -730,6 +730,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Phone-number hashes and daily discovery quotas are server-only records.
+    match /phoneDirectory/{phoneHash} {
+      allow read, write: if false;
+    }
+    match /phoneDiscoveryLimits/{limitId} {
+      allow read, write: if false;
+    }
+
     // Public events are tied to their venue, not to the private location of a person.
     match /events/{eventId} {
       allow get, list: if signedIn();
