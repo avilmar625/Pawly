@@ -121,3 +121,10 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - Tests nuevos cubren duplicados de medicación y fechas confundibles con peso. Resultado de ejecución pendiente de CI/Gradle.
 
 - La misma protección de rol inicial se ha aplicado también al panel completo `PetCarePlanSection`: el usuario compartido no recibe acciones de edición hasta conocer su rol y la función de toggle vuelve a comprobar `canEdit`.
+
+
+## Perfil visual por mascota
+- La portada de Hoy usa la foto local del perfil, o recupera la URL HTTPS de Cloudinary desde el perfil Firebase. Si no hay foto real, muestra el placeholder ilustrado Pawly.
+- Las fotos locales se guardan con una clave independiente por mascota; se migra la clave global antigua a la primera mascota activa para conservar los datos existentes.
+- Al renombrar una mascota y al restaurar una copia se conserva la asociación de la foto con el perfil correspondiente.
+- Validación manual pendiente: cambiar entre dos mascotas con fotos diferentes, cerrar/reabrir la app y comprobar que no se cruzan las imágenes.
