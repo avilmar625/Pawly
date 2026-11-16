@@ -154,3 +154,11 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - Ejecutar CI (tests/lint/build) en HEAD actualizado y corregir cualquier error.
 - Probar en emulador/dispositivo: publicar recomendación con pin, filtrar Playa/Parque, abrir mapa, autenticar email/Google y ordenar eventos con y sin fecha.
 - No se ha probado la interacción en dispositivo real todavía.
+
+
+## Ajuste visual aplicado — 16-11-2026
+- La identidad de mascota en Hoy pasa a una fila compacta con avatar circular (foto local, foto HTTPS o inicial), nombre destacado y acción de edición. Se elimina el banner de portada alto para dar prioridad al contenido operativo del día.
+- Se conserva la tarjeta de progreso basada en rutinas reales. La tarjeta de próxima cita ahora se muestra entre las tareas de hoy y los accesos rápidos.
+- La barra inferior mantiene cinco destinos. Diario y Calendario resaltan «Mi perro» como sección activa; Aprender, Profesionales y Ayuda resaltan «Más». El conjunto usa el verde de marca y el contenedor salvia del tema, en lugar de cinco colores independientes.
+- No se elimina ningún destino ni acción: los tabs secundarios continúan usando sus pantallas existentes.
+- Revisión de compilación y visual en dispositivo pendiente.
