@@ -122,37 +122,24 @@ internal fun HomeScreen(
         }
         item { HomePetHero(dogName, dogPhoto, dogPhotoUrl, onEditProfile, elegantDesign) }
         item {
-            Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(tr("Para hoy"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text(tr(if (completed == 2) "¡Todo listo! Qué buen equipo." else "Pequeños cuidados que marcan la diferencia."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        }
-                        TextButton(onClick = onCalendar) { Text(tr("Ver agenda")) }
-                    }
-                    HomeRoutineRow(Icons.Filled.DirectionsWalk, "Paseo diario", "Un rato para explorar y olfatear", walkDone, onWalkToggle, Color(0xFFE2F1E6), Color(0xFF287A4B))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
-                    HomeRoutineRow(Icons.Filled.Medication, "Medicación", "Comprueba la toma de hoy", medicineDone, onMedicineToggle, Color(0xFFFCE8E8), Color(0xFFB54F5C))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(tr("$completed de 2 cuidados completados"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                        Spacer(Modifier.weight(1f))
-                        Text("${completed * 50}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
-                    }
-                    LinearProgressIndicator(progress = { completed / 2f }, modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape))
-                }
-            }
+            HomeCareTasksSection(
+                petName = dogName,
+                storageScope = storageScope,
+                walkDone = walkDone,
+                medicineDone = medicineDone,
+                onWalkToggle = onWalkToggle,
+                onMedicineToggle = onMedicineToggle,
+                onOpenCalendar = onCalendar
+            )
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Text(tr("Accesos rápidos"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     HomeQuickAction(Icons.Filled.DirectionsWalk, "Paseo", Color(0xFFE2F1E6), { onWalkToggle(!walkDone) }, Modifier.weight(1f))
                     HomeQuickAction(Icons.Filled.MonitorWeight, "Peso", Color(0xFFDDF1EE), onHealth, Modifier.weight(1f))
-                    HomeQuickAction(Icons.Filled.PhotoCamera, "Foto", Color(0xFFFFE9DF), onEditProfile, Modifier.weight(1f))
+                    HomeQuickAction(Icons.Filled.PhotoCamera, "Foto", Color(0xFFFFE9DF), onDiary, Modifier.weight(1f))
+                    HomeQuickAction(Icons.Filled.Restaurant, "Comida", Color(0xFFE4EBC1), onHealth, Modifier.weight(1f))
                 }
             }
         }
@@ -241,7 +228,7 @@ internal fun HomeScreen(
 private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit: () -> Unit, elegantDesign: Boolean) {
     Box(
         Modifier.fillMaxWidth()
-            .height(if (elegantDesign) 292.dp else 246.dp)
+            .height(if (elegantDesign) 176.dp else 154.dp)
             .clip(RoundedCornerShape(30.dp))
             .clickable(onClick = onEdit)
     ) {
