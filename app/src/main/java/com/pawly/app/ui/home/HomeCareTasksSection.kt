@@ -110,6 +110,8 @@ internal fun HomeCareTasksSection(
         else listOf(walkDone, medicineDone).count { it }
     val totalCount = if (tasks.isNotEmpty()) visibleTasks.size else 2
     val progress = if (totalCount == 0) 0f else completedCount.toFloat() / totalCount
+    val nextCareLabel = if (tasks.isNotEmpty()) visibleTasks.firstOrNull { !isComplete(it) }?.title
+        else if (!walkDone) "Paseo" else if (!medicineDone) "Medicación" else null
 
     fun toggleTask(task: CareTask, checked: Boolean) {
         if (!canEdit || task.id in pendingIds) return
@@ -183,8 +185,11 @@ internal fun HomeCareTasksSection(
                         color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold)
                     Text(
-                        if (completedCount == totalCount) "¡Todo listo! Qué buen equipo."
-                        else "Pequeños cuidados que marcan la diferencia.",
+                        when {
+                            totalCount == 0 || completedCount == totalCount -> "¡Todo listo! Qué buen equipo."
+                            completedCount == totalCount - 1 && !nextCareLabel.isNullOrBlank() -> "Solo falta $nextCareLabel."
+                            else -> "Aún quedan ${totalCount - completedCount} cuidados por completar."
+                        },
                         color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -196,7 +201,7 @@ internal fun HomeCareTasksSection(
                         trackColor = Color.White.copy(alpha = .18f),
                         strokeWidth = 7.dp
                     )
-                    Text("${(progress * 100).toInt()}%", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("$completedCount/$totalCount", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }
