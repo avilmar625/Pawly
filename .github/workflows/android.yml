@@ -76,7 +76,17 @@ jobs:
         run: ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 testDebugUnitTest
 
       - name: Run Android lint
-        run: ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 lintDebug
+        run: |
+          set +e
+          ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 lintDebug
+          lint_status=$?
+          report="app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt"
+          if [ -f "$report" ]; then
+            echo "::group::Android Lint full text report"
+            cat "$report"
+            echo "::endgroup::"
+          fi
+          exit "$lint_status"
 
       - name: Assemble debug APK
         run: ./gradlew --no-daemon -PpawlyCompileSdk=37 -PpawlyTargetSdk=36 assembleDebug
