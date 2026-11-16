@@ -424,7 +424,7 @@ private fun PetCarePlanSection(
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
     var cloudLoading by remember(cloudOwnerUid) { mutableStateOf(cloudOwnerUid != null) }
-    var canEdit by remember(cloudOwnerUid, petId) { mutableStateOf(true) }
+    var canEdit by remember(cloudOwnerUid, petId) { mutableStateOf(storageScope.isNullOrBlank()) }
     LaunchedEffect(cloudRepository, petId) {
         val repo = cloudRepository ?: return@LaunchedEffect
         cloudLoading = true
@@ -499,6 +499,7 @@ private fun PetCarePlanSection(
     }
 
     fun requestTaskToggle(task: CareTask, checked: Boolean) {
+        if (!canEdit) return
         if (checked && task.action.equals("Medicación", ignoreCase = true)) {
             val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
             val duplicate = com.pawly.app.care.domain.CareDuplicateGuard.findRecentMedicationLog(careLogs, task, currentUid)
