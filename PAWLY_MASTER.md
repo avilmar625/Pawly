@@ -24,11 +24,11 @@
 
 ### Rama Android de continuidad actual
 
-- **Rama activa:** `cambios68-hoy-proximo-cuidado`.
-- **HEAD comprobado:** `f562a37a9123e5c96d46a9c3ec50bcc5ca7210e8` — `fix(i18n): pass date style when formatting calendar date` (16-11-2026).
-- **Base de cambios68:** `cambios67-cronologia-y-localizacion`; mantiene toda la evolución de cambios65/66 y 67.
-- cambios68 integra tres bloques recientes: (1) estabilización de localización observable y navegación inferior; (2) filtros reales Todo/Salud/Diario/Citas en la cronología Mi perro, calendario y geocodificación con idioma Pawly; (3) selección unificada del próximo elemento de Hoy usando Pasaporte, fechas programadas de Salud y recordatorios de Calendario, con navegación directa a su origen.
-- **No continuar desde cambios39, cambios64, cambios65 ni main**. Desarrollar en cambios68 y crear futuras ramas desde el HEAD verificado de esta rama.
+- **Rama de continuidad anterior comprobada:** `cambios71-recordatorios-semanales`.
+- **HEAD base verificado:** `e88800506c925509854acc26c29a5a662414f16d` (16-11-2026). Esta rama está 204 commits por delante del commit `11af424e`; se verificó la relación con GitHub Compare antes de crear la nueva rama.
+- **Rama de trabajo actual:** `cambios72-rediseño-integral-pawly`, creada desde el HEAD de cambios71. Último commit de esta actualización: `f8e2703c6ef0747d46029bcd5fdc1e0719e85f85`.
+- cambios72 conserva la evolución completa de cambios65–71; no se ha modificado `main`.
+- **No continuar desde cambios39, cambios64, cambios65, cambios68 ni main**. La continuidad de Android queda en cambios72 y las siguientes ramas deben partir de su HEAD verificado.
 - No fusionar ramas ni PR hasta superar las validaciones y pruebas indicadas abajo.
 
 ### Rama anterior y estado de validación
@@ -50,7 +50,7 @@
 - `ios` e `ios-iphone`: líneas iOS anteriores/prototipo, no sustituir por ellas el port funcional sin comparar.
 - No borrar ramas históricas como limpieza automática.
 
-## 3. Arquitectura Android actual (cambios65–68)
+## 3. Arquitectura Android actual (cambios65–72)
 
 Aplicación Android nativa con Kotlin, Jetpack Compose y Navigation Compose. El repositorio contiene un único módulo Gradle `:app`; todavía no existe un módulo Kotlin Multiplatform compartido.
 
@@ -86,7 +86,7 @@ Aplicación Android nativa con Kotlin, Jetpack Compose y Navigation Compose. El 
 
 ## 4. Arquitectura iOS: ramas separadas y estado real
 
-No existe una aplicación iOS integrada en `cambios68-hoy-proximo-cuidado`: no se encontraron `ios/`, `iosApp/` ni `shared/` en esa rama.
+No existe una aplicación iOS integrada en la rama Android `cambios72-rediseño-integral-pawly`: no se encontraron `ios/`, `iosApp/` ni `shared/` en esa rama.
 
 Hay dos líneas de trabajo iOS identificadas:
 
@@ -560,4 +560,42 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - La tarjeta todavía no incluye eventos comunitarios obtenidos por el repositorio de eventos; las fuentes integradas son Pasaporte, fechas de Salud y recordatorios locales del Calendario.
 - No declarar APK/AAB generado ni compilación correcta hasta que el último workflow termine en verde y publique los artefactos.
 - No hacer merge ni activar servicios facturables. Mantener Firebase Storage/Blaze y Workers Paid fuera del alcance sin autorización.
+
+## 16. Continuidad cambios72 — rediseño visual y fidelidad a la referencia PDF (16-11-2026)
+
+### Base y alcance
+- Rama de trabajo: `cambios72-rediseño-integral-pawly`, creada desde el HEAD comprobado de `cambios71-recordatorios-semanales` (`e88800506c925509854acc26c29a5a662414f16d`).
+- Se inspeccionó el PDF de referencia `Pawly — pantalla Hoy y navegación.pdf` (3 páginas): pantalla Hoy, cronología Mi perro y cuidado compartido.
+- Dirección visual acordada: fondo crema, verde bosque, acentos lima y melocotón, superficies blancas, esquinas redondeadas, iconos claros, tarjetas fotográficas y navegación inferior de cinco áreas. Mantener el modo simple y mejorar el modo elegante con más fotografía y jerarquía visual.
+- No tocar `main`, no eliminar funciones ni habilitar servicios de pago.
+
+### Cambios aplicados en cambios72
+- `HomeScreen.kt`: el modo elegante de la tarjeta Explorar utiliza una fotografía panorámica con degradado y texto superpuesto; el modo simple conserva su tarjeta original. El destino sigue siendo el mismo flujo de Explorar.
+- `HomeScreen.kt` + `HomeCareTasksSection.kt`: la tarjeta Próximamente muestra también la hora real de los recordatorios de Salud y Calendario. Las entradas del Pasaporte que solo tienen fecha no muestran una hora ficticia.
+- Se conserva el cálculo de la próxima tarea, navegación a su origen, accesos rápidos, registros compartidos, prevención UX de doble medicación, peso, Diario, aniversario y el resto de accesos.
+
+### Validación de esta actualización
+- Cambios escritos en GitHub en la rama cambios72. No se ha modificado `main`.
+- **Compilación, Lint, tests, APK y AAB: pendientes de comprobar en CI sobre el HEAD final.** No declarar que compila hasta revisar los workflows.
+- **Pruebas manuales pendientes:** probar el modo elegante y simple; comprobar que la tarjeta Explorar abre el flujo correcto; confirmar horas de eventos de Salud/Calendario y ausencia de hora para fechas del Pasaporte; revisar traducciones, tema oscuro y accesibilidad.
+- Esta actualización es un primer bloque visual/funcional, no el cierre de todos los pendientes de Pawly.
+
+### Pendientes prioritarios que siguen abiertos
+1. Registro/login por correo y Google con Firebase real y Emulator Suite; revisar Credential Manager, SHA-1 y OAuth Web.
+2. Configuración y prueba real de Cloudinary para fotos y vídeos, sin API Secret en cliente.
+3. Sincronización multidispositivo de Salud, Pasaporte, Diario, rutinas, recordatorios y selección de mascota.
+4. Probar cuidado compartido owner/editor/reader con dos o más cuentas y validar conflictos/doble registro.
+5. Verificar lugares, categorías, mapas, teléfonos, llamadas, enlaces, favoritos/colecciones y eventos con ubicación/fecha/asistentes.
+6. Validar feed, perfiles, follow, likes, comentarios, chat, adjuntos, notificaciones, bloqueos, denuncias y moderación con cuentas reales.
+7. Despliegue y prueba del Cloudflare Worker en plan Free; no asumir que está desplegado por existir el código.
+8. Diseñar y probar borrado de cuenta y datos asociados de forma segura y compatible con el plan gratuito; no prometer borrado completo mientras no exista backend verificable.
+9. Completar traducciones, consistencia visual entre pantallas, modo oscuro, accesibilidad y navegación sin duplicidades.
+10. Reducir deuda de `PawlyApp.kt` y `FirebaseCommunityRepository.kt` sin migraciones destructivas ni cambios de esquema incompatibles.
+11. Auditar `ios-funciones` por separado y portar funciones de forma selectiva; no hacer merge directo ni afirmar paridad iOS.
+12. Completar pruebas de restauración de backup, exportaciones PDF, privacidad, RGPD y seguridad antes de considerar Pawly lista para producción.
+
+### Restricciones de coste y seguridad
+- No activar Firebase Blaze, Firebase Storage, Cloud Functions de pago, SMS facturable ni Cloudflare Workers Paid sin autorización expresa.
+- No subir `local.properties`, `google-services.json`, secretos, tokens, claves privadas ni credenciales.
+- Las funciones con dependencias externas se etiquetan como pendientes de configuración/prueba hasta que exista evidencia de extremo a extremo.
 
