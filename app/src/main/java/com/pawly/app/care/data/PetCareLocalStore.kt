@@ -62,7 +62,8 @@ internal object PetCareLocalStore {
                 completed = row.optBoolean("completed"),
                 dose = row.optString("dose"),
                 time = row.optString("time"),
-                completedOn = row.optString("completedOn")
+                completedOn = row.optString("completedOn"),
+                action = row.optString("action", "Otro")
             )
         }
     }.getOrDefault(emptyList())
@@ -75,6 +76,7 @@ internal object PetCareLocalStore {
                     .put("responsible", task.responsible).put("frequency", task.frequency)
                     .put("completed", task.completed).put("dose", task.dose)
                     .put("time", task.time).put("completedOn", task.completedOn)
+                    .put("action", task.action)
             )
         }
         preferences(context, storageScope).edit()

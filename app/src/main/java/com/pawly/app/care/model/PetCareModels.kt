@@ -18,7 +18,8 @@ data class CareTask(
     val completed: Boolean,
     val dose: String = "",
     val time: String = "",
-    val completedOn: String = ""
+    val completedOn: String = "",
+    val action: String = "Otro"
 )
 
 /** A timestamped record of who performed a shared pet-care action. */

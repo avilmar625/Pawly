@@ -161,7 +161,8 @@ class FirebasePetCareRepository(
         "completed" to task.completed,
         "dose" to task.dose.trim().take(80),
         "time" to task.time.trim().take(5),
-        "completedOn" to task.completedOn.trim().take(10)
+        "completedOn" to task.completedOn.trim().take(10),
+        "action" to task.action
     )
 
     override suspend fun savePassportEntry(petId: String, entry: PassportEntry) {
@@ -200,7 +201,7 @@ class FirebasePetCareRepository(
         require(task.title.isNotBlank() && task.title.length <= 120)
         require(task.responsible.length <= 80 && task.frequency.length <= 80)
         require(task.dose.length <= 80 && (task.time.isBlank() || task.time.matches(Regex("\\d{2}:\\d{2}"))))
-        require(task.completedOn.length <= 10)
+        require(task.completedOn.length <= 10 && task.action in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro"))
         tasks(petId).document(task.id).set(taskData(task)).await()
     }
 
@@ -211,7 +212,7 @@ class FirebasePetCareRepository(
             require(task.id.isNotBlank() && task.title.isNotBlank())
             require(task.title.length <= 120 && task.responsible.length <= 80 && task.frequency.length <= 80)
             require(task.dose.length <= 80 && (task.time.isBlank() || task.time.matches(Regex("\\d{2}:\\d{2}"))))
-            require(task.completedOn.length <= 10)
+            require(task.completedOn.length <= 10 && task.action in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro"))
             batch.set(tasks(petId).document(task.id), taskData(task))
         }
         if (careTasks.isNotEmpty()) batch.commit().await()
@@ -222,7 +223,8 @@ class FirebasePetCareRepository(
             val title = doc.getString("title") ?: return@mapNotNull null
             CareTask(doc.id, title, doc.getString("responsible").orEmpty(),
                 doc.getString("frequency").orEmpty(), doc.getBoolean("completed") ?: false,
-                doc.getString("dose").orEmpty(), doc.getString("time").orEmpty(), doc.getString("completedOn").orEmpty())
+                doc.getString("dose").orEmpty(), doc.getString("time").orEmpty(), doc.getString("completedOn").orEmpty(),
+                doc.getString("action")?.takeIf { it in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro") } ?: "Otro")
         }
 
     suspend fun loadCareLogs(petId: String, limit: Long = 30): List<CareLogEntry> {

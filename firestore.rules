@@ -300,7 +300,7 @@ service cloud.firestore {
         match /tasks/{taskId} {
           allow read, delete: if owner(uid);
           allow create, update: if owner(uid)
-            && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed', 'dose', 'time', 'completedOn'])
+            && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed', 'dose', 'time', 'completedOn', 'action'])
             && request.resource.data.id == taskId
             && request.resource.data.title is string
             && request.resource.data.title.size() > 0
@@ -312,7 +312,8 @@ service cloud.firestore {
             && request.resource.data.completed is bool
             && request.resource.data.dose is string && request.resource.data.dose.size() <= 80
             && request.resource.data.time is string && request.resource.data.time.size() <= 5
-            && request.resource.data.completedOn is string && request.resource.data.completedOn.size() <= 10;
+            && request.resource.data.completedOn is string && request.resource.data.completedOn.size() <= 10
+            && request.resource.data.action in ['Paseo', 'Comida', 'Medicación', 'Higiene', 'Otro'];
         }
         match /careLogs/{logId} {
           allow read, delete: if owner(uid);
