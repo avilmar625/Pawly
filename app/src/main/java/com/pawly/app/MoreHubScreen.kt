@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.PersonAddAlt1
@@ -40,6 +42,8 @@ internal fun MoreHubScreen(
     onLostPet: () -> Unit,
     onSharePetPdf: () -> Unit,
     onSavePetPdf: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
     onInviteFriend: () -> Unit,
     onContact: () -> Unit,
     onPrivacy: () -> Unit,
@@ -84,6 +88,14 @@ internal fun MoreHubScreen(
         MoreDestinationCard(Icons.Filled.Help, t("He perdido a mi mascota"), t("Ayuda a encontrarla y difunde un aviso."), onLostPet, Color(0xFFB34F42), Color(0xFFFFE9E4))
         MoreSectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
         PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
+        BackupActionCard(
+            title = t("Copia de seguridad y cambio de móvil"),
+            description = t("Exporta salud, rutinas, diario, agenda y foto de perfil a un archivo JSON que puedes guardar y restaurar cuando quieras."),
+            exportLabel = t("Crear copia"),
+            importLabel = t("Restaurar copia"),
+            onExport = onExportBackup,
+            onImport = onImportBackup
+        )
         MoreDestinationCard(Icons.Filled.AutoStories, t("Diario de recuerdos"), t("Guarda momentos, pequeñas historias y fotografías."), onDiary, Color(0xFF8C5AA7), Color(0xFFF2E9F8))
         MoreDestinationCard(Icons.Filled.CalendarMonth, t("Calendario y agenda"), t("Eventos de la Comunidad y recordatorios para no olvidar nada."), onCalendar, Color(0xFF397A83), Color(0xFFE3F3F4))
         MoreDestinationCard(Icons.Filled.MenuBook, t("Aprender"), t("Artículos, consejos y recursos para su bienestar."), onLearn, Color(0xFF3674A8), Color(0xFFE6F1FB))
@@ -129,6 +141,43 @@ private fun PdfActionCard(title: String, description: String, saveLabel: String,
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = onSave, modifier = Modifier.weight(1f)) { Text(saveLabel) }
                 Button(onClick = onShare, modifier = Modifier.weight(1f)) { Text(shareLabel) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupActionCard(
+    title: String,
+    description: String,
+    exportLabel: String,
+    importLabel: String,
+    onExport: () -> Unit,
+    onImport: () -> Unit
+) {
+    Surface(shape = RoundedCornerShape(19.dp), color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Icon(Icons.Filled.FileDownload, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(11.dp).size(24.dp))
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onExport, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Filled.FileDownload, null, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(exportLabel)
+                }
+                Button(onClick = onImport, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Filled.FileUpload, null, modifier = Modifier.size(17.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text(importLabel)
+                }
             }
         }
     }
