@@ -19,7 +19,9 @@ data class CareTask(
     val dose: String = "",
     val time: String = "",
     val completedOn: String = "",
-    val action: String = "Otro"
+    val action: String = "Otro",
+    /** ISO weekdays (Monday=1 … Sunday=7); empty preserves legacy weekly behaviour. */
+    val daysOfWeek: List<Int> = emptyList()
 )
 
 /** A timestamped record of who performed a shared pet-care action. */
