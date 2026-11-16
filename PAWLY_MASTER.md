@@ -648,3 +648,16 @@ Implementado en la rama `cambios72-rediseño-integral-pawly`, manteniendo `main`
 - No hay status checks publicados para el último commit consultado y no se ha ejecutado una compilación local en este entorno. No afirmar que compila hasta ejecutar el workflow Android y probar en dispositivo.
 - Revisar especialmente el formato de los registros históricos de peso: el gráfico solo puede dibujar mediciones que tengan valor numérico en título/detalle y fecha `yyyy-MM-dd`.
 - Probar que la foto propia se resuelve con el identificador de mascota esperado por `FirebasePetProfileRepository`, además de los perfiles compartidos.
+
+
+### Ajustes adicionales de presentación
+
+- **Comunidad / comentarios:** cada comentario se presenta en una superficie diferenciada, con autor, texto y fecha/hora cuando el registro la incluye.
+- **Comunidad / chat:** burbujas mantienen la distinción entre mensajes propios y recibidos; se añade hora y el estado «Visto» con jerarquía más clara. La bandeja muestra la fecha/hora del último mensaje.
+- **Más:** las tarjetas de destino muestran una flecha de navegación explícita en lugar de un icono genérico.
+
+### Estado de CI durante la edición
+
+- El workflow de validación Firestore completó con éxito para el commit `99336b9`.
+- Las ejecuciones Android disparadas por los commits sucesivos fueron canceladas automáticamente por nuevos pushes a la misma rama antes de terminar. Por tanto, no se considera que el APK compile.
+- Se ha dejado que el último push de código dispare una nueva ejecución; revisar su resultado antes de distribuir o fusionar.
