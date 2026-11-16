@@ -867,7 +867,7 @@ private fun CommunityPlacesPanel(
                         }, modifier = Modifier.weight(1f), singleLine = true, label = { Text("Longitud") })
                     }
                     if (selectedLatitude != null && selectedLongitude != null) {
-                        Text(tr("Punto seleccionado: ") + "%.5f, %.5f".format(java.util.Locale.getDefault(), selectedLatitude, selectedLongitude), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                        Text(tr("Punto seleccionado: ") + "%.5f, %.5f".format(java.util.Locale.US, selectedLatitude, selectedLongitude), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                     }
                     OutlinedTextField(description, { description = it.take(500) }, modifier = Modifier.fillMaxWidth(), minLines = 3, label = { Text(tr("¿Por qué lo recomiendas?")) })
                 }
