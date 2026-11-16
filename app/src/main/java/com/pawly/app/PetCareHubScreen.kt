@@ -729,8 +729,12 @@ private fun PetCarePlanSection(
                                 style = MaterialTheme.typography.labelSmall
                             )
                         } else {
+                            val selectedDaysLabel = CareTaskSchedule.normalizeDays(selectedDays.toList()).joinToString(", ") { day ->
+                                DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, weekdayLocale)
+                                    .replace(".", "").replaceFirstChar { it.uppercase(weekdayLocale) }
+                            }
                             Text(
-                                CareTaskSchedule.daysLabel(selectedDays.toList()).let { tr("Se repetirá: ") + it },
+                                tr("Se repetirá: ") + selectedDaysLabel,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 style = MaterialTheme.typography.labelSmall
                             )
