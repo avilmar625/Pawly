@@ -45,6 +45,20 @@ internal fun HomeCareTasksSection(
     onUpcomingClick: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val language = LocalPawlyLanguage.current
+    val savedLocalMessage = PawlyI18n.text("Guardado en este dispositivo", language)
+    val loadingMessage = PawlyI18n.text("Cargando cuidados…", language)
+    val localRoutinesSyncedMessage = PawlyI18n.text("Rutinas locales sincronizadas", language)
+    val careSyncedMessage = PawlyI18n.text("Cuidados sincronizados", language)
+    val offlineMessage = PawlyI18n.text("Sin conexión: se conserva la copia local", language)
+    val changesSyncedMessage = PawlyI18n.text("Cambios sincronizados", language)
+    val localPendingMessage = PawlyI18n.text("Guardado localmente; sincronización pendiente", language)
+    val walkLabel = PawlyI18n.text("Paseo", language)
+    val medicineLabel = PawlyI18n.text("Medicación", language)
+    val todayLabel = PawlyI18n.text("hoy", language)
+    val tomorrowLabel = PawlyI18n.text("mañana", language)
+    val inLabel = PawlyI18n.text("dentro de", language)
+    val daysLabel = PawlyI18n.text("días", language)
     val today = LocalDate.now()
     val todayKey = today.toString()
     var tasks by remember(petName, storageScope) {
@@ -60,13 +74,13 @@ internal fun HomeCareTasksSection(
     val scope = rememberCoroutineScope()
     var canEdit by remember(petName, storageScope) { mutableStateOf(storageScope.isNullOrBlank()) }
     var syncMessage by remember(petName, storageScope) {
-        mutableStateOf(if (storageScope.isNullOrBlank()) tr("Guardado en este dispositivo") else tr("Cargando cuidados…"))
+        mutableStateOf(if (storageScope.isNullOrBlank()) savedLocalMessage else loadingMessage)
     }
     var loading by remember(petName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
     var pendingIds by remember(petName, storageScope) { mutableStateOf(emptySet<String>()) }
     var pendingMedicationConfirmation by remember(petName, storageScope) { mutableStateOf<Pair<CareTask, CareLogEntry>?>(null) }
 
-    LaunchedEffect(petName, storageScope, repository) {
+    LaunchedEffect(petName, storageScope, repository, language) {
         val repo = repository ?: run { loading = false; return@LaunchedEffect }
         loading = true
         runCatching {
@@ -75,16 +89,16 @@ internal fun HomeCareTasksSection(
             val remoteTasks = repo.loadCareTasks(petName)
             if (remoteTasks.isEmpty() && tasks.isNotEmpty()) {
                 repo.saveCareTasks(petName, tasks)
-                syncMessage = tr("Rutinas locales sincronizadas")
+                syncMessage = localRoutinesSyncedMessage
             } else {
                 tasks = remoteTasks
                 PetCareLocalStore.saveTasks(context, petName, remoteTasks, storageScope)
-                syncMessage = tr("Cuidados sincronizados")
+                syncMessage = careSyncedMessage
             }
             logs = repo.loadCareLogs(petName)
             PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
         }.onFailure {
-            syncMessage = tr("Sin conexión: se conserva la copia local")
+            syncMessage = offlineMessage
         }
         loading = false
     }
@@ -114,7 +128,7 @@ internal fun HomeCareTasksSection(
     val totalCount = if (tasks.isNotEmpty()) orderedVisibleTasks.size else 2
     val progress = if (totalCount == 0) 0f else completedCount.toFloat() / totalCount
     val nextCareLabel = if (tasks.isNotEmpty()) orderedVisibleTasks.firstOrNull { !isComplete(it) }?.title
-        else if (!walkDone) tr("Paseo") else if (!medicineDone) tr("Medicación") else null
+        else if (!walkDone) walkLabel else if (!medicineDone) medicineLabel else null
 
     fun toggleTask(task: CareTask, checked: Boolean) {
         if (!canEdit || task.id in pendingIds) return
@@ -145,9 +159,9 @@ internal fun HomeCareTasksSection(
                     logs = remoteLogs
                     PetCareLocalStore.saveCareLogs(context, petName, remoteLogs, storageScope)
                 }
-                syncMessage = tr("Cambios sincronizados")
+                syncMessage = changesSyncedMessage
             }.onFailure {
-                syncMessage = tr("Guardado localmente; sincronización pendiente")
+                syncMessage = localPendingMessage
             }
             pendingIds = pendingIds - task.id
         }
@@ -301,9 +315,9 @@ internal fun HomeCareTasksSection(
                     .replaceFirstChar { it.uppercase(Locale.getDefault()) }
                 val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, date)
                 val relative = when (daysUntil) {
-                    0L -> tr("hoy")
-                    1L -> tr("mañana")
-                    else -> "${tr("dentro de")} $daysUntil ${tr("días")}"
+                    0L -> todayLabel
+                    1L -> tomorrowLabel
+                    else -> "$inLabel $daysUntil $daysLabel"
                 }
                 "$dayLabel · $relative"
             }.getOrDefault(upcomingDate)
