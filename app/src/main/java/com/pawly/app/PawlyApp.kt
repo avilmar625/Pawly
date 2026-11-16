@@ -324,7 +324,10 @@ private fun PawlyMainApp(
                         }
                         Column(
                             Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
-                                .clickable { selected = tab }
+                                .clickable {
+                                    if (tab != Tab.COMMUNITY) openCommunityNotifications = false
+                                    selected = tab
+                                }
                                 .padding(vertical = 4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(3.dp)
