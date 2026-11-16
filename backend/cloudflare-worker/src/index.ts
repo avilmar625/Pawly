@@ -167,28 +167,16 @@ async function verifyActivity(
 }
 
 async function listDeviceTokens(env: Env, accessToken: string, uid: string): Promise<Array<{ id: string; token: string }>> {
-  const devices: Array<{ id: string; token: string }> = [];
-  let pageToken = "";
-  // Bound pagination so a corrupted or unexpectedly large token collection cannot
-  // make a single notification request run indefinitely.
-  for (let page = 0; page < 5; page++) {
-    const url = new URL(`${firestoreRoot(env)}/users/${encodeURIComponent(uid)}/fcmTokens`);
-    url.searchParams.set("pageSize", "100");
-    if (pageToken) url.searchParams.set("pageToken", pageToken);
-    const response = await fetch(url.toString(), {
-      headers: { authorization: `Bearer ${accessToken}` }
-    });
-    if (!response.ok) throw new Error("No se pudieron consultar los dispositivos del destinatario.");
-    const payload = await response.json() as { documents?: any[]; nextPageToken?: string };
-    devices.push(...(payload.documents ?? []).flatMap((doc) => {
-      const token = decodeFirestoreString(doc.fields?.token);
-      const id = String(doc.name ?? "").split("/").pop() ?? "";
-      return token && id ? [{ id, token }] : [];
-    }));
-    pageToken = payload.nextPageToken ?? "";
-    if (!pageToken) break;
-  }
-  return devices;
+  const url = new URL(`${firestoreRoot(env)}/users/${encodeURIComponent(uid)}/fcmTokens`);
+  url.searchParams.set("pageSize", "2");
+  const response = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
+  if (!response.ok) throw new Error("No se pudieron consultar los dispositivos del destinatario.");
+  const payload = await response.json() as { documents?: any[] };
+  return (payload.documents ?? []).flatMap((doc) => {
+    const token = decodeFirestoreString(doc.fields?.token);
+    const id = String(doc.name ?? "").split("/").pop() ?? "";
+    return token && id ? [{ id, token }] : [];
+  }).slice(0, 2);
 }
 
 const DISPATCH_LEASE_MS = 5 * 60 * 1000;
@@ -504,21 +492,16 @@ async function handleCommunityPlaceSubmission(request: Request, env: Env): Promi
   }
 }
 
-async function listLostPetSubscriptions(env: Env, accessToken: string): Promise<any[]> {
-  const all: any[] = [];
-  let pageToken = "";
-  for (let page = 0; page < 10; page++) {
-    const url = new URL(`${firestoreRoot(env)}/lostPetSubscriptions`);
-    url.searchParams.set("pageSize", "500");
-    if (pageToken) url.searchParams.set("pageToken", pageToken);
-    const response = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
-    if (!response.ok) throw new Error("No se pudieron consultar las suscripciones de avisos.");
-    const payload = await response.json() as { documents?: any[]; nextPageToken?: string };
-    all.push(...(payload.documents ?? []));
-    pageToken = payload.nextPageToken ?? "";
-    if (!pageToken) break;
-  }
-  return all;
+async function listLostPetSubscriptions(
+  env: Env, accessToken: string, pageToken: string
+): Promise<{ documents: any[]; nextPageToken: string }> {
+  const url = new URL(`${firestoreRoot(env)}/lostPetSubscriptions`);
+  url.searchParams.set("pageSize", "500");
+  if (pageToken) url.searchParams.set("pageToken", pageToken);
+  const response = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
+  if (!response.ok) throw new Error("No se pudieron consultar las suscripciones de avisos.");
+  const payload = await response.json() as { documents?: any[]; nextPageToken?: string };
+  return { documents: payload.documents ?? [], nextPageToken: payload.nextPageToken ?? "" };
 }
 
 async function sendGenericPush(env: Env, accessToken: string, token: string, title: string, body: string, data: Record<string, string>): Promise<"sent" | "invalid"> {
@@ -538,9 +521,15 @@ async function handleLostPetAlert(request: Request, env: Env): Promise<Response>
   if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
   try {
     const raw = await request.text();
-    if (new TextEncoder().encode(raw).byteLength > 2048) return json({ error: "Petición demasiado grande." }, 413);
-    const body = JSON.parse(raw) as { alertId?: unknown };
-    if (typeof body.alertId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(body.alertId)) return json({ error: "Aviso no válido." }, 400);
+    if (new TextEncoder().encode(raw).byteLength > 8192) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { alertId?: unknown; pageToken?: unknown; offset?: unknown };
+    if (typeof body.alertId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(body.alertId) ||
+      (body.pageToken !== undefined && (typeof body.pageToken !== "string" || body.pageToken.length > 6000)) ||
+      (body.offset !== undefined && (!Number.isSafeInteger(body.offset) || Number(body.offset) < 0 || Number(body.offset) > 500))) {
+      return json({ error: "Aviso o cursor no válido." }, 400);
+    }
+    const pageToken = typeof body.pageToken === "string" ? body.pageToken : "";
+    const offset = typeof body.offset === "number" ? body.offset : 0;
     const accessToken = await googleAccessToken(env);
     const [alert, post] = await Promise.all([
       readDocument(env, accessToken, `lostPetAlerts/${body.alertId}`),
@@ -553,10 +542,14 @@ async function handleLostPetAlert(request: Request, env: Env): Promise<Response>
     const latitude = decodeFirestoreNumber(alert.fields?.latCell) / 100;
     const longitude = decodeFirestoreNumber(alert.fields?.lonCell) / 100;
     const dogName = decodeFirestoreString(alert.fields?.dogName) || "Una mascota";
-    const subscriptions = await listLostPetSubscriptions(env, accessToken);
+    const page = await listLostPetSubscriptions(env, accessToken, pageToken);
+    if (offset > page.documents.length) return json({ error: "El cursor de avisos ha caducado." }, 400);
     let delivered = 0;
-    for (const subscription of subscriptions) {
-      const fields = subscription.fields ?? {};
+    let processedRecipients = 0;
+    let nextOffset = offset;
+    for (let index = offset; index < page.documents.length; index++) {
+      nextOffset = index + 1;
+      const fields = page.documents[index].fields ?? {};
       const recipientUid = decodeFirestoreString(fields.uid);
       if (!recipientUid || recipientUid === uid || !decodeFirestoreBoolean(fields.enabled)) continue;
       const radius = decodeFirestoreNumber(fields.radiusKm);
@@ -568,28 +561,36 @@ async function handleLostPetAlert(request: Request, env: Env): Promise<Response>
         readDocument(env, accessToken, `users/${uid}/blocked/${recipientUid}`),
         readDocument(env, accessToken, `users/${recipientUid}/blocked/${uid}`)
       ]);
-      if (blockA || blockB) continue;
-      const dispatchPath = `lostPetPushes/${body.alertId}_${recipientUid}`;
-      const claim = await fetch(`${firestoreRoot(env)}/lostPetPushes?documentId=${encodeURIComponent(body.alertId + "_" + recipientUid)}`, {
-        method: "POST", headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
-        body: JSON.stringify({ fields: {
-          alertId: { stringValue: body.alertId }, recipientUid: { stringValue: recipientUid },
-          createdAt: { timestampValue: new Date().toISOString() }
-        } })
-      });
-      if (claim.status === 409) continue;
-      if (!claim.ok) throw new Error("No se pudo registrar el envío del aviso.");
-      const devices = await listDeviceTokens(env, accessToken, recipientUid);
-      for (const device of devices) {
-        const result = await sendGenericPush(env, accessToken, device.token, "Mascota perdida cerca de ti",
-          `${dogName}: se ha publicado un aviso en tu zona. Abre Pawly para ver los detalles.`,
-          { type: "LOST_PET", relatedId: body.alertId });
-        if (result === "sent") delivered++;
-        else await firestoreRequest(env, accessToken, `users/${recipientUid}/fcmTokens/${device.id}`, { method: "DELETE" });
+      if (!blockA && !blockB) {
+        const claim = await fetch(`${firestoreRoot(env)}/lostPetPushes?documentId=${encodeURIComponent(body.alertId + "_" + recipientUid)}`, {
+          method: "POST", headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+          body: JSON.stringify({ fields: {
+            alertId: { stringValue: body.alertId }, recipientUid: { stringValue: recipientUid },
+            createdAt: { timestampValue: new Date().toISOString() }
+          } })
+        });
+        if (claim.status !== 409) {
+          if (!claim.ok) throw new Error("No se pudo registrar el envío del aviso.");
+          const devices = await listDeviceTokens(env, accessToken, recipientUid);
+          for (const device of devices) {
+            const result = await sendGenericPush(env, accessToken, device.token, "Mascota perdida cerca de ti",
+              `${dogName}: se ha publicado un aviso en tu zona. Abre Pawly para ver los detalles.`,
+              { type: "LOST_PET", relatedId: body.alertId });
+            if (result === "sent") delivered++;
+            else await firestoreRequest(env, accessToken, `users/${recipientUid}/fcmTokens/${device.id}`, { method: "DELETE" });
+          }
+        }
       }
-      void dispatchPath;
+      if (processedRecipients >= 4) break;
     }
-    return json({ accepted: true, delivered });
+    const pageFinished = nextOffset >= page.documents.length;
+    return json({
+      accepted: true,
+      delivered,
+      complete: pageFinished && !page.nextPageToken,
+      pageToken: pageFinished ? page.nextPageToken : pageToken,
+      nextOffset: pageFinished ? 0 : nextOffset
+    });
   } catch {
     return json({ error: "No se pudieron enviar los avisos de proximidad." }, 502);
   }
