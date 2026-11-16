@@ -86,6 +86,7 @@ android {
         }
         getByName("release") {
             buildConfigField("String", "FPNV_TEST_TOKEN", "\"\"")
+            buildConfigField("Boolean", "PHONE_VERIFICATION_PRODUCTION_ENABLED", "false")
             // CI remains unsigned. Local builds become signed when all four
             // RELEASE_* values are supplied in the developer's local.properties.
             if (hasCompleteReleaseSigning) {

@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
 import java.util.UUID
@@ -523,7 +524,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                             Text("${log.action} · ${log.actorName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text(
-                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(log.occurredAt)),
+                            SimpleDateFormat("dd/MM HH:mm", LocalLocale.current.platformLocale).format(Date(log.occurredAt)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
