@@ -3,6 +3,7 @@ package com.pawly.app.care.domain
 import com.pawly.app.care.model.CareTask
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -54,8 +55,8 @@ class CareTaskScheduleTest {
 
     @Test fun weeklyReminderRejectsInvalidTimeOrEmptyDays() {
         val now = java.time.ZonedDateTime.parse("2026-11-16T08:00:00+01:00[Europe/Madrid]")
-        assertEquals(null, CareTaskSchedule.nextWeeklyReminderAt("25:00", listOf(1), now))
-        assertEquals(null, CareTaskSchedule.nextWeeklyReminderAt("09:00", emptyList(), now))
+        assertNull(CareTaskSchedule.nextWeeklyReminderAt("25:00", listOf(1), now))
+        assertNull(CareTaskSchedule.nextWeeklyReminderAt("09:00", emptyList(), now))
     }
 
     @Test fun normalizesWeekdaysAndRejectsValuesOutsideIsoRange() {
