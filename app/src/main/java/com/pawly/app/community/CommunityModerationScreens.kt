@@ -121,6 +121,11 @@ internal fun ModerationScreen(repo: FirebaseCommunityRepository) {
                                 scope.launch { runCatching { repo.removeReportedEvent(report.targetId); repo.markReportReviewed(report.id); status = "Evento eliminado y aviso revisado." }.onFailure { error = it.localizedMessage } }
                             }) { Icon(Icons.Default.DeleteOutline, null); Text(tr("Eliminar evento")) }
                         }
+                        if (report.targetType == "place") {
+                            OutlinedButton(onClick = {
+                                scope.launch { runCatching { repo.removeReportedCommunityPlace(report.targetId); repo.markReportReviewed(report.id); status = "Lugar retirado y denuncia revisada." }.onFailure { error = it.localizedMessage } }
+                            }) { Icon(Icons.Default.DeleteOutline, null); Text(tr("Retirar lugar")) }
+                        }
                         TextButton(onClick = {
                             scope.launch { runCatching { repo.markReportReviewed(report.id); status = "Aviso marcado como revisado." }.onFailure { error = it.localizedMessage } }
                         }) { Text(tr("Marcar revisado")) }
