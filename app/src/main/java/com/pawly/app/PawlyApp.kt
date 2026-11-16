@@ -380,8 +380,8 @@ private fun PawlyMainApp(
             }
     }
     LaunchedEffect(preferences, dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
-    LaunchedEffect(preferences, walkDone) { preferences.edit().putBoolean("walk_done", walkDone).apply() }
-    LaunchedEffect(preferences, medicineDone) { preferences.edit().putBoolean("medicine_done", medicineDone).apply() }
+    LaunchedEffect(preferences, petRoutineScope, walkDone) { preferences.edit().putBoolean(walkDoneKey, walkDone).apply() }
+    LaunchedEffect(preferences, petRoutineScope, medicineDone) { preferences.edit().putBoolean(medicineDoneKey, medicineDone).apply() }
     LaunchedEffect(preferences, healthDates) {
         val json = JSONArray()
         healthDates.forEach { (key, value) -> json.put(org.json.JSONArray().put(key).put(value)) }
