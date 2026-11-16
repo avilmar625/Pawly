@@ -172,6 +172,22 @@ test("phone discovery hashes and rate-limit reservations are inaccessible to cli
   }));
 });
 
+test("Cloudinary asset indexes can only point inside the caller's own Pawly upload folders", async () => {
+  const db = env.authenticatedContext("asset-owner", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(db, "cloudinaryAssets/owned"), {
+    uid: "asset-owner", publicId: "pawly/diary-photos/asset-owner/photo-1",
+    resourceType: "image", createdAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(db, "cloudinaryAssets/foreign"), {
+    uid: "asset-owner", publicId: "pawly/diary-photos/someone-else/photo-2",
+    resourceType: "image", createdAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(db, "cloudinaryAssets/untrusted-folder"), {
+    uid: "asset-owner", publicId: "pawly/other/asset-owner/photo-3",
+    resourceType: "image", createdAt: serverTimestamp()
+  }));
+});
+
 test("account deletion requests must be pending and belong to the caller", async () => {
   const db = env.authenticatedContext("requester", { email_verified: true }).firestore();
   await assertSucceeds(setDoc(doc(db, "accountDeletionRequests/requester"), {
