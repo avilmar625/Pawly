@@ -297,14 +297,30 @@ class FirebaseCommunityRepository private constructor(
         return url
     }
 
-        suspend fun uploadImage(uri: Uri, folder: String): String {
+        private suspend fun registerCloudinaryAsset(uid: String, asset: CloudinaryUploadResult) {
+        require(asset.publicId.startsWith("pawly/") && asset.publicId.contains("/$uid/")) {
+            "Cloudinary ha devuelto un recurso fuera de la carpeta privada de esta cuenta."
+        }
+        db.collection("cloudinaryAssets").document(java.util.UUID.randomUUID().toString()).set(mapOf(
+            "uid" to uid,
+            "publicId" to asset.publicId,
+            "resourceType" to asset.resourceType,
+            "createdAt" to FieldValue.serverTimestamp()
+        )).await()
+    }
+
+    suspend fun uploadImage(uri: Uri, folder: String): String {
         val uid = requireVerifiedUid()
-        return CloudinaryImageUploader(appContext).upload(uri, folder, uid)
+        val asset = CloudinaryImageUploader(appContext).upload(uri, folder, uid)
+        registerCloudinaryAsset(uid, asset)
+        return asset.secureUrl
     }
 
     suspend fun uploadVideo(uri: Uri, folder: String): String {
         val uid = requireVerifiedUid()
-        return CloudinaryImageUploader(appContext).uploadVideo(uri, folder, uid)
+        val asset = CloudinaryImageUploader(appContext).uploadVideo(uri, folder, uid)
+        registerCloudinaryAsset(uid, asset)
+        return asset.secureUrl
     }
 
     suspend fun saveDog(dog: PawlyDog) {
