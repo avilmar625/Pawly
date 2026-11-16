@@ -332,26 +332,6 @@ private fun PetPassportSection(
         }
     }
 
-    pendingMedicationConfirmation?.let { (task, previousLog) ->
-        AlertDialog(
-            onDismissRequest = { pendingMedicationConfirmation = null },
-            title = { Text(tr("¿Registrar otra toma?")) },
-            text = {
-                Text(tr("${previousLog.actorName} ya registró «${task.title}» hoy. Comprueba que no se vaya a administrar dos veces."))
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingMedicationConfirmation = null
-                    saveTaskCompletion(task, true)
-                }) { Text(tr("Registrar igualmente")) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingMedicationConfirmation = null }) {
-                    Text(tr("No, ya está dada"))
-                }
-            }
-        )
-    }
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
@@ -603,6 +583,26 @@ private fun PetCarePlanSection(
                 }
             }
         }
+    }
+    pendingMedicationConfirmation?.let { (task, previousLog) ->
+        AlertDialog(
+            onDismissRequest = { pendingMedicationConfirmation = null },
+            title = { Text(tr("¿Registrar otra toma?")) },
+            text = {
+                Text(tr("${previousLog.actorName} ya registró «${task.title}» hoy. Comprueba que no se vaya a administrar dos veces."))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingMedicationConfirmation = null
+                    saveTaskCompletion(task, true)
+                }) { Text(tr("Registrar igualmente")) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingMedicationConfirmation = null }) {
+                    Text(tr("No, ya está dada"))
+                }
+            }
+        )
     }
     if (showAdd) {
         AlertDialog(
