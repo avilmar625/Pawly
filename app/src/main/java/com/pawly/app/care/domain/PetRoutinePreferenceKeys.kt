@@ -14,4 +14,5 @@ internal object PetRoutinePreferenceKeys {
     fun day(scope: String) = "routine_day_$scope"
     fun walkDone(scope: String) = "walk_done_$scope"
     fun medicineDone(scope: String) = "medicine_done_$scope"
+    fun photoPath(scope: String) = "dog_photo_path_$scope"
 }
