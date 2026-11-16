@@ -3,11 +3,15 @@ import { isCurrentComment, parseActivityRequest, type ActivityRequest } from "./
 import { shouldSuppressDispatch } from "./dispatch-state";
 import { parseCommunityPlaceInput, communityPlaceDailyLimitId } from "./community-place-policy";
 import { distanceKm, parseBearerToken } from "./privacy-utils";
+import { normalizeE164Phone, phoneDiscoveryReservationId, PHONE_CONTACT_BATCH_LIMIT, PHONE_DAILY_BATCH_LIMIT, PHONE_MATCH_RESULT_LIMIT } from "./phone-discovery-policy";
 
 interface Env {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_PRIVATE_KEY: string;
+  FIREBASE_PROJECT_NUMBER?: string;
+  PHONE_DISCOVERY_HMAC_SECRET?: string;
+  ALLOW_PNV_TEST_TOKENS?: string;
 }
 
 type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
@@ -15,6 +19,7 @@ type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
 const firebaseKeys = createRemoteJWKSet(
   new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
 );
+const firebasePnvKeys = createRemoteJWKSet(new URL("https://fpnv.googleapis.com/v1beta/jwks"));
 
 let cachedGoogleAccessToken = "";
 let cachedGoogleAccessTokenExpiresAt = 0;
@@ -98,6 +103,239 @@ async function readDocument(env: Env, accessToken: string, path: string): Promis
   if (response.status === 404) return null;
   if (!response.ok) throw new Error("No se pudo verificar el origen de la actividad.");
   return await response.json();
+}
+
+async function verifyFirebasePnvToken(token: string, env: Env): Promise<{ phone: string; testNumber: boolean }> {
+  if (!env.FIREBASE_PROJECT_NUMBER) throw new Error("FIREBASE_PROJECT_NUMBER no está configurado en Cloudflare.");
+  const issuer = `https://fpnv.googleapis.com/projects/${env.FIREBASE_PROJECT_NUMBER}`;
+  const projectAudience = `https://fpnv.googleapis.com/projects/${env.FIREBASE_PROJECT_ID}`;
+  const { payload, protectedHeader } = await jwtVerify(token, firebasePnvKeys, {
+    issuer,
+    algorithms: ["ES256"]
+  });
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (protectedHeader.typ !== "JWT" || !audiences.includes(issuer) || !audiences.includes(projectAudience)) {
+    throw new Error("El token de verificación telefónica no pertenece a este proyecto.");
+  }
+  const testNumber = payload.test_number === true;
+  if (testNumber && env.ALLOW_PNV_TEST_TOKENS !== "true") {
+    throw new Error("Los tokens de prueba no se aceptan en el entorno de producción.");
+  }
+  const phone = normalizeE164Phone(payload.sub);
+  if (!phone) throw new Error("Firebase no ha devuelto un número de teléfono válido.");
+  return { phone, testNumber };
+}
+
+async function hmacPhoneHash(env: Env, phone: string): Promise<string> {
+  if (!env.PHONE_DISCOVERY_HMAC_SECRET || env.PHONE_DISCOVERY_HMAC_SECRET.length < 32) {
+    throw new Error("PHONE_DISCOVERY_HMAC_SECRET no está configurado correctamente.");
+  }
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(env.PHONE_DISCOVERY_HMAC_SECRET),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(phone));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function firestoreString(value: string) { return { stringValue: value }; }
+function firestoreBoolean(value: boolean) { return { booleanValue: value }; }
+function firestoreTimestamp(value: Date) { return { timestampValue: value.toISOString() }; }
+
+async function writeFirestoreDocument(env: Env, accessToken: string, path: string, fields: Record<string, unknown>): Promise<void> {
+  const response = await firestoreRequest(env, accessToken, path, {
+    method: "PATCH", body: JSON.stringify({ fields })
+  });
+  if (!response.ok) throw new Error("No se pudo actualizar el registro privado de teléfono.");
+}
+
+export async function handlePhoneVerification(
+  request: Request,
+  env: Env,
+  dependencies: {
+    verifyUser?: (request: Request, env: Env) => Promise<string | null>;
+    getAccessToken?: (env: Env) => Promise<string>;
+    verifyPnv?: (token: string, env: Env) => Promise<{ phone: string; testNumber: boolean }>;
+    hashPhone?: (env: Env, phone: string) => Promise<string>;
+  } = {}
+): Promise<Response> {
+  const uid = await (dependencies.verifyUser ?? verifiedRequestUser)(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 8192) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { phoneToken?: unknown };
+    if (typeof body.phoneToken !== "string" || body.phoneToken.length < 80 || body.phoneToken.length > 8000) {
+      return json({ error: "Falta el comprobante seguro de verificación telefónica." }, 400);
+    }
+    const verified = await (dependencies.verifyPnv ?? verifyFirebasePnvToken)(body.phoneToken, env);
+    const phoneHash = await (dependencies.hashPhone ?? hmacPhoneHash)(env, verified.phone);
+    const accessToken = await (dependencies.getAccessToken ?? googleAccessToken)(env);
+    const privatePath = `users/${uid}/privateData/phoneDiscovery`;
+    const previous = await readDocument(env, accessToken, privatePath);
+    const oldHash = decodeFirestoreString(previous?.fields?.phoneHash);
+    const existing = await readDocument(env, accessToken, `phoneDirectory/${phoneHash}`);
+    if (existing && decodeFirestoreString(existing.fields?.uid) !== uid) {
+      return json({ error: "Este número ya está verificado en otra cuenta de Pawly." }, 409);
+    }
+    const enabled = existing ? decodeFirestoreBoolean(existing.fields?.enabled) : false;
+    const now = new Date();
+    const fields = {
+      uid: firestoreString(uid), phoneHash: firestoreString(phoneHash),
+      enabled: firestoreBoolean(enabled), verifiedAt: firestoreTimestamp(now),
+      updatedAt: firestoreTimestamp(now), testNumber: firestoreBoolean(verified.testNumber)
+    };
+    if (existing) await writeFirestoreDocument(env, accessToken, `phoneDirectory/${phoneHash}`, fields);
+    else {
+      const created = await firestoreRequest(env, accessToken, `phoneDirectory?documentId=${encodeURIComponent(phoneHash)}`, {
+        method: "POST", body: JSON.stringify({ fields })
+      });
+      if (created.status === 409) return json({ error: "Este número ya está asociado a otra cuenta." }, 409);
+      if (!created.ok) throw new Error("No se pudo registrar el número verificado.");
+    }
+    await writeFirestoreDocument(env, accessToken, privatePath, {
+      phoneHash: firestoreString(phoneHash), enabled: firestoreBoolean(enabled),
+      verifiedAt: firestoreTimestamp(now), testNumber: firestoreBoolean(verified.testNumber)
+    });
+    if (oldHash && oldHash !== phoneHash) {
+      const oldRecord = await readDocument(env, accessToken, `phoneDirectory/${oldHash}`);
+      if (oldRecord && decodeFirestoreString(oldRecord.fields?.uid) === uid) {
+        await firestoreRequest(env, accessToken, `phoneDirectory/${oldHash}`, { method: "DELETE" });
+      }
+    }
+    return json({ verified: true, enabled, testNumber: verified.testNumber });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "No se pudo verificar el número.";
+    return json({ error: message }, 400);
+  }
+}
+
+export async function handlePhoneDiscoveryStatus(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const accessToken = await googleAccessToken(env);
+    const record = await readDocument(env, accessToken, `users/${uid}/privateData/phoneDiscovery`);
+    return json({
+      verified: Boolean(record && decodeFirestoreString(record.fields?.phoneHash)),
+      enabled: decodeFirestoreBoolean(record?.fields?.enabled),
+      testNumber: decodeFirestoreBoolean(record?.fields?.testNumber)
+    });
+  } catch {
+    return json({ error: "No se pudo consultar la configuración de búsqueda por teléfono." }, 502);
+  }
+}
+
+export async function handlePhoneDiscoverySettings(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 1024) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { enabled?: unknown };
+    if (typeof body.enabled !== "boolean") return json({ error: "La preferencia no es válida." }, 400);
+    const accessToken = await googleAccessToken(env);
+    const privatePath = `users/${uid}/privateData/phoneDiscovery`;
+    const record = await readDocument(env, accessToken, privatePath);
+    const phoneHash = decodeFirestoreString(record?.fields?.phoneHash);
+    if (!phoneHash) return json({ error: "Primero verifica tu propio número de teléfono." }, 409);
+    const directory = await readDocument(env, accessToken, `phoneDirectory/${phoneHash}`);
+    if (!directory || decodeFirestoreString(directory.fields?.uid) !== uid) return json({ error: "La verificación del número ya no está disponible." }, 409);
+    const now = new Date();
+    await writeFirestoreDocument(env, accessToken, `phoneDirectory/${phoneHash}`, {
+      uid: firestoreString(uid), phoneHash: firestoreString(phoneHash),
+      enabled: firestoreBoolean(body.enabled),
+      verifiedAt: directory.fields?.verifiedAt ?? firestoreTimestamp(now),
+      updatedAt: firestoreTimestamp(now),
+      testNumber: firestoreBoolean(decodeFirestoreBoolean(directory.fields?.testNumber))
+    });
+    await writeFirestoreDocument(env, accessToken, privatePath, {
+      phoneHash: firestoreString(phoneHash), enabled: firestoreBoolean(body.enabled),
+      verifiedAt: record.fields?.verifiedAt ?? firestoreTimestamp(now),
+      testNumber: firestoreBoolean(decodeFirestoreBoolean(record.fields?.testNumber))
+    });
+    return json({ verified: true, enabled: body.enabled });
+  } catch {
+    return json({ error: "No se pudo guardar la preferencia de búsqueda por teléfono." }, 502);
+  }
+}
+
+export async function handlePhoneDiscoveryMatches(request: Request, env: Env): Promise<Response> {
+  const uid = await verifiedRequestUser(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 8192) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { phoneNumbers?: unknown };
+    if (!Array.isArray(body.phoneNumbers) || body.phoneNumbers.length < 1 || body.phoneNumbers.length > PHONE_CONTACT_BATCH_LIMIT) {
+      return json({ error: `Envía entre 1 y ${PHONE_CONTACT_BATCH_LIMIT} números de contactos.` }, 400);
+    }
+    const phones = [...new Set(body.phoneNumbers.map(normalizeE164Phone).filter((value): value is string => value !== null))];
+    if (phones.length === 0) return json({ matches: [], checked: 0 });
+    const accessToken = await googleAccessToken(env);
+    const ownRecord = await readDocument(env, accessToken, `users/${uid}/privateData/phoneDiscovery`);
+    const ownHash = decodeFirestoreString(ownRecord?.fields?.phoneHash);
+    if (!ownHash || !decodeFirestoreBoolean(ownRecord?.fields?.enabled)) {
+      return json({ error: "Verifica tu número y activa la búsqueda de contactos en tu perfil." }, 403);
+    }
+    const now = new Date();
+    const day = now.toISOString().slice(0, 10).replace(/-/g, "");
+    let reserved = false;
+    for (let slot = 0; slot < PHONE_DAILY_BATCH_LIMIT; slot++) {
+      const reservationId = phoneDiscoveryReservationId(uid, now, slot);
+      const reservation = await firestoreRequest(env, accessToken, `phoneDiscoveryLimits?documentId=${encodeURIComponent(reservationId)}`, {
+        method: "POST",
+        body: JSON.stringify({ fields: {
+          uid: firestoreString(uid), day: firestoreString(day), createdAt: firestoreTimestamp(now),
+          expiresAt: firestoreTimestamp(new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000))
+        } })
+      });
+      if (reservation.ok) { reserved = true; break; }
+      if (reservation.status !== 409) throw new Error("No se pudo aplicar el límite de consultas.");
+    }
+    if (!reserved) return json({ error: "Has alcanzado el límite diario de búsquedas por teléfono. Vuelve a intentarlo mañana." }, 429);
+
+    const hashedPhones = await Promise.all(phones.map(phone => hmacPhoneHash(env, phone)));
+    const queryResponse = await fetch(`${firestoreRoot(env)}:runQuery`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: "phoneDirectory" }],
+          where: { fieldFilter: {
+            field: { fieldPath: "phoneHash" }, op: "IN",
+            value: { arrayValue: { values: hashedPhones.map(value => firestoreString(value)) } }
+          } },
+          limit: PHONE_MATCH_RESULT_LIMIT
+        }
+      })
+    });
+    if (!queryResponse.ok) throw new Error("No se pudieron consultar los contactos verificados.");
+    const queryRows = await queryResponse.json() as Array<{ document?: any }>;
+    const candidateUids = [...new Set(queryRows.flatMap(row => {
+      const fields = row.document?.fields;
+      const candidateUid = decodeFirestoreString(fields?.uid);
+      return candidateUid && candidateUid !== uid && decodeFirestoreBoolean(fields?.enabled) ? [candidateUid] : [];
+    }))].slice(0, PHONE_MATCH_RESULT_LIMIT);
+    const matches = await Promise.all(candidateUids.map(async candidateUid => {
+      const [blockedByMe, blockedMe, profile] = await Promise.all([
+        readDocument(env, accessToken, `users/${uid}/blocked/${candidateUid}`),
+        readDocument(env, accessToken, `users/${candidateUid}/blocked/${uid}`),
+        readDocument(env, accessToken, `users/${candidateUid}`)
+      ]);
+      if (blockedByMe || blockedMe || !profile) return null;
+      return {
+        uid: candidateUid,
+        displayName: decodeFirestoreString(profile.fields?.displayName) || "Usuario Pawly",
+        username: decodeFirestoreString(profile.fields?.username),
+        photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
+      };
+    }));
+    return json({ matches: matches.filter(Boolean), checked: phones.length, truncated: candidateUids.length >= PHONE_MATCH_RESULT_LIMIT });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "No se pudieron buscar coincidencias.";
+    return json({ error: message }, 502);
+  }
 }
 
 async function verifyFirebaseUser(token: string, env: Env): Promise<string> {
@@ -618,6 +856,18 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/v1/community-places") {
       return handleCommunityPlaceSubmission(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/phone/verify") {
+      return handlePhoneVerification(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/phone/discovery/status") {
+      return handlePhoneDiscoveryStatus(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/phone/discovery/settings") {
+      return handlePhoneDiscoverySettings(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/phone/discovery/matches") {
+      return handlePhoneDiscoveryMatches(request, env);
     }
     return json({ error: "Ruta no encontrada." }, 404);
   }
