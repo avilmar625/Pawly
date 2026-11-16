@@ -388,7 +388,7 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - La navegación de cinco destinos está implementada; la línea de tiempo unificada Todo/Salud/Diario/Citas de «Mi perro» sigue pendiente y no debe ocultar pantallas existentes.
 
 ### Verificación de cambios65
-- Último commit creado en esta sesión: `a4f7c96782a14fe2ccb6a7c8a578a0998f3e8061` (tests parser de peso). El commit inmediatamente anterior contiene el endurecimiento del parser.
+- HEAD auditado de cambios65 en esta actualización: `0381fa7919135da7285a297a45496a6a1a79d43f`. Incluye el cableado del acceso de Ajustes desde el icono de cabecera de Hoy. La rama está 49 commits por delante de cambios64, sin commits de cambios64 pendientes por incorporar.
 - Se han añadido tests unitarios para el guard de medicación duplicada y casos adicionales del parser.
 - El workflow Android existe en `.github/workflows/android.yml` y está configurado para push en ramas `cambios*`, ejecutando tests, lint, APK debug, AAB release y comprobaciones del Worker.
 - La consulta de estados de commit no devolvió checks asociados al commit auditado. Por tanto, la compilación y los tests de esta actualización **no están confirmados** en este documento hasta consultar una ejecución concreta de Actions o ejecutar Gradle.
@@ -410,8 +410,12 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 ### Revisión de cambios65 mediante Pull Request
 - PR borrador abierta para revisión/CI: https://github.com/avilmar625/Pawly/pull/19
 - Base: `main`; head: `cambios65-hoy-cuidados-diseno`.
-- El PR incluye el historial completo desde la base común: 86 commits, 155 archivos, 17.771 adiciones y 741 eliminaciones. Es un borrador amplio, no una propuesta lista para fusionar.
+- El PR incluye el historial completo desde la base común: 90 commits, 155 archivos, aproximadamente 17.784 adiciones y 741 eliminaciones en la última lectura. Es un borrador amplio, no una propuesta lista para fusionar.
 - No se ha fusionado. La PR se mantiene en Draft expresamente para revisar y ejecutar validaciones.
 - Tras crearla, la consulta disponible de ejecuciones asociadas al commit no devolvió runs y el estado combinado no devolvió checks. CI **no confirmado**; revisar la pestaña Checks/Actions de la PR directamente antes de considerar cualquier merge.
 
 - La misma protección de rol inicial se ha aplicado también al panel completo `PetCarePlanSection`: el usuario compartido no recibe acciones de edición hasta conocer su rol y la función de toggle vuelve a comprobar `canEdit`.
+
+### Ajuste adicional de navegación de Hoy
+- El icono de engranaje de la cabecera de Hoy ahora abre Ajustes, no el diálogo «Acerca de Pawly». El diálogo Acerca de se conserva en su acceso existente.
+- Estado: cambio en código y commit remoto; compilación y prueba de interacción pendientes.
