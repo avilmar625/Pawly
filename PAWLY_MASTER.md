@@ -477,3 +477,8 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - «Mi perro» mantiene cinco destinos principales y ahora expone accesos secundarios a Diario y Citas junto con Agenda, Salud/Pasaporte, Cuidados y Compartir. La cronología «Todo» unificada del PDF queda pendiente; no se debe fingir que Agenda ya la implementa.
 - Pendientes funcionales identificados: días concretos para rutinas semanales, doble registro de medicación transaccional entre cuidadores, cronología unificada, backup integral con medios, sincronización y validación manual Android/iOS.
 - Último estado CI observado durante el trabajo: Android tests unitarios superados y lint en ejecución; APK Debug/AAB aún no confirmados. Worker check/typecheck/tests superados en la ejecución anterior. Firestore Emulator superado en la ejecución anterior; una ejecución nueva estaba en curso tras los últimos commits. Consultar Actions antes de afirmar estado final.
+
+- Se añadieron accesos secundarios a Diario y Citas dentro de Mi perro, conectados a las pantallas existentes. Agenda, Salud/Pasaporte, Cuidados y Compartir permanecen disponibles.
+- Los textos de Hoy/cuidados y las etiquetas nuevas de navegación están localizados en español, catalán, francés e inglés. Se añadieron tests unitarios para verificar claves de navegación y estados de cuidado.
+- La cronología unificada «Todo» no está terminada; sigue siendo un bloque pendiente de producto, no debe darse por implementado.
+- Último commit de trabajo registrado: `2f52a5f0348a1b6db22f6ceac268683f0c1fbedc`. Revalidar CI sobre este HEAD: las últimas ejecuciones visibles de Android fueron canceladas por nuevos commits después de completar tests unitarios en un HEAD anterior; no hay APK/AAB confirmado para este HEAD.
