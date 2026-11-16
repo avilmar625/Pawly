@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from "jose";
 import { isCurrentComment, parseActivityRequest, type ActivityRequest } from "./activity-validation";
 import { shouldSuppressDispatch } from "./dispatch-state";
-import { distanceKm, normalizePhone } from "./privacy-utils";
+import { distanceKm, parseBearerToken } from "./privacy-utils";
 
 interface Env {
   FIREBASE_PROJECT_ID: string;
@@ -423,16 +423,8 @@ function decodeFirestoreBoolean(value: any): boolean {
   return value?.booleanValue === true;
 }
 
-async function phoneDigest(secret: string, phone: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(phone));
-  return Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, "0")).join("");
-}
-
 async function verifiedRequestUser(request: Request, env: Env): Promise<string | null> {
-  const bearer = (request.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
+  const bearer = parseBearerToken(request.headers.get("authorization"));
   if (!bearer) return null;
   try { return await verifyFirebaseUser(bearer, env); } catch { return null; }
 }
@@ -448,115 +440,6 @@ async function writeFirestoreDocument(env: Env, token: string, path: string, fie
 async function deleteFirestoreDocument(env: Env, token: string, path: string): Promise<void> {
   const response = await firestoreRequest(env, token, path, { method: "DELETE" });
   if (!response.ok && response.status !== 404) throw new Error("No se pudo retirar el registro privado.");
-}
-
-async function handleContactDiscoveryStatus(request: Request, env: Env): Promise<Response> {
-  const uid = await verifiedRequestUser(request, env);
-  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
-  try {
-    const accessToken = await googleAccessToken(env);
-    const record = await readDocument(env, accessToken, `users/${uid}/privateData/contactDiscovery`);
-    return json({ enabled: record?.fields?.enabled?.booleanValue === true });
-  } catch {
-    return json({ error: "No se pudo consultar la preferencia de contactos." }, 502);
-  }
-}
-
-async function handleContactDiscovery(request: Request, env: Env): Promise<Response> {
-  const uid = await verifiedRequestUser(request, env);
-  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
-  if (!env.PHONE_MATCH_HMAC_SECRET || env.PHONE_MATCH_HMAC_SECRET.length < 32) {
-    return json({ error: "La búsqueda privada por teléfono todavía no está configurada." }, 503);
-  }
-  try {
-    const raw = await request.text();
-    if (new TextEncoder().encode(raw).byteLength > 2048) return json({ error: "Petición demasiado grande." }, 413);
-    const body = JSON.parse(raw) as { enabled?: boolean; phone?: string };
-    const privatePath = `users/${uid}/privateData/contactDiscovery`;
-    const accessToken = await googleAccessToken(env);
-    const previous = await readDocument(env, accessToken, privatePath);
-    const previousHash = decodeFirestoreString(previous?.fields?.phoneHash);
-    if (body.enabled !== true) {
-      if (previousHash) {
-        const existing = await readDocument(env, accessToken, `phoneDirectory/${previousHash}`);
-        if (decodeFirestoreString(existing?.fields?.uid) === uid) {
-          await deleteFirestoreDocument(env, accessToken, `phoneDirectory/${previousHash}`);
-        }
-      }
-      await deleteFirestoreDocument(env, accessToken, privatePath);
-      return json({ enabled: false });
-    }
-    if (typeof body.phone !== "string") return json({ error: "Introduce un número de teléfono." }, 400);
-    const normalized = normalizePhone(body.phone);
-    if (!normalized) return json({ error: "Usa un teléfono internacional válido, por ejemplo +34 600 000 000." }, 400);
-    const hash = await phoneDigest(env.PHONE_MATCH_HMAC_SECRET, normalized);
-    const existing = await readDocument(env, accessToken, `phoneDirectory/${hash}`);
-    const ownerUid = decodeFirestoreString(existing?.fields?.uid);
-    if (ownerUid && ownerUid !== uid) return json({ error: "Ese teléfono ya está asociado a otra cuenta." }, 409);
-    if (previousHash && previousHash !== hash) {
-      const old = await readDocument(env, accessToken, `phoneDirectory/${previousHash}`);
-      if (decodeFirestoreString(old?.fields?.uid) === uid) await deleteFirestoreDocument(env, accessToken, `phoneDirectory/${previousHash}`);
-    }
-    await writeFirestoreDocument(env, accessToken, `phoneDirectory/${hash}`, {
-      uid: { stringValue: uid }, updatedAt: { timestampValue: new Date().toISOString() }
-    });
-    await writeFirestoreDocument(env, accessToken, privatePath, {
-      phoneHash: { stringValue: hash }, enabled: { booleanValue: true },
-      updatedAt: { timestampValue: new Date().toISOString() }
-    });
-    return json({ enabled: true });
-  } catch {
-    return json({ error: "No se pudo actualizar la búsqueda privada por teléfono." }, 502);
-  }
-}
-
-async function handleContactMatches(request: Request, env: Env): Promise<Response> {
-  const uid = await verifiedRequestUser(request, env);
-  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
-  if (!env.PHONE_MATCH_HMAC_SECRET || env.PHONE_MATCH_HMAC_SECRET.length < 32) {
-    return json({ error: "La búsqueda privada por teléfono todavía no está configurada." }, 503);
-  }
-  try {
-    const raw = await request.text();
-    if (new TextEncoder().encode(raw).byteLength > 12000) return json({ error: "Petición demasiado grande." }, 413);
-    const body = JSON.parse(raw) as { phoneNumbers?: unknown };
-    if (!Array.isArray(body.phoneNumbers) || body.phoneNumbers.length < 1 || body.phoneNumbers.length > 30 ||
-      body.phoneNumbers.some(value => typeof value !== "string" || value.length > 32)) {
-      return json({ error: "Selecciona entre 1 y 30 teléfonos." }, 400);
-    }
-    const accessToken = await googleAccessToken(env);
-    const blockedByMe = new Set<string>();
-    const blocks = await fetch(`${firestoreRoot(env)}/users/${encodeURIComponent(uid)}/blocked?pageSize=100`, {
-      headers: { authorization: `Bearer ${accessToken}` }
-    });
-    if (blocks.ok) {
-      const payload = await blocks.json() as { documents?: any[] };
-      (payload.documents ?? []).forEach(doc => blockedByMe.add(String(doc.name).split("/").pop() ?? ""));
-    }
-    const matches = new Map<string, { uid: string; displayName: string; username: string; photoUrl: string }>();
-    for (const rawPhone of body.phoneNumbers as string[]) {
-      const normalized = normalizePhone(rawPhone);
-      if (!normalized) continue;
-      const hash = await phoneDigest(env.PHONE_MATCH_HMAC_SECRET, normalized);
-      const directory = await readDocument(env, accessToken, `phoneDirectory/${hash}`);
-      const matchedUid = decodeFirestoreString(directory?.fields?.uid);
-      if (!matchedUid || matchedUid === uid || blockedByMe.has(matchedUid)) continue;
-      const [profile, theirBlock] = await Promise.all([
-        readDocument(env, accessToken, `users/${matchedUid}`),
-        readDocument(env, accessToken, `users/${matchedUid}/blocked/${uid}`)
-      ]);
-      if (!profile || theirBlock || profile.fields?.isPublic?.booleanValue !== true) continue;
-      matches.set(matchedUid, {
-        uid: matchedUid,
-        displayName: decodeFirestoreString(profile.fields?.displayName) || "Usuario Pawly",
-        username: decodeFirestoreString(profile.fields?.username),
-        photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
-      });
-    }
-    return json({ matches: Array.from(matches.values()) });
-  } catch {
-    return json({ error: "No se pudieron consultar los contactos." }, 502);
-  }
 }
 
 async function listLostPetSubscriptions(env: Env, accessToken: string): Promise<any[]> {
@@ -661,15 +544,6 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/v1/lost-pet-alerts") {
       return handleLostPetAlert(request, env);
-    }
-    if (request.method === "GET" && url.pathname === "/v1/contact-discovery") {
-      return handleContactDiscoveryStatus(request, env);
-    }
-    if (request.method === "POST" && url.pathname === "/v1/contact-discovery") {
-      return handleContactDiscovery(request, env);
-    }
-    if (request.method === "POST" && url.pathname === "/v1/contact-matches") {
-      return handleContactMatches(request, env);
     }
     return json({ error: "Ruta no encontrada." }, 404);
   }
