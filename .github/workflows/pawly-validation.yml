@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - cambios60-comunidad-calendario
+      - 'cambios*'
   pull_request:
     branches:
       - cambios60-comunidad-calendario
