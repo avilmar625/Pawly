@@ -369,7 +369,7 @@ private fun PetPassportSection(
                                 Text(tr("Últimas ${weightPoints.size} mediciones registradas"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
-                                String.format(LocalLocale.current, "%.1f kg", weightPoints.last().second),
+                                String.format(LocalLocale.current.platformLocale, "%.1f kg", weightPoints.last().second),
                                 color = lineColor,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold
