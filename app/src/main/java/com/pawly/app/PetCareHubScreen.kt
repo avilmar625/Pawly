@@ -191,7 +191,7 @@ private fun PetPassportSection(
         mutableStateOf(if (storageScope == null) "Guardado en este dispositivo" else "Conectando con Firebase…")
     }
     var cloudLoading by remember(cloudOwnerUid) { mutableStateOf(cloudOwnerUid != null) }
-    var canEdit by remember(cloudOwnerUid, petId) { mutableStateOf(true) }
+    var canEdit by remember(cloudOwnerUid, petId) { mutableStateOf(sharedPetOwnerUid == null) }
     LaunchedEffect(cloudRepository, petId) {
         val repo = cloudRepository ?: return@LaunchedEffect
         cloudLoading = true
