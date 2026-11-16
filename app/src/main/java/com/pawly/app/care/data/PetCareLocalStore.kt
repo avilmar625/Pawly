@@ -63,7 +63,12 @@ internal object PetCareLocalStore {
                 dose = row.optString("dose"),
                 time = row.optString("time"),
                 completedOn = row.optString("completedOn"),
-                action = row.optString("action", "Otro")
+                action = row.optString("action", "Otro"),
+                daysOfWeek = com.pawly.app.care.domain.CareTaskSchedule.normalizeDays(
+                    row.optJSONArray("daysOfWeek")?.let { array ->
+                        List(array.length()) { index -> array.optInt(index, 0) }
+                    }.orEmpty()
+                )
             )
         }
     }.getOrDefault(emptyList())
@@ -77,6 +82,7 @@ internal object PetCareLocalStore {
                     .put("completed", task.completed).put("dose", task.dose)
                     .put("time", task.time).put("completedOn", task.completedOn)
                     .put("action", task.action)
+                    .put("daysOfWeek", JSONArray(task.daysOfWeek))
             )
         }
         preferences(context, storageScope).edit()
