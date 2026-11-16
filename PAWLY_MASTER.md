@@ -432,3 +432,29 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - HEAD de cambios65 al momento de esta actualización: pendiente de registrar tras el commit documental.
 - El PR #19 sigue en borrador y no está fusionado.
 - No hay checks de commit devueltos por la consulta disponible; CI y compilación continúan sin confirmar. El intento de clonar el repositorio en el entorno de trabajo no pudo completarse por falta de resolución de red, así que no se ha ejecutado Gradle localmente.
+
+
+## Mejoras de Explorar, autenticación, Comunidad y Eventos — 2026-11-16
+
+### Recomendaciones y puntos exactos
+- `CommunityPlacesPanel` ya exigía nombre, dirección, descripción y coordenadas para publicar una recomendación. El formulario incluye mapa OpenStreetMap interactivo con selección del punto exacto y campos de latitud/longitud; la fila abre Maps/OpenStreetMap.
+- Se añadió un filtro propio de categorías a las recomendaciones de la comunidad (Todos, Playa, Parque, Ruta, Restaurante, Alojamiento, Veterinario, Otro), con recuento y estado vacío por categoría. Así una recomendación de Playa se consulta en Playa y no mezclada con las demás.
+- La acción de mapa ahora es explícita y rotulada «Mapa», además de poder tocar la fila.
+
+### Autenticación
+- Se detectó un problema de estado de UI: Firebase Authentication puede aceptar las credenciales y establecer `currentUser`, mientras el aprovisionamiento/carga del perfil de Firestore falla. El catch anterior dejaba la pantalla de acceso abierta, aunque existía una sesión válida.
+- Se modificó el flujo de email/contraseña y Google para comprobar `repo.currentUid` en el catch; si la sesión ya existe, continúa a la app y conserva el detalle del error como estado. Si Firebase Auth no creó sesión, muestra el error sin avanzar.
+- Credential Manager ya incluía limpieza de sesión antigua y segundo intento con selector de cuentas no autorizadas. Esta actualización no puede demostrar que el proveedor de Google funcione en el emulador: hace falta probarlo con Google Play Services y una cuenta añadida.
+- El mapeo de errores ya diferencia credenciales incorrectas, correo inválido, cuenta desactivada, exceso de intentos, método no habilitado, Firestore PERMISSION_DENIED y falta de red.
+
+### Comunidad
+- El selector de secciones se ha convertido en una tarjeta de navegación más visual: icono en contenedor, sección activa, descripción contextual y contador de avisos, manteniendo todas las páginas y el acceso de moderación condicionado a admin.
+
+### Eventos
+- Ya existía selector de orden cronológico «Más próximos primero / Más lejanos primero».
+- Se corrigió la inversión del comparador: los eventos con fecha válida se ordenan ascendente/descendente, mientras que los eventos sin fecha permanecen al final en ambos modos. No se eliminan eventos sin fecha.
+
+### Validación pendiente
+- Ejecutar CI (tests/lint/build) en HEAD actualizado y corregir cualquier error.
+- Probar en emulador/dispositivo: publicar recomendación con pin, filtrar Playa/Parque, abrir mapa, autenticar email/Google y ordenar eventos con y sin fecha.
+- No se ha probado la interacción en dispositivo real todavía.
