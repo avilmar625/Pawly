@@ -1055,10 +1055,15 @@ class FirebaseCommunityRepository private constructor(
         db.collection("events").document(eventId).delete().await()
     }
 
+    suspend fun removeReportedCommunityPlace(placeId: String) {
+        check(isAdmin()) { "No tienes permisos de moderación." }
+        db.collection("communityPlaces").document(placeId).delete().await()
+    }
+
     suspend fun report(targetId: String, targetType: String, reason: String) {
         val uid = requireVerifiedUid()
         require(targetId.isNotBlank()) { "No se ha seleccionado el elemento que quieres denunciar." }
-        require(targetType in setOf("post", "user", "event")) { "El tipo de denuncia no es válido." }
+        require(targetType in setOf("post", "user", "event", "place")) { "El tipo de denuncia no es válido." }
         val cleanReason = reason.trim()
         require(cleanReason.isNotBlank()) { "Selecciona un motivo para la denuncia." }
         db.collection("reports").add(mapOf(
