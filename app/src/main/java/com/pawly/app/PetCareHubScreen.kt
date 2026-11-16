@@ -331,7 +331,8 @@ private fun PetPassportSection(
             val weightPoints = entries
                 .filter { it.type.equals("Peso", ignoreCase = true) }
                 .mapNotNull { entry ->
-                    val rawValue = Regex("""\d+(?:[.,]\d+)?""").find(entry.detail.ifBlank { entry.title })?.value
+                    val weightPattern = Regex("""\d+(?:[.,]\d+)?""")
+                    val rawValue = weightPattern.find(entry.title)?.value ?: weightPattern.find(entry.detail)?.value
                     val kg = rawValue?.replace(",", ".")?.toFloatOrNull()
                     val day = runCatching { LocalDate.parse(entry.date.take(10)) }.getOrNull()
                     if (kg != null && kg > 0f && day != null) Triple(day, kg, entry.id) else null
@@ -459,7 +460,7 @@ private fun PetPassportSection(
                             FilterChip(selected = selectedType == type, onClick = { selectedType = type }, label = { Text(type) })
                         }
                     }
-                    OutlinedTextField(title, { title = it }, label = { Text(tr("Nombre o concepto")) }, singleLine = true)
+                    OutlinedTextField(title, { title = it }, label = { Text(if (selectedType == "Peso") tr("Peso en kg") else tr("Nombre o concepto")) }, singleLine = true)
                     OutlinedTextField(date, { date = it }, label = { Text(tr("Fecha (AAAA-MM-DD)")) }, singleLine = true)
                     OutlinedTextField(detail, { detail = it }, label = { Text(tr("Notas, clínica o detalles")) }, minLines = 2)
                 }
