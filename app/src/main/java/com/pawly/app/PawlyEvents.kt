@@ -168,7 +168,15 @@ internal fun PawlyEventsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var reportEventId by remember { mutableStateOf<String?>(null) }
     var selectedEvent by remember { mutableStateOf<PawlyEvent?>(null) }
+    var eventAttendees by remember { mutableStateOf(emptyList<PawlyEventAttendee>()) }
+    var attendeesLoading by remember { mutableStateOf(false) }
+    var attendeesError by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(selectedEvent?.id) {
+        eventAttendees = emptyList()
+        attendeesError = null
+        attendeesLoading = false
+    }
     var category by remember { mutableStateOf("Todos") }
     var sortAscending by remember { mutableStateOf(true) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -385,6 +393,19 @@ internal fun PawlyEventsScreen(
     selectedEvent?.let { event ->
         EventDetailsDialog(
             event = event,
+            canViewAttendees = repository.currentUid == event.organizerUid,
+            attendees = eventAttendees,
+            attendeesLoading = attendeesLoading,
+            attendeesError = attendeesError,
+            onLoadAttendees = {
+                if (!attendeesLoading) scope.launch {
+                    attendeesLoading = true
+                    runCatching { repository.loadEventAttendees(event.id) }
+                        .onSuccess { eventAttendees = it; attendeesError = null }
+                        .onFailure { attendeesError = it.localizedMessage ?: attendeesLoadErrorText }
+                    attendeesLoading = false
+                }
+            },
             onDismiss = { selectedEvent = null },
             onAddToCalendar = {
                 val begin = event.startAt
@@ -451,6 +472,11 @@ internal fun PawlyEventsScreen(
 @Composable
 private fun EventDetailsDialog(
     event: PawlyEvent,
+    canViewAttendees: Boolean,
+    attendees: List<PawlyEventAttendee>,
+    attendeesLoading: Boolean,
+    attendeesError: String?,
+    onLoadAttendees: () -> Unit,
     onDismiss: () -> Unit,
     onAddToCalendar: () -> Unit,
     onToggleInterest: () -> Unit
@@ -476,11 +502,32 @@ private fun EventDetailsDialog(
                 Text("${tr("Organiza")} ${event.organizerName}", style = MaterialTheme.typography.labelMedium)
                 HorizontalDivider()
                 Text("${tr("Personas interesadas")} · ${event.interestedCount}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                Text(
-                    tr("Por privacidad, la lista de asistentes no es pública. Solo se muestra el número total de personas interesadas."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (canViewAttendees) {
+                    OutlinedButton(onClick = onLoadAttendees, enabled = !attendeesLoading) {
+                        Icon(Icons.Default.People, null, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(tr("Ver asistentes"))
+                    }
+                    if (attendeesLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                    if (attendeesError != null) Text(attendeesError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    attendees.forEach { attendee ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AsyncImage(model = attendee.photoUrl.ifBlank { null }, contentDescription = null,
+                                modifier = Modifier.size(34.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                            Column(Modifier.weight(1f)) {
+                                Text(attendee.displayName, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                                if (attendee.username.isNotBlank()) Text("@${attendee.username}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                    if (attendees.isNotEmpty()) Text(tr("Se muestran hasta 50 personas. Los perfiles bloqueados se ocultan."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                } else {
+                    Text(
+                        tr("Por privacidad, solo la persona organizadora puede consultar la lista de asistentes. Aquí se muestra el número total de personas interesadas."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = {

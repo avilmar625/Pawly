@@ -110,3 +110,11 @@ data class PawlyContactMatch(
     val username: String,
     val photoUrl: String
 )
+
+/** A participant shown only to the organizer of the event. */
+data class PawlyEventAttendee(
+    val uid: String,
+    val displayName: String,
+    val username: String = "",
+    val photoUrl: String = ""
+)

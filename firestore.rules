@@ -766,8 +766,10 @@ service cloud.firestore {
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);
 
       match /interested/{uid} {
-        // Private RSVP: no user can enumerate attendees or infer blocked users.
-        allow list: if false;
+        // Only the event organizer can list participants. Individual members can
+        // still read their own RSVP, but cannot enumerate anyone else's attendance.
+        allow list: if signedIn()
+          && get(/databases/$(database)/documents/events/$(eventId)).data.organizerUid == request.auth.uid;
         allow get: if signedIn() && request.auth.uid == uid;
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
