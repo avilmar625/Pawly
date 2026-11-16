@@ -321,3 +321,10 @@ Detalles: [docs/CHANGES51.md](docs/CHANGES51.md).
 - Los recursos nuevos de Cloudinary registran su identificador público y tipo en Firestore para preparar la eliminación de medios por cuenta. El borrado integral aún no está operativo.
 - El Worker pagina los avisos de mascotas perdidas y limita cada ejecución para respetar el máximo de 50 subpeticiones externas del plan gratuito.
 - El despliegue del Worker y sus secretos requieren configuración explícita en la cuenta del propietario; el código de GitHub por sí solo no lo despliega.
+
+
+## Mejoras de eventos integradas desde cambios58
+
+- La creación de eventos utiliza selectores nativos de fecha y hora; no permite publicar una fecha pasada y conserva el formato que valida `EventDateParser`.
+- La ubicación del evento sigue siendo opcional. Si se añade, el selector usa el mapa nativo OpenStreetMap de Pawly, sin depender de Leaflet ni de CDN externos.
+- La rama de auditoría conserva el orden cronológico, la privacidad de asistentes y las reglas de moderación; no se sustituye por la versión antigua de eventos de cambios58.
