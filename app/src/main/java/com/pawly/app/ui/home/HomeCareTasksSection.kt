@@ -22,7 +22,6 @@ import com.pawly.app.care.model.CareLogEntry
 import com.pawly.app.care.model.CareTask
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.temporal.WeekFields
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -105,22 +104,11 @@ internal fun HomeCareTasksSection(
     }
 
     val visibleTasks = tasks.filter { task ->
-        task.frequency != "Puntual" || !task.completed || task.completedOn == todayKey
+        com.pawly.app.care.domain.CareTaskSchedule.isDueOn(task, today) &&
+            (task.frequency != "Puntual" || !task.completed || task.completedOn == todayKey)
     }
-    fun isComplete(task: CareTask): Boolean {
-        if (!task.completed) return false
-        val completedDate = runCatching { LocalDate.parse(task.completedOn) }.getOrNull()
-            ?: return task.frequency == "Puntual"
-        return when (task.frequency) {
-            "Diario" -> completedDate == today
-            "Semanal" -> {
-                val fields = WeekFields.ISO
-                completedDate.get(fields.weekOfWeekBasedYear()) == today.get(fields.weekOfWeekBasedYear()) &&
-                    completedDate.get(fields.weekBasedYear()) == today.get(fields.weekBasedYear())
-            }
-            else -> task.frequency == "Puntual" || completedDate == today
-        }
-    }
+    fun isComplete(task: CareTask): Boolean =
+        com.pawly.app.care.domain.CareTaskSchedule.isCompleteOn(task, today)
     val orderedVisibleTasks = visibleTasks.sortedWith(
         compareBy<CareTask>({ it.time.ifBlank { "99:99" } }, { it.title })
     )
