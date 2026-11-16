@@ -182,6 +182,7 @@ internal fun PawlyEventsScreen(
     }
     var category by remember { mutableStateOf("Todos") }
     var sortAscending by remember { mutableStateOf(true) }
+    var sortByInterested by remember { mutableStateOf(false) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
@@ -204,9 +205,12 @@ internal fun PawlyEventsScreen(
     }
     val visible = events.filter { category == "Todos" || it.category == category }
         .let { filtered ->
-            val dated = filtered.filter { it.startAt > 0L }.sortedBy { it.startAt }
-            val withoutDate = filtered.filter { it.startAt <= 0L }
-            (if (sortAscending) dated else dated.asReversed()) + withoutDate
+            if (sortByInterested) filtered.sortedWith(compareByDescending<PawlyEvent> { it.interestedCount }.thenBy { it.startAt })
+            else {
+                val dated = filtered.filter { it.startAt > 0L }.sortedBy { it.startAt }
+                val withoutDate = filtered.filter { it.startAt <= 0L }
+                (if (sortAscending) dated else dated.asReversed()) + withoutDate
+            }
         }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp)) {
         if (elegantDesign && !mapOnly) {
@@ -267,7 +271,7 @@ internal fun PawlyEventsScreen(
                 ) {
                     Icon(Icons.Default.Sort, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(9.dp))
-                    Text(tr("Ordenar por fecha: ") + tr(if (sortAscending) "Más próximos primero" else "Más lejanos primero"),
+                    Text(tr("Ordenar por: ") + tr(if (sortByInterested) "Más personas interesadas" else if (sortAscending) "Más próximos primero" else "Más lejanos primero"),
                         modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
                     Icon(Icons.Default.ExpandMore, null)
                 }
@@ -276,13 +280,19 @@ internal fun PawlyEventsScreen(
                         text = { Text(tr("Más próximos primero"), fontWeight = if (sortAscending) FontWeight.Bold else FontWeight.Normal) },
                         leadingIcon = { Icon(Icons.Default.EventAvailable, null) },
                         trailingIcon = { if (sortAscending) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick = { sortAscending = true; sortMenuExpanded = false }
+                        onClick = { sortAscending = true; sortByInterested = false; sortMenuExpanded = false }
                     )
                     DropdownMenuItem(
-                        text = { Text(tr("Más lejanos primero"), fontWeight = if (!sortAscending) FontWeight.Bold else FontWeight.Normal) },
+                        text = { Text(tr("Más lejanos primero"), fontWeight = if (!sortAscending && !sortByInterested) FontWeight.Bold else FontWeight.Normal) },
                         leadingIcon = { Icon(Icons.Default.Event, null) },
                         trailingIcon = { if (!sortAscending) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick = { sortAscending = false; sortMenuExpanded = false }
+                        onClick = { sortAscending = false; sortByInterested = false; sortMenuExpanded = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(tr("Más personas interesadas"), fontWeight = if (sortByInterested) FontWeight.Bold else FontWeight.Normal) },
+                        leadingIcon = { Icon(Icons.Default.Groups, null) },
+                        trailingIcon = { if (sortByInterested) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                        onClick = { sortByInterested = true; sortMenuExpanded = false }
                     )
                 }
             }
