@@ -24,35 +24,33 @@
 
 ### Rama Android de continuidad actual
 
-- **Rama activa:** `cambios66-estabilizacion-y-lint`.
-- **HEAD comprobado:** `297d933085c5ecbd26ec8d6b8432a8da413636e2` — `fix(ui): align bottom navigation with Pawly reference` (16-11-2026 12:50:16 UTC).
-- **Base directa:** `cambios65-hoy-cuidados-diseno`, en el commit `ad5e83e79a9a52baf3068f85fe1c45b78c58e4af`.
-- La rama 66 conserva el contenido de cambios65 y añade: uso de la configuración observable de idioma para fechas/textos del panel Hoy; publicación del informe completo de Android Lint en el log de CI; y el orden de navegación inferior de acuerdo con el PDF: Hoy, Mi perro, Comunidad, Explorar y Más.
-- **No modificar cambios65 ni main para continuar este trabajo**: desarrollar en cambios66 y crear ramas posteriores desde el HEAD verificado de esa rama.
+- **Rama activa:** `cambios68-hoy-proximo-cuidado`.
+- **HEAD comprobado:** `f562a37a9123e5c96d46a9c3ec50bcc5ca7210e8` — `fix(i18n): pass date style when formatting calendar date` (16-11-2026).
+- **Base de cambios68:** `cambios67-cronologia-y-localizacion`; mantiene toda la evolución de cambios65/66 y 67.
+- cambios68 integra tres bloques recientes: (1) estabilización de localización observable y navegación inferior; (2) filtros reales Todo/Salud/Diario/Citas en la cronología Mi perro, calendario y geocodificación con idioma Pawly; (3) selección unificada del próximo elemento de Hoy usando Pasaporte, fechas programadas de Salud y recordatorios de Calendario, con navegación directa a su origen.
+- **No continuar desde cambios39, cambios64, cambios65 ni main**. Desarrollar en cambios68 y crear futuras ramas desde el HEAD verificado de esta rama.
+- No fusionar ramas ni PR hasta superar las validaciones y pruebas indicadas abajo.
 
-### Rama anterior y Pull Request
+### Rama anterior y estado de validación
 
-- `cambios65-hoy-cuidados-diseno` contiene el rediseño Hoy/Mi perro y la integración funcional descrita en las secciones históricas de este documento.
-- PR #19 (`[WIP] Pawly cambios65 — Hoy, cuidados compartidos y rediseño`) sigue **abierto, Draft y sin fusionar**, con base `main` y head cambios65. No darlo por integrado.
-- `main` no contiene todavía las mejoras de cambios65/66. No asumir que main es la versión más completa ni fusionar hasta superar CI y pruebas manuales.
-
-### Estado de validación comprobado
-
-- En cambios65, el workflow Android del 16-11-2026 terminó con tests Kotlin superados, pero Android Lint falló con **8 errores, 72 advertencias y 3 hints**. El primer error informado fue `NonObservableLocale` en `HomeCareTasksSection.kt`; por ello se omitieron los pasos de APK Debug y AAB Release.
-- En cambios66 se reemplazaron las cuatro lecturas de `Locale.getDefault()` de `HomeCareTasksSection.kt` por `PawlyI18n.locale(language)`, que sigue el idioma observable de la app. El workflow ahora imprime `lint-results-debug.txt` completo para conocer todos los diagnósticos, no solo el primero.
-- Firestore Emulator pasó en el commit `cb8e9ae758e8a3701fc815126434c15369f978bb` (run 43869984594). **No equivale a validar el HEAD actual** tras el ajuste de navegación.
-- Para el HEAD `297d933...`, Android build y Firestore validation se han vuelto a lanzar; al redactar este estado, Android build estaba pendiente y Firestore validation en curso. No afirmar que cambios66 compila ni que tiene APK/AAB hasta consultar Actions de nuevo.
-- Los cambios siguen sin prueba manual en emulador, Redmi/iPhone o servicios externos reales.
+- `cambios66-estabilizacion-y-lint`: el workflow pasó tests Kotlin, pero Lint encontró 4 errores `NonObservableLocale` en `HomeHighlights.kt` y `PetTimelineSection.kt`; APK/AAB se omitieron. Los cuatro puntos se corrigieron en cambios67.
+- `cambios67-cronologia-y-localizacion`: Firestore Emulator y Worker pasan. El intento Android falló en compilación Kotlin por la sobrecarga incorrecta de `DateFormat.getDateInstance(locale)` en `PawlyCalendarScreen.kt`; se corrigió en cambios68 usando `DateFormat.DEFAULT` y la locale.
+- cambios68 está ejecutando validaciones nuevas sobre el HEAD `f562a37...`. **Estado actual al documentar:** Android build pendiente y Firestore validation en curso; no declarar todavía tests, Lint, APK o AAB como aprobados hasta consultar Actions.
+- El workflow de Android ejecuta tests Kotlin, Lint, APK Debug y AAB Release unsigned; el de Firestore prueba las reglas con Emulator; el de Worker comprueba tipos y validación de peticiones.
+- Los cambios siguen sin prueba manual en emulador/dispositivo Android, iPhone o con todos los servicios externos reales.
 
 ### Otras ramas importantes
 
 - `cambios56-arquitectura`: hito de arquitectura y endurecimiento de seguridad.
-- `cambios57`, `cambios58-integracion`, `cambios59-experiencia`, `cambios60-comunidad-calendario`, `cambios61-lugares-comunidad-eventos`, `cambios62-auditoria-gratis-seguridad`, `cambios63-consolidacion-main` y `cambios64-funciones-integradas-hoy`: evolución incremental hasta la base de cambios65.
-- `ios-funciones`: port iOS SwiftUI amplio pero divergente; no es una continuación directa de cambios66. Debe auditarse y probarse por separado en Xcode/iPhone.
-- `ios` e `ios-iphone`: líneas iOS anteriores/prototipo, no sustituir por ellas la rama funcional sin comparar.
-- Existen ramas históricas `cambios1` a `cambios65...`. No borrar ramas históricas como limpieza automática.
+- `cambios57` a `cambios64-funciones-integradas-hoy`: evolución incremental hasta la base de cambios65.
+- `cambios65-hoy-cuidados-diseno`: rediseño de Hoy y cuidados; no modificar como rama de continuidad.
+- `cambios66-estabilizacion-y-lint`: primer bloque de estabilización visual/localización.
+- `cambios67-cronologia-y-localizacion`: filtros de cronología y localización; base de cambios68.
+- `ios-funciones`: port iOS SwiftUI divergente; debe auditarse y probarse por separado en Xcode/iPhone. No asumir paridad Android/iOS.
+- `ios` e `ios-iphone`: líneas iOS anteriores/prototipo, no sustituir por ellas el port funcional sin comparar.
+- No borrar ramas históricas como limpieza automática.
 
-## 3. Arquitectura Android actual (cambios65/66)
+## 3. Arquitectura Android actual (cambios65–68)
 
 Aplicación Android nativa con Kotlin, Jetpack Compose y Navigation Compose. El repositorio contiene un único módulo Gradle `:app`; todavía no existe un módulo Kotlin Multiplatform compartido.
 
@@ -88,7 +86,7 @@ Aplicación Android nativa con Kotlin, Jetpack Compose y Navigation Compose. El 
 
 ## 4. Arquitectura iOS: ramas separadas y estado real
 
-No existe una aplicación iOS integrada en `cambios66-estabilizacion-y-lint`: no se encontraron `ios/`, `iosApp/` ni `shared/` en esa rama.
+No existe una aplicación iOS integrada en `cambios68-hoy-proximo-cuidado`: no se encontraron `ios/`, `iosApp/` ni `shared/` en esa rama.
 
 Hay dos líneas de trabajo iOS identificadas:
 
@@ -111,7 +109,7 @@ La documentación y el código inspeccionados incluyen:
 
 ### Decisión iOS
 
-No hacer merge directo de `ios-funciones` con cambios66: el historial está divergente y puede sobrescribir o perder mejoras Android recientes. La futura consolidación debe portar por funcionalidades, comparar esquemas y reglas Firestore, preservar el trabajo iOS y probarlo en Xcode/iPhone. No convertir la app Android a KMP de golpe.
+No hacer merge directo de `ios-funciones` con cambios68: el historial está divergente y puede sobrescribir o perder mejoras Android recientes. La futura consolidación debe portar por funcionalidades, comparar esquemas y reglas Firestore, preservar el trabajo iOS y probarlo en Xcode/iPhone. No convertir la app Android a KMP de golpe.
 
 ## 5. Funcionalidades Android: inventario documental
 
@@ -530,4 +528,36 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - La confirmación de posible doble medicación es una defensa UX, no una operación atómica entre cuidadores. Las rutinas semanales no permiten aún elegir días concretos. El backup JSON sigue siendo local y parcial, no una copia integral de Firestore, chats, eventos y medios Cloudinary.
 - Mantener el coste bajo: no activar Firebase Blaze, Firebase Storage ni Workers Paid sin autorización expresa.
 - No fusionar PR #19 ni la futura PR de cambios66 hasta revisar CI completo, pruebas manuales y seguridad.
+
+
+
+## 15. Continuidad cambios68 — 16-11-2026
+
+### Cambios en `cambios68-hoy-proximo-cuidado`
+
+- Se añadió `HomeUpcomingItem.kt`, función pura que selecciona la fecha más próxima entre:
+  - Entradas futuras del Pasaporte (exceptuando Peso).
+  - Fechas programadas en Salud, conservando día y hora.
+  - Recordatorios del Calendario, conservando su timestamp y categoría.
+- Se ignoran recordatorios de Salud/Calendario ya caducados y datos mal formados. Si no existe ningún elemento futuro, la tarjeta «Próximamente» no muestra contenido inventado.
+- `HomeScreen` recibe las fechas de Salud y los recordatorios del Calendario filtrados para la mascota seleccionada. La tarjeta utiliza el elemento ganador.
+- La navegación de esa tarjeta dirige a Calendario, Agenda de Salud o Pasaporte según el origen. `pendingCareSection` permite abrir el destino concreto una sola vez y consumirse sin quedar pegado al volver.
+- Se añadieron tres pruebas unitarias para selección entre fuentes, exclusión de recordatorios vencidos y resultado vacío.
+- Se corrigió la sobrecarga de `DateFormat.getDateInstance` detectada por CI de cambios67: se pasa `DateFormat.DEFAULT` junto a la locale observable de Pawly.
+
+### Funcionalidad preservada
+
+- Hoy sigue mostrando progreso y tareas existentes, accesos rápidos de Paseo/Peso/Foto/Comida, actividad compartida y aniversario real del Diario cuando existe.
+- Mi perro mantiene los filtros Todo/Salud/Diario/Citas de cambios67 y los accesos a Agenda, Pasaporte, Cuidados, Compartir, Diario y Calendario.
+- No se elimina el calendario existente, las pantallas de salud/pasaporte ni los recordatorios; la nueva tarjeta simplemente toma datos de estas fuentes.
+
+### Validación pendiente
+
+- Ejecutar sobre un único HEAD final: `testDebugUnitTest`, `lintDebug`, `assembleDebug` y `bundleRelease`.
+- Confirmar el nuevo test `HomeUpcomingItemTest`, los filtros de cronología y que no queden errores `NonObservableLocale`.
+- Probar manualmente tres rutas desde Hoy: recordatorio de calendario → Calendario; fecha de Salud → Mi perro/Agenda; entrada de Pasaporte → Mi perro/Pasaporte.
+- Probar con datos vacíos, fechas vencidas, recordatorios del mismo día, varias mascotas y cambio de idioma.
+- La tarjeta todavía no incluye eventos comunitarios obtenidos por el repositorio de eventos; las fuentes integradas son Pasaporte, fechas de Salud y recordatorios locales del Calendario.
+- No declarar APK/AAB generado ni compilación correcta hasta que el último workflow termine en verde y publique los artefactos.
+- No hacer merge ni activar servicios facturables. Mantener Firebase Storage/Blaze y Workers Paid fuera del alcance sin autorización.
 
