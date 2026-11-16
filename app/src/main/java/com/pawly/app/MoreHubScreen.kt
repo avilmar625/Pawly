@@ -66,11 +66,11 @@ internal fun MoreHubScreen(
                 }
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(t("TU ESPACIO PAWLY"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
-                Text(t("Todo lo vuestro,\nen un mismo lugar."), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(t("Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            }
+            PawlyPageHeader(
+                eyebrow = "Tu espacio Pawly",
+                title = "Todo lo vuestro, en un mismo lugar.",
+                subtitle = "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota."
+            )
         }
         Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
             Box(Modifier.fillMaxWidth().background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)))) {
