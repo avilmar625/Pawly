@@ -850,6 +850,29 @@ class FirebaseCommunityRepository private constructor(
             .update("status", if (approve) "approved" else "rejected").await()
     }
 
+    suspend fun updateOwnCommunityPlace(
+        placeId: String, name: String, category: String, location: String,
+        description: String, latitude: Double, longitude: Double
+    ) {
+        val uid = requireVerifiedUid()
+        require(name.trim().length in 3..80 && location.trim().length in 3..120 && description.trim().length in 10..500)
+        require(category in setOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro"))
+        require(latitude in -90.0..90.0 && longitude in -180.0..180.0)
+        val ref = db.collection("communityPlaces").document(placeId)
+        check(ref.get().await().getString("authorUid") == uid) { "Solo puedes editar tus propias propuestas." }
+        ref.update(mapOf(
+            "name" to name.trim(), "category" to category, "location" to location.trim(),
+            "description" to description.trim(), "latitude" to latitude, "longitude" to longitude
+        )).await()
+    }
+
+    suspend fun deleteOwnCommunityPlace(placeId: String) {
+        val uid = requireVerifiedUid()
+        val ref = db.collection("communityPlaces").document(placeId)
+        check(ref.get().await().getString("authorUid") == uid) { "Solo puedes eliminar tus propias propuestas." }
+        ref.delete().await()
+    }
+
     suspend fun submitCommunityPlace(name: String, category: String, location: String, description: String, latitude: Double?, longitude: Double?) {
         val uid = requireVerifiedUid()
         val cleanName = name.trim()
