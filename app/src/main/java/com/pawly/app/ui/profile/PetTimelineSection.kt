@@ -126,6 +126,7 @@ internal fun PetTimelineSection(
     calendarReminders: List<String>,
     healthDates: Map<String, String>,
     onOpenHealth: () -> Unit,
+    onOpenCare: () -> Unit = onOpenHealth,
     onOpenDiary: () -> Unit,
     onOpenCalendar: () -> Unit
 ) {
@@ -244,6 +245,7 @@ internal fun PetTimelineSection(
                         when (item.category) {
                             "Diario" -> onOpenDiary()
                             "Cita" -> onOpenCalendar()
+                            "Cuidado" -> onOpenCare()
                             else -> onOpenHealth()
                         }
                     },
