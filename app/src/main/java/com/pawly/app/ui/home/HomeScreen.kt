@@ -40,7 +40,7 @@ internal fun HomeScreen(
     onMedicineToggle: (Boolean) -> Unit,
     onExplore: () -> Unit,
     onLearn: () -> Unit,
-    onAbout: () -> Unit,
+    onAbout: () -> Unit,\n    onSettings: () -> Unit = onAbout,
     onEditProfile: () -> Unit,
     diaryCount: Int,
     diaryEntries: List<String> = emptyList(),
@@ -123,10 +123,10 @@ internal fun HomeScreen(
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                Surface(onClick = onAbout, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+                Surface(onClick = onSettings, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
                     border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Settings, contentDescription = tr("Acerca de Pawly"), tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Filled.Settings, contentDescription = tr("Ajustes"), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
