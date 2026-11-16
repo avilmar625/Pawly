@@ -7,12 +7,15 @@ on:
       - 'cambios*'
   pull_request:
     branches:
+      - main
       - cambios60-comunidad-calendario
+  workflow_dispatch:
 
 jobs:
   firestore-rules:
-    name: Validate Firestore rules with emulator
+    name: Test Firestore rules behavior with emulator
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,5 +23,8 @@ jobs:
           node-version: '22'
       - name: Install Firebase CLI
         run: npm install --global firebase-tools
-      - name: Parse rules and start Firestore emulator
-        run: firebase emulators:exec --only firestore --project demo-pawly "echo Firestore rules parsed successfully"
+      - name: Install rules test dependencies
+        working-directory: tests/firestore
+        run: npm install
+      - name: Run behavioral rules tests against emulator
+        run: firebase emulators:exec --only firestore --project demo-pawly "npm --prefix tests/firestore test"
