@@ -8,6 +8,8 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 
 > Rama de continuidad actual: `cambios66-estabilizacion-y-lint`, derivada de `cambios65-hoy-cuidados-diseno`. Sigue sin fusionar a `main`; consulta [docs/CAMBIOS66.md](docs/CAMBIOS66.md) para el estado de CI, cambios y validaciones pendientes.
 
+> Rama de continuidad actual: `cambios68-hoy-proximo-cuidado`. Mantiene las ramas 65–67 y añade el próximo cuidado unificado de Hoy. Validación pendiente en CI; consulta [docs/CAMBIOS68.md](docs/CAMBIOS68.md) y [PAWLY_MASTER.md](PAWLY_MASTER.md).
+
 ## Creadores
 
 - **Alex Vilarrubla Martín**
