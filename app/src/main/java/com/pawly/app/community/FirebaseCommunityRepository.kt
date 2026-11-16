@@ -1020,10 +1020,10 @@ class FirebaseCommunityRepository private constructor(
         }.filter { it.uid.isNotBlank() }
     }
 
-    private suspend fun postBackend(path: String, payload: JSONObject): JSONObject {
+    private suspend fun postBackend(path: String, payload: JSONObject, forceRefreshToken: Boolean = false): JSONObject {
         val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')
         check(baseUrl.isNotBlank()) { "El servicio seguro de Pawly todavía no está configurado." }
-        val token = auth.currentUser?.getIdToken(false)?.await()?.token ?: error("Inicia sesión de nuevo.")
+        val token = auth.currentUser?.getIdToken(forceRefreshToken)?.await()?.token ?: error("Inicia sesión de nuevo.")
         val request = Request.Builder().url(baseUrl + path).header("Authorization", "Bearer $token")
             .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType())).build()
         return withContext(Dispatchers.IO) {
@@ -1122,7 +1122,7 @@ class FirebaseCommunityRepository private constructor(
         require(eventId.isNotBlank() && eventId.length <= 128)
         val response = postBackend("/v1/events/attendees", JSONObject()
             .put("eventId", eventId)
-            .put("pageToken", pageToken))
+            .put("pageToken", pageToken), forceRefreshToken = true)
         val rows = response.optJSONArray("attendees") ?: org.json.JSONArray()
         val attendees = List(rows.length()) { index ->
             rows.getJSONObject(index).let { row ->
