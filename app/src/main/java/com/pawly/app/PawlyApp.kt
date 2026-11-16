@@ -453,7 +453,7 @@ private fun PawlyMainApp(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
+                    listOf(Tab.HOME, Tab.HEALTH, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE).forEach { tab ->
                         val label = PawlyI18n.text(tab.label, language)
                         val active = selected == tab ||
                             (tab == Tab.HEALTH && selected in setOf(Tab.DIARY, Tab.CALENDAR)) ||
