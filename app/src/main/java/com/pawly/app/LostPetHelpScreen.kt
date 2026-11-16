@@ -216,7 +216,7 @@ internal fun LostPetHelpScreen(
         ) {
             Icon(Icons.Default.Share, null)
             Spacer(Modifier.width(7.dp))
-            Text(t("Crear cartel para compartir"))
+            Text(tr("Crear cartel para compartir"))
         }
         Text(tr("El cartel se genera en tu dispositivo. Comparte el contacto solo si quieres hacerlo público."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
