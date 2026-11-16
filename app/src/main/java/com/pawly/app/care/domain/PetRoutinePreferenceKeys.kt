@@ -3,7 +3,7 @@ package com.pawly.app.care.domain
 import java.security.MessageDigest
 import java.util.Locale
 
-/** Stable preference keys for daily routine state, isolated per pet profile. */
+/** Stable preference keys for daily routine state and local pet assets, isolated per pet profile. */
 internal object PetRoutinePreferenceKeys {
     fun scope(petName: String): String {
         val normalized = petName.trim().lowercase(Locale.ROOT)
