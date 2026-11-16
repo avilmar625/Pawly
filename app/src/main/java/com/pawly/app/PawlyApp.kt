@@ -168,6 +168,9 @@ private fun PawlyMainApp(
     }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var openCommunityNotifications by remember { mutableStateOf(false) }
+    var pendingCareAction by remember { mutableStateOf<String?>(null) }
+    var pendingPassportType by remember { mutableStateOf<String?>(null) }
+    var openDiaryPhotoPicker by remember { mutableStateOf(false) }
     var selectedSharedPet by remember { mutableStateOf<PetShareInvitation?>(null) }
     var showAbout by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -499,6 +502,9 @@ private fun PawlyMainApp(
                     onCalendar = { selected = Tab.CALENDAR },
                     onCommunity = { selected = Tab.COMMUNITY },
                     onHealth = { selected = Tab.HEALTH },
+                    onWeight = { pendingPassportType = "Peso"; selected = Tab.HEALTH },
+                    onPhoto = { openDiaryPhotoPicker = true; selected = Tab.DIARY },
+                    onFood = { pendingCareAction = "Comida"; selected = Tab.HEALTH },
                     storageScope = storageScope
                 )
                 Tab.EXPLORE -> ExploreScreen(
@@ -540,7 +546,18 @@ private fun PawlyMainApp(
                                 val fullKey = "$dogName|$key"
                                 healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
                             },
-                            onOpenSharedPet = { selectedSharedPet = it }
+                            onOpenSharedPet = { selectedSharedPet = it },
+                            initialSection = when {
+                                pendingPassportType != null -> "Pasaporte"
+                                pendingCareAction != null -> "Cuidados"
+                                else -> null
+                            },
+                            initialPassportType = pendingPassportType,
+                            initialCareAction = pendingCareAction,
+                            onInitialActionConsumed = {
+                                pendingPassportType = null
+                                pendingCareAction = null
+                            }
                         )
                     }
                 }
@@ -549,7 +566,9 @@ private fun PawlyMainApp(
                     elegantDesign = elegantDesign,
                     entries = diaryEntries,
                     onEntriesChange = { diaryEntries = it },
-                    repository = cloudRepository
+                    repository = cloudRepository,
+                    openPhotoPickerOnEnter = openDiaryPhotoPicker,
+                    onPhotoPickerOpened = { openDiaryPhotoPicker = false }
                 )
                 Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository, healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") }, diaryEntries = diaryEntries, dogName = dogName)
                 Tab.COMMUNITY -> CommunityScreen(
