@@ -793,7 +793,11 @@ private fun CommunityPlacesPanel(
     var selectedLatitude by remember { mutableStateOf<Double?>(null) }
     var selectedLongitude by remember { mutableStateOf<Double?>(null) }
     var categoryExpanded by remember { mutableStateOf(false) }
+    var recommendationFilter by remember { mutableStateOf("Todos") }
     val categories = listOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro")
+    val recommendationCategories = listOf("Todos", "Playa", "Parque", "Ruta", "Restaurante", "Alojamiento", "Veterinario", "Otro")
+    val visibleRecommendations = places.filter { recommendationFilter == "Todos" || it.category.equals(recommendationFilter, ignoreCase = true) }
+        .sortedBy { it.name.lowercase() }
     Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -810,19 +814,32 @@ private fun CommunityPlacesPanel(
             }
             Text(tr("Las propuestas se revisan antes de aparecer públicamente. Puedes denunciar un lugar si detectas información incorrecta."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (places.isNotEmpty()) {
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    items(recommendationCategories) { option ->
+                        FilterChip(
+                            selected = recommendationFilter == option,
+                            onClick = { recommendationFilter = option },
+                            label = { Text(tr(option)) },
+                            leadingIcon = if (recommendationFilter == option) ({ Icon(Icons.Default.Check, null) }) else null
+                        )
+                    }
+                }
+            }
             if (places.isEmpty()) {
                 Text(tr("Todavía no hay lugares visibles. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            } else if (visibleRecommendations.isEmpty()) {
+                Text(tr("Todavía no hay recomendaciones en esta categoría. Puedes ser la primera persona en aportar una."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
-                val categoryOrder = listOf("Playa", "Parque", "Ruta", "Restaurante", "Alojamiento", "Veterinario", "Otro")
-                val orderedPlaces = places.sortedWith(compareBy<PawlyCommunityPlace> {
-                    val index = categoryOrder.indexOfFirst { category -> category.equals(it.category, ignoreCase = true) }
-                    if (index < 0) categoryOrder.size else index
-                }.thenBy { it.name.lowercase() }).take(100)
-                orderedPlaces.forEachIndexed { index, place ->
-                    if (index == 0 || !orderedPlaces[index - 1].category.equals(place.category, ignoreCase = true)) {
-                        Text(tr(place.category), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 7.dp))
-                    }
+                val orderedPlaces = visibleRecommendations.take(100)
+                Text(
+                    tr("${orderedPlaces.size} recomendaciones") + if (recommendationFilter == "Todos") "" else " · ${tr(recommendationFilter)}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                orderedPlaces.forEach { place ->
+                    Text(tr(place.category), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 7.dp))
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                             .clickable { onOpenPlace(place) }
@@ -862,7 +879,14 @@ private fun CommunityPlacesPanel(
                                 Icon(Icons.Default.Flag, contentDescription = tr("Denunciar lugar"), tint = MaterialTheme.colorScheme.error)
                             }
                         }
-                        Icon(Icons.Default.OpenInNew, contentDescription = tr("Abrir en el mapa"), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                        TextButton(
+                            onClick = { onOpenPlace(place) },
+                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(tr("Mapa"), style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
