@@ -565,7 +565,11 @@ private fun PetCarePlanSection(
                     Text(tr("Rutinas"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     val dueToday = tasks.filter { CareTaskSchedule.isDueOn(it, todayDate) }
                     val completedToday = dueToday.count { CareTaskSchedule.isCompleteOn(it, todayDate) }
-                    Text(tr("$completedToday de ${dueToday.size} rutinas previstas hoy completadas"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        PawlyI18n.careRoutineProgress(completedToday, dueToday.size, LocalPawlyLanguage.current),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Text(tr("Añadir")) }
@@ -682,12 +686,28 @@ private fun PetCarePlanSection(
                     if (action == "Medicación") {
                         OutlinedTextField(dose, { dose = it }, label = { Text(tr("Dosis (ej. 1 comprimido)")) }, singleLine = true)
                         OutlinedTextField(time, { time = it }, label = { Text(tr("Hora diaria (HH:mm)")) }, singleLine = true)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(tr("Aviso diario"), fontWeight = FontWeight.SemiBold)
-                                Text(tr("Crea un recordatorio local a esta hora."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (frequency != "Puntual") {
+                            val weeklyReminder = frequency == "Semanal"
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        tr(if (weeklyReminder) "Avisos en los días seleccionados" else "Aviso diario"),
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        tr(
+                                            if (weeklyReminder) "Crea avisos locales a esta hora en cada día seleccionado."
+                                            else "Crea un recordatorio local a esta hora."
+                                        ),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                androidx.compose.material3.Switch(
+                                    checked = reminderEnabled,
+                                    onCheckedChange = { reminderEnabled = it }
+                                )
                             }
-                            androidx.compose.material3.Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it })
                         }
                     }
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -699,6 +719,7 @@ private fun PetCarePlanSection(
                                     selectedDays = if (item == "Semanal") {
                                         selectedDays.ifEmpty { setOf(LocalDate.now().dayOfWeek.value) }
                                     } else emptySet()
+                                    if (item == "Puntual") reminderEnabled = false
                                 },
                                 label = { Text(tr(item)) }
                             )
@@ -753,8 +774,18 @@ private fun PetCarePlanSection(
                         tasks = tasks + newTask
                         PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
                         if (action == "Medicación" && reminderEnabled) {
-                            val scheduled = CareReminderScheduler.scheduleDaily(context, petName, newTask.title, time.trim())
-                            syncMessage = if (scheduled) "Recordatorio diario programado" else "Revisa la hora; usa el formato HH:mm"
+                            val scheduled = when (frequency) {
+                                "Semanal" -> CareReminderScheduler.scheduleWeekly(
+                                    context, petName, newTask.title, time.trim(), newTask.daysOfWeek
+                                )
+                                "Diario" -> CareReminderScheduler.scheduleDaily(context, petName, newTask.title, time.trim())
+                                else -> false
+                            }
+                            syncMessage = when {
+                                !scheduled -> "Revisa la hora y los días programados."
+                                frequency == "Semanal" -> "Recordatorio en días programados."
+                                else -> "Recordatorio diario programado."
+                            }
                         }
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
@@ -769,7 +800,8 @@ private fun PetCarePlanSection(
                 }, enabled = canEdit && title.isNotBlank() &&
                     (frequency != "Semanal" || selectedDays.isNotEmpty()) &&
                     (!reminderEnabled || time.matches(Regex("\\d{2}:\\d{2}"))) &&
-                    (!reminderEnabled || action == "Medicación")) { Text(tr("Guardar")) }
+                    (!reminderEnabled || action == "Medicación") &&
+                    (!reminderEnabled || frequency in setOf("Diario", "Semanal"))) { Text(tr("Guardar")) }
             },
             dismissButton = { TextButton(onClick = { showAdd = false }) { Text(tr("Cancelar")) } }
         )
