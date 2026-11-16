@@ -1,6 +1,11 @@
 name = "pawly-api"
 main = "src/index.ts"
 compatibility_date = "2026-11-13"
+workers_dev = true
+
+# Keep the free-plan ceiling explicit. The code batches external calls below this.
+[limits]
+subrequests = 50
 
 [vars]
 FIREBASE_PROJECT_ID = "pawly-83dca"
