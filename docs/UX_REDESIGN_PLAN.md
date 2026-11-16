@@ -174,3 +174,6 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - Limitación de modelo detectada: las rutinas semanales solo guardan frecuencia «Semanal», sin días de semana configurables; no se puede calcular de forma fiable qué días concretos vencen. Hace falta ampliar modelo/UI/reglas/migración compatible antes de cambiar esa lógica.
 - El panel de Hoy muestra hasta tres registros de actividad reales. La salvaguarda de doble medicación sigue siendo una confirmación UX, no una exclusión atómica/transaccional entre cuidadores.
 - La copia JSON actual sigue siendo local y parcial; no se presenta como copia completa de todos los datos de la cuenta ni de medios Cloudinary.
+
+- La navegación secundaria de «Mi perro» ofrece ahora accesos directos a Diario y Citas reutilizando las pantallas existentes, además de Agenda, Salud/Pasaporte, Cuidados y Compartir. El destino principal se etiqueta «Mi perro» y sus nombres tienen traducciones para catalán, francés e inglés.
+- La cronología «Todo» del PDF sigue pendiente y se mantiene como deuda explícita: no se debe mostrar ese nombre hasta que la pantalla agregue y ordene de verdad registros de salud, cuidados, diario y citas.
