@@ -39,6 +39,8 @@ internal fun PawlyOnboardingDialog(
     onPickPhoto: () -> Unit,
     onEnableNotifications: () -> Unit,
     notificationsEnabled: Boolean = false,
+    notificationStatus: String = "",
+    onTestNotifications: () -> Unit = {},
     onFinish: () -> Unit
 ) {
     var step by remember { mutableIntStateOf(0) }
@@ -90,25 +92,28 @@ internal fun PawlyOnboardingDialog(
                         Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                         Text("Activa las notificaciones para recibir recordatorios de cuidados y avisos importantes. Puedes decidirlo ahora o más adelante en los ajustes del móvil.")
                         OutlinedButton(
-                            onClick = onEnableNotifications,
-                            enabled = !notificationsEnabled,
+                            onClick = if (notificationsEnabled) onTestNotifications else onEnableNotifications,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             if (notificationsEnabled) {
                                 Icon(Icons.Default.CheckCircle, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Notificaciones activadas")
+                                Text("Enviar aviso de prueba")
                             } else {
                                 Icon(Icons.Default.NotificationsActive, contentDescription = null)
                                 Spacer(Modifier.width(8.dp))
-                                Text("Activar notificaciones")
+                                Text(if (notificationStatus.isNotBlank()) "Revisar ajustes" else "Activar notificaciones")
                             }
                         }
                         Text(
-                            if (notificationsEnabled) "¡Perfecto! Pawly puede enviarte avisos y recordatorios."
-                            else "Te pediremos permiso al sistema. También puedes activarlas más adelante desde los ajustes del móvil.",
+                            when {
+                                notificationsEnabled -> "¡Perfecto! Los avisos del sistema están permitidos. Pulsa «Enviar aviso de prueba» para comprobarlo; los recordatorios llegarán cuando programes cuidados o citas."
+                                notificationStatus.isNotBlank() -> notificationStatus
+                                else -> "Al pulsar, Android te pedirá permiso. Si ya lo rechazaste o bloqueaste, Pawly te llevará a sus ajustes para activarlo."
+                            },
                             style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
-                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
+                            color = if (notificationsEnabled) androidx.compose.material3.MaterialTheme.colorScheme.primary
+                                else androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

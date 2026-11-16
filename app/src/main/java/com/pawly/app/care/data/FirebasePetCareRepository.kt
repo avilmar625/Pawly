@@ -170,27 +170,68 @@ class FirebasePetCareRepository(
         require(petId.isNotBlank() && entry.id.isNotBlank())
         require(entry.title.isNotBlank() && entry.title.length <= 120)
         require(entry.detail.length <= 1200 && entry.date.length <= 40 && entry.type.length <= 40)
-        passport(petId).document(entry.id).set(passportData(entry)).await()
+        val ref = passport(petId).document(entry.id)
+        // Preserve the original creation order when an existing measurement is edited.
+        val existingOrder = ref.get().await().getLong("createdAtOrder")
+        val order = existingOrder ?: (System.currentTimeMillis() * 1_000_000L + (System.nanoTime() % 1_000_000L))
+        ref.set(passportData(entry) + ("createdAtOrder" to order)).await()
     }
 
     override suspend fun savePassportEntries(petId: String, entries: List<PassportEntry>) {
         require(petId.isNotBlank() && entries.size <= 450)
         val batch = db.batch()
-        entries.forEach { entry ->
+        val baseOrder = System.currentTimeMillis() * 1_000_000L
+        entries.forEachIndexed { index, entry ->
             require(entry.id.isNotBlank() && entry.title.isNotBlank())
             require(entry.title.length <= 120 && entry.detail.length <= 1200)
             require(entry.date.length <= 40 && entry.type.length <= 40)
-            batch.set(passport(petId).document(entry.id), passportData(entry))
+            batch.set(
+                passport(petId).document(entry.id),
+                passportData(entry) + ("createdAtOrder" to (baseOrder + index))
+            )
         }
         if (entries.isNotEmpty()) batch.commit().await()
     }
 
     override suspend fun loadPassportEntries(petId: String): List<PassportEntry> =
-        passport(petId).get().await().documents.mapNotNull { doc ->
-            val title = doc.getString("title") ?: return@mapNotNull null
-            PassportEntry(doc.id, doc.getString("type").orEmpty(), title,
-                doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
-        }.sortedByDescending { it.date }
+        passport(petId).get().await().documents
+            // A separate creation-order field is necessary because several
+            // measurements can legitimately have the same calendar date.
+            .sortedWith(
+                compareBy<com.google.firebase.firestore.DocumentSnapshot> { it.getString("date").orEmpty() }
+                    .thenBy { it.getLong("createdAtOrder") ?: 0L }
+                    .thenBy { it.id }
+            )
+            .mapNotNull { doc ->
+                val title = doc.getString("title") ?: return@mapNotNull null
+                PassportEntry(doc.id, doc.getString("type").orEmpty(), title,
+                    doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
+            }
+
+    /**
+     * One-time, non-destructive migration for older passport records that were
+     * saved before createdAtOrder existed. Prefer the device's persisted order
+     * for same-day records; never rewrite records that already have an order.
+     */
+    suspend fun backfillPassportEntryOrder(petId: String, preferredLocalOrder: List<String>) {
+        require(petId.isNotBlank())
+        val documents = passport(petId).get().await().documents
+        val missing = documents.filter { it.getLong("createdAtOrder") == null }
+        if (missing.isEmpty()) return
+        val localIndex = preferredLocalOrder.withIndex().associate { it.value to it.index }
+        val orderedMissing = missing.sortedWith(
+            compareBy<com.google.firebase.firestore.DocumentSnapshot> { it.getString("date").orEmpty() }
+                .thenBy { localIndex[it.id] ?: Int.MAX_VALUE }
+                .thenBy { it.id }
+        )
+        val batch = db.batch()
+        // Legacy records predate the ordering field, so keep them before the
+        // newer records that already have a positive creation-order value.
+        orderedMissing.forEachIndexed { index, document ->
+            batch.update(document.reference, "createdAtOrder", -1_000_000_000_000L + index)
+        }
+        batch.commit().await()
+    }
 
     override suspend fun deletePassportEntry(petId: String, entryId: String) {
         require(petId.isNotBlank() && entryId.isNotBlank())
