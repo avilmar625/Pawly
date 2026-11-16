@@ -491,6 +491,7 @@ private fun PawlyMainApp(
                     onAbout = { showAbout = true },
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
                     diaryCount = diaryEntries.size,
+                    diaryEntries = diaryEntries,
                     dogPhoto = dogPhoto,
                     elegantDesign = elegantDesign,
                     onNotifications = { openCommunityNotifications = true; selected = Tab.COMMUNITY },
