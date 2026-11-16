@@ -394,7 +394,7 @@ service cloud.firestore {
         allow read: if isMember();
         allow create, update: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
-          && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed', 'dose', 'time', 'completedOn', 'action'])
+          && request.resource.data.keys().hasOnly(['id', 'title', 'responsible', 'frequency', 'completed', 'dose', 'time', 'completedOn', 'action', 'daysOfWeek'])
           && request.resource.data.id == taskId
           && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
           && request.resource.data.responsible is string && request.resource.data.responsible.size() <= 80
@@ -403,7 +403,13 @@ service cloud.firestore {
           && request.resource.data.dose is string && request.resource.data.dose.size() <= 80
           && request.resource.data.time is string && request.resource.data.time.size() <= 5
           && request.resource.data.completedOn is string && request.resource.data.completedOn.size() <= 10
-          && request.resource.data.action in ['Paseo', 'Comida', 'Medicación', 'Higiene', 'Otro'];
+          && request.resource.data.action in ['Paseo', 'Comida', 'Medicación', 'Higiene', 'Otro']
+          && (!('daysOfWeek' in request.resource.data) || (
+            request.resource.data.frequency == 'Semanal'
+            && request.resource.data.daysOfWeek is list
+            && request.resource.data.daysOfWeek.size() <= 7
+            && request.resource.data.daysOfWeek.hasOnly([1, 2, 3, 4, 5, 6, 7])
+          ));
         allow delete: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
       }
