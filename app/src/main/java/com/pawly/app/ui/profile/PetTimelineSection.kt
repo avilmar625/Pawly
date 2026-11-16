@@ -1,6 +1,7 @@
 package com.pawly.app
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -106,6 +108,15 @@ internal fun buildPetTimelineItems(
     return items.sortedByDescending { it.occurredAt }
 }
 
+/** Filters existing records without duplicating or mutating timeline data. */
+internal fun filterPetTimelineItems(items: List<PetTimelineItem>, filter: String): List<PetTimelineItem> =
+    when (filter) {
+        "Salud" -> items.filter { it.category == "Salud" || it.category == "Cuidado" }
+        "Diario" -> items.filter { it.category == "Diario" }
+        "Citas" -> items.filter { it.category == "Cita" }
+        else -> items
+    }
+
 @Composable
 internal fun PetTimelineSection(
     petName: String,
@@ -120,6 +131,8 @@ internal fun PetTimelineSection(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val language = LocalPawlyLanguage.current
+    val locale = PawlyI18n.locale(language)
+    var selectedFilter by remember(petName, petId) { androidx.compose.runtime.mutableStateOf("Todo") }
     val savedLocalLabel = PawlyI18n.text("Guardado en este dispositivo", language)
     val loadingLabel = PawlyI18n.text("Cargando historial…", language)
     val syncedLabel = PawlyI18n.text("Historial sincronizado", language)
@@ -134,6 +147,9 @@ internal fun PetTimelineSection(
         androidx.compose.runtime.mutableStateOf(
             buildPetTimelineItems(localEntries, localLogs, diaryEntries, calendarReminders, healthDates)
         )
+    }
+    val visibleTimelineItems = remember(timelineItems, selectedFilter) {
+        filterPetTimelineItems(timelineItems, selectedFilter)
     }
     var syncLabel by remember(storageScope, language) {
         androidx.compose.runtime.mutableStateOf(if (storageScope.isNullOrBlank()) savedLocalLabel else loadingLabel)
@@ -165,6 +181,18 @@ internal fun PetTimelineSection(
             Text(tr("Salud, cuidados, recuerdos y citas en orden cronológico."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
         Text(syncLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("Todo", "Salud", "Diario", "Citas").forEach { filter ->
+                FilterChip(
+                    selected = selectedFilter == filter,
+                    onClick = { selectedFilter = filter },
+                    label = { Text(tr(filter)) }
+                )
+            }
+        }
         if (timelineItems.isEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(22.dp)) {
                 Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -174,8 +202,16 @@ internal fun PetTimelineSection(
                         color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             }
+        } else if (visibleTimelineItems.isEmpty()) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(22.dp)) {
+                Text(
+                    tr("No hay registros de este tipo todavía."),
+                    Modifier.fillMaxWidth().padding(18.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         } else {
-            timelineItems.forEach { item ->
+            visibleTimelineItems.forEach { item ->
                 val icon = when (item.category) {
                     "Salud" -> Icons.Filled.HealthAndSafety
                     "Cuidado" -> Icons.Filled.CheckCircle
@@ -187,12 +223,12 @@ internal fun PetTimelineSection(
                     Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(23.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(tr(item.category).uppercase(Locale.getDefault()), color = MaterialTheme.colorScheme.primary,
+                            Text(tr(item.category).uppercase(locale), color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             Text(item.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
                             if (item.detail.isNotBlank()) Text(item.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
-                        Text(SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(item.occurredAt)),
+                        Text(SimpleDateFormat("dd MMM yyyy", locale).format(Date(item.occurredAt)),
                             color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     }
                 }
