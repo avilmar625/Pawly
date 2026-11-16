@@ -38,7 +38,11 @@ internal fun HomeCareTasksSection(
     onOpenCalendar: () -> Unit,
     onWeight: () -> Unit,
     onPhoto: () -> Unit,
-    onFood: () -> Unit
+    onFood: () -> Unit,
+    upcomingTitle: String? = null,
+    upcomingType: String? = null,
+    upcomingDate: String? = null,
+    onUpcomingClick: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val today = LocalDate.now()
@@ -283,6 +287,39 @@ internal fun HomeCareTasksSection(
                     }
                 }
         }
+        if (!upcomingTitle.isNullOrBlank() && !upcomingDate.isNullOrBlank()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Próximamente", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Surface(
+                    onClick = onUpcomingClick,
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFFF3DCCF)
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            Modifier.size(42.dp).background(Color.White.copy(alpha = .72f), RoundedCornerShape(13.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                if (upcomingType.equals("Vacuna", true)) Icons.Filled.HealthAndSafety else Icons.Filled.CalendarMonth,
+                                null,
+                                tint = Color(0xFF315A45)
+                            )
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(upcomingDate, color = Color(0xFF67574E), style = MaterialTheme.typography.labelSmall)
+                            Text(upcomingTitle, color = Color(0xFF263A30), fontWeight = FontWeight.Bold)
+                        }
+                        Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFF315A45))
+                    }
+                }
+            }
+        }
+
         Text("Registrar rápido", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             HomeCareQuickAction(Icons.Filled.DirectionsWalk, "Paseo", Color(0xFFE2F1E6), {
