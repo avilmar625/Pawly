@@ -165,6 +165,7 @@ private fun PawlyMainApp(
         pendingPdfFile = null
     }
     var selected by remember { mutableStateOf(Tab.HOME) }
+    var openCommunityNotifications by remember { mutableStateOf(false) }
     var selectedSharedPet by remember { mutableStateOf<PetShareInvitation?>(null) }
     var showAbout by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
@@ -372,7 +373,12 @@ private fun PawlyMainApp(
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
                     diaryCount = diaryEntries.size,
                     dogPhoto = dogPhoto,
-                    elegantDesign = elegantDesign
+                    elegantDesign = elegantDesign,
+                    onNotifications = { openCommunityNotifications = true; selected = Tab.COMMUNITY },
+                    onDiary = { selected = Tab.DIARY },
+                    onCalendar = { selected = Tab.CALENDAR },
+                    onCommunity = { selected = Tab.COMMUNITY },
+                    onHealth = { selected = Tab.HEALTH }
                 )
                 Tab.EXPLORE -> ExploreScreen(
                     savedPlaces = savedPlaceNames,
@@ -425,7 +431,10 @@ private fun PawlyMainApp(
                     repository = cloudRepository
                 )
                 Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository, healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") }, diaryEntries = diaryEntries, dogName = dogName)
-                Tab.COMMUNITY -> CommunityScreen(elegantDesign = elegantDesign)
+                Tab.COMMUNITY -> CommunityScreen(
+                    elegantDesign = elegantDesign,
+                    openNotifications = openCommunityNotifications
+                )
                 Tab.MORE -> MoreHubScreen(
                     onLearn = { selected = Tab.LEARN },
                     onDiary = { selected = Tab.DIARY },
