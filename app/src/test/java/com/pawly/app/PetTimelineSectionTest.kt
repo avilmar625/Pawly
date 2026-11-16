@@ -32,6 +32,40 @@ class PetTimelineSectionTest {
         assertEquals("Rabia", result.last().title)
     }
 
+    @Test fun communityEventsAppearInTimelineAndInTheAppointmentsFilter() {
+        val eventTime = Instant.parse("2026-11-18T17:00:00Z").toEpochMilli()
+        val event = PawlyEvent(
+            id = "walk-1",
+            title = "Paseo en grupo",
+            description = "Ruta fácil",
+            category = "Quedada",
+            location = "Málaga",
+            dateText = "18/11/2026 18:00",
+            latitude = null,
+            longitude = null,
+            organizerName = "Ana",
+            organizerUid = "organizer-1",
+            interestedCount = 4,
+            interestedByMe = false,
+            startAt = eventTime,
+            timeZoneId = "Europe/Madrid"
+        )
+        val items = buildPetTimelineItems(
+            passportEntries = emptyList(),
+            careLogs = emptyList(),
+            diaryEntries = emptyList(),
+            calendarReminders = emptyList(),
+            healthDates = emptyMap(),
+            communityEvents = listOf(event),
+            zoneId = ZoneId.of("UTC")
+        )
+
+        assertEquals("Evento", items.single().category)
+        assertEquals("Paseo en grupo", items.single().title)
+        assertEquals("Quedada · Málaga", items.single().detail)
+        assertEquals(items, filterPetTimelineItems(items, "Citas"))
+    }
+
     @Test fun filtersTimelineByHealthDiaryAndAppointmentsWithoutDroppingSourceItems() {
         val items = listOf(
             PetTimelineItem("health-1", "Vacuna", "Rabia", "Salud", 4L),
