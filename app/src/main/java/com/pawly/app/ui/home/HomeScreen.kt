@@ -44,7 +44,12 @@ internal fun HomeScreen(
     diaryCount: Int,
     dogPhoto: Bitmap?,
     dogPhotoUrl: String? = null,
-    elegantDesign: Boolean = false
+    elegantDesign: Boolean = false,
+    onNotifications: () -> Unit = {},
+    onDiary: () -> Unit = {},
+    onCalendar: () -> Unit = {},
+    onCommunity: () -> Unit = {},
+    onHealth: () -> Unit = {}
 ) {
     val completed = listOf(walkDone, medicineDone).count { it }
     val language = LocalPawlyLanguage.current
@@ -65,6 +70,18 @@ internal fun HomeScreen(
                     Text(tr("Qué bien tenerte por aquí"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 Surface(
+                    onClick = onNotifications,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.NotificationsNone, contentDescription = tr("Notificaciones"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
+                        Box(Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp).size(7.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error))
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Surface(
                     onClick = onAbout,
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.surface,
@@ -77,6 +94,17 @@ internal fun HomeScreen(
             }
         }
         item { HomePetHero(dogName, dogPhoto, dogPhotoUrl, onEditProfile, elegantDesign) }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(tr("Accesos rápidos"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HomeQuickAction(Icons.Filled.Groups, "Comunidad", Color(0xFFEDE7F6), onCommunity, Modifier.weight(1f))
+                    HomeQuickAction(Icons.Filled.CalendarMonth, "Agenda", Color(0xFFE3F1F2), onCalendar, Modifier.weight(1f))
+                    HomeQuickAction(Icons.Filled.AutoStories, "Diario", Color(0xFFF7EBDD), onDiary, Modifier.weight(1f))
+                    HomeQuickAction(Icons.Filled.FavoriteBorder, "Salud", Color(0xFFF9E8EB), onHealth, Modifier.weight(1f))
+                }
+            }
+        }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(tr("Un día bonito\ncon $firstName."), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
@@ -364,6 +392,36 @@ internal fun TaskRow(
                 Text(tr(subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
+        }
+    }
+}
+
+
+@Composable
+private fun HomeQuickAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    background: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        shadowElevation = 1.dp
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(vertical = 12.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Box(Modifier.size(36.dp).clip(CircleShape).background(background), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(19.dp))
+            }
+            Text(tr(label), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
