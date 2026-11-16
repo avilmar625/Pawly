@@ -170,6 +170,7 @@ private fun PawlyMainApp(
     var openCommunityNotifications by remember { mutableStateOf(false) }
     var pendingCareAction by remember { mutableStateOf<String?>(null) }
     var pendingPassportType by remember { mutableStateOf<String?>(null) }
+    var pendingCareSection by remember { mutableStateOf<String?>(null) }
     var openDiaryPhotoPicker by remember { mutableStateOf(false) }
     var selectedSharedPet by remember { mutableStateOf<PetShareInvitation?>(null) }
     var showAbout by remember { mutableStateOf(false) }
@@ -536,6 +537,11 @@ private fun PawlyMainApp(
                     onWeight = { pendingPassportType = "Peso"; selected = Tab.HEALTH },
                     onPhoto = { openDiaryPhotoPicker = true; selected = Tab.DIARY },
                     onFood = { pendingCareAction = "Comida"; selected = Tab.HEALTH },
+                    healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }
+                        .mapKeys { (key, _) -> key.removePrefix("$dogName|") },
+                    calendarReminders = calendarReminders,
+                    onOpenHealthAgenda = { pendingCareSection = "Agenda"; selected = Tab.HEALTH },
+                    onOpenPassport = { pendingCareSection = "Pasaporte"; selected = Tab.HEALTH },
                     storageScope = storageScope
                 )
                 Tab.EXPLORE -> ExploreScreen(
@@ -582,7 +588,7 @@ private fun PawlyMainApp(
                             onOpenCalendar = { selected = Tab.CALENDAR },
                             diaryEntries = diaryEntries,
                             calendarReminders = calendarReminders,
-                            initialSection = when {
+                            initialSection = pendingCareSection ?: when {
                                 pendingPassportType != null -> "Pasaporte"
                                 pendingCareAction != null -> "Cuidados"
                                 else -> null
@@ -592,6 +598,7 @@ private fun PawlyMainApp(
                             onInitialActionConsumed = {
                                 pendingPassportType = null
                                 pendingCareAction = null
+                                pendingCareSection = null
                             }
                         )
                     }
