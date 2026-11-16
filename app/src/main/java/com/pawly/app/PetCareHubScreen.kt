@@ -17,6 +17,9 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -273,6 +276,11 @@ private fun PetPassportSection(
         }
     }
     var title by remember { mutableStateOf("") }
+    var weightKg by remember { mutableFloatStateOf(0f) }
+    val lastRecordedWeight = entries.asSequence().filter { it.type.equals("Peso", ignoreCase = true) }.sortedByDescending { it.date }.mapNotNull { entry ->
+        val pattern = Regex("""\d+(?:[.,]\d+)?""")
+        (pattern.find(entry.title)?.value ?: pattern.find(entry.detail)?.value)?.replace(",", ".")?.toFloatOrNull()
+    }.firstOrNull()
     var detail by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
     val types = listOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Alergia", "Intervención", "Peso", "Microchip", "Seguro", "Veterinario habitual", "Contacto de emergencia", "Otro")
@@ -457,10 +465,27 @@ private fun PetPassportSection(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         types.forEach { type ->
-                            FilterChip(selected = selectedType == type, onClick = { selectedType = type }, label = { Text(type) })
+                            FilterChip(selected = selectedType == type, onClick = { selectedType = type; if (type == "Peso") { weightKg = lastRecordedWeight ?: 10f; title = String.format(java.util.Locale.US, "%.1f", weightKg) } }, label = { Text(type) })
                         }
                     }
-                    OutlinedTextField(title, { title = it }, label = { Text(if (selectedType == "Peso") tr("Peso en kg") else tr("Nombre o concepto")) }, singleLine = true)
+                    if (selectedType == "Peso") {
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(tr("Peso de tu mascota"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                            Box(Modifier.size(184.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        IconButton(onClick = { weightKg = (weightKg - 0.1f).coerceAtLeast(0.1f); title = String.format(java.util.Locale.US, "%.1f", weightKg) }) { Icon(Icons.Default.Remove, contentDescription = tr("Restar 100 gramos")) }
+                                        Text(String.format(java.util.Locale.US, "%.1f", weightKg), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
+                                        IconButton(onClick = { weightKg = (weightKg + 0.1f).coerceAtMost(150f); title = String.format(java.util.Locale.US, "%.1f", weightKg) }) { Icon(Icons.Default.Add, contentDescription = tr("Añadir 100 gramos")) }
+                                    }
+                                    Text("kg", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Text(if (lastRecordedWeight != null) "Último registro: " + String.format(java.util.Locale.US, "%.1f", lastRecordedWeight) + " kg · ajusta la nueva medición" else tr("Primera medición · ajusta el valor con + y −"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        OutlinedTextField(title, { title = it }, label = { Text(tr("Nombre o concepto")) }, singleLine = true)
+                    }
                     OutlinedTextField(date, { date = it }, label = { Text(tr("Fecha (AAAA-MM-DD)")) }, singleLine = true)
                     OutlinedTextField(detail, { detail = it }, label = { Text(tr("Notas, clínica o detalles")) }, minLines = 2)
                 }
