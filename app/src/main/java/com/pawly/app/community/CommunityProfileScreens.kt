@@ -102,15 +102,37 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp), tonalElevation = 1.dp) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            PawlyPageHeader(
+                eyebrow = "Comunidad",
+                title = "Tu perfil Pawly",
+                subtitle = "Tu presentación, tus mascotas y cómo te encuentra la comunidad."
+            )
+        }
+        item {
+            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp), tonalElevation = 1.dp,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(profile?.photoUrl.orEmpty(), name, 68)
-                        Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text(name.ifBlank { "Tu perfil" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                        Avatar(profile?.photoUrl.orEmpty(), name, 76)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(name.ifBlank { "Tu perfil" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                             Text("@" + profile?.username.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text((profile?.followersCount ?: 0).toString() + " seguidores · " + (profile?.followingCount ?: 0) + " siguiendo", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            Text(if (isPublic) tr("Perfil visible para la comunidad") else tr("Perfil privado"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(
+                            (profile?.followersCount ?: 0).toString() to "Seguidores",
+                            (profile?.followingCount ?: 0).toString() to "Siguiendo",
+                            dogs.size.toString() to "Mascotas"
+                        ).forEach { (value, label) ->
+                            Surface(Modifier.weight(1f), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .55f), shape = RoundedCornerShape(14.dp)) {
+                                Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(value, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                                    Text(tr(label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
                         }
                     }
                     OutlinedButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
