@@ -44,7 +44,12 @@ import com.pawly.app.care.data.PetShareInvitation
 import com.pawly.app.care.data.FirebasePetProfileRepository
 import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
+import com.pawly.app.care.model.CareLogEntry
 import com.pawly.app.care.model.PassportEntry
+import com.pawly.app.care.CareReminderScheduler
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.pawly.app.care.export.PetCarePdfExporter
 import com.google.firebase.firestore.FirebaseFirestoreException
 
@@ -269,6 +274,31 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
         item {
             Text(tr("Este historial no sustituye a la cartilla oficial ni a la historia clínica de tu veterinario. Los documentos adjuntos y la exportación PDF se incorporarán en una fase posterior."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        if (careLogs.isNotEmpty()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("Últimos cuidados registrados"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(tr("Así podéis comprobar quién ha hecho cada paseo, comida o toma."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            items(careLogs.take(10), key = { "care-log-${it.id}" }) { log ->
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f))) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(9.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(log.taskTitle, fontWeight = FontWeight.SemiBold)
+                            Text("${log.action} · ${log.actorName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(
+                            SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(log.occurredAt)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 
     if (showAdd) {
@@ -314,7 +344,15 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
 private fun PetCarePlanSection(petName: String, storageScope: String?, petId: String, sharedPetOwnerUid: String? = null) {
     val context = LocalContext.current
     val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
-    var tasks by remember(petName, localStorageScope, petId) { mutableStateOf(PetCareLocalStore.loadTasks(context, petName, localStorageScope)) }
+    val today = remember { LocalDate.now().toString() }
+    var tasks by remember(petName, localStorageScope, petId) {
+        mutableStateOf(PetCareLocalStore.loadTasks(context, petName, localStorageScope).map {
+            if (it.frequency == "Diario" && it.completed && it.completedOn != today) it.copy(completed = false, completedOn = "") else it
+        })
+    }
+    var careLogs by remember(petName, localStorageScope, petId) {
+        mutableStateOf(PetCareLocalStore.loadCareLogs(context, petName, localStorageScope))
+    }
     val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
     // La mascota propia usa la ruta privada users/{uid}/petCare/{petId}.
     // Solo las mascotas compartidas utilizan sharedPets/{ownerUid}_{petId}.
@@ -335,7 +373,9 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
         try {
             repo.ensureSharedPet(petId, petName)
             canEdit = repo.canEditSharedPet(petId)
-            val remoteTasks = repo.loadCareTasks(petId)
+            val remoteTasks = repo.loadCareTasks(petId).map {
+                if (it.frequency == "Diario" && it.completed && it.completedOn != today) it.copy(completed = false, completedOn = "") else it
+            }
             if (remoteTasks.isEmpty() && tasks.isNotEmpty()) {
                 repo.saveCareTasks(petId, tasks)
                 syncMessage = "Rutinas locales sincronizadas con tu cuenta"
@@ -343,6 +383,10 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                 tasks = remoteTasks
                 PetCareLocalStore.saveTasks(context, petName, remoteTasks, localStorageScope)
                 syncMessage = "Sincronizado con tu cuenta"
+            }
+            runCatching { repo.loadCareLogs(petId) }.onSuccess {
+                careLogs = it
+                PetCareLocalStore.saveCareLogs(context, petName, it, localStorageScope)
             }
         } catch (error: Exception) {
             syncMessage = error.toCareSyncMessage()
@@ -354,6 +398,10 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
     var title by remember { mutableStateOf("") }
     var responsible by remember { mutableStateOf("") }
     var frequency by remember { mutableStateOf("Diario") }
+    var action by remember { mutableStateOf("Otro") }
+    var dose by remember { mutableStateOf("") }
+    var time by remember { mutableStateOf("") }
+    var reminderEnabled by remember { mutableStateOf(false) }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -399,26 +447,45 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                         checked = task.completed,
                         enabled = canEdit,
                         onCheckedChange = { checked ->
-                            tasks = tasks.map { if (it.id == task.id) it.copy(completed = checked) else it }
+                            val updated = task.copy(completed = checked, completedOn = if (checked) today else "")
+                            tasks = tasks.map { if (it.id == task.id) updated else it }
                             PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
-                            tasks.firstOrNull { it.id == task.id }?.let { updatedTask ->
-                                cloudRepository?.let { repo ->
-                                    coroutineScope.launch {
-                                        runCatching { repo.saveCareTask(petId, updatedTask) }
-                                            .onSuccess { syncMessage = "Cambios sincronizados" }
-                                            .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
+                            if (checked) {
+                                val localLog = CareLogEntry(
+                                    UUID.randomUUID().toString(), task.title, task.action, "local", "Tú",
+                                    System.currentTimeMillis()
+                                )
+                                careLogs = (listOf(localLog) + careLogs).take(100)
+                                PetCareLocalStore.saveCareLogs(context, petName, careLogs, localStorageScope)
+                            }
+                            cloudRepository?.let { repo ->
+                                coroutineScope.launch {
+                                    runCatching {
+                                        repo.saveCareTask(petId, updated)
+                                        if (checked) repo.logCareAction(petId, task.title, task.action)
+                                        repo.loadCareLogs(petId)
                                     }
+                                        .onSuccess { logs ->
+                                            if (checked) careLogs = logs
+                                            PetCareLocalStore.saveCareLogs(context, petName, careLogs, localStorageScope)
+                                            syncMessage = "Cambios sincronizados"
+                                        }
+                                        .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
                                 }
                             }
                         }
                     )
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(task.title, fontWeight = FontWeight.SemiBold)
-                        Text("${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${task.action} · ${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (task.dose.isNotBlank() || task.time.isNotBlank()) {
+                            Text(listOf(task.dose, task.time).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                     TextButton(enabled = canEdit, onClick = {
                         tasks = tasks.filterNot { it.id == task.id }
                         PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
+                        CareReminderScheduler.cancel(context, petName, task.title)
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
                                 runCatching { repo.deleteCareTask(petId, task.id) }
@@ -440,6 +507,23 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(title, { title = it }, label = { Text(tr("Cuidado (paseo, comida…)")) }, singleLine = true)
                     OutlinedTextField(responsible, { responsible = it }, label = { Text(tr("Responsable")) }, singleLine = true)
+                    Text(tr("Tipo de cuidado"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("Paseo", "Comida", "Medicación", "Higiene", "Otro").forEach { item ->
+                            FilterChip(selected = action == item, onClick = { action = item }, label = { Text(tr(item)) })
+                        }
+                    }
+                    if (action == "Medicación") {
+                        OutlinedTextField(dose, { dose = it }, label = { Text(tr("Dosis (ej. 1 comprimido)")) }, singleLine = true)
+                        OutlinedTextField(time, { time = it }, label = { Text(tr("Hora diaria (HH:mm)")) }, singleLine = true)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(tr("Aviso diario"), fontWeight = FontWeight.SemiBold)
+                                Text(tr("Crea un recordatorio local a esta hora."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            androidx.compose.material3.Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it })
+                        }
+                    }
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("Diario", "Semanal", "Puntual").forEach { item ->
                             FilterChip(selected = frequency == item, onClick = { frequency = item }, label = { Text(item) })
@@ -450,9 +534,16 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
             confirmButton = {
                 Button(onClick = {
                     if (title.isNotBlank()) {
-                        val newTask = CareTask(UUID.randomUUID().toString(), title.trim().take(80), responsible.trim().take(60), frequency, false)
+                        val newTask = CareTask(
+                            UUID.randomUUID().toString(), title.trim().take(80), responsible.trim().take(60),
+                            frequency, false, dose.trim().take(80), time.trim().take(5), "", action
+                        )
                         tasks = tasks + newTask
                         PetCareLocalStore.saveTasks(context, petName, tasks, localStorageScope)
+                        if (action == "Medicación" && reminderEnabled) {
+                            val scheduled = CareReminderScheduler.scheduleDaily(context, petName, newTask.title, time.trim())
+                            syncMessage = if (scheduled) "Recordatorio diario programado" else "Revisa la hora; usa el formato HH:mm"
+                        }
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
                                 runCatching { repo.saveCareTask(petId, newTask) }
@@ -460,9 +551,10 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                                     .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
                             }
                         }
-                        title = ""; responsible = ""; frequency = "Diario"; showAdd = false
+                        title = ""; responsible = ""; frequency = "Diario"; action = "Otro"
+                        dose = ""; time = ""; reminderEnabled = false; showAdd = false
                     }
-                }, enabled = canEdit && title.isNotBlank()) { Text(tr("Guardar")) }
+                }, enabled = canEdit && title.isNotBlank() && (!reminderEnabled || time.matches(Regex("\\d{2}:\\d{2}"))) && (!reminderEnabled || action == "Medicación")) { Text(tr("Guardar")) }
             },
             dismissButton = { TextButton(onClick = { showAdd = false }) { Text(tr("Cancelar")) } }
         )
