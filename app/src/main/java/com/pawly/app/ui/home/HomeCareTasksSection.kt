@@ -349,8 +349,8 @@ internal fun HomeCareTasksSection(
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Actividad reciente", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    logs.take(2).forEach { log ->
+                    Text("En casa de $petName", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    logs.take(3).forEach { log ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                             Box(Modifier.size(30.dp).background(Color(0xFFE4EBC1), CircleShape), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
