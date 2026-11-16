@@ -771,7 +771,7 @@ private fun CommunityPlacesPanel(
     loading: Boolean,
     message: String?,
     enabled: Boolean,
-    onSubmit: (String?, String, String, String, String, Double?, Double?) -> Unit,
+    onSubmit: (String?, String, String, String, String, Double, Double) -> Unit,
     onOpenPlace: (PawlyCommunityPlace) -> Unit,
     onDeletePlace: (String) -> Unit,
     repository: FirebaseCommunityRepository?
