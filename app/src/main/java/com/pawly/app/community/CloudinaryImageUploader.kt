@@ -20,6 +20,15 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
 /**
+ * Metadata needed by the trusted account-deletion backend to remove owned Cloudinary assets.
+ */
+internal data class CloudinaryUploadResult(
+    val secureUrl: String,
+    val publicId: String,
+    val resourceType: String
+)
+
+/**
  * Uploads user-selected images directly to Cloudinary using an unsigned preset.
  * No Cloudinary API secret is ever stored in the Android application.
  */
@@ -30,7 +39,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
         .callTimeout(6, TimeUnit.MINUTES)
         .build()
 
-    suspend fun upload(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
+    suspend fun upload(uri: Uri, folder: String, ownerUid: String): CloudinaryUploadResult = withContext(Dispatchers.IO) {
         val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
         val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
         val uploadPreset = (servicePreferences.getString("cloudinary_image_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).trim()
@@ -63,13 +72,17 @@ internal class CloudinaryImageUploader(private val context: Context) {
                 }.getOrNull().orEmpty()
                 error(message.ifBlank { "Cloudinary rechazó la fotografía (HTTP ${response.code})." })
             }
-            JSONObject(responseText).optString("secure_url").takeIf { it.startsWith("https://") }
+            val payload = JSONObject(responseText)
+            val secureUrl = payload.optString("secure_url").takeIf { it.startsWith("https://") }
                 ?: error("Cloudinary no ha devuelto una URL segura para la imagen.")
+            val publicId = payload.optString("public_id").takeIf { it.isNotBlank() }
+                ?: error("Cloudinary no ha devuelto el identificador del recurso.")
+            CloudinaryUploadResult(secureUrl, publicId, "image")
         }
     }
 
 
-    suspend fun uploadVideo(uri: Uri, folder: String, ownerUid: String): String = withContext(Dispatchers.IO) {
+    suspend fun uploadVideo(uri: Uri, folder: String, ownerUid: String): CloudinaryUploadResult = withContext(Dispatchers.IO) {
         val servicePreferences = context.getSharedPreferences("pawly_services", Context.MODE_PRIVATE)
         val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null) ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
         val uploadPreset = (servicePreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).trim()
@@ -118,8 +131,12 @@ internal class CloudinaryImageUploader(private val context: Context) {
                 val message = runCatching { JSONObject(responseText).optJSONObject("error")?.optString("message") }.getOrNull().orEmpty()
                 error(message.ifBlank { "Cloudinary rechazó el vídeo (HTTP " + response.code + ")." })
             }
-            JSONObject(responseText).optString("secure_url").takeIf { it.startsWith("https://") }
+            val payload = JSONObject(responseText)
+            val secureUrl = payload.optString("secure_url").takeIf { it.startsWith("https://") }
                 ?: error("Cloudinary no ha devuelto una URL segura para el vídeo.")
+            val publicId = payload.optString("public_id").takeIf { it.isNotBlank() }
+                ?: error("Cloudinary no ha devuelto el identificador del recurso.")
+            CloudinaryUploadResult(secureUrl, publicId, "video")
         }
     }
 
