@@ -348,9 +348,11 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
                 Spacer(Modifier.height(2.dp))
             }
-            Text(tr("EXPLORA"), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
-            Text(tr("El mundo es mejor\ncuando vais juntos."), style = MaterialTheme.typography.headlineLarge)
-            Text(tr("Ideas para vuestra próxima aventura."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            PawlyPageHeader(
+                eyebrow = "Explora",
+                title = "El mundo es mejor cuando vais juntos.",
+                subtitle = "Ideas para vuestra próxima aventura."
+            )
             Spacer(Modifier.height(8.dp))
             FilledTonalButton(
                 onClick = {
