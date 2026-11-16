@@ -263,7 +263,12 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                                 if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
-                        if (item.senderId == uid && item.readBy.any { it != uid }) Text(tr("Visto"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (item.createdAt > 0L) Text(
+                            java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(item.createdAt)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        if (item.senderId == uid && item.readBy.any { it != uid }) Text(tr("Visto"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
