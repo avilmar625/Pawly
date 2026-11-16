@@ -796,8 +796,10 @@ class FirebaseCommunityRepository private constructor(
         val postId = publishPost(text, imageUrl, "", dogName, "LOST")
         db.collection("lostPetAlerts").document(postId).set(mapOf(
             "postId" to postId, "authorUid" to requireUid(), "dogName" to dogName.take(40),
-            "latitude" to kotlin.math.round(latitude * 100.0) / 100.0,
-            "longitude" to kotlin.math.round(longitude * 100.0) / 100.0,
+            // Store only coarse integer cells (about 1 km), matching Firestore rules
+            // and the privacy-preserving subscription format.
+            "latCell" to kotlin.math.round(latitude * 100.0).toInt(),
+            "lonCell" to kotlin.math.round(longitude * 100.0).toInt(),
             "status" to "active", "createdAt" to FieldValue.serverTimestamp()
         )).await()
         runCatching { postBackend("/v1/lost-pet-alerts", JSONObject().put("alertId", postId)) }
