@@ -49,7 +49,11 @@ object PetCarePdfExporter {
             sections = tasks.map { task ->
                 listOf(
                     task.title,
-                    "${task.frequency} · Responsable: ${task.responsible.ifBlank { "Sin asignar" }}",
+                    buildString {
+                        append(task.frequency)
+                        if (task.daysOfWeek.isNotEmpty()) append(" · Días: ").append(com.pawly.app.care.domain.CareTaskSchedule.daysLabel(task.daysOfWeek))
+                        append(" · Responsable: ").append(task.responsible.ifBlank { "Sin asignar" })
+                    },
                     if (task.completed) "Estado: marcada como realizada." else "Estado: pendiente."
                 )
             },
