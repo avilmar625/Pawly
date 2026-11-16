@@ -646,7 +646,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.publicId is string
         && request.resource.data.publicId.size() <= 255
-        && request.resource.data.publicId.matches('^pawly/(profile-photos|dog-photos|pet-photos|post-photos|message-photos|diary-photos|post-videos|message-videos)/' + request.auth.uid + '/.+
+        && request.resource.data.publicId.matches('^pawly/(profile-photos|dog-photos|pet-photos|post-photos|message-photos|diary-photos|post-videos|message-videos)/' + request.auth.uid + '/.+$')
         && request.resource.data.createdAt == request.time;
       allow get, list: if signedIn() && resource.data.uid == request.auth.uid;
       allow update, delete: if false;
