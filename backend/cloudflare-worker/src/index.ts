@@ -8,7 +8,6 @@ interface Env {
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_PRIVATE_KEY: string;
-  PHONE_MATCH_HMAC_SECRET?: string;
 }
 
 type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
