@@ -863,7 +863,21 @@ class FirebaseCommunityRepository private constructor(
                 PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
                     doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
                     doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
-                    doc.getDouble("latitude"), doc.getDouble("longitude"))
+                    doc.getDouble("latitude"), doc.getDouble("longitude"), doc.getString("status") ?: "approved")
+            }.sortedByDescending { it.createdAt }
+    }
+
+    /** Includes this user's pending proposals so they can edit or withdraw them before review. */
+    suspend fun loadMyCommunityPlaces(): List<PawlyCommunityPlace> {
+        val uid = requireUid()
+        return db.collection("communityPlaces").whereEqualTo("authorUid", uid).limit(100).get().await()
+            .documents.map { doc ->
+                PawlyCommunityPlace(
+                    doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
+                    doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
+                    doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
+                    doc.getDouble("latitude"), doc.getDouble("longitude"), doc.getString("status") ?: "pending"
+                )
             }.sortedByDescending { it.createdAt }
     }
 
@@ -896,7 +910,9 @@ class FirebaseCommunityRepository private constructor(
         check(ref.get().await().getString("authorUid") == uid) { "Solo puedes editar tus propias propuestas." }
         ref.update(mapOf(
             "name" to name.trim(), "category" to category, "location" to location.trim(),
-            "description" to description.trim(), "latitude" to latitude, "longitude" to longitude
+            "description" to description.trim(), "latitude" to latitude, "longitude" to longitude,
+            // Every edit returns the proposal to moderation, even if it was previously approved.
+            "status" to "pending"
         )).await()
     }
 

@@ -107,6 +107,16 @@ test("clients cannot create a place directly; author can edit and delete their o
     latitude: 36.7, longitude: -4.4, description: "Un lugar propuesto por un usuario.",
     authorUid: "author", status: "pending", createdAt: serverTimestamp()
   }));
+  await assertSucceeds(getDoc(doc(authorDb, "communityPlaces/pending-place")));
+  const ownPlaces = query(collection(authorDb, "communityPlaces"), where("authorUid", "==", "author"));
+  await assertSucceeds(getDocs(ownPlaces));
+  await assertSucceeds(updateDoc(doc(authorDb, "communityPlaces/approved-place"), {
+    description: "Información actualizada por el autor.",
+    status: "pending"
+  }));
+  await assertFails(updateDoc(doc(authorDb, "communityPlaces/pending-place"), {
+    status: "approved"
+  }));
   await assertSucceeds(updateDoc(doc(authorDb, "communityPlaces/pending-place"), {
     description: "Descripción corregida para la revisión."
   }));

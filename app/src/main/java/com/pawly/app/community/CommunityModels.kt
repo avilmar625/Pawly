@@ -101,7 +101,8 @@ data class PawlyCommunityPlace(
     val authorUid: String,
     val createdAt: Long,
     val latitude: Double? = null,
-    val longitude: Double? = null
+    val longitude: Double? = null,
+    val status: String = "approved"
 )
 
 data class PawlyContactMatch(

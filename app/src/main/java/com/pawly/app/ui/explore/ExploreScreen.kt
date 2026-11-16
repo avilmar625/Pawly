@@ -153,8 +153,9 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     LaunchedEffect(repository) {
         val repo = repository ?: return@LaunchedEffect
         communityPlacesLoading = true
-        runCatching { repo.loadCommunityPlaces() }
-            .onSuccess { communityPlaces = it; communityPlacesMessage = null }
+        runCatching {
+            (repo.loadCommunityPlaces() + repo.loadMyCommunityPlaces()).distinctBy { it.id }
+        }.onSuccess { communityPlaces = it; communityPlacesMessage = null }
             .onFailure { communityPlacesMessage = "No se han podido cargar las recomendaciones de la comunidad." }
         communityPlacesLoading = false
     }
@@ -450,7 +451,9 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                             communityPlacesMessage = if (placeId == null)
                                 "¡Gracias! Tu propuesta se ha enviado y estará visible cuando el equipo la apruebe."
                             else "La recomendación se ha actualizado."
-                            communityPlaces = runCatching { repo.loadCommunityPlaces() }.getOrDefault(communityPlaces)
+                            communityPlaces = runCatching {
+                                (repo.loadCommunityPlaces() + repo.loadMyCommunityPlaces()).distinctBy { it.id }
+                            }.getOrDefault(communityPlaces)
                         }.onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido guardar el lugar." }
                         communityPlacesLoading = false
                     }
@@ -808,7 +811,7 @@ private fun CommunityPlacesPanel(
             Text(tr("Las propuestas se revisan antes de aparecer públicamente. Puedes denunciar un lugar si detectas información incorrecta."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (places.isEmpty()) {
-                Text(tr("Todavía no hay lugares aprobados por la comunidad. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(tr("Todavía no hay lugares visibles. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 val categoryOrder = listOf("Playa", "Parque", "Ruta", "Restaurante", "Alojamiento", "Veterinario", "Otro")
                 val orderedPlaces = places.sortedWith(compareBy<PawlyCommunityPlace> {
@@ -832,6 +835,9 @@ private fun CommunityPlacesPanel(
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(place.name, fontWeight = FontWeight.SemiBold)
+                            if (place.status == "pending") {
+                                Text(tr("Pendiente de revisión · solo tú puedes verlo"), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall)
+                            }
                             Text(place.category + " · " + place.location, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                             Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
