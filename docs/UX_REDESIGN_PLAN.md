@@ -119,3 +119,5 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - El control de edición arranca deshabilitado en modo autenticado hasta conocer el rol remoto.
 - El parser de peso prioriza valores explícitos en kg y solo admite valores sin unidad cuando la cadena es una cifra aislada o tiene el prefijo Peso.
 - Tests nuevos cubren duplicados de medicación y fechas confundibles con peso. Resultado de ejecución pendiente de CI/Gradle.
+
+- La misma protección de rol inicial se ha aplicado también al panel completo `PetCarePlanSection`: el usuario compartido no recibe acciones de edición hasta conocer su rol y la función de toggle vuelve a comprobar `canEdit`.
