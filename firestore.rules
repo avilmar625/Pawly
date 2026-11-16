@@ -682,7 +682,22 @@ service cloud.firestore {
     match /communityPlaces/{placeId} {
       // Any signed-in member can browse approved places; publishing still requires verified email.
       allow get, list: if admin() || (signedIn() && resource.data.status == 'approved');
-      allow create: if verified()
+      // Place creation is routed through the trusted Worker, which applies an atomic daily limit.
+      allow create: if false;
+      allow update: if admin() || (verified()
+        && resource.data.authorUid == request.auth.uid
+        && resource.data.status in ['pending', 'approved']
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'category', 'location', 'latitude', 'longitude', 'description'])
+        && request.resource.data.name is string && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 80
+        && request.resource.data.category in ['Parque', 'Playa', 'Restaurante', 'Alojamiento', 'Ruta', 'Veterinario', 'Otro']
+        && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 120
+        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
+        && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 500);
+      allow delete: if admin() || (verified() && resource.data.authorUid == request.auth.uid);
+      /* old create validation replaced below
         && request.resource.data.keys().hasOnly(['name', 'category', 'location', 'latitude', 'longitude', 'description', 'authorUid', 'status', 'createdAt'])
         && request.resource.data.name is string && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 80
         && request.resource.data.category in ['Parque', 'Playa', 'Restaurante', 'Alojamiento', 'Ruta', 'Veterinario', 'Otro']
@@ -690,13 +705,15 @@ service cloud.firestore {
         && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
         && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
         && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 500
-        && request.resource.data.authorUid == request.auth.uid
-        && request.resource.data.status == 'pending'
-        && request.resource.data.createdAt == request.time;
+      */
+      // Administrators alone can change moderation status.
       allow update: if admin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
         && request.resource.data.status in ['approved', 'rejected'];
-      allow delete: if admin();
+    }
+
+    match /communityPlaceSubmissionLimits/{limitId} {
+      allow read, write: if false;
     }
 
     // Public events are tied to their venue, not to the private location of a person.
