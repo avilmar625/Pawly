@@ -20,6 +20,7 @@ Backend de confianza de Pawly para notificaciones FCM, avisos de mascotas perdid
 - Permite activar/desactivar voluntariamente la búsqueda por teléfono.
 - Busca hasta 30 contactos por lote, máximo 3 lotes diarios por cuenta y 10 coincidencias devueltas. Respeta bloqueos en ambos sentidos.
 - Los documentos `phoneDirectory` y `phoneDiscoveryLimits` solo son accesibles para el backend con cuenta de servicio; las reglas de Firestore niegan el acceso directo desde el cliente.
+- Devuelve asistentes a eventos solo a la persona organizadora mediante `POST /v1/events/attendees`, pagina 12 por petición y filtra bloqueos en ambos sentidos.
 
 ## Límites del plan gratuito
 
@@ -103,7 +104,7 @@ Configura TTL de Firestore sobre `communityPlaceSubmissionLimits.expiresAt` para
 
 ## Eventos y privacidad
 
-La inscripción a eventos sigue disponible. El documento de inscripción individual solo puede consultarlo su propietario; la lista solo puede enumerarla la persona organizadora. El cliente filtra los usuarios bloqueados en cualquiera de los dos sentidos antes de presentar los asistentes.
+La inscripción a eventos sigue disponible. El documento de inscripción individual solo puede consultarlo su propietario; Firestore niega la enumeración directa. La lista se consulta mediante el Worker, que verifica que el solicitante sea el organizador, pagina 12 asistentes por petición y filtra los bloqueos en ambos sentidos. Así se mantiene por debajo del límite de 50 subpeticiones externas de Workers Free.
 
 ## Eliminación de cuenta
 

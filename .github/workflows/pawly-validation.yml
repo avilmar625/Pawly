@@ -3,12 +3,10 @@ name: Pawly Firestore validation
 on:
   push:
     branches:
-      - cambios60-comunidad-calendario
       - 'cambios*'
   pull_request:
     branches:
       - main
-      - cambios60-comunidad-calendario
   workflow_dispatch:
 
 jobs:
