@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pawly.app.care.data.FirebasePetCareRepository
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.model.CareLogEntry
@@ -173,7 +174,7 @@ internal fun HomeCareTasksSection(
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("HOY PARA ${petName.uppercase(Locale.getDefault())}",
                         color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold, letterSpacing = 1.2f)
+                        fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                     Text("$completedCount de $totalCount hechas",
                         color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.ExtraBold)
