@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
 import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.NotificationCompat
 import org.json.JSONArray
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -795,6 +796,23 @@ private fun PawlyMainApp(
             },
             notificationsEnabled = notificationsEnabled,
             notificationStatus = notificationStatus,
+            onTestNotifications = {
+                if (arePawlyNotificationsEnabled(context)) {
+                    val testNotification = NotificationCompat.Builder(context, PAWLY_CARE_CHANNEL_ID)
+                        .setSmallIcon(R.drawable.ic_notification_paw)
+                        .setContentTitle("¡Pawly está listo!")
+                        .setContentText("Las notificaciones funcionan. Aquí recibirás tus recordatorios.")
+                        .setAutoCancel(true)
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .build()
+                    NotificationManagerCompat.from(context).notify(73001, testNotification)
+                    notificationStatus = "Aviso de prueba enviado. Comprueba el panel de notificaciones de tu móvil."
+                } else {
+                    notificationsEnabled = false
+                    notificationStatus = "Las notificaciones están bloqueadas. Revisa los ajustes de Android."
+                    openPawlyNotificationSettings(context)
+                }
+            },
             onFinish = {
                 val cleanName = dogName.trim().ifBlank { "Mi mascota" }
                 dogName = cleanName
