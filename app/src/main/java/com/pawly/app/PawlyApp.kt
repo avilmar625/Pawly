@@ -455,20 +455,15 @@ private fun PawlyMainApp(
                 ) {
                     listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
                         val label = PawlyI18n.text(tab.label, language)
-                        val active = selected == tab || (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.CALENDAR, Tab.DIARY, Tab.LEARN))
-                        val tabTint = when (tab) {
-                            Tab.HOME -> Color(0xFF26836B)
-                            Tab.EXPLORE -> Color(0xFF3979B8)
-                            Tab.HEALTH -> Color(0xFFD45E70)
-                            Tab.COMMUNITY -> Color(0xFF8962B3)
-                            Tab.MORE -> Color(0xFFB47A37)
-                            else -> MaterialTheme.colorScheme.primary
-                        }
+                        val active = selected == tab ||
+                            (tab == Tab.HEALTH && selected in setOf(Tab.DIARY, Tab.CALENDAR)) ||
+                            (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.LEARN))
+                        val tabTint = MaterialTheme.colorScheme.primary
                         val tabIcon = when (tab) {
-                            Tab.HOME -> Icons.Filled.Home
+                            Tab.HOME -> Icons.Filled.WbSunny
                             Tab.EXPLORE -> Icons.Filled.Explore
                             Tab.LEARN -> Icons.Filled.MenuBook
-                            Tab.HEALTH -> Icons.Filled.FavoriteBorder
+                            Tab.HEALTH -> Icons.Filled.Pets
                             Tab.DIARY -> Icons.Filled.AutoStories
                             Tab.COMMUNITY -> Icons.Filled.Groups
                             Tab.CALENDAR -> Icons.Filled.CalendarMonth
@@ -489,7 +484,7 @@ private fun PawlyMainApp(
                             Box(
                                 Modifier.width(42.dp).height(29.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (active) tabTint.copy(alpha = .14f) else Color.Transparent),
+                                    .background(if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
