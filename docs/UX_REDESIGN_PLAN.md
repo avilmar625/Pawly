@@ -187,3 +187,6 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - Incluye enlaces a Salud, Diario y Citas. La pestaña principal de Mi perro abre Todo; Agenda, Pasaporte/Salud, Cuidados y Compartir se mantienen disponibles.
 - La cronología no incorpora todavía eventos comunitarios ni todos los elementos de la agenda externa. No debe describirse como un historial completo de absolutamente todas las actividades.
 - Tests añadidos para mezcla/orden cronológico y para ignorar registros JSON inválidos. Pendiente ejecutar tests y validar sincronización en Android con dos cuentas/dispositivos.
+
+- El test de agregación usa JSON real para diario y recordatorios. Se añade `org.json:json` como dependencia solo de tests JVM para evitar depender de los stubs Android de `org.json` durante pruebas locales.
+- La lista de cronología usa scroll vertical propio para que los historiales largos no queden cortados.
