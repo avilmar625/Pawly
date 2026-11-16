@@ -578,6 +578,8 @@ private fun PawlyMainApp(
                                 healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
                             },
                             onOpenSharedPet = { selectedSharedPet = it },
+                            onOpenDiary = { selected = Tab.DIARY },
+                            onOpenCalendar = { selected = Tab.CALENDAR },
                             initialSection = when {
                                 pendingPassportType != null -> "Pasaporte"
                                 pendingCareAction != null -> "Cuidados"
