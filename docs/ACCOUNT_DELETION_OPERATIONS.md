@@ -1,39 +1,34 @@
-# Solicitudes de eliminación de cuenta
+# Eliminación de cuentas Pawly — estado y requisitos
 
-## Estado en cambios15
+## Estado actual
 
-La pantalla de perfil permite enviar una solicitud. La aplicación crea un documento en:
+La pantalla de perfil todavía registra una solicitud `pending`; **no elimina automáticamente la cuenta**. No debe mostrarse como un borrado completado ni considerarse suficiente para publicar Pawly en Google Play.
 
-`accountDeletionRequests/{requestId}`
+La app ya registra para las nuevas subidas de imágenes/vídeos el `public_id` y el tipo de recurso Cloudinary en `cloudinaryAssets`, asociados al UID. Esto facilita identificar los medios nuevos, pero todavía no elimina recursos. Los medios subidos antes de esta migración no tienen necesariamente un registro de propiedad.
 
-Campos: UID, correo, fecha del servidor, estado `pending` y origen `android`. Las reglas permiten al usuario crear y consultar sus propias solicitudes; solo un administrador puede modificarlas.
+## Qué falta para completar el borrado
 
-**Esto registra una solicitud; no elimina automáticamente la cuenta ni los datos.** No se debe describir como eliminación completada.
+El endpoint de eliminación debe ejecutarse desde un backend de confianza (Cloudflare Worker), validar el ID token reciente y realizar, de forma idempotente y auditable:
 
-## Procedimiento operativo provisional
+1. Eliminar recursos Cloudinary de imagen y vídeo que pertenezcan al UID, usando la Admin API desde el servidor. Nunca exponer la API Secret de Cloudinary en Android.
+2. Eliminar datos propios y subcolecciones de Firestore: perfil, datos privados, mascotas, publicaciones y comentarios, diario/recuerdos sincronizados, eventos creados, propuestas de lugares, mensajes, conversaciones, seguidores/seguidos, bloqueos, notificaciones, tokens FCM, reservas de usuario y registros de avisos.
+3. Eliminar o anonimizar referencias del UID en documentos compartidos cuando corresponda, sin borrar contenido de terceros por error.
+4. Eliminar el usuario de Firebase Authentication solo cuando las fases anteriores se hayan completado o exista una política de reintentos segura.
+5. Guardar un estado mínimo de auditoría sin conservar datos personales innecesarios y permitir al cliente consultar el resultado.
+6. Proporcionar también una ruta web de solicitud/eliminación, accesible fuera de la app, para cumplir los requisitos de las tiendas.
 
-Hasta disponer de un backend automatizado:
-1. Revisar periódicamente las solicitudes pendientes desde un entorno administrativo seguro.
-2. Verificar la identidad del solicitante mediante el canal de cuenta, sin pedir contraseñas.
-3. Identificar todos los datos asociados al UID en Firebase y Cloudinary.
-4. Ejecutar el proceso de eliminación completo y documentar excepciones legales justificadas.
-5. Confirmar al solicitante cuando se haya completado.
-6. Marcar la solicitud como completada desde una cuenta administrativa.
-7. Conservar solo la evidencia mínima necesaria durante el plazo definido en la política de privacidad.
+## Credenciales necesarias en Cloudflare
 
-No hacer esta operación desde una app cliente ni distribuir credenciales Firebase Admin.
+Cuando se implemente el endpoint, los secretos requeridos serán:
 
-## Bloqueante para producción
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+- `FIREBASE_WEB_API_KEY` (para la API de eliminación de Firebase Authentication, si se utiliza el endpoint Identity Toolkit)
+- Los secretos de cuenta de servicio de Firebase ya descritos en `backend/cloudflare-worker/README.md`.
 
-Google Play exige una vía de solicitud de eliminación dentro de la aplicación y un recurso web externo. Además, la eliminación debe alcanzar los datos asociados, no limitarse a desactivar la cuenta.
+Estos valores se configuran con Wrangler y no deben enviarse por chat ni guardarse en GitHub. La cuenta gratuita de Cloudflare Workers no sustituye las cuotas propias de Cloudinary/Firebase.
 
-La implementación actual no cubre aún:
-- Borrado recursivo de subcolecciones de usuarios.
-- Publicaciones y comentarios del usuario.
-- Mensajes y conversaciones.
-- Tokens FCM.
-- Reserva de nombre de usuario.
-- Imágenes alojadas en Cloudinary.
-- Datos locales guardados en dispositivos donde se haya iniciado sesión.
+## No desplegar como funcionalidad completada
 
-Antes de publicar, implementar un endpoint de confianza (por ejemplo, Cloud Run o un servicio equivalente) que autentique la solicitud, realice la cascada de borrado con credenciales de servidor y sea invocado también por el recurso web externo. Definir además cómo tratar mensajes compartidos con otras personas y obligaciones de conservación. Probar el proceso en un proyecto Firebase de pruebas.
+Hasta que exista el endpoint, las pruebas de integración y la verificación de la eliminación real de Auth, Firestore y Cloudinary, la UI debe seguir describiendo el proceso como una solicitud pendiente. No afirmar que la cuenta o sus fotografías se borran automáticamente.
