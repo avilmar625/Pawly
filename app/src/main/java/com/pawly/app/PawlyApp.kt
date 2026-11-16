@@ -580,6 +580,8 @@ private fun PawlyMainApp(
                             onOpenSharedPet = { selectedSharedPet = it },
                             onOpenDiary = { selected = Tab.DIARY },
                             onOpenCalendar = { selected = Tab.CALENDAR },
+                            diaryEntries = diaryEntries,
+                            calendarReminders = calendarReminders,
                             initialSection = when {
                                 pendingPassportType != null -> "Pasaporte"
                                 pendingCareAction != null -> "Cuidados"
