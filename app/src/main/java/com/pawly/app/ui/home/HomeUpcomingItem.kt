@@ -5,6 +5,7 @@ import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -34,6 +35,7 @@ internal fun findNextHomeUpcomingItem(
     passportEntries: List<PassportEntry>,
     healthDates: Map<String, String>,
     calendarReminders: List<String>,
+    communityEvents: List<PawlyEvent> = emptyList(),
     now: Instant = Instant.now(),
     zoneId: ZoneId = ZoneId.systemDefault()
 ): HomeUpcomingItem? {
@@ -50,7 +52,7 @@ internal fun findNextHomeUpcomingItem(
                 title = entry.title.ifBlank { entry.type },
                 type = entry.type,
                 date = date,
-                scheduledAt = date.atStartOfDay(zoneId).toInstant(),
+                scheduledAt = date.atTime(LocalTime.MAX).atZone(zoneId).toInstant(),
                 destination = HomeUpcomingDestination.PASSPORT
             )
         }
@@ -84,6 +86,23 @@ internal fun findNextHomeUpcomingItem(
                 candidates += HomeUpcomingItem(
                     title = title,
                     type = category,
+                    date = localDate,
+                    scheduledAt = scheduledAt,
+                    destination = HomeUpcomingDestination.CALENDAR
+                )
+            }
+        }
+    }
+
+    communityEvents.forEach { event ->
+        val timestamp = event.startAt
+        if (timestamp > 0L) {
+            val scheduledAt = Instant.ofEpochMilli(timestamp)
+            if (scheduledAt.isAfter(now)) {
+                val localDate = scheduledAt.atZone(zoneId).toLocalDate()
+                candidates += HomeUpcomingItem(
+                    title = event.title.ifBlank { "Evento de la comunidad" },
+                    type = event.category.ifBlank { "Evento" },
                     date = localDate,
                     scheduledAt = scheduledAt,
                     destination = HomeUpcomingDestination.CALENDAR
