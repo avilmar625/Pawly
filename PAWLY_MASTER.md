@@ -629,3 +629,22 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 5. Añadir una gráfica de peso basada exclusivamente en mediciones reales y unificar visualmente los registros de salud.
 6. Probar las nuevas fichas y acciones de Explorar y todos los flujos de Eventos.
 7. Ejecutar CI Android, reglas Firestore y pruebas manuales en dispositivos; no declarar release hasta tener evidencia.
+
+
+## 13. Rediseño transversal de pantallas — cambios72 (bloque actual)
+
+Implementado en la rama `cambios72-rediseño-integral-pawly`, manteniendo `main` intacta:
+
+- **Mi perro:** la vista cronológica incorpora cabecera común y resumen visual de registros de Salud, Cuidados, Diario y Citas. El centro de cuidados intenta cargar la fotografía real del perfil de la mascota (propia o compartida) y la usa en su cabecera; si no existe o falla la conexión, conserva la imagen de respaldo.
+- **Salud:** añadido gráfico de evolución con las últimas 12 entradas de pasaporte cuyo tipo sea «Peso» y que tengan fecha ISO y un valor numérico interpretable en el título o detalle. No genera mediciones ni objetivos ficticios. Si no hay datos válidos, el gráfico no aparece.
+- **Diario:** filtros por categoría, recuento de resultados y alternancia entre recuerdos más recientes y más antiguos. Se mantienen fotos, edición/eliminación según permisos y sincronización actual.
+- **Comunidad:** el muro ordena publicaciones por fecha descendente y muestra el recuento del resultado filtrado; tarjetas con borde/jerarquía visual y fecha. Perfil propio con resumen de seguidores, seguidos y mascotas. Bandeja de conversaciones con fecha del último mensaje, contador de no leídos y superficies coherentes.
+- **Eventos y Explorar:** tarjetas con bordes y superficies alineados al tema común; no se han retirado mapas, filtros, favoritos, colecciones, interés, denuncia ni calendario.
+- **Más:** se conserva el conjunto de accesos y herramientas; cabecera sencilla reutiliza el componente común y la elegante conserva su imagen.
+
+### Validación pendiente de este bloque
+
+- Cambios guardados en GitHub y comparados contra cambios71: rama por delante, sin commits perdidos respecto a esa base.
+- No hay status checks publicados para el último commit consultado y no se ha ejecutado una compilación local en este entorno. No afirmar que compila hasta ejecutar el workflow Android y probar en dispositivo.
+- Revisar especialmente el formato de los registros históricos de peso: el gráfico solo puede dibujar mediciones que tengan valor numérico en título/detalle y fecha `yyyy-MM-dd`.
+- Probar que la foto propia se resuelve con el identificador de mascota esperado por `FirebasePetProfileRepository`, además de los perfiles compartidos.
