@@ -185,12 +185,23 @@ class FirebasePetCareRepository(
         if (entries.isNotEmpty()) batch.commit().await()
     }
 
-    override suspend fun loadPassportEntries(petId: String): List<PassportEntry> =
-        passport(petId).get().await().documents.mapNotNull { doc ->
-            val title = doc.getString("title") ?: return@mapNotNull null
-            PassportEntry(doc.id, doc.getString("type").orEmpty(), title,
-                doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
-        }.sortedByDescending { it.date }
+    override suspend fun loadPassportEntries(petId: String): List<PassportEntry> {
+        // Firestore document iteration is not a reliable insertion order. Use
+        // each document's server creation time to break ties when several
+        // measurements share the same user-entered date.
+        return passport(petId).get().await().documents
+            .sortedWith(
+                compareBy<com.google.firebase.firestore.DocumentSnapshot> { it.getString("date").orEmpty() }
+                    .thenBy { it.createTime?.seconds ?: 0L }
+                    .thenBy { it.createTime?.nanoseconds ?: 0 }
+                    .thenBy { it.id }
+            )
+            .mapNotNull { doc ->
+                val title = doc.getString("title") ?: return@mapNotNull null
+                PassportEntry(doc.id, doc.getString("type").orEmpty(), title,
+                    doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
+            }
+    }
 
     override suspend fun deletePassportEntry(petId: String, entryId: String) {
         require(petId.isNotBlank() && entryId.isNotBlank())
