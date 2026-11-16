@@ -512,10 +512,13 @@ private fun EventDetailsDialog(
                 HorizontalDivider()
                 Text("${tr("Personas interesadas")} · ${event.interestedCount}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                 if (canViewAttendees) {
-                    OutlinedButton(onClick = onLoadAttendees, enabled = !attendeesLoading) {
+                    OutlinedButton(
+                        onClick = onLoadAttendees,
+                        enabled = !attendeesLoading && (attendees.isEmpty() || hasMoreAttendees)
+                    ) {
                         Icon(Icons.Default.Groups, null, modifier = Modifier.size(17.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text(tr(if (attendees.isEmpty()) "Ver asistentes" else "Ver más asistentes"))
+                        Text(tr(if (attendees.isEmpty()) "Ver asistentes" else if (hasMoreAttendees) "Ver más asistentes" else "Asistentes cargados"))
                     }
                     if (attendeesLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     if (attendeesError != null) Text(attendeesError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -528,9 +531,6 @@ private fun EventDetailsDialog(
                                 if (attendee.username.isNotBlank()) Text("@${attendee.username}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                             }
                         }
-                    }
-                    if (hasMoreAttendees) {
-                        TextButton(onClick = onLoadAttendees, enabled = !attendeesLoading) { Text(tr("Cargar más asistentes")) }
                     }
                     if (attendees.isNotEmpty()) Text(tr("La lista se pagina y oculta los perfiles bloqueados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                 } else {
