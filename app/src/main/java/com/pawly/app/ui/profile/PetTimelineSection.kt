@@ -107,6 +107,7 @@ internal fun buildPetTimelineItems(
 @Composable
 internal fun PetTimelineSection(
     petName: String,
+    petId: String,
     storageScope: String?,
     diaryEntries: List<String>,
     calendarReminders: List<String>,
@@ -116,14 +117,39 @@ internal fun PetTimelineSection(
     onOpenCalendar: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val items = remember(petName, storageScope, diaryEntries, calendarReminders, healthDates) {
-        buildPetTimelineItems(
-            passportEntries = PetCareLocalStore.loadEntries(context, petName, storageScope),
-            careLogs = PetCareLocalStore.loadCareLogs(context, petName, storageScope),
-            diaryEntries = diaryEntries,
-            calendarReminders = calendarReminders,
-            healthDates = healthDates
+    val localEntries = remember(petName, storageScope) {
+        PetCareLocalStore.loadEntries(context, petName, storageScope)
+    }
+    val localLogs = remember(petName, storageScope) {
+        PetCareLocalStore.loadCareLogs(context, petName, storageScope)
+    }
+    var timelineItems by remember(petName, petId, storageScope, diaryEntries, calendarReminders, healthDates) {
+        androidx.compose.runtime.mutableStateOf(
+            buildPetTimelineItems(localEntries, localLogs, diaryEntries, calendarReminders, healthDates)
         )
+    }
+    var syncLabel by remember(storageScope) {
+        androidx.compose.runtime.mutableStateOf(if (storageScope.isNullOrBlank()) tr("Guardado en este dispositivo") else tr("Cargando historial…"))
+    }
+    androidx.compose.runtime.LaunchedEffect(petName, petId, storageScope, diaryEntries, calendarReminders, healthDates) {
+        if (storageScope.isNullOrBlank()) return@LaunchedEffect
+        runCatching {
+            val repository = com.pawly.app.care.data.FirebasePetCareRepository()
+            repository.ensureSharedPet(petId, petName)
+            val remoteEntries = repository.loadPassportEntries(petId)
+            val entries = if (remoteEntries.isEmpty() && localEntries.isNotEmpty()) {
+                repository.savePassportEntries(petId, localEntries)
+                localEntries
+            } else remoteEntries.ifEmpty { localEntries }
+            val remoteLogs = repository.loadCareLogs(petId)
+            val logs = remoteLogs.ifEmpty { localLogs }
+            PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
+            PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
+            timelineItems = buildPetTimelineItems(entries, logs, diaryEntries, calendarReminders, healthDates)
+            syncLabel = tr("Historial sincronizado")
+        }.onFailure {
+            syncLabel = tr("Sin conexión: se conserva la copia local")
+        }
     }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -131,7 +157,8 @@ internal fun PetTimelineSection(
             Text(tr("La historia de") + " " + petName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
             Text(tr("Salud, cuidados, recuerdos y citas en orden cronológico."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
-        if (items.isEmpty()) {
+        Text(syncLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+        if (timelineItems.isEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(22.dp)) {
                 Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Filled.Pets, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
@@ -141,7 +168,7 @@ internal fun PetTimelineSection(
                 }
             }
         } else {
-            items.forEach { item ->
+            timelineItems.forEach { item ->
                 val icon = when (item.category) {
                     "Salud" -> Icons.Filled.HealthAndSafety
                     "Cuidado" -> Icons.Filled.CheckCircle
