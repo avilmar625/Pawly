@@ -168,9 +168,6 @@ internal fun PawlyEventsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var reportEventId by remember { mutableStateOf<String?>(null) }
     var selectedEvent by remember { mutableStateOf<PawlyEvent?>(null) }
-    var eventAttendees by remember { mutableStateOf(emptyList<PawlyUser>()) }
-    var attendeesLoading by remember { mutableStateOf(false) }
-    var attendeesError by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
     var sortAscending by remember { mutableStateOf(true) }
@@ -385,22 +382,9 @@ internal fun PawlyEventsScreen(
             }
         }
     }
-    LaunchedEffect(selectedEvent?.id) {
-        val eventId = selectedEvent?.id ?: return@LaunchedEffect
-        attendeesLoading = true
-        attendeesError = null
-        eventAttendees = emptyList()
-        runCatching { repository.loadEventInterestedUsers(eventId) }
-            .onSuccess { eventAttendees = it }
-            .onFailure { attendeesError = it.localizedMessage ?: attendeesLoadErrorText }
-        attendeesLoading = false
-    }
     selectedEvent?.let { event ->
         EventDetailsDialog(
             event = event,
-            attendees = eventAttendees,
-            loading = attendeesLoading,
-            error = attendeesError,
             onDismiss = { selectedEvent = null },
             onOpenProfile = onOpenProfile,
             onMessage = onMessage,
@@ -431,7 +415,6 @@ internal fun PawlyEventsScreen(
                                 ) else item
                             }
                             selectedEvent = events.firstOrNull { it.id == event.id }
-                            runCatching { repository.loadEventInterestedUsers(event.id) }.onSuccess { eventAttendees = it }
                         }
                         .onFailure { attendeesError = it.localizedMessage ?: interestUpdateErrorText }
                 }
@@ -472,9 +455,6 @@ internal fun PawlyEventsScreen(
 @Composable
 private fun EventDetailsDialog(
     event: PawlyEvent,
-    attendees: List<PawlyUser>,
-    loading: Boolean,
-    error: String?,
     onDismiss: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onMessage: (String) -> Unit,
@@ -504,36 +484,11 @@ private fun EventDetailsDialog(
                 Text("${tr("Organiza")} ${event.organizerName}", style = MaterialTheme.typography.labelMedium)
                 HorizontalDivider()
                 Text("${tr("Personas interesadas")} · ${event.interestedCount}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                when {
-                    loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
-                    error != null -> Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    attendees.isEmpty() -> Text(tr("Todavía no hay personas interesadas con perfil público."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    else -> attendees.forEach { user ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onOpenProfile(user.uid) }.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            if (user.photoUrl.isNotBlank()) {
-                                AsyncImage(model = user.photoUrl, contentDescription = null, modifier = Modifier.size(42.dp).clip(CircleShape), contentScale = ContentScale.Crop)
-                            } else {
-                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
-                                    Icon(Icons.Default.Pets, null, modifier = Modifier.padding(10.dp), tint = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                            Column(Modifier.weight(1f).clickable { onOpenProfile(user.uid) }) {
-                                Text(user.displayName.ifBlank { user.username }, fontWeight = FontWeight.SemiBold)
-                                if (user.username.isNotBlank()) Text("@${user.username}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            IconButton(onClick = { onMessage(user.uid) }) { Icon(Icons.Default.ChatBubbleOutline, tr("Enviar mensaje")) }
-                            IconButton(onClick = { onFollow(user.uid) }) {
-                                Icon(if (user.uid in followingIds) Icons.Default.PersonRemove else Icons.Default.PersonAdd,
-                                    if (user.uid in followingIds) tr("Dejar de seguir") else tr("Seguir"),
-                                    tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-                }
+                Text(
+                    tr("Por privacidad, la lista de asistentes no es pública. Solo se muestra el número total de personas interesadas."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         confirmButton = {
