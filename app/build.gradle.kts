@@ -78,7 +78,13 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // A short-lived Firebase PNV test token is read only from local.properties.
+            // It is never embedded in release builds or committed to Git.
+            buildConfigField("String", "FPNV_TEST_TOKEN", buildConfigString("FPNV_TEST_TOKEN"))
+        }
         getByName("release") {
+            buildConfigField("String", "FPNV_TEST_TOKEN", "\"\\\"\\\"")
             // CI remains unsigned. Local builds become signed when all four
             // RELEASE_* values are supplied in the developer's local.properties.
             if (hasCompleteReleaseSigning) {
@@ -117,6 +123,7 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-pnv:17.0.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
