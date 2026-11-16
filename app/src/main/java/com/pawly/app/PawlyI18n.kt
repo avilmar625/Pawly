@@ -596,7 +596,7 @@ internal object PawlyI18n {
         "Registrar rápido" to "Registre ràpid", "En casa de" to "A casa de", "ya registró" to "ja ha registrat",
         "Comprueba que no se vaya a administrar dos veces." to "Comprova que no s'administri dues vegades.",
         "Registrar igualmente" to "Registrar igualment", "No, ya está dada" to "No, ja s'ha administrat",
-        "¡Todo listo! Qué buen equipo." to "Tot a punt! Quin bon equip.", "HOY PARA" to "AVUI PER A", "Citas" to "Cites", "Paseo" to "Passeig", "Peso" to "Pes", "Foto" to "Foto", "Comida" to "Menjar", "Medicación" to "Medicació", "Diario" to "Diari", "Semanal" to "Setmanal", "Puntual" to "Puntual"
+        "¡Todo listo! Qué buen equipo." to "Tot a punt! Quin bon equip.", "HOY PARA" to "AVUI PER A", "Mi perro" to "La meva mascota", "Agenda" to "Agenda", "Cuidados" to "Cures", "Compartir" to "Compartir", "Citas" to "Cites", "Paseo" to "Passeig", "Peso" to "Pes", "Foto" to "Foto", "Comida" to "Menjar", "Medicación" to "Medicació", "Diario" to "Diari", "Semanal" to "Setmanal", "Puntual" to "Puntual"
     )
     private val homeFr = mapOf(
         "Guardado en este dispositivo" to "Enregistré sur cet appareil", "Cargando cuidados…" to "Chargement des soins…",
@@ -612,7 +612,7 @@ internal object PawlyI18n {
         "Registrar rápido" to "Ajout rapide", "En casa de" to "Chez", "ya registró" to "a déjà enregistré",
         "Comprueba que no se vaya a administrar dos veces." to "Vérifiez que le médicament ne sera pas administré deux fois.",
         "Registrar igualmente" to "Enregistrer quand même", "No, ya está dada" to "Non, c'est déjà fait",
-        "¡Todo listo! Qué buen equipo." to "Tout est prêt ! Quelle belle équipe.", "HOY PARA" to "AUJOURD’HUI POUR", "Citas" to "Rendez-vous", "Paseo" to "Promenade", "Peso" to "Poids", "Foto" to "Photo", "Comida" to "Repas", "Medicación" to "Médicament", "Diario" to "Quotidien", "Semanal" to "Hebdomadaire", "Puntual" to "Ponctuel"
+        "¡Todo listo! Qué buen equipo." to "Tout est prêt ! Quelle belle équipe.", "HOY PARA" to "AUJOURD’HUI POUR", "Mi perro" to "Mon animal", "Agenda" to "Agenda", "Cuidados" to "Soins", "Compartir" to "Partager", "Citas" to "Rendez-vous", "Paseo" to "Promenade", "Peso" to "Poids", "Foto" to "Photo", "Comida" to "Repas", "Medicación" to "Médicament", "Diario" to "Quotidien", "Semanal" to "Hebdomadaire", "Puntual" to "Ponctuel"
     )
     private val homeEn = mapOf(
         "Guardado en este dispositivo" to "Saved on this device", "Cargando cuidados…" to "Loading care tasks…",
@@ -628,7 +628,7 @@ internal object PawlyI18n {
         "Registrar rápido" to "Quick add", "En casa de" to "At", "ya registró" to "already recorded",
         "Comprueba que no se vaya a administrar dos veces." to "Please check that the medication will not be given twice.",
         "Registrar igualmente" to "Record anyway", "No, ya está dada" to "No, it has already been given",
-        "¡Todo listo! Qué buen equipo." to "All done! What a great team.", "HOY PARA" to "TODAY FOR", "Citas" to "Appointments", "Paseo" to "Walk", "Peso" to "Weight", "Foto" to "Photo", "Comida" to "Food", "Medicación" to "Medication", "Diario" to "Daily", "Semanal" to "Weekly", "Puntual" to "One-off"
+        "¡Todo listo! Qué buen equipo." to "All done! What a great team.", "HOY PARA" to "TODAY FOR", "Mi perro" to "My pet", "Agenda" to "Schedule", "Cuidados" to "Care", "Compartir" to "Share", "Citas" to "Appointments", "Paseo" to "Walk", "Peso" to "Weight", "Foto" to "Photo", "Comida" to "Food", "Medicación" to "Medication", "Diario" to "Daily", "Semanal" to "Weekly", "Puntual" to "One-off"
     )
 
     fun text(value: String, language: String): String = when (language) {
