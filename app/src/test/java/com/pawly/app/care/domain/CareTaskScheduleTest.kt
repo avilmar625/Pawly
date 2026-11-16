@@ -40,6 +40,24 @@ class CareTaskScheduleTest {
         assertTrue(CareTaskSchedule.isCompleteOn(routine, LocalDate.parse("2026-11-20")))
     }
 
+    @Test fun weeklyReminderUsesTheNextSelectedDayAtTheChosenLocalTime() {
+        val now = java.time.ZonedDateTime.parse("2026-11-16T08:00:00+01:00[Europe/Madrid]")
+        val next = CareTaskSchedule.nextWeeklyReminderAt("09:30", listOf(1, 3, 5), now)
+        assertEquals(java.time.ZonedDateTime.parse("2026-11-16T09:30:00+01:00[Europe/Madrid]"), next)
+    }
+
+    @Test fun weeklyReminderSkipsTheCurrentDayWhenItsTimeHasPassed() {
+        val now = java.time.ZonedDateTime.parse("2026-11-16T10:00:00+01:00[Europe/Madrid]")
+        val next = CareTaskSchedule.nextWeeklyReminderAt("09:30", listOf(1, 3, 5), now)
+        assertEquals(java.time.ZonedDateTime.parse("2026-11-18T09:30:00+01:00[Europe/Madrid]"), next)
+    }
+
+    @Test fun weeklyReminderRejectsInvalidTimeOrEmptyDays() {
+        val now = java.time.ZonedDateTime.parse("2026-11-16T08:00:00+01:00[Europe/Madrid]")
+        assertEquals(null, CareTaskSchedule.nextWeeklyReminderAt("25:00", listOf(1), now))
+        assertEquals(null, CareTaskSchedule.nextWeeklyReminderAt("09:00", emptyList(), now))
+    }
+
     @Test fun normalizesWeekdaysAndRejectsValuesOutsideIsoRange() {
         assertEquals(listOf(1, 3, 7), CareTaskSchedule.normalizeDays(listOf(7, 3, 3, 0, 8, 1)))
     }
