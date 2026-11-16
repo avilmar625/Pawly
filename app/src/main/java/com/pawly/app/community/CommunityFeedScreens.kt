@@ -94,6 +94,26 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
                     FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) })
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { sortMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Default.Sort, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    val sortLabel = when (sortOrder) { "oldest" -> "Más antiguas primero"; "likes" -> "Más populares"; "comments" -> "Más comentadas"; else -> "Más recientes primero" }
+                    Text(tr("Ordenar por: ") + tr(sortLabel), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
+                    Icon(Icons.Default.ExpandMore, contentDescription = null)
+                }
+                DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                    listOf("recent" to "Más recientes primero", "oldest" to "Más antiguas primero", "likes" to "Más populares", "comments" to "Más comentadas").forEach { (value, label) ->
+                        DropdownMenuItem(
+                            text = { Text(tr(label), fontWeight = if (sortOrder == value) FontWeight.Bold else FontWeight.Normal) },
+                            leadingIcon = { Icon(Icons.Default.Sort, contentDescription = null) },
+                            trailingIcon = { if (sortOrder == value) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            onClick = { sortOrder = value; sortMenuExpanded = false }
+                        )
+                    }
+                }
+            }
         }
         item {
             Surface(
