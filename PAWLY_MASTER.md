@@ -489,3 +489,5 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 
 - La cronología «Todo» usa scroll vertical propio y tiene test de integración de sus fuentes. Se añadió implementación JVM de org.json en testImplementation para probar JSON sin los stubs del SDK Android.
 - La validación de esta nueva cronología y del nuevo test queda pendiente de la ejecución CI del último HEAD.
+
+- Primera compilación del bloque de localización detectó llamadas composables `tr()` dentro de `remember`, `runCatching` y callbacks de sincronización. Se corrigió calculando las cadenas en el contexto composable y reutilizando valores ya traducidos dentro de efectos/callbacks. La nueva ejecución CI está en curso; no se declara corregido hasta que compile.
