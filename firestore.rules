@@ -681,10 +681,12 @@ service cloud.firestore {
       // Any signed-in member can browse approved places; publishing still requires verified email.
       allow get, list: if admin() || (signedIn() && resource.data.status == 'approved');
       allow create: if verified()
-        && request.resource.data.keys().hasOnly(['name', 'category', 'location', 'description', 'authorUid', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['name', 'category', 'location', 'latitude', 'longitude', 'description', 'authorUid', 'status', 'createdAt'])
         && request.resource.data.name is string && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 80
         && request.resource.data.category in ['Parque', 'Playa', 'Restaurante', 'Alojamiento', 'Ruta', 'Veterinario', 'Otro']
         && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 120
+        && request.resource.data.latitude is number && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
+        && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
         && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 500
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.status == 'approved'
