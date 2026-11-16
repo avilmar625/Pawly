@@ -1,6 +1,7 @@
 package com.pawly.app
 
 import android.content.Intent
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -35,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -320,6 +322,72 @@ private fun PetPassportSection(
                         },
                         enabled = emergencyEntries.isNotEmpty()
                     ) { Text(tr("Compartir ficha con veterinario o persona de confianza")) }
+                }
+            }
+        }
+        item {
+            val weightPoints = entries
+                .filter { it.type.equals("Peso", ignoreCase = true) }
+                .mapNotNull { entry ->
+                    val rawValue = Regex("""\d+(?:[.,]\d+)?""").find(entry.detail.ifBlank { entry.title })?.value
+                    val kg = rawValue?.replace(",", ".")?.toFloatOrNull()
+                    val day = runCatching { LocalDate.parse(entry.date.take(10)) }.getOrNull()
+                    if (kg != null && kg > 0f && day != null) Triple(day, kg, entry.id) else null
+                }
+                .sortedBy { it.first }
+                .takeLast(12)
+            if (weightPoints.isNotEmpty()) {
+                val lineColor = MaterialTheme.colorScheme.primary
+                val guideColor = MaterialTheme.colorScheme.outlineVariant
+                val surfaceColor = MaterialTheme.colorScheme.surface
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = surfaceColor)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(tr("Evolución del peso"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Text(tr("Últimas ${weightPoints.size} mediciones registradas"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(
+                                String.format(Locale.getDefault(), "%.1f kg", weightPoints.last().second),
+                                color = lineColor,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                        val values = weightPoints.map { it.second }
+                        val minWeight = values.minOrNull() ?: 0f
+                        val maxWeight = values.maxOrNull() ?: minWeight
+                        val range = (maxWeight - minWeight).coerceAtLeast(1f)
+                        Canvas(Modifier.fillMaxWidth().height(118.dp)) {
+                            val left = 10.dp.toPx()
+                            val right = size.width - 10.dp.toPx()
+                            val top = 12.dp.toPx()
+                            val bottom = size.height - 12.dp.toPx()
+                            val points = values.mapIndexed { index, value ->
+                                val x = if (values.size == 1) (left + right) / 2f
+                                    else left + (right - left) * index / (values.size - 1)
+                                val y = bottom - ((value - minWeight) / range) * (bottom - top)
+                                Offset(x, y)
+                            }
+                            drawLine(guideColor, Offset(left, bottom), Offset(right, bottom), strokeWidth = 1.dp.toPx())
+                            points.zipWithNext().forEach { (a, b) ->
+                                drawLine(lineColor, a, b, strokeWidth = 3.dp.toPx())
+                            }
+                            points.forEach { point ->
+                                drawCircle(surfaceColor, radius = 6.dp.toPx(), center = point)
+                                drawCircle(lineColor, radius = 4.dp.toPx(), center = point)
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(weightPoints.first().first.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (weightPoints.size > 1) Text(weightPoints.last().first.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text(tr("La gráfica utiliza únicamente registros de tipo Peso con fecha y valor numérico. No representa un objetivo veterinario."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
             }
         }
