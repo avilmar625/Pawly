@@ -29,8 +29,9 @@ internal fun HomeUpcomingCard(
     date: LocalDate,
     onClick: () -> Unit
 ) {
+    val locale = PawlyI18n.locale(LocalPawlyLanguage.current)
     val days = ChronoUnit.DAYS.between(LocalDate.now(), date).coerceAtLeast(0)
-    val dateLabel = date.format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.getDefault()))
+    val dateLabel = date.format(DateTimeFormatter.ofPattern("EEEE d MMM", locale))
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
@@ -67,7 +68,8 @@ internal fun HomeAnniversaryCard(
     anniversary: DiaryAnniversary,
     onClick: () -> Unit
 ) {
-    val dateLabel = anniversary.date.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()))
+    val locale = PawlyI18n.locale(LocalPawlyLanguage.current)
+    val dateLabel = anniversary.date.format(DateTimeFormatter.ofPattern("d MMM yyyy", locale))
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
