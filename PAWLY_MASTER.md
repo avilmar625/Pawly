@@ -419,3 +419,16 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 ### Ajuste adicional de navegación de Hoy
 - El icono de engranaje de la cabecera de Hoy ahora abre Ajustes, no el diálogo «Acerca de Pawly». El diálogo Acerca de se conserva en su acceso existente.
 - Estado: cambio en código y commit remoto; compilación y prueba de interacción pendientes.
+
+
+### Perfil visual por mascota — actualización 2026-11-16
+- Las fotos locales ya no comparten una única clave global: `PetRoutinePreferenceKeys.photoPath(scope)` aísla la imagen por mascota.
+- Se migra una sola vez la clave histórica `dog_photo_path` a la primera mascota activa, sin borrar el archivo anterior.
+- Al renombrar una mascota se conserva su foto bajo la nueva clave; la restauración de backup guarda la foto bajo la clave de la mascota restaurada.
+- Hoy intenta recuperar también la URL HTTPS del perfil remoto mediante `FirebasePetProfileRepository`; si no hay foto local ni remota, usa el placeholder ilustrado Pawly.
+- Test añadido para comprobar que las claves de foto y rutinas no colisionan. Persistencia/Cloudinary requieren prueba en dispositivo y cuenta real.
+
+### Estado de validación actualizado
+- HEAD de cambios65 al momento de esta actualización: pendiente de registrar tras el commit documental.
+- El PR #19 sigue en borrador y no está fusionado.
+- No hay checks de commit devueltos por la consulta disponible; CI y compilación continúan sin confirmar. El intento de clonar el repositorio en el entorno de trabajo no pudo completarse por falta de resolución de red, así que no se ha ejecutado Gradle localmente.
