@@ -165,13 +165,23 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
         if (conversations.isEmpty()) item { EmptyCommunityCard("Tu bandeja está vacía", "Cuando escribas a otra persona, la conversación aparecerá aquí.") }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
         items(conversations, key = { it.id }) { c ->
-            Surface(onClick = { onOpen(c) }, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
+            Surface(
+                onClick = { onOpen(c) },
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(18.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
                 Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                     Avatar(c.otherUserPhoto, c.otherUserName)
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(c.otherUserName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        Text(c.lastMessage.ifBlank { "Empezad a hablar" }, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        Text(c.lastMessage.ifBlank { "Empezad a hablar" }, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, style = MaterialTheme.typography.bodySmall)
+                        if (c.updatedAt > 0L) Text(
+                            java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(c.updatedAt)),
+                            color = MaterialTheme.colorScheme.outline,
+                            style = MaterialTheme.typography.labelSmall
+                        )
                     }
                     val unread = unreadCounts[c.id] ?: 0
                     if (unread > 0) {
