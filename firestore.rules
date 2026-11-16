@@ -431,7 +431,7 @@ service cloud.firestore {
         && request.resource.data.sharedPetId is string
         && exists(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId))
         && get(/databases/$(database)/documents/sharedPets/$(request.resource.data.sharedPetId)).data.ownerUid == request.auth.uid
-        && request.resource.data.status == 'approved'
+        && request.resource.data.status == 'pending'
         && request.resource.data.role in ['editor', 'reader'];
       allow read: if verified() && (resource.data.ownerUid == request.auth.uid || resource.data.inviteeUid == request.auth.uid);
       allow update: if verified() && (
@@ -624,7 +624,7 @@ service cloud.firestore {
         && request.resource.data.reporterId == request.auth.uid
         && request.resource.data.targetId is string
         && request.resource.data.targetId.size() > 0
-        && request.resource.data.targetType in ['post', 'user', 'event']
+        && request.resource.data.targetType in ['post', 'user', 'event', 'place']
         && request.resource.data.reason is string
         && request.resource.data.reason.size() > 0
         && request.resource.data.reason.size() <= 500
@@ -635,7 +635,9 @@ service cloud.firestore {
           || (request.resource.data.targetType == 'user'
               && exists(/databases/$(database)/documents/users/$(request.resource.data.targetId)))
           || (request.resource.data.targetType == 'event'
-              && exists(/databases/$(database)/documents/events/$(request.resource.data.targetId))));
+              && exists(/databases/$(database)/documents/events/$(request.resource.data.targetId)))
+          || (request.resource.data.targetType == 'place'
+              && exists(/databases/$(database)/documents/communityPlaces/$(request.resource.data.targetId))));
       allow read, update, delete: if admin();
     }
     // Lost-pet alert subscriptions store deliberately coarse coordinates only.
@@ -676,7 +678,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Community places are published after strict field validation; admins can still moderate them.
+    // Community places remain pending until an administrator reviews them.
     match /communityPlaces/{placeId} {
       // Any signed-in member can browse approved places; publishing still requires verified email.
       allow get, list: if admin() || (signedIn() && resource.data.status == 'approved');
@@ -689,7 +691,7 @@ service cloud.firestore {
         && request.resource.data.longitude is number && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180
         && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 500
         && request.resource.data.authorUid == request.auth.uid
-        && request.resource.data.status == 'approved'
+        && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
       allow update: if admin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
