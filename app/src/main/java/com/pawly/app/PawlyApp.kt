@@ -226,7 +226,14 @@ private fun PawlyMainApp(
             dogPhotoPath = destination.absolutePath
         }
     }
+    var notificationsEnabled by remember(context) {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < 33 ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        )
+    }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        notificationsEnabled = granted
         profileSyncStatus = if (granted) "Notificaciones activadas." else "Puedes activarlas más adelante desde los ajustes del móvil."
     }
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
@@ -732,8 +739,12 @@ private fun PawlyMainApp(
                 if (Build.VERSION.SDK_INT >= 33 &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
                 ) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                else profileSyncStatus = "Las notificaciones están disponibles en este dispositivo."
+                else {
+                    notificationsEnabled = true
+                    profileSyncStatus = "Las notificaciones están disponibles en este dispositivo."
+                }
             },
+            notificationsEnabled = notificationsEnabled,
             onFinish = {
                 val cleanName = dogName.trim().ifBlank { "Mi mascota" }
                 dogName = cleanName
