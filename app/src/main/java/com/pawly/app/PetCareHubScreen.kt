@@ -506,8 +506,6 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                 }
             }
         }
-    }
-
         if (careLogs.isNotEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -533,6 +531,7 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
                 }
             }
         }
+    }
     if (showAdd) {
         AlertDialog(
             onDismissRequest = { showAdd = false },
