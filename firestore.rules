@@ -772,6 +772,9 @@ service cloud.firestore {
     match /phoneDiscoveryLimits/{limitId} {
       allow read, write: if false;
     }
+    match /phoneVerificationTokens/{tokenId} {
+      allow read, write: if false;
+    }
 
     // Public events are tied to their venue, not to the private location of a person.
     match /events/{eventId} {

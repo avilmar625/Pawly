@@ -105,7 +105,7 @@ async function readDocument(env: Env, accessToken: string, path: string): Promis
   return await response.json();
 }
 
-async function verifyFirebasePnvToken(token: string, env: Env): Promise<{ phone: string; testNumber: boolean }> {
+async function verifyFirebasePnvToken(token: string, env: Env): Promise<{ phone: string; testNumber: boolean; jti: string; expiresAt: Date }> {
   if (!env.FIREBASE_PROJECT_NUMBER) throw new Error("FIREBASE_PROJECT_NUMBER no está configurado en Cloudflare.");
   const issuer = `https://fpnv.googleapis.com/projects/${env.FIREBASE_PROJECT_NUMBER}`;
   const projectAudience = `https://fpnv.googleapis.com/projects/${env.FIREBASE_PROJECT_ID}`;
@@ -123,7 +123,9 @@ async function verifyFirebasePnvToken(token: string, env: Env): Promise<{ phone:
   }
   const phone = normalizeE164Phone(payload.sub);
   if (!phone) throw new Error("Firebase no ha devuelto un número de teléfono válido.");
-  return { phone, testNumber };
+  const jti = typeof payload.jti === "string" ? payload.jti : "";
+  if (!jti || jti.length > 128 || typeof payload.exp !== "number") throw new Error("El token PNV no contiene identificador o caducidad válidos.");
+  return { phone, testNumber, jti, expiresAt: new Date(payload.exp * 1000) };
 }
 
 async function hmacPhoneHash(env: Env, phone: string): Promise<string> {
@@ -142,20 +144,13 @@ function firestoreString(value: string) { return { stringValue: value }; }
 function firestoreBoolean(value: boolean) { return { booleanValue: value }; }
 function firestoreTimestamp(value: Date) { return { timestampValue: value.toISOString() }; }
 
-async function writeFirestoreDocument(env: Env, accessToken: string, path: string, fields: Record<string, unknown>): Promise<void> {
-  const response = await firestoreRequest(env, accessToken, path, {
-    method: "PATCH", body: JSON.stringify({ fields })
-  });
-  if (!response.ok) throw new Error("No se pudo actualizar el registro privado de teléfono.");
-}
-
 export async function handlePhoneVerification(
   request: Request,
   env: Env,
   dependencies: {
     verifyUser?: (request: Request, env: Env) => Promise<string | null>;
     getAccessToken?: (env: Env) => Promise<string>;
-    verifyPnv?: (token: string, env: Env) => Promise<{ phone: string; testNumber: boolean }>;
+    verifyPnv?: (token: string, env: Env) => Promise<{ phone: string; testNumber: boolean; jti: string; expiresAt: Date }>;
     hashPhone?: (env: Env, phone: string) => Promise<string>;
   } = {}
 ): Promise<Response> {
@@ -169,8 +164,18 @@ export async function handlePhoneVerification(
       return json({ error: "Falta el comprobante seguro de verificación telefónica." }, 400);
     }
     const verified = await (dependencies.verifyPnv ?? verifyFirebasePnvToken)(body.phoneToken, env);
-    const phoneHash = await (dependencies.hashPhone ?? hmacPhoneHash)(env, verified.phone);
     const accessToken = await (dependencies.getAccessToken ?? googleAccessToken)(env);
+    const replay = await fetch(`${firestoreRoot(env)}/phoneVerificationTokens?documentId=${encodeURIComponent(verified.jti)}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({ fields: {
+        uid: firestoreString(uid), createdAt: firestoreTimestamp(new Date()),
+        expiresAt: firestoreTimestamp(verified.expiresAt)
+      } })
+    });
+    if (replay.status === 409) return json({ error: "Este comprobante de verificación ya se ha utilizado." }, 409);
+    if (!replay.ok) throw new Error("No se pudo validar el uso único del token telefónico.");
+    const phoneHash = await (dependencies.hashPhone ?? hmacPhoneHash)(env, verified.phone);
     const privatePath = `users/${uid}/privateData/phoneDiscovery`;
     const previous = await readDocument(env, accessToken, privatePath);
     const oldHash = decodeFirestoreString(previous?.fields?.phoneHash);

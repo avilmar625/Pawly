@@ -99,7 +99,7 @@ No uses la URL ficticia del ejemplo: sustituye por la URL exacta que devuelva Wr
 
 La app llama a `POST /v1/community-places`. El Worker verifica la cuenta, valida nombre/categoría/dirección/coordenadas y limita el envío a una propuesta diaria. Se crea como `pending`; el equipo moderador decide aprobar o rechazar. El autor puede editar y eliminar su propuesta aprobada o pendiente y denunciar lugares de otros usuarios.
 
-Configura TTL de Firestore sobre `communityPlaceSubmissionLimits.expiresAt` para limpiar límites de 90 días y sobre `phoneDiscoveryLimits.expiresAt` para limpiar reservas de búsqueda de 45 días.
+Configura TTL de Firestore sobre `communityPlaceSubmissionLimits.expiresAt` para limpiar límites de 90 días, `phoneDiscoveryLimits.expiresAt` para limpiar reservas de búsqueda de 45 días y `phoneVerificationTokens.expiresAt` para eliminar tokens PNV consumidos al caducar.
 
 ## Eventos y privacidad
 
