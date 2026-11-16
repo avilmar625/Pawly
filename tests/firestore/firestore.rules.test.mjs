@@ -52,6 +52,12 @@ beforeEach(async () => {
     await setDoc(doc(db, "events/event-1/interested/attendee"), {
       uid: "attendee", createdAt: new Date()
     });
+    await setDoc(doc(db, "sharedPets/owner_pet"), {
+      id: "owner_pet", ownerUid: "owner", name: "Chispita"
+    });
+    await setDoc(doc(db, "sharedPets/owner_pet/members/owner"), { role: "owner" });
+    await setDoc(doc(db, "sharedPets/owner_pet/members/editor"), { role: "editor" });
+    await setDoc(doc(db, "sharedPets/owner_pet/members/reader"), { role: "reader" });
   });
 });
 
@@ -125,6 +131,33 @@ test("only the event organizer can list attendees; each member can read only the
   const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
   await assertFails(getDoc(doc(readerDb, "events/event-1/interested/attendee")));
   await assertFails(getDocs(collection(readerDb, "events/event-1/interested")));
+});
+
+test("shared care logs are visible to members and can only be created by editors or owners", async () => {
+  const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/careLogs/log-1"), {
+    id: "log-1", taskTitle: "Medicación", action: "Medicación",
+    actorUid: "editor", actorName: "Cuidador", occurredAt: serverTimestamp(), note: "Dosis de la mañana"
+  }));
+  const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
+  await assertSucceeds(getDocs(collection(readerDb, "sharedPets/owner_pet/careLogs")));
+  await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/careLogs/log-2"), {
+    id: "log-2", taskTitle: "Paseo", action: "Paseo",
+    actorUid: "reader", actorName: "Lector", occurredAt: serverTimestamp(), note: ""
+  }));
+});
+
+test("shared medication routines accept dose, time, category and daily completion metadata", async () => {
+  const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/tasks/medication"), {
+    id: "medication", title: "Antibiótico", responsible: "Alex", frequency: "Diario",
+    completed: false, dose: "1 comprimido", time: "08:30", completedOn: "", action: "Medicación"
+  }));
+  const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
+  await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/tasks/other"), {
+    id: "other", title: "Paseo", responsible: "", frequency: "Diario",
+    completed: false, dose: "", time: "", completedOn: "", action: "Paseo"
+  }));
 });
 
 test("phone discovery hashes and rate-limit reservations are inaccessible to clients", async () => {
