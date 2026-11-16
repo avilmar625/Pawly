@@ -469,3 +469,11 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - Pendiente: build Android, lint, pruebas y revisión visual en emulador/teléfono. Los cambios están en la rama de trabajo y PR Draft #19; no fusionados.
 
 - La tarjeta de actividad compartida de Hoy ahora usa el encabezado «En casa de [mascota]» y muestra hasta tres registros recientes, acercándose al bloque de convivencia de la referencia sin inventar actividad cuando no hay logs.
+
+
+### Continuidad de la actualización visual/funcional — 16-11-2026
+- Se alineó Hoy con el PDF: identidad compacta de mascota, progreso, tareas, próxima cita, acciones rápidas, actividad y recuerdo cuando existe.
+- Se añadió localización del panel Hoy/cuidados para catalán, francés e inglés. Los valores de dominio de acciones permanecen estables y no dependen del idioma de interfaz.
+- «Mi perro» mantiene cinco destinos principales y ahora expone accesos secundarios a Diario y Citas junto con Agenda, Salud/Pasaporte, Cuidados y Compartir. La cronología «Todo» unificada del PDF queda pendiente; no se debe fingir que Agenda ya la implementa.
+- Pendientes funcionales identificados: días concretos para rutinas semanales, doble registro de medicación transaccional entre cuidadores, cronología unificada, backup integral con medios, sincronización y validación manual Android/iOS.
+- Último estado CI observado durante el trabajo: Android tests unitarios superados y lint en ejecución; APK Debug/AAB aún no confirmados. Worker check/typecheck/tests superados en la ejecución anterior. Firestore Emulator superado en la ejecución anterior; una ejecución nueva estaba en curso tras los últimos commits. Consultar Actions antes de afirmar estado final.
