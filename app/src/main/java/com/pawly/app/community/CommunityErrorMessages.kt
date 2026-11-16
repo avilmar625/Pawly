@@ -13,8 +13,13 @@ internal fun Throwable.toPawlyMessage(fallback: String): String {
         it is FirebaseNetworkException ||
             (it is FirebaseFirestoreException && it.code == FirebaseFirestoreException.Code.UNAVAILABLE)
     }
+    val authSessionEstablished = message?.contains("Firebase ha validado tu acceso", ignoreCase = true) == true ||
+        message?.contains("Google ha validado tu acceso", ignoreCase = true) == true
 
     if (firestoreCode == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+        if (authSessionEstablished) {
+            return "Tus credenciales son correctas y Firebase ha iniciado sesión, pero Firestore no permite cargar el perfil. La sesión no se ha cerrado. Publica las reglas actualizadas de firestore.rules y vuelve a entrar."
+        }
         val accountWasCreated = message?.contains("La cuenta de acceso ya se ha creado", ignoreCase = true) == true
         return if (accountWasCreated) {
             "Firestore ha rechazado el guardado del perfil. Tu cuenta de acceso ya está creada y no se ha borrado. Publica las reglas de firestore.rules de la rama cambios60-comunidad-calendario y después inicia sesión con el mismo correo y contraseña para completar tu perfil."
@@ -23,7 +28,11 @@ internal fun Throwable.toPawlyMessage(fallback: String): String {
         }
     }
     if (networkFailure) {
-        return "No hay conexión con Firebase. Comprueba Internet e inténtalo de nuevo."
+        return if (authSessionEstablished) {
+            "Has iniciado sesión, pero no se ha podido cargar tu perfil por un problema de conexión. La sesión sigue abierta; comprueba Internet y vuelve a intentarlo."
+        } else {
+            "No hay conexión con Firebase. Comprueba Internet e inténtalo de nuevo."
+        }
     }
     return when (authCode) {
         "ERROR_INVALID_EMAIL" -> "El correo electrónico no tiene un formato válido."
