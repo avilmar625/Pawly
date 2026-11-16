@@ -407,35 +407,64 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         }
         var communityMenuExpanded by remember { mutableStateOf(false) }
         Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-            OutlinedButton(
+            Surface(
                 onClick = { communityMenuExpanded = true },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 15.dp, vertical = 11.dp)
+                shape = RoundedCornerShape(19.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                tonalElevation = 1.dp
             ) {
-                Icon(
-                    when (page) {
-                        CommunityPage.FEED -> Icons.Default.DynamicFeed
-                        CommunityPage.SEARCH -> Icons.Default.People
-                        CommunityPage.MESSAGES -> Icons.Default.Chat
-                        CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
-                        CommunityPage.EVENTS -> Icons.Default.Event
-                        CommunityPage.MAP -> Icons.Default.Map
-                        CommunityPage.PROFILE -> Icons.Default.Person
-                        CommunityPage.MODERATION -> Icons.Default.Shield
-                    },
-                    null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(tr(page.label), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start, fontWeight = FontWeight.SemiBold)
-                if (page == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
-                    Surface(color = MaterialTheme.colorScheme.error, shape = CircleShape) {
-                        Text(unreadNotifications.coerceAtMost(99).toString(), color = MaterialTheme.colorScheme.onError, modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall)
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(13.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Icon(
+                            when (page) {
+                                CommunityPage.FEED -> Icons.Default.DynamicFeed
+                                CommunityPage.SEARCH -> Icons.Default.People
+                                CommunityPage.MESSAGES -> Icons.Default.Chat
+                                CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
+                                CommunityPage.EVENTS -> Icons.Default.Event
+                                CommunityPage.MAP -> Icons.Default.Map
+                                CommunityPage.PROFILE -> Icons.Default.Person
+                                CommunityPage.MODERATION -> Icons.Default.Shield
+                            },
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(11.dp).size(23.dp)
+                        )
                     }
-                    Spacer(Modifier.width(7.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(tr("ESTÁS EN"), color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                        Text(tr(page.label), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            tr(when (page) {
+                                CommunityPage.FEED -> "Publicaciones y novedades"
+                                CommunityPage.SEARCH -> "Descubre personas y perros"
+                                CommunityPage.EVENTS -> "Quedadas y planes compartidos"
+                                CommunityPage.MAP -> "Lugares y eventos en el mapa"
+                                CommunityPage.MESSAGES -> "Conversaciones privadas"
+                                CommunityPage.NOTIFICATIONS -> "Actividad y avisos nuevos"
+                                CommunityPage.PROFILE -> "Tu perfil y tus mascotas"
+                                CommunityPage.MODERATION -> "Revisar contenido denunciado"
+                            }),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                    if (page == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
+                        Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
+                        Spacer(Modifier.width(7.dp))
+                    }
+                    Icon(Icons.Default.ExpandMore, null, tint = MaterialTheme.colorScheme.primary)
                 }
-                Icon(Icons.Default.ExpandMore, null)
             }
             DropdownMenu(
                 expanded = communityMenuExpanded,
