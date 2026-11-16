@@ -169,7 +169,7 @@ internal fun HomeScreen(
             )
         }
         item {
-            Surface(onClick = onHealth, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
+            Surface(onClick = onWeight, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -206,7 +206,7 @@ internal fun HomeScreen(
                         }
                     } else {
                         Text(tr("Todavía no hay mediciones. Registra el primer peso en Mi perro → Pasaporte → Peso."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = onHealth) { Text(tr("Registrar primer peso")) }
+                        OutlinedButton(onClick = onWeight) { Text(tr("Registrar primer peso")) }
                     }
                 }
             }
