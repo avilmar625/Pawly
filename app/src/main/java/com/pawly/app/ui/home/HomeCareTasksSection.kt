@@ -106,11 +106,14 @@ internal fun HomeCareTasksSection(
             else -> task.frequency == "Puntual" || completedDate == today
         }
     }
-    val completedCount = if (tasks.isNotEmpty()) visibleTasks.count(::isComplete)
+    val orderedVisibleTasks = visibleTasks.sortedWith(
+        compareBy<CareTask>({ it.time.ifBlank { "99:99" } }, { it.title })
+    )
+    val completedCount = if (tasks.isNotEmpty()) orderedVisibleTasks.count(::isComplete)
         else listOf(walkDone, medicineDone).count { it }
-    val totalCount = if (tasks.isNotEmpty()) visibleTasks.size else 2
+    val totalCount = if (tasks.isNotEmpty()) orderedVisibleTasks.size else 2
     val progress = if (totalCount == 0) 0f else completedCount.toFloat() / totalCount
-    val nextCareLabel = if (tasks.isNotEmpty()) visibleTasks.firstOrNull { !isComplete(it) }?.title
+    val nextCareLabel = if (tasks.isNotEmpty()) orderedVisibleTasks.firstOrNull { !isComplete(it) }?.title
         else if (!walkDone) "Paseo" else if (!medicineDone) "Medicación" else null
 
     fun toggleTask(task: CareTask, checked: Boolean) {
@@ -239,8 +242,7 @@ internal fun HomeCareTasksSection(
                     style = MaterialTheme.typography.bodySmall)
             }
         } else {
-            visibleTasks.sortedWith(compareBy<CareTask>({ it.time.ifBlank { "99:99" } }, { it.title }))
-                .forEach { task ->
+            orderedVisibleTasks.forEach { task ->
                     val complete = isComplete(task)
                     val icon = when (task.action) {
                         "Paseo" -> Icons.Filled.DirectionsWalk
