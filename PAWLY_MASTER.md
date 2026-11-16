@@ -363,3 +363,40 @@ Se ha contrastado el inventario con los archivos reales de `cambios64`. Corrige 
 - Añadido `WeightMeasurementParser` como función pura y pruebas unitarias.
 - `HomeScreen` usa ahora el parser extraído.
 - CI debe validar el cambio antes de considerarlo cerrado.
+
+
+## 13. Trabajo cambios65 — actualización 2026-11-16
+
+Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ecc8f070c2d99faee5dc113c69ce86` de cambios64. La rama contiene cambios funcionales adicionales; comparar ramas antes de integrar.
+
+### Implementación localizada en cambios65
+- Rediseño inicial de Inicio/Hoy con tarjeta de progreso, tareas, próximos cuidados, accesos rápidos, peso, diario, aniversarios y sugerencias.
+- Barra inferior de cinco destinos: Hoy, Explorar, Mi perro, Comunidad y Más. Los destinos secundarios (Aprender, Diario, Calendario, Profesionales y Ayuda) siguen accesibles desde Más o enlaces contextuales.
+- `PetCareHubScreen` admite acciones iniciales para abrir directamente una sección y añadir un tipo de entrada o cuidado. `PawlyApp` ya conecta accesos rápidos: Peso abre Pasaporte con tipo Peso, Foto abre selector del Diario y Comida abre Cuidados con acción Comida.
+- `HomeDiaryAnniversary.kt` selecciona un recuerdo real de años anteriores para la misma fecha; no debe mostrar contenido ficticio.
+- `PetRoutinePreferenceKeys.kt` aísla el estado diario por mascota y migra las preferencias antiguas.
+- `WeightMeasurementParser.kt` y sus tests cubren coma/punto decimal, unidades y rango. En esta actualización se endureció el parser para priorizar valores explícitos en kg y no confundir fechas con peso sin unidad.
+- `CareDuplicateGuard.kt` y `CareDuplicateGuardTest.kt` detectan una toma de medicación registrada ese mismo día por otro cuidador. En Hoy se muestra confirmación antes de registrar una segunda toma.
+- En `HomeCareTasksSection.kt`, los usuarios autenticados no pueden marcar tareas hasta resolver el rol de edición; evita la ventana inicial en la que un miembro de solo lectura podía ver controles habilitados.
+
+### Riesgos y limitaciones todavía abiertos
+- El control de doble medicación es una salvaguarda de interfaz basada en los últimos registros descargados; no es una transacción atómica ni una garantía clínica. Las reglas Firestore siguen siendo la frontera de seguridad y se debe revisar concurrencia entre dispositivos.
+- La tarea se persiste como `completed/completedOn` en el documento de tarea; el historial de acciones se escribe por separado. Revisar consistencia si una escritura falla entre ambos pasos.
+- El panel Hoy muestra un estado diario derivado de las tareas actuales, pero la recurrencia mensual/anual y múltiples tomas de una pauta no están modeladas de forma completa. No presentar el modelo actual como pauta farmacológica completa.
+- Las acciones rápidas están conectadas a flujos de creación existentes, pero requieren prueba manual de que el formulario se abre con el tipo correcto y guarda el registro esperado.
+- El resumen de peso todavía se basa en entradas históricas de texto libre; la solución estructurada numérica queda pendiente.
+- La navegación de cinco destinos está implementada; la línea de tiempo unificada Todo/Salud/Diario/Citas de «Mi perro» sigue pendiente y no debe ocultar pantallas existentes.
+
+### Verificación de cambios65
+- Último commit creado en esta sesión: `a4f7c96782a14fe2ccb6a7c8a578a0998f3e8061` (tests parser de peso). El commit inmediatamente anterior contiene el endurecimiento del parser.
+- Se han añadido tests unitarios para el guard de medicación duplicada y casos adicionales del parser.
+- El workflow Android existe en `.github/workflows/android.yml` y está configurado para push en ramas `cambios*`, ejecutando tests, lint, APK debug, AAB release y comprobaciones del Worker.
+- La consulta de estados de commit no devolvió checks asociados al commit auditado. Por tanto, la compilación y los tests de esta actualización **no están confirmados** en este documento hasta consultar una ejecución concreta de Actions o ejecutar Gradle.
+- No se ha probado esta versión en emulador ni dispositivo físico.
+
+### Próximas tareas
+1. Obtener resultado de Actions del HEAD actual de cambios65; corregir fallos antes de seguir ampliando.
+2. Probar en Android los accesos rápidos Peso/Foto/Comida y el flujo de medicación con dos cuentas y roles owner/editor/reader.
+3. Completar «Mi perro» como línea de tiempo con filtros sin retirar Pasaporte, Cuidados, Compartir, Diario ni Calendario.
+4. Auditar sincronización offline, colisiones, doble registro y restauración de copias.
+5. Pulir diseño de Hoy contra el PDF adjunto y revisar tema oscuro, idiomas y pantallas pequeñas.
