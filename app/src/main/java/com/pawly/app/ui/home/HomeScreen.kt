@@ -238,7 +238,7 @@ internal fun HomeScreen(
                     }
                     TextButton(onClick = onExplore) { Text(tr("Ver todo")) }
                 }
-                HomeExploreCard(onClick = onExplore)
+                HomeExploreCard(onClick = onExplore, elegantDesign = elegantDesign)
             }
         }
         item { HomeLearnCard(onClick = onLearn) }
@@ -363,24 +363,66 @@ private fun HomeRoutineRow(
 }
 
 @Composable
-private fun HomeExploreCard(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.primary
-    ) {
-        Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Una aventura os espera"), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text(tr("Encuentra rutas, playas y rincones dog-friendly para vuestra próxima escapada."), color = Color.White.copy(alpha = .82f), fontSize = 12.sp, lineHeight = 17.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("EXPLORAR LUGARES"), color = Color(0xFFDDEBAF), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = .8.sp)
-                    Spacer(Modifier.width(5.dp))
-                    Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = Color(0xFFDDEBAF), modifier = Modifier.size(14.dp))
+private fun HomeExploreCard(onClick: () -> Unit, elegantDesign: Boolean) {
+    if (elegantDesign) {
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(26.dp),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(Modifier.fillMaxWidth().height(176.dp)) {
+                AsyncImage(
+                    model = "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=1200&h=600&fit=crop",
+                    contentDescription = tr("Perros disfrutando de una salida al aire libre"),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+                Box(
+                    Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color(0xE8173F35)),
+                            startY = 30f
+                        )
+                    )
+                )
+                Column(
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(tr("UNA AVENTURA OS ESPERA"), color = Color(0xFFE4EBC1),
+                        fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                    Text(tr("Encuentra vuestro próximo lugar favorito"),
+                        color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("EXPLORAR LUGARES"), color = Color.White,
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.width(5.dp))
+                        Icon(Icons.Filled.ArrowForward, contentDescription = null,
+                            tint = Color.White, modifier = Modifier.size(14.dp))
+                    }
                 }
             }
-            Box(Modifier.padding(start = 8.dp).size(58.dp).clip(CircleShape).background(Color.White.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Explore, contentDescription = null, tint = Color.White, modifier = Modifier.size(29.dp))
+        }
+    } else {
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(26.dp),
+            color = MaterialTheme.colorScheme.primary
+        ) {
+            Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("Una aventura os espera"), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(tr("Encuentra rutas, playas y rincones dog-friendly para vuestra próxima escapada."), color = Color.White.copy(alpha = .82f), fontSize = 12.sp, lineHeight = 17.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("EXPLORAR LUGARES"), color = Color(0xFFDDEBAF), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = .8.sp)
+                        Spacer(Modifier.width(5.dp))
+                        Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = Color(0xFFDDEBAF), modifier = Modifier.size(14.dp))
+                    }
+                }
+                Box(Modifier.padding(start = 8.dp).size(58.dp).clip(CircleShape).background(Color.White.copy(alpha = .13f)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Explore, contentDescription = null, tint = Color.White, modifier = Modifier.size(29.dp))
+                }
             }
         }
     }
