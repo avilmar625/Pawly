@@ -179,3 +179,11 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - La cronología «Todo» del PDF sigue pendiente y se mantiene como deuda explícita: no se debe mostrar ese nombre hasta que la pantalla agregue y ordene de verdad registros de salud, cuidados, diario y citas.
 
 - Test unitario añadido para las traducciones del panel Hoy/cuidados y navegación «Mi perro» (inglés, catalán y francés, además del fallback español).
+
+
+## Cronología Mi perro → Todo — 16-11-2026
+- Se implementa una cronología que combina registros reales del pasaporte, logs de cuidados, recuerdos del diario (formato Pawly v1), recordatorios del calendario y fechas sanitarias. Se ordena de más reciente a más antiguo.
+- En cuentas autenticadas intenta cargar pasaporte y logs desde Firebase; si no hay conexión, mantiene la información local y muestra el estado correspondiente. Si el pasaporte remoto está vacío y existen entradas locales, intenta sincronizarlas con el espacio privado de la mascota.
+- Incluye enlaces a Salud, Diario y Citas. La pestaña principal de Mi perro abre Todo; Agenda, Pasaporte/Salud, Cuidados y Compartir se mantienen disponibles.
+- La cronología no incorpora todavía eventos comunitarios ni todos los elementos de la agenda externa. No debe describirse como un historial completo de absolutamente todas las actividades.
+- Tests añadidos para mezcla/orden cronológico y para ignorar registros JSON inválidos. Pendiente ejecutar tests y validar sincronización en Android con dos cuentas/dispositivos.
