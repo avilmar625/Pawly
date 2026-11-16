@@ -88,8 +88,15 @@ internal fun PetCareHubScreen(
             FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).loadProfile(petId)?.photoUrl
         }.getOrNull()
     }
-    LaunchedEffect(initialSection) {
-        if (!initialSection.isNullOrBlank()) section = initialSection
+    LaunchedEffect(initialSection, initialPassportType, initialCareAction) {
+        if (!initialSection.isNullOrBlank()) {
+            section = initialSection
+            // A destination-only deep link is one-shot. Typed add actions are
+            // consumed by their destination screen after the form has opened.
+            if (initialPassportType.isNullOrBlank() && initialCareAction.isNullOrBlank()) {
+                onInitialActionConsumed()
+            }
+        }
     }
     Column(Modifier.fillMaxSize()) {
         if (sharedPetOwnerUid != null) {
