@@ -281,6 +281,12 @@ private fun PetPassportSection(
         val pattern = Regex("""\d+(?:[.,]\d+)?""")
         (pattern.find(entry.title)?.value ?: pattern.find(entry.detail)?.value)?.replace(",", ".")?.toFloatOrNull()
     }.firstOrNull()
+    LaunchedEffect(initialType, lastRecordedWeight) {
+        if (initialType == "Peso") {
+            weightKg = lastRecordedWeight ?: 10f
+            title = String.format(java.util.Locale.US, "%.1f", weightKg)
+        }
+    }
     var detail by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
     val types = listOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Alergia", "Intervención", "Peso", "Microchip", "Seguro", "Veterinario habitual", "Contacto de emergencia", "Otro")
