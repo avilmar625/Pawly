@@ -97,9 +97,9 @@ internal fun HomeCareTasksSection(
             else -> task.frequency == "Puntual" || completedDate == today
         }
     }
-    val completedCount = if (visibleTasks.isNotEmpty()) visibleTasks.count(::isComplete)
+    val completedCount = if (tasks.isNotEmpty()) visibleTasks.count(::isComplete)
         else listOf(walkDone, medicineDone).count { it }
-    val totalCount = visibleTasks.size.takeIf { it > 0 } ?: 2
+    val totalCount = if (tasks.isNotEmpty()) visibleTasks.size else 2
     val progress = if (totalCount == 0) 0f else completedCount.toFloat() / totalCount
 
     fun toggleTask(task: CareTask, checked: Boolean) {
@@ -187,7 +187,7 @@ internal fun HomeCareTasksSection(
             }
         }
 
-        if (visibleTasks.isEmpty()) {
+        if (tasks.isEmpty()) {
             HomeRoutineRow(
                 Icons.Filled.DirectionsWalk, "Paseo diario", "Un rato para explorar y olfatear",
                 walkDone, onWalkToggle, Color(0xFFE2F1E6), Color(0xFF287A4B)
@@ -197,6 +197,16 @@ internal fun HomeCareTasksSection(
                 Icons.Filled.Medication, "Medicación", "Comprueba la toma de hoy",
                 medicineDone, onMedicineToggle, Color(0xFFFCE8E8), Color(0xFFB54F5C)
             )
+        } else if (visibleTasks.isEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Text("No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados.",
+                    Modifier.fillMaxWidth().padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall)
+            }
         } else {
             visibleTasks.sortedWith(compareBy<CareTask>({ it.time.ifBlank { "99:99" } }, { it.title }))
                 .forEach { task ->
