@@ -790,10 +790,15 @@ private fun CommunityPlacesPanel(
                 Text(tr("Todavía no hay lugares aprobados por la comunidad. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
                 val categoryOrder = listOf("Playa", "Parque", "Ruta", "Restaurante", "Alojamiento", "Veterinario", "Otro")
-                places.sortedWith(compareBy<PawlyCommunityPlace> {
+                val orderedPlaces = places.sortedWith(compareBy<PawlyCommunityPlace> {
                     val index = categoryOrder.indexOfFirst { category -> category.equals(it.category, ignoreCase = true) }
                     if (index < 0) categoryOrder.size else index
-                }.thenBy { it.name.lowercase() }).take(100).forEach { place ->
+                }.thenBy { it.name.lowercase() }).take(100)
+                orderedPlaces.forEachIndexed { index, place ->
+                    if (index == 0 || !orderedPlaces[index - 1].category.equals(place.category, ignoreCase = true)) {
+                        Text(tr(place.category), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 7.dp))
+                    }
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                             .clickable { onOpenPlace(place) }
