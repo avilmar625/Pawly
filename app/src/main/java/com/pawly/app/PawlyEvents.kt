@@ -177,7 +177,6 @@ internal fun PawlyEventsScreen(
     val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
     val defaultPublishErrorMessage = tr("No se pudo publicar el evento.")
     val attendeesLoadErrorText = tr("No se pudo cargar la lista de personas interesadas.")
-    val interestUpdateErrorText = tr("No se pudo actualizar tu interés.")
     val chooserTitle = tr("Añadir a mi calendario")
     val calendarErrorMessage = tr("No hay ninguna aplicación de calendario disponible en este dispositivo.")
     LaunchedEffect(repository) {
@@ -386,10 +385,6 @@ internal fun PawlyEventsScreen(
         EventDetailsDialog(
             event = event,
             onDismiss = { selectedEvent = null },
-            onOpenProfile = onOpenProfile,
-            onMessage = onMessage,
-            followingIds = followingIds,
-            onFollow = onFollow,
             onAddToCalendar = {
                 val begin = event.startAt
                 val insert = Intent(Intent.ACTION_INSERT).setData(CalendarContract.Events.CONTENT_URI)
@@ -416,7 +411,7 @@ internal fun PawlyEventsScreen(
                             }
                             selectedEvent = events.firstOrNull { it.id == event.id }
                         }
-                        .onFailure { attendeesError = it.localizedMessage ?: interestUpdateErrorText }
+                        .onFailure { error = it.localizedMessage ?: tr("No se pudo actualizar tu interés.") }
                 }
             }
         )
@@ -456,10 +451,6 @@ internal fun PawlyEventsScreen(
 private fun EventDetailsDialog(
     event: PawlyEvent,
     onDismiss: () -> Unit,
-    onOpenProfile: (String) -> Unit,
-    onMessage: (String) -> Unit,
-    followingIds: Set<String>,
-    onFollow: (String) -> Unit,
     onAddToCalendar: () -> Unit,
     onToggleInterest: () -> Unit
 ) {
