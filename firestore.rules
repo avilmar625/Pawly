@@ -604,6 +604,20 @@ service cloud.firestore {
       }
     }
 
+    // Asset ownership index used by the trusted Worker for account deletion.
+    match /cloudinaryAssets/{assetId} {
+      allow create: if verified()
+        && request.resource.data.keys().hasOnly(['uid', 'publicId', 'resourceType', 'createdAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.publicId is string
+        && request.resource.data.publicId.size() <= 255
+        && request.resource.data.publicId.matches('pawly/.*')
+        && request.resource.data.resourceType in ['image', 'video']
+        && request.resource.data.createdAt == request.time;
+      allow get, list: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /accountDeletionRequests/{requestId} {
       allow create: if signedIn()
         && requestId == request.auth.uid
