@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -19,6 +21,8 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -89,6 +93,7 @@ internal fun PetCareHubScreen(
     onInitialActionConsumed: () -> Unit = {}
 ) {
     var section by remember { mutableStateOf("Todo") }
+    var sectionMenuExpanded by remember { mutableStateOf(false) }
     var sharedPhotoUrl by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
     LaunchedEffect(sharedPetOwnerUid, storageScope, petId) {
         section = if (sharedPetOwnerUid == null) "Todo" else "Pasaporte"
@@ -152,44 +157,59 @@ internal fun PetCareHubScreen(
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val sections = if (sharedPetOwnerUid == null) {
-                    listOf("Todo", "Agenda", "Pasaporte", "Cuidados", "Compartir", "Diario", "Citas")
-                } else {
-                    listOf("Pasaporte", "Cuidados")
-                }
-                sections.forEach { item ->
-                    val label = when (item) {
-                        "Pasaporte" -> tr("Salud")
-                        "Diario" -> tr("Diario")
-                        "Citas" -> tr("Citas")
-                        else -> tr(item)
+            val sections = if (sharedPetOwnerUid == null) {
+                listOf("Todo", "Agenda", "Pasaporte", "Cuidados", "Compartir", "Diario", "Citas")
+            } else listOf("Pasaporte", "Cuidados")
+            val selectedLabel = when (section) {
+                "Pasaporte" -> tr("Salud")
+                "Diario" -> tr("Diario")
+                "Citas" -> tr("Citas")
+                else -> tr(section)
+            }
+            val selectedIcon = when (section) {
+                "Todo" -> Icons.Default.Pets
+                "Agenda", "Citas" -> Icons.Default.CalendarMonth
+                "Pasaporte" -> Icons.Default.HealthAndSafety
+                "Diario" -> Icons.Default.AutoStories
+                "Cuidados", "Compartir" -> Icons.Default.People
+                else -> Icons.Default.Pets
+            }
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { sectionMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 13.dp)
+                ) {
+                    Icon(selectedIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(11.dp))
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
+                        Text(tr("Estás viendo"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(selectedLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
-                    FilterChip(
-                        selected = section == item,
-                        onClick = {
-                            when (item) {
-                                "Diario" -> onOpenDiary()
-                                "Citas" -> onOpenCalendar()
-                                else -> section = item
-                            }
-                        },
-                        label = { Text(label) },
-                        leadingIcon = {
-                            Icon(
-                                when (item) {
-                                    "Todo" -> Icons.Default.Pets
-                                    "Agenda", "Citas" -> Icons.Default.CalendarMonth
-                                    "Pasaporte" -> Icons.Default.HealthAndSafety
-                                    "Diario" -> Icons.Default.AutoStories
-                                    "Cuidados", "Compartir" -> Icons.Default.People
-                                    else -> Icons.Default.Pets
-                                },
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
+                    Icon(Icons.Default.ExpandMore, contentDescription = tr("Cambiar sección"))
+                }
+                DropdownMenu(expanded = sectionMenuExpanded, onDismissRequest = { sectionMenuExpanded = false }) {
+                    sections.forEach { item ->
+                        val label = when (item) { "Pasaporte" -> tr("Salud"); "Diario" -> tr("Diario"); "Citas" -> tr("Citas"); else -> tr(item) }
+                        val icon = when (item) {
+                            "Todo" -> Icons.Default.Pets
+                            "Agenda", "Citas" -> Icons.Default.CalendarMonth
+                            "Pasaporte" -> Icons.Default.HealthAndSafety
+                            "Diario" -> Icons.Default.AutoStories
+                            "Cuidados", "Compartir" -> Icons.Default.People
+                            else -> Icons.Default.Pets
                         }
-                    )
+                        DropdownMenuItem(
+                            text = { Text(label, fontWeight = if (section == item) FontWeight.Bold else FontWeight.Normal) },
+                            leadingIcon = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            trailingIcon = { if (section == item) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            onClick = {
+                                sectionMenuExpanded = false
+                                when (item) { "Diario" -> onOpenDiary(); "Citas" -> onOpenCalendar(); else -> section = item }
+                            }
+                        )
+                    }
                 }
             }
         }
