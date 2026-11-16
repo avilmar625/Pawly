@@ -542,6 +542,7 @@ private fun PawlyMainApp(
                     calendarReminders = calendarReminders,
                     onOpenHealthAgenda = { pendingCareSection = "Agenda"; selected = Tab.HEALTH },
                     onOpenPassport = { pendingCareSection = "Pasaporte"; selected = Tab.HEALTH },
+                    eventRepository = cloudRepository,
                     storageScope = storageScope
                 )
                 Tab.EXPLORE -> ExploreScreen(
