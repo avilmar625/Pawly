@@ -122,9 +122,11 @@ internal fun HealthScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Text(tr("BIENESTAR"), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.5.sp)
-            Text(tr("Cuidar también\nes querer."), style = MaterialTheme.typography.headlineLarge)
-            Text(tr("Organiza su día a día con tranquilidad."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            PawlyPageHeader(
+                eyebrow = "Bienestar",
+                title = "Cuidar también es querer.",
+                subtitle = "Organiza su día a día con tranquilidad."
+            )
         }
         item {
             Surface(shape = RoundedCornerShape(23.dp), color = MaterialTheme.colorScheme.primaryContainer) {
