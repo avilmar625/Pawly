@@ -888,7 +888,7 @@ class FirebaseCommunityRepository private constructor(
                 PawlyCommunityPlace(doc.id, doc.getString("name").orEmpty(), doc.getString("category").orEmpty(),
                     doc.getString("location").orEmpty(), doc.getString("description").orEmpty(),
                     doc.getString("authorUid").orEmpty(), doc.getTimestamp("createdAt")?.toDate()?.time ?: 0L,
-                    doc.getDouble("latitude"), doc.getDouble("longitude"))
+                    doc.getDouble("latitude"), doc.getDouble("longitude"), doc.getString("status") ?: "pending")
             }.sortedByDescending { it.createdAt }
     }
 

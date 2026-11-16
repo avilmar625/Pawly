@@ -740,7 +740,7 @@ service cloud.firestore {
         && (request.resource.data.status == resource.data.status
           || (resource.data.status == 'approved' && request.resource.data.status == 'pending'))
         && request.resource.data.authorUid == resource.data.authorUid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'category', 'location', 'latitude', 'longitude', 'description'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'category', 'location', 'latitude', 'longitude', 'description', 'status'])
         && request.resource.data.name is string && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 80
         && request.resource.data.category in ['Parque', 'Playa', 'Restaurante', 'Alojamiento', 'Ruta', 'Veterinario', 'Otro']
         && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 120
