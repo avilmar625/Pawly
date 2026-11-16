@@ -136,7 +136,7 @@ internal fun PetTimelineSection(
     var syncLabel by remember(storageScope, language) {
         androidx.compose.runtime.mutableStateOf(if (storageScope.isNullOrBlank()) savedLocalLabel else loadingLabel)
     }
-    androidx.compose.runtime.LaunchedEffect(petName, petId, storageScope, diaryEntries, calendarReminders, healthDates) {
+    androidx.compose.runtime.LaunchedEffect(petName, petId, storageScope, diaryEntries, calendarReminders, healthDates, language) {
         if (storageScope.isNullOrBlank()) return@LaunchedEffect
         runCatching {
             val repository = com.pawly.app.care.data.FirebasePetCareRepository()
