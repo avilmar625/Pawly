@@ -9,11 +9,11 @@ package com.pawly.app.care.domain
  */
 internal object WeightMeasurementParser {
     private val withUnit = Regex(
-        """(?<![\\d.,])(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*kg\\b""",
+        """(?<![\d.,])(\d{1,3}(?:[.,]\d{1,2})?)\s*kg\b""",
         RegexOption.IGNORE_CASE
     )
     private val standalone = Regex(
-        """^\\s*(?:peso\\s*[:=-]?\\s*)?(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*$""",
+        """^\s*(?:peso\s*[:=-]?\s*)?(\d{1,3}(?:[.,]\d{1,2})?)\s*$""",
         RegexOption.IGNORE_CASE
     )
 
