@@ -224,6 +224,7 @@ internal fun PetCareHubScreen(
                 calendarReminders = calendarReminders,
                 healthDates = dates,
                 onOpenHealth = { section = "Pasaporte" },
+                onOpenCare = { section = "Cuidados" },
                 onOpenDiary = onOpenDiary,
                 onOpenCalendar = onOpenCalendar
             )
