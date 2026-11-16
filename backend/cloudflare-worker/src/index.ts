@@ -187,8 +187,10 @@ export async function handlePhoneVerification(
     };
     if (existing) await writeFirestoreDocument(env, accessToken, `phoneDirectory/${phoneHash}`, fields);
     else {
-      const created = await firestoreRequest(env, accessToken, `phoneDirectory?documentId=${encodeURIComponent(phoneHash)}`, {
-        method: "POST", body: JSON.stringify({ fields })
+      const created = await fetch(`${firestoreRoot(env)}/phoneDirectory?documentId=${encodeURIComponent(phoneHash)}`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+        body: JSON.stringify({ fields })
       });
       if (created.status === 409) return json({ error: "Este número ya está asociado a otra cuenta." }, 409);
       if (!created.ok) throw new Error("No se pudo registrar el número verificado.");
@@ -283,8 +285,9 @@ export async function handlePhoneDiscoveryMatches(request: Request, env: Env): P
     let reserved = false;
     for (let slot = 0; slot < PHONE_DAILY_BATCH_LIMIT; slot++) {
       const reservationId = phoneDiscoveryReservationId(uid, now, slot);
-      const reservation = await firestoreRequest(env, accessToken, `phoneDiscoveryLimits?documentId=${encodeURIComponent(reservationId)}`, {
+      const reservation = await fetch(`${firestoreRoot(env)}/phoneDiscoveryLimits?documentId=${encodeURIComponent(reservationId)}`, {
         method: "POST",
+        headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
         body: JSON.stringify({ fields: {
           uid: firestoreString(uid), day: firestoreString(day), createdAt: firestoreTimestamp(now),
           expiresAt: firestoreTimestamp(new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000))
