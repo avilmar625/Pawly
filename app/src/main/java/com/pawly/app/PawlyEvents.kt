@@ -171,6 +171,8 @@ internal fun PawlyEventsScreen(
     var attendeesError by remember { mutableStateOf<String?>(null) }
     var createError by remember { mutableStateOf<String?>(null) }
     var category by remember { mutableStateOf("Todos") }
+    var sortAscending by remember { mutableStateOf(true) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
     val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
@@ -191,6 +193,8 @@ internal fun PawlyEventsScreen(
         loading = false
     }
     val visible = events.filter { category == "Todos" || it.category == category }
+        .sortedWith(compareBy<PawlyEvent> { if (it.startAt > 0L) it.startAt else Long.MAX_VALUE }
+            .let { comparator -> if (sortAscending) comparator else comparator.reversed() })
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp)) {
         if (elegantDesign && !mapOnly) {
             Box(Modifier.fillMaxWidth().height(128.dp).clip(RoundedCornerShape(24.dp))) {
@@ -235,6 +239,37 @@ internal fun PawlyEventsScreen(
                         text = { Text(tr(if (item == "Todos") "Todos los eventos" else item), fontWeight = if (category == item) FontWeight.Bold else FontWeight.Normal) },
                         leadingIcon = { if (category == item) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick = { category = item; eventCategoryMenuExpanded = false }
+                    )
+                }
+            }
+        }
+        if (!mapOnly) {
+            Spacer(Modifier.height(6.dp))
+            Box(Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { sortMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp)
+                ) {
+                    Icon(Icons.Default.Sort, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(9.dp))
+                    Text(tr("Ordenar por fecha: ") + tr(if (sortAscending) "Más próximos primero" else "Más lejanos primero"),
+                        modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
+                    Icon(Icons.Default.ExpandMore, null)
+                }
+                DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(tr("Más próximos primero"), fontWeight = if (sortAscending) FontWeight.Bold else FontWeight.Normal) },
+                        leadingIcon = { Icon(Icons.Default.EventAvailable, null) },
+                        trailingIcon = { if (sortAscending) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                        onClick = { sortAscending = true; sortMenuExpanded = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(tr("Más lejanos primero"), fontWeight = if (!sortAscending) FontWeight.Bold else FontWeight.Normal) },
+                        leadingIcon = { Icon(Icons.Default.Event, null) },
+                        trailingIcon = { if (!sortAscending) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
+                        onClick = { sortAscending = false; sortMenuExpanded = false }
                     )
                 }
             }
