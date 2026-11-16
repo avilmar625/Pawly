@@ -568,7 +568,8 @@ private fun PawlyMainApp(
                             onDateChange = { _, _ -> },
                             elegantDesign = elegantDesign,
                             sharedPetOwnerUid = sharedPet.ownerUid,
-                            onCloseSharedPet = { selectedSharedPet = null }
+                            onCloseSharedPet = { selectedSharedPet = null },
+                            eventRepository = cloudRepository
                         )
                     } else {
                         PetCareHubScreen(
@@ -589,6 +590,7 @@ private fun PawlyMainApp(
                             onOpenCalendar = { selected = Tab.CALENDAR },
                             diaryEntries = diaryEntries,
                             calendarReminders = calendarReminders,
+                            eventRepository = cloudRepository,
                             initialSection = pendingCareSection ?: when {
                                 pendingPassportType != null -> "Pasaporte"
                                 pendingCareAction != null -> "Cuidados"
