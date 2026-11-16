@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Help
@@ -194,7 +195,7 @@ private fun MoreDestinationCard(icon: androidx.compose.ui.graphics.vector.ImageV
                 Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            Icon(Icons.Filled.Pets, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
         }
     }
 }
