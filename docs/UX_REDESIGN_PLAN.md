@@ -111,3 +111,11 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - Los estados de sincronización reflejan el resultado real.
 - Unit tests, lint, APK debug y bundle release pasan.
 - Prueba manual de Android en emulador y dispositivo físico antes de cerrar el bloque.
+
+
+## Estado de implementación observado en cambios65 (16-11-2026)
+- Los accesos rápidos ya están conectados en PawlyApp: Peso abre alta de tipo Peso en Pasaporte; Foto abre el selector de imagen del Diario; Comida abre el alta de cuidado Comida. Validar en dispositivo que los formularios consumen el parámetro inicial una sola vez y persisten.
+- Se añade confirmación si otro cuidador ya registró una tarea de medicación ese día. La comprobación es una salvaguarda de UX basada en careLogs descargados, no una exclusión transaccional de doble toma.
+- El control de edición arranca deshabilitado en modo autenticado hasta conocer el rol remoto.
+- El parser de peso prioriza valores explícitos en kg y solo admite valores sin unidad cuando la cadena es una cifra aislada o tiene el prefijo Peso.
+- Tests nuevos cubren duplicados de medicación y fechas confundibles con peso. Resultado de ejecución pendiente de CI/Gradle.
