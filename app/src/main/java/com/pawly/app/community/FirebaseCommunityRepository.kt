@@ -170,7 +170,16 @@ class FirebaseCommunityRepository private constructor(
         val cleanEmail = CommunityInputRules.validateEmail(email)
         require(password.isNotEmpty()) { "Escribe tu contraseña." }
         auth.signInWithEmailAndPassword(cleanEmail, password).await()
-        ensureMyProfile()
+        try {
+            ensureMyProfile()
+        } catch (error: Exception) {
+            // Authentication has succeeded. Keep the session alive so a transient
+            // Firestore/rules issue can be repaired without another account creation.
+            throw IllegalStateException(
+                "Firebase ha validado tu acceso, pero Pawly no ha podido cargar o completar tu perfil. La sesión sigue abierta; revisa la conexión y las reglas de Firestore e inténtalo de nuevo.",
+                error
+            )
+        }
     }
 
     /**
@@ -181,7 +190,14 @@ class FirebaseCommunityRepository private constructor(
         require(idToken.isNotBlank()) { "Google no ha devuelto un token de acceso válido." }
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential).await()
-        ensureMyProfile()
+        try {
+            ensureMyProfile()
+        } catch (error: Exception) {
+            throw IllegalStateException(
+                "Google ha validado tu acceso, pero Pawly no ha podido cargar o completar tu perfil. La sesión sigue abierta; revisa la conexión y las reglas de Firestore e inténtalo de nuevo.",
+                error
+            )
+        }
     }
 
     suspend fun sendPasswordReset(email: String) {
