@@ -82,6 +82,7 @@ android {
             // A short-lived Firebase PNV test token is read only from local.properties.
             // It is never embedded in release builds or committed to Git.
             buildConfigField("String", "FPNV_TEST_TOKEN", buildConfigString("FPNV_TEST_TOKEN"))
+            buildConfigField("Boolean", "PHONE_VERIFICATION_PRODUCTION_ENABLED", "false")
         }
         getByName("release") {
             buildConfigField("String", "FPNV_TEST_TOKEN", "\"\"")

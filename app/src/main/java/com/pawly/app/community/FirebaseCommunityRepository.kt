@@ -941,14 +941,53 @@ class FirebaseCommunityRepository private constructor(
         return profiles.filter { it.uid != uid && it.uid !in blocked }
     }
 
-    /** Raw contact numbers are sent only over TLS to the trusted Worker and never stored. */
-    suspend fun loadPhoneDiscoveryEnabled(): Boolean = false
+    /** Phone numbers are never stored in Firestore in clear text; the Worker stores an HMAC index only. */
+    suspend fun loadPhoneDiscoveryStatus(): PawlyPhoneDiscoveryStatus {
+        val response = postBackend("/v1/phone/discovery/status", JSONObject())
+        return PawlyPhoneDiscoveryStatus(
+            verified = response.optBoolean("verified"),
+            enabled = response.optBoolean("enabled"),
+            testNumber = response.optBoolean("testNumber")
+        )
+    }
 
-    suspend fun setPhoneDiscovery(phone: String, enabled: Boolean): Unit =
-        error("La búsqueda por teléfono está desactivada hasta verificar la titularidad del número.")
+    suspend fun loadPhoneDiscoveryEnabled(): Boolean = loadPhoneDiscoveryStatus().enabled
 
-    suspend fun findContactMatches(phoneNumbers: List<String>): List<PawlyContactMatch> =
-        error("La búsqueda por teléfono está desactivada hasta verificar la titularidad del número.")
+    suspend fun verifyPhoneNumberToken(phoneToken: String): PawlyPhoneDiscoveryStatus {
+        require(phoneToken.length in 80..8000)
+        val response = postBackend("/v1/phone/verify", JSONObject().put("phoneToken", phoneToken))
+        return PawlyPhoneDiscoveryStatus(
+            verified = response.optBoolean("verified"),
+            enabled = response.optBoolean("enabled"),
+            testNumber = response.optBoolean("testNumber")
+        )
+    }
+
+    suspend fun setPhoneDiscovery(enabled: Boolean): PawlyPhoneDiscoveryStatus {
+        val response = postBackend("/v1/phone/discovery/settings", JSONObject().put("enabled", enabled))
+        return PawlyPhoneDiscoveryStatus(
+            verified = response.optBoolean("verified"),
+            enabled = response.optBoolean("enabled"),
+            testNumber = response.optBoolean("testNumber")
+        )
+    }
+
+    /** Contacts are normalized to E.164 on-device and sent only over TLS; the Worker never stores raw numbers. */
+    suspend fun findContactMatches(phoneNumbers: List<String>): List<PawlyContactMatch> {
+        require(phoneNumbers.size in 1..30)
+        val response = postBackend("/v1/phone/discovery/matches", JSONObject().put("phoneNumbers", org.json.JSONArray(phoneNumbers)))
+        val rows = response.optJSONArray("matches") ?: org.json.JSONArray()
+        return List(rows.length()) { index ->
+            rows.getJSONObject(index).let { row ->
+                PawlyContactMatch(
+                    uid = row.optString("uid"),
+                    displayName = row.optString("displayName"),
+                    username = row.optString("username"),
+                    photoUrl = row.optString("photoUrl")
+                )
+            }
+        }.filter { it.uid.isNotBlank() }
+    }
 
     private suspend fun postBackend(path: String, payload: JSONObject): JSONObject {
         val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')

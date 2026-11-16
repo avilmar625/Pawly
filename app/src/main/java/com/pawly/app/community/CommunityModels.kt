@@ -118,3 +118,11 @@ data class PawlyEventAttendee(
     val username: String = "",
     val photoUrl: String = ""
 )
+
+
+/** Consent and verification state for private phone-contact discovery. */
+data class PawlyPhoneDiscoveryStatus(
+    val verified: Boolean = false,
+    val enabled: Boolean = false,
+    val testNumber: Boolean = false
+)
