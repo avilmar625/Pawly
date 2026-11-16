@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
@@ -48,7 +49,7 @@ internal fun HomeUpcomingCard(
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text("PRÓXIMAMENTE", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, letterSpacing = 1f)
+                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                 Text(title.ifBlank { entryType }, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
