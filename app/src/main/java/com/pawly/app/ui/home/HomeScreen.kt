@@ -43,6 +43,7 @@ internal fun HomeScreen(
     onAbout: () -> Unit,
     onEditProfile: () -> Unit,
     diaryCount: Int,
+    diaryEntries: List<String> = emptyList(),
     dogPhoto: Bitmap?,
     dogPhotoUrl: String? = null,
     elegantDesign: Boolean = false,
@@ -58,31 +59,38 @@ internal fun HomeScreen(
     val locale = PawlyI18n.locale(language)
     val dateLabel = DateFormat.getDateInstance(DateFormat.FULL, locale)
         .format(Date()).replaceFirstChar { it.uppercase(locale) }
-    var weightEntries by remember(dogName, storageScope) {
-        mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
-            .filter { it.type.equals("Peso", true) })
+    var passportEntries by remember(dogName, storageScope) {
+        mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope))
     }
 
     LaunchedEffect(dogName, storageScope) {
         val local = com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
-            .filter { it.type.equals("Peso", true) }
-        weightEntries = local
+        passportEntries = local
         if (!storageScope.isNullOrBlank()) {
             runCatching {
                 val repository = com.pawly.app.care.data.FirebasePetCareRepository()
                 repository.ensureSharedPet(dogName, dogName)
-                repository.loadPassportEntries(dogName).filter { it.type.equals("Peso", true) }
-            }.onSuccess { remote ->
-                weightEntries = remote
-                com.pawly.app.care.data.PetCareLocalStore.saveEntries(
-                    context, dogName,
-                    com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
-                        .filterNot { it.type.equals("Peso", true) } + remote,
-                    storageScope
-                )
+                val remote = repository.loadPassportEntries(dogName)
+                if (remote.isEmpty() && local.isNotEmpty()) {
+                    repository.savePassportEntries(dogName, local)
+                    local
+                } else {
+                    remote
+                }
+            }.onSuccess { merged ->
+                passportEntries = merged
+                com.pawly.app.care.data.PetCareLocalStore.saveEntries(context, dogName, merged, storageScope)
             }
         }
     }
+
+    val weightEntries = passportEntries.filter { it.type.equals("Peso", true) }
+    val today = java.time.LocalDate.now()
+    val nextPassportEntry = passportEntries.mapNotNull { entry ->
+        val date = runCatching { java.time.LocalDate.parse(entry.date) }.getOrNull()
+        if (date != null && !date.isBefore(today) && !entry.type.equals("Peso", true)) date to entry else null
+    }.minByOrNull { it.first }
+    val diaryAnniversary = remember(diaryEntries, today) { findDiaryAnniversary(diaryEntries, today) }
 
     val parsedWeights = weightEntries.mapNotNull { entry ->
         com.pawly.app.care.domain.WeightMeasurementParser
@@ -131,6 +139,16 @@ internal fun HomeScreen(
                 onMedicineToggle = onMedicineToggle,
                 onOpenCalendar = onCalendar
             )
+        }
+        if (nextPassportEntry != null) {
+            item {
+                HomeUpcomingCard(
+                    entryType = nextPassportEntry.second.type,
+                    title = nextPassportEntry.second.title,
+                    date = nextPassportEntry.first,
+                    onClick = onHealth
+                )
+            }
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -200,6 +218,11 @@ internal fun HomeScreen(
                     }
                     Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                 }
+            }
+        }
+        if (diaryAnniversary != null) {
+            item {
+                HomeAnniversaryCard(anniversary = diaryAnniversary, onClick = onDiary)
             }
         }
         item {
