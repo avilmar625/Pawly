@@ -68,7 +68,9 @@ internal fun DiaryScreen(
     elegantDesign: Boolean = false,
     sharedPetOwnerUid: String? = null,
     petId: String? = null,
-    repository: FirebaseCommunityRepository? = null
+    repository: FirebaseCommunityRepository? = null,
+    openPhotoPickerOnEnter: Boolean = false,
+    onPhotoPickerOpened: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val photoConfigErrorText = tr("Configura la subida de fotografías para guardar imágenes en el diario.")
@@ -82,6 +84,12 @@ internal fun DiaryScreen(
     var photoUploadBusy by remember { mutableStateOf(false) }
     var photoUploadError by remember { mutableStateOf<String?>(null) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedPhotos = it.take(8) }
+    LaunchedEffect(openPhotoPickerOnEnter) {
+        if (openPhotoPickerOnEnter) {
+            photoPicker.launch("image/*")
+            onPhotoPickerOpened()
+        }
+    }
     val sharedDiaryRepository = remember(sharedPetOwnerUid) {
         sharedPetOwnerUid?.let { runCatching { FirebasePetProfileRepository(ownerUid = it) }.getOrNull() }
     }
