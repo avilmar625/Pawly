@@ -491,7 +491,7 @@ private fun PawlyMainApp(
                     onMedicineToggle = { medicineDone = it },
                     onExplore = { selected = Tab.EXPLORE },
                     onLearn = { selected = Tab.LEARN },
-                    onAbout = { showAbout = true },
+                    onAbout = { showAbout = true },\n                    onSettings = { showSettings = true },
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
                     diaryCount = diaryEntries.size,
                     diaryEntries = diaryEntries,
