@@ -14,6 +14,9 @@ CLOUDINARY_VIDEO_UPLOAD_PRESET=tu_preset_unsigned_videos
 # Cuando hayas creado los dos nuevos, elimina esta línea.
 # CLOUDINARY_UPLOAD_PRESET=tu_preset_unsigned_antiguo
 
+# URL del backend gratuito Cloudflare Workers (añádela tras desplegar el Worker).
+# PAWLY_BACKEND_URL=https://pawly-api.<tu-subdominio>.workers.dev
+
 # Opcional: firma local de la versión release.
 # Guarda el keystore fuera del repositorio y no compartas estas contraseñas.
 # RELEASE_STORE_FILE=/ruta/segura/pawly-upload.jks
