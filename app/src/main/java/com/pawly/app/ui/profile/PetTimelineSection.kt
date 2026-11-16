@@ -58,6 +58,7 @@ internal fun buildPetTimelineItems(
     diaryEntries: List<String>,
     calendarReminders: List<String>,
     healthDates: Map<String, String>,
+    communityEvents: List<PawlyEvent> = emptyList(),
     zoneId: ZoneId = ZoneId.systemDefault()
 ): List<PetTimelineItem> {
     val items = mutableListOf<PetTimelineItem>()
@@ -105,6 +106,17 @@ internal fun buildPetTimelineItems(
         }.getOrNull()
         if (date != null) items += PetTimelineItem("health-date-$name-$date", name, "Cuidado programado", "Cita", date)
     }
+    communityEvents.forEach { event ->
+        if (event.startAt > 0L) {
+            items += PetTimelineItem(
+                id = "event-${event.id}",
+                title = event.title.ifBlank { "Evento de la comunidad" },
+                detail = listOf(event.category, event.location).filter { it.isNotBlank() }.joinToString(" · "),
+                category = "Evento",
+                occurredAt = event.startAt
+            )
+        }
+    }
     return items.sortedByDescending { it.occurredAt }
 }
 
@@ -113,7 +125,7 @@ internal fun filterPetTimelineItems(items: List<PetTimelineItem>, filter: String
     when (filter) {
         "Salud" -> items.filter { it.category == "Salud" || it.category == "Cuidado" }
         "Diario" -> items.filter { it.category == "Diario" }
-        "Citas" -> items.filter { it.category == "Cita" }
+        "Citas" -> items.filter { it.category == "Cita" || it.category == "Evento" }
         else -> items
     }
 
@@ -125,6 +137,7 @@ internal fun PetTimelineSection(
     diaryEntries: List<String>,
     calendarReminders: List<String>,
     healthDates: Map<String, String>,
+    eventRepository: FirebaseCommunityRepository? = null,
     onOpenHealth: () -> Unit,
     onOpenDiary: () -> Unit,
     onOpenCalendar: () -> Unit
@@ -154,24 +167,40 @@ internal fun PetTimelineSection(
     var syncLabel by remember(storageScope, language) {
         androidx.compose.runtime.mutableStateOf(if (storageScope.isNullOrBlank()) savedLocalLabel else loadingLabel)
     }
-    androidx.compose.runtime.LaunchedEffect(petName, petId, storageScope, diaryEntries, calendarReminders, healthDates, language) {
-        if (storageScope.isNullOrBlank()) return@LaunchedEffect
-        runCatching {
-            val repository = com.pawly.app.care.data.FirebasePetCareRepository()
-            repository.ensureSharedPet(petId, petName)
-            val remoteEntries = repository.loadPassportEntries(petId)
-            val entries = if (remoteEntries.isEmpty() && localEntries.isNotEmpty()) {
-                repository.savePassportEntries(petId, localEntries)
-                localEntries
-            } else remoteEntries.ifEmpty { localEntries }
-            val remoteLogs = repository.loadCareLogs(petId)
-            val logs = remoteLogs.ifEmpty { localLogs }
-            PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
-            PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
-            timelineItems = buildPetTimelineItems(entries, logs, diaryEntries, calendarReminders, healthDates)
-            syncLabel = syncedLabel
-        }.onFailure {
-            syncLabel = offlineLabel
+    androidx.compose.runtime.LaunchedEffect(
+        petName, petId, storageScope, diaryEntries, calendarReminders, healthDates, language, eventRepository
+    ) {
+        var entries = localEntries
+        var logs = localLogs
+        var careSyncSucceeded = storageScope.isNullOrBlank()
+        if (!storageScope.isNullOrBlank()) {
+            runCatching {
+                val careRepository = com.pawly.app.care.data.FirebasePetCareRepository()
+                careRepository.ensureSharedPet(petId, petName)
+                val remoteEntries = careRepository.loadPassportEntries(petId)
+                entries = if (remoteEntries.isEmpty() && localEntries.isNotEmpty()) {
+                    careRepository.savePassportEntries(petId, localEntries)
+                    localEntries
+                } else remoteEntries.ifEmpty { localEntries }
+                val remoteLogs = careRepository.loadCareLogs(petId)
+                logs = remoteLogs.ifEmpty { localLogs }
+                PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
+                PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
+                careSyncSucceeded = true
+            }.onFailure {
+                careSyncSucceeded = false
+            }
+        }
+        val communityEvents = eventRepository?.let { repository ->
+            runCatching { repository.loadEvents() }.getOrDefault(emptyList())
+        }.orEmpty()
+        timelineItems = buildPetTimelineItems(
+            entries, logs, diaryEntries, calendarReminders, healthDates, communityEvents
+        )
+        syncLabel = when {
+            storageScope.isNullOrBlank() -> savedLocalLabel
+            careSyncSucceeded -> syncedLabel
+            else -> offlineLabel
         }
     }
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
