@@ -438,7 +438,7 @@ private fun PetPassportSection(
                     Text(tr("${entries.size} registros"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(onClick = { showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text(tr("Añadir")) }
+                    Button(onClick = { editingEntry = null; selectedType = "Vacuna"; title = ""; detail = ""; date = LocalDate.now().toString(); showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text(tr("Añadir")) }
                     TextButton(onClick = {
                         runCatching { PetCarePdfExporter.sharePassport(context, petName, entries) }
                             .onFailure { syncMessage = "No se pudo preparar el PDF" }
