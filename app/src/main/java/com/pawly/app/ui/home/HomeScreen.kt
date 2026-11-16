@@ -85,10 +85,9 @@ internal fun HomeScreen(
     }
 
     val parsedWeights = weightEntries.mapNotNull { entry ->
-        val raw = "${entry.title} ${entry.detail}"
-        val match = Regex("""(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*(?:kg)?""", RegexOption.IGNORE_CASE).find(raw)
-        val value = match?.groupValues?.getOrNull(1)?.replace(',', '.')?.toFloatOrNull()
-        value?.takeIf { it in 0.1f..150f }?.let { entry.date to it }
+        com.pawly.app.care.domain.WeightMeasurementParser
+            .parse("${entry.title} ${entry.detail}")
+            ?.let { entry.date to it }
     }.sortedBy { it.first }
     val latestWeight = parsedWeights.lastOrNull()?.second
     val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
