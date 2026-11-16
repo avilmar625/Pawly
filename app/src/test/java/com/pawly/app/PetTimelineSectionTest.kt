@@ -32,6 +32,19 @@ class PetTimelineSectionTest {
         assertEquals("Rabia", result.last().title)
     }
 
+    @Test fun filtersTimelineByHealthDiaryAndAppointmentsWithoutDroppingSourceItems() {
+        val items = listOf(
+            PetTimelineItem("health-1", "Vacuna", "Rabia", "Salud", 4L),
+            PetTimelineItem("care-1", "Paseo", "Ana", "Cuidado", 3L),
+            PetTimelineItem("diary-1", "Playa", "Aventura", "Diario", 2L),
+            PetTimelineItem("appointment-1", "Veterinario", "Revisión", "Cita", 1L)
+        )
+        assertEquals(listOf("health-1", "care-1"), filterPetTimelineItems(items, "Salud").map { it.id })
+        assertEquals(listOf("diary-1"), filterPetTimelineItems(items, "Diario").map { it.id })
+        assertEquals(listOf("appointment-1"), filterPetTimelineItems(items, "Citas").map { it.id })
+        assertEquals(items, filterPetTimelineItems(items, "Todo"))
+    }
+
     @Test fun ignoresMalformedOrUnsupportedDiaryAndCalendarRecords() {
         val result = buildPetTimelineItems(
             passportEntries = emptyList(),
