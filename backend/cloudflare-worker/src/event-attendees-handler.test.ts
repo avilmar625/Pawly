@@ -75,7 +75,7 @@ describe("POST /v1/events/attendees", () => {
       }],
       nextPageToken: "cursor-2"
     });
-    expect(calls).toHaveLength(9);
+    expect(calls).toHaveLength(8);
   });
 
   it("rejects a non-organizer before reading the attendee collection", async () => {
