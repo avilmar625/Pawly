@@ -33,7 +33,8 @@ internal fun HomeCareTasksSection(
     walkDone: Boolean,
     medicineDone: Boolean,
     onWalkToggle: (Boolean) -> Unit,
-    onMedicineToggle: (Boolean) -> Unit
+    onMedicineToggle: (Boolean) -> Unit,
+    onOpenCalendar: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val today = LocalDate.now()
@@ -180,7 +181,7 @@ internal fun HomeCareTasksSection(
             if (loading) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             } else {
-                TextButton(onClick = { syncMessage = if (storageScope.isNullOrBlank()) "Guardado en este dispositivo" else syncMessage }) {
+                TextButton(onClick = onOpenCalendar) {
                     Text("Ver agenda")
                 }
             }
