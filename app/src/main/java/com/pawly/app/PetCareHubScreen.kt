@@ -1,5 +1,6 @@
 package com.pawly.app
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -200,7 +201,7 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
     var title by remember { mutableStateOf("") }
     var detail by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
-    val types = listOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Alergia", "Intervención", "Peso", "Otro")
+    val types = listOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Alergia", "Intervención", "Peso", "Microchip", "Seguro", "Veterinario habitual", "Contacto de emergencia", "Otro")
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -218,6 +219,37 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
                     Text(tr("Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria."), style = MaterialTheme.typography.bodyMedium)
                     Text(syncMessage, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+            }
+        }
+        item {
+            val emergencyTypes = setOf("Microchip", "Alergia", "Seguro", "Veterinario habitual", "Contacto de emergencia")
+            val emergencyEntries = entries.filter { it.type in emergencyTypes }
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(tr("Ficha de emergencia"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (emergencyEntries.isEmpty()) {
+                        Text(tr("Añade microchip, alergias, seguro y veterinario habitual para tener los datos importantes a mano."), style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        emergencyEntries.forEach { entry ->
+                            Text("${entry.type}: ${entry.detail.ifBlank { entry.title }}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val message = buildString {
+                                append("Ficha de emergencia de $petName\\n")
+                                emergencyEntries.forEach { append("${it.type}: ${it.detail.ifBlank { it.title }}\\n") }
+                            }
+                            val send = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "Ficha de emergencia de $petName")
+                                putExtra(Intent.EXTRA_TEXT, message)
+                            }
+                            runCatching { context.startActivity(Intent.createChooser(send, tr("Compartir ficha de emergencia"))) }
+                        },
+                        enabled = emergencyEntries.isNotEmpty()
+                    ) { Text(tr("Compartir ficha con veterinario o persona de confianza")) }
                 }
             }
         }

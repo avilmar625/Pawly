@@ -26,6 +26,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Share
+import com.pawly.app.care.export.LostPetPosterExporter
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -202,7 +204,20 @@ internal fun LostPetHelpScreen(
             Icon(Icons.Default.CameraAlt, null); Text("  ${t("Añadir fotografía")}")
         }
         photo?.let { AsyncImage(model = it, contentDescription = "Fotografía seleccionada", modifier = Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(18.dp))) }
-        Text(tr("Consejo: indica una zona concreta y una descripción reconocible. Si compartes un teléfono, recuerda que será visible públicamente en la publicación."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedButton(
+            onClick = {
+                runCatching {
+                    LostPetPosterExporter.share(context, photo, petName, breed, area, lastSeen, description, contact)
+                }.onFailure { error = it.localizedMessage ?: "No se pudo crear el cartel." }
+            },
+            enabled = petName.isNotBlank() && area.isNotBlank() && description.isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Share, null)
+            Spacer(Modifier.width(7.dp))
+            Text(t("Crear cartel para compartir"))
+        }
+        Text(tr("El cartel se genera en tu dispositivo. Comparte el contacto solo si quieres hacerlo público."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         Button(
             onClick = {
