@@ -432,7 +432,7 @@ async function phoneDigest(secret: string, phone: string): Promise<string> {
 }
 
 async function verifiedRequestUser(request: Request, env: Env): Promise<string | null> {
-  const bearer = (request.headers.get("authorization") ?? "").match(/^Bearer\\s+(.+)$/i)?.[1];
+  const bearer = (request.headers.get("authorization") ?? "").match(/^Bearer\s+(.+)$/i)?.[1];
   if (!bearer) return null;
   try { return await verifyFirebaseUser(bearer, env); } catch { return null; }
 }
