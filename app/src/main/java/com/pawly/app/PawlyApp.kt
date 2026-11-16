@@ -180,7 +180,37 @@ private fun PawlyMainApp(
     var dogName by remember(preferences) { mutableStateOf(preferences.getString("dog_name", "Nala") ?: "Nala") }
     var dogProfiles by remember(preferences) { mutableStateOf(preferences.getStringSet("dog_profiles", setOf(dogName))?.toSet() ?: setOf(dogName)) }
     var homePetCloudReady by remember(preferences, storageScope) { mutableStateOf(false) }
-    var dogPhotoPath by remember(preferences) { mutableStateOf(preferences.getString("dog_photo_path", null)) }
+    val dogPhotoPreferenceKey = remember(dogName) {
+        com.pawly.app.care.domain.PetRoutinePreferenceKeys.photoPath(
+            com.pawly.app.care.domain.PetRoutinePreferenceKeys.scope(dogName)
+        )
+    }
+    var dogPhotoPath by remember(preferences, dogPhotoPreferenceKey) {
+        mutableStateOf(preferences.getString(dogPhotoPreferenceKey, null))
+    }
+    var photoPreferenceReady by remember(preferences, dogPhotoPreferenceKey) { mutableStateOf(false) }
+    var dogPhotoUrl by remember(preferences, dogPhotoPreferenceKey, storageScope) { mutableStateOf<String?>(null) }
+    LaunchedEffect(preferences, dogPhotoPreferenceKey) {
+        if (!preferences.getBoolean("dog_photo_legacy_migrated", false)) {
+            val legacyPath = preferences.getString("dog_photo_path", null)
+            if (legacyPath != null && !preferences.contains(dogPhotoPreferenceKey)) {
+                preferences.edit().putString(dogPhotoPreferenceKey, legacyPath).apply()
+            }
+            preferences.edit().putBoolean("dog_photo_legacy_migrated", true).apply()
+        }
+        dogPhotoPath = preferences.getString(dogPhotoPreferenceKey, null)
+        photoPreferenceReady = true
+    }
+    LaunchedEffect(preferences, dogPhotoPreferenceKey, dogPhotoPath, photoPreferenceReady) {
+        if (photoPreferenceReady) {
+            preferences.edit().putString(dogPhotoPreferenceKey, dogPhotoPath).apply()
+        }
+    }
+    LaunchedEffect(dogName, storageScope) {
+        dogPhotoUrl = if (storageScope.isNullOrBlank()) null else runCatching {
+            FirebasePetProfileRepository(ownerUid = storageScope).loadProfile(dogName)?.photoUrl
+        }.getOrNull()
+    }
     val galleryPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) runCatching {
             val destination = File(context.filesDir, "dog-profile-${System.currentTimeMillis()}.jpg")
@@ -302,6 +332,10 @@ private fun PawlyMainApp(
                         val destination = File(context.filesDir, "dog-profile-restored-${System.currentTimeMillis()}.jpg")
                         destination.writeBytes(bytes)
                         dogPhotoPath = destination.absolutePath
+                        val restoredPhotoKey = com.pawly.app.care.domain.PetRoutinePreferenceKeys.photoPath(
+                            com.pawly.app.care.domain.PetRoutinePreferenceKeys.scope(snapshot.petName)
+                        )
+                        preferences.edit().putString(restoredPhotoKey, destination.absolutePath).apply()
                     }
                 }
                 preferences.edit()
@@ -382,7 +416,7 @@ private fun PawlyMainApp(
                 profileSyncStatus = "No se pudo sincronizar: ${it.localizedMessage ?: "revisa las reglas de Firestore"}"
             }
     }
-    LaunchedEffect(preferences, dogPhotoPath) { preferences.edit().putString("dog_photo_path", dogPhotoPath).apply() }
+    // Photo state is persisted under the selected pet key above; never share one photo across profiles.
     LaunchedEffect(preferences, petRoutineScope, walkDone) { preferences.edit().putBoolean(walkDoneKey, walkDone).apply() }
     LaunchedEffect(preferences, petRoutineScope, medicineDone) { preferences.edit().putBoolean(medicineDoneKey, medicineDone).apply() }
     LaunchedEffect(preferences, healthDates) {
@@ -497,6 +531,7 @@ private fun PawlyMainApp(
                     diaryCount = diaryEntries.size,
                     diaryEntries = diaryEntries,
                     dogPhoto = dogPhoto,
+                    dogPhotoUrl = dogPhotoUrl,
                     elegantDesign = elegantDesign,
                     onNotifications = { openCommunityNotifications = true; selected = Tab.COMMUNITY },
                     onDiary = { selected = Tab.DIARY },
@@ -740,6 +775,12 @@ private fun PawlyMainApp(
                 val cleaned = profileDraft.trim()
                 if (cleaned.isNotEmpty()) {
                     dogProfiles = (dogProfiles - dogName) + cleaned
+                    val renamedPhotoKey = com.pawly.app.care.domain.PetRoutinePreferenceKeys.photoPath(
+                        com.pawly.app.care.domain.PetRoutinePreferenceKeys.scope(cleaned)
+                    )
+                    if (!preferences.contains(renamedPhotoKey) && !dogPhotoPath.isNullOrBlank()) {
+                        preferences.edit().putString(renamedPhotoKey, dogPhotoPath).apply()
+                    }
                     dogName = cleaned
                     homePetCloudReady = true
                 }
