@@ -87,10 +87,11 @@ internal fun PetCareHubScreen(
 ) {
     var section by remember { mutableStateOf("Todo") }
     var sharedPhotoUrl by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(sharedPetOwnerUid, petId) {
+    LaunchedEffect(sharedPetOwnerUid, storageScope, petId) {
         section = if (sharedPetOwnerUid == null) "Todo" else "Pasaporte"
-        sharedPhotoUrl = if (sharedPetOwnerUid == null) null else runCatching {
-            FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).loadProfile(petId)?.photoUrl
+        val profileOwner = sharedPetOwnerUid ?: storageScope
+        sharedPhotoUrl = if (profileOwner.isNullOrBlank()) null else runCatching {
+            FirebasePetProfileRepository(ownerUid = profileOwner).loadProfile(petId)?.photoUrl
         }.getOrNull()
     }
     LaunchedEffect(initialSection, initialPassportType, initialCareAction) {
@@ -124,8 +125,9 @@ internal fun PetCareHubScreen(
                     )
                     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
                     Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(tr("BIENESTAR Y CUIDADOS"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-                        Text(tr("Su salud, siempre en buenas manos."), color = Color.White, style = MaterialTheme.typography.headlineSmall)
+                        Text(tr("MI MASCOTA · BIENESTAR Y CUIDADOS"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
+                        Text(petName, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+                        Text(tr("Su salud, sus recuerdos y su día a día."), color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             } else {
