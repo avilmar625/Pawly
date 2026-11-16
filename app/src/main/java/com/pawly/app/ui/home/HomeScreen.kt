@@ -60,6 +60,7 @@ internal fun HomeScreen(
     calendarReminders: List<String> = emptyList(),
     onOpenHealthAgenda: () -> Unit = onHealth,
     onOpenPassport: () -> Unit = onHealth,
+    eventRepository: FirebaseCommunityRepository? = null,
     storageScope: String? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -67,6 +68,13 @@ internal fun HomeScreen(
     val locale = PawlyI18n.locale(language)
     val dateLabel = DateFormat.getDateInstance(DateFormat.FULL, locale)
         .format(Date()).replaceFirstChar { it.uppercase(locale) }
+    var communityEvents by remember(eventRepository) { mutableStateOf(emptyList<PawlyEvent>()) }
+    LaunchedEffect(eventRepository) {
+        val repository = eventRepository ?: return@LaunchedEffect
+        runCatching { repository.loadEvents() }
+            .onSuccess { communityEvents = it }
+    }
+
     var passportEntries by remember(dogName, storageScope) {
         mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope))
     }
@@ -94,11 +102,12 @@ internal fun HomeScreen(
 
     val weightEntries = passportEntries.filter { it.type.equals("Peso", true) }
     val today = java.time.LocalDate.now()
-    val nextUpcomingItem = remember(passportEntries, healthDates, calendarReminders) {
+    val nextUpcomingItem = remember(passportEntries, healthDates, calendarReminders, communityEvents) {
         findNextHomeUpcomingItem(
             passportEntries = passportEntries,
             healthDates = healthDates,
-            calendarReminders = calendarReminders
+            calendarReminders = calendarReminders,
+            communityEvents = communityEvents
         )
     }
     val diaryAnniversary = remember(diaryEntries, today) { findDiaryAnniversary(diaryEntries, today) }
