@@ -312,16 +312,32 @@ internal fun PawlyEventsScreen(
                             }, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Default.Map, null, modifier = Modifier.size(17.dp)); Spacer(Modifier.width(5.dp)); Text(tr(if (event.latitude != null && event.longitude != null) "Ver mapa" else "Buscar lugar"))
                             }
-                            Button(onClick = {
+                            val toggleInterest: () -> Unit = {
                                 scope.launch {
                                     runCatching { repository.toggleEventInterest(event.id) }
                                         .onSuccess {
-                                            events = events.map { if (it.id == event.id) it.copy(interestedByMe = !it.interestedByMe, interestedCount = (it.interestedCount + if (it.interestedByMe) -1 else 1).coerceAtLeast(0)) else it }
+                                            events = events.map { item ->
+                                                if (item.id == event.id) item.copy(
+                                                    interestedByMe = !item.interestedByMe,
+                                                    interestedCount = (item.interestedCount + if (item.interestedByMe) -1 else 1).coerceAtLeast(0)
+                                                ) else item
+                                            }
                                         }
                                         .onFailure { error = it.localizedMessage ?: "No se pudo actualizar tu participación." }
                                 }
-                            }, modifier = Modifier.weight(1f)) {
-                                Text(if (event.interestedByMe) tr("Me interesa ✓") else tr("Me interesa"))
+                            }
+                            if (event.interestedByMe) {
+                                OutlinedButton(onClick = toggleInterest, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Default.PersonRemove, null, modifier = Modifier.size(17.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(tr("Quitar interés"))
+                                }
+                            } else {
+                                Button(onClick = toggleInterest, modifier = Modifier.weight(1f)) {
+                                    Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(17.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(tr("Me interesa"))
+                                }
                             }
                         }
                         TextButton(onClick = { reportEventId = event.id }) {
