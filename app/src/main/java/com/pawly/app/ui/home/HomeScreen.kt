@@ -155,6 +155,9 @@ internal fun HomeScreen(
                 upcomingTitle = nextUpcomingItem?.title,
                 upcomingType = nextUpcomingItem?.type,
                 upcomingDate = nextUpcomingItem?.date?.toString(),
+                upcomingTime = nextUpcomingItem?.takeIf { it.destination != HomeUpcomingDestination.PASSPORT }
+                    ?.scheduledAt?.atZone(java.time.ZoneId.systemDefault())
+                    ?.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm", locale)),
                 onUpcomingClick = {
                     when (nextUpcomingItem?.destination) {
                         HomeUpcomingDestination.PASSPORT -> onOpenPassport()
