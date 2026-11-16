@@ -599,3 +599,33 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - No subir `local.properties`, `google-services.json`, secretos, tokens, claves privadas ni credenciales.
 - Las funciones con dependencias externas se etiquetan como pendientes de configuración/prueba hasta que exista evidencia de extremo a extremo.
 
+
+
+## 12. Feedback de prueba real y siguiente bloque visual — 2026-11-16
+
+### Correcciones al diagnóstico funcional aportadas por el usuario
+
+- **Cloudinary:** la subida de fotografías fue probada y funcionó en la versión 62. No rehacer la integración de imágenes por defecto. La subida de vídeo queda pendiente de prueba manual; revisar límites de tamaño/formato y mensajes de error. La existencia de presets no sustituye una prueba real de vídeo.
+- **Salud y cuidados:** el usuario indica que la mayoría de funciones funcionaban en la última prueba (versión 62). Priorizar mejoras de visualización: gráfica de evolución de peso, registros con jerarquía y estilo coherentes, tarjetas y formularios homogéneos. Evitar reescribir la lógica funcional sin una incidencia reproducible.
+- **Comunidad:** área prioritaria de integración y experiencia de usuario. Objetivo de producto: feed social fotográfico, perfiles, comentarios, seguidores, mensajería y notificaciones con patrones familiares de redes sociales y chat. Auditar cada flujo y su backend antes de declarar paridad funcional.
+- **Explorar:** conservar todos los flujos y auditar las nuevas fichas y acciones: teléfonos, llamada, enlaces, mapas, localización, favoritos y colecciones.
+- **Eventos:** pendiente de prueba manual del usuario. No retirar creación, búsqueda, ubicación, asistentes ni calendario.
+- **Diseño transversal:** el PDF «Pawly — pantalla Hoy y navegación» pasa a ser la referencia común para todas las pestañas, no solo Hoy. Mantener modos simple/elegante y tema oscuro.
+
+### Trabajo visual incorporado a cambios72
+
+- Añadido `ui/PawlyVisualComponents.kt` con `PawlyPageHeader`, componente común de cabecera (eyebrow, título y descripción) que utiliza la tipografía y los colores del tema activo.
+- Aplicado el componente a las cabeceras de Salud y Explorar sin alterar callbacks ni lógica de datos.
+- La pantalla Diario conserva su cabecera fotográfica y formulario; siguiente tarea: homogeneizar tarjetas, filtros y estados de recuerdos.
+- La Comunidad requiere un rediseño más profundo y una auditoría funcional independiente; no se considera resuelta por este primer bloque visual.
+- Estos cambios son de código revisado estáticamente. **No se ha confirmado compilación ni prueba manual después de aplicarlos.**
+
+### Prioridades revisadas
+
+1. Validar sin regresiones los flujos de autenticación/registro que siguen documentados como bloqueantes.
+2. Probar vídeo Cloudinary; conservar la subida de fotos ya validada por el usuario en versión 62.
+3. Completar el lenguaje visual común en Mi perro, Salud, Diario, Comunidad, Explorar y Más.
+4. Priorizar rediseño y pruebas de Comunidad (feed, perfiles, comentarios, follows, chat y notificaciones).
+5. Añadir una gráfica de peso basada exclusivamente en mediciones reales y unificar visualmente los registros de salud.
+6. Probar las nuevas fichas y acciones de Explorar y todos los flujos de Eventos.
+7. Ejecutar CI Android, reglas Firestore y pruebas manuales en dispositivos; no declarar release hasta tener evidencia.
