@@ -280,8 +280,16 @@ export async function handlePhoneDiscoverySettings(request: Request, env: Env): 
   }
 }
 
-export async function handlePhoneDiscoveryMatches(request: Request, env: Env): Promise<Response> {
-  const uid = await verifiedRequestUser(request, env);
+export async function handlePhoneDiscoveryMatches(
+  request: Request,
+  env: Env,
+  dependencies: {
+    verifyUser?: (request: Request, env: Env) => Promise<string | null>;
+    getAccessToken?: (env: Env) => Promise<string>;
+    hashPhone?: (env: Env, phone: string) => Promise<string>;
+  } = {}
+): Promise<Response> {
+  const uid = await (dependencies.verifyUser ?? verifiedRequestUser)(request, env);
   if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
   try {
     const raw = await request.text();
@@ -292,7 +300,7 @@ export async function handlePhoneDiscoveryMatches(request: Request, env: Env): P
     }
     const phones = [...new Set(body.phoneNumbers.map(normalizeE164Phone).filter((value): value is string => value !== null))];
     if (phones.length === 0) return json({ matches: [], checked: 0 });
-    const accessToken = await googleAccessToken(env);
+    const accessToken = await (dependencies.getAccessToken ?? googleAccessToken)(env);
     const ownRecord = await readDocument(env, accessToken, `users/${uid}/privateData/phoneDiscovery`);
     const ownHash = decodeFirestoreString(ownRecord?.fields?.phoneHash);
     if (!ownHash || !decodeFirestoreBoolean(ownRecord?.fields?.enabled)) {
@@ -316,7 +324,7 @@ export async function handlePhoneDiscoveryMatches(request: Request, env: Env): P
     }
     if (!reserved) return json({ error: "Has alcanzado el límite diario de búsquedas por teléfono. Vuelve a intentarlo mañana." }, 429);
 
-    const hashedPhones = await Promise.all(phones.map(phone => hmacPhoneHash(env, phone)));
+    const hashedPhones = await Promise.all(phones.map(phone => (dependencies.hashPhone ?? hmacPhoneHash)(env, phone)));
     const queryResponse = await fetch(`${firestoreRoot(env)}:runQuery`, {
       method: "POST",
       headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
