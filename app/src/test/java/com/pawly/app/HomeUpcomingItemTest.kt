@@ -52,6 +52,76 @@ class HomeUpcomingItemTest {
     }
 
     @Test
+    fun communityEventsCompeteWithHealthAndCalendarReminders() {
+        val eventAt = Instant.parse("2026-11-16T15:00:00Z").toEpochMilli()
+        val laterReminder = Instant.parse("2026-11-16T17:00:00Z").toEpochMilli()
+        val event = PawlyEvent(
+            id = "community-1",
+            title = "Paseo por el monte",
+            description = "",
+            category = "Quedada",
+            location = "Málaga",
+            dateText = "",
+            latitude = null,
+            longitude = null,
+            organizerName = "Alex",
+            organizerUid = "owner-1",
+            interestedCount = 0,
+            interestedByMe = false,
+            startAt = eventAt,
+            timeZoneId = "Europe/Madrid"
+        )
+        val item = findNextHomeUpcomingItem(
+            passportEntries = emptyList(),
+            healthDates = mapOf("Revisión" to "2026-11-17|09:00"),
+            calendarReminders = listOf(
+                """{"id":"later","title":"Recordatorio","date":$laterReminder}"""
+            ),
+            communityEvents = listOf(event),
+            now = now,
+            zoneId = zone
+        )
+
+        assertEquals("Paseo por el monte", item?.title)
+        assertEquals(HomeUpcomingDestination.CALENDAR, item?.destination)
+        assertEquals("Quedada", item?.type)
+    }
+
+    @Test
+    fun ignoresPastCommunityEventsAndOrdersDateOnlyPassportAtEndOfDay() {
+        val eventAt = Instant.parse("2026-11-16T10:00:00Z").toEpochMilli()
+        val todayPassport = PassportEntry("today", "Vacuna", "Vacuna de hoy", "", "2026-11-16")
+        val item = findNextHomeUpcomingItem(
+            passportEntries = listOf(todayPassport),
+            healthDates = emptyMap(),
+            calendarReminders = emptyList(),
+            communityEvents = listOf(
+                PawlyEvent(
+                    id = "past-event",
+                    title = "Evento pasado",
+                    description = "",
+                    category = "Quedada",
+                    location = "Málaga",
+                    dateText = "",
+                    latitude = null,
+                    longitude = null,
+                    organizerName = "Alex",
+                    organizerUid = "owner-1",
+                    interestedCount = 0,
+                    interestedByMe = false,
+                    startAt = eventAt
+                )
+            ),
+            now = now,
+            zoneId = zone
+        )
+
+        assertEquals("Vacuna de hoy", item?.title)
+        assertEquals(HomeUpcomingDestination.PASSPORT, item?.destination)
+        assertEquals(Instant.parse("2026-11-16T22:59:59.999999999Z"), item?.scheduledAt)
+    }
+
+    @Test
     fun returnsNullWhenThereAreNoUpcomingEntries() {
         val past = Instant.parse("2026-11-16T10:00:00Z").toEpochMilli()
         val item = findNextHomeUpcomingItem(
