@@ -47,7 +47,9 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
     var categoryFilter by remember { mutableStateOf("ALL") }
     var keyword by remember { mutableStateOf("") }
     val categoryOptions = listOf("ALL" to "Todo", "STORY" to "Historias", "ADOPTION" to "Adopción", "LOST" to "Perdidos", "FOUND" to "Encontrados", "FOSTER" to "Acogida")
-    val visiblePosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) && (keyword.isBlank() || listOf(it.text, it.dogName, it.authorName).any { value -> value.contains(keyword.trim(), ignoreCase = true) }) }
+    val visiblePosts = posts
+        .filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) && (keyword.isBlank() || listOf(it.text, it.dogName, it.authorName).any { value -> value.contains(keyword.trim(), ignoreCase = true) }) }
+        .sortedByDescending { it.createdAt }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item {
             Surface(onClick = onCreate, color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
@@ -87,6 +89,24 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
                 }
             }
         }
+        item {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(tr("El muro de Pawly"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(tr(if (followingOnly) "Publicaciones de las cuentas que sigues" else "Historias, adopciones y avisos de la comunidad"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp)) {
+                        Text("${visiblePosts.size}", modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                    }
+                }
+            }
+        }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
         if (visiblePosts.isEmpty() && error == null) item {
             EmptyCommunityCard(if (followingOnly) "Aún no hay novedades" else if (categoryFilter != "ALL") "Todavía no hay publicaciones de esta categoría" else "Todavía no hay publicaciones", if (followingOnly) "Sigue a otras personas para ver aquí sus aventuras." else if (categoryFilter != "ALL") "Prueba otra categoría o publica el primer aviso." else "Sé de las primeras personas en compartir una aventura.")
@@ -101,7 +121,12 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
 @Composable
 internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUser: (String) -> Unit, onLike: (PawlyPost) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
     var menu by remember { mutableStateOf(false) }
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(21.dp), shadowElevation = 1.dp) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(22.dp),
+        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
         Column {
             Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
                 Avatar(post.authorPhoto, post.authorName)
@@ -109,6 +134,11 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
                 Column(Modifier.weight(1f).clickable { onOpenUser(post.authorId) }) {
                     Text(post.authorName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     Text((if (post.dogName.isBlank()) "Una historia Pawly" else "Con " + post.dogName) + " · " + when (post.category) { "ADOPTION" -> "Adopción"; "LOST" -> "Perdido"; "FOUND" -> "Encontrado"; "FOSTER" -> "Acogida"; else -> "Comunidad" }, color = if (post.category == "LOST") Color(0xFFB44E43) else ForestLight, style = MaterialTheme.typography.labelSmall)
+                    if (post.createdAt > 0L) Text(
+                        java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(post.createdAt)),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Más opciones", tint = Muted) }
