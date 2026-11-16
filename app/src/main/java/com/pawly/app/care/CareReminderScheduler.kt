@@ -1,5 +1,6 @@
 package com.pawly.app.care
 
+import com.pawly.app.care.domain.CareTaskSchedule
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -22,6 +23,7 @@ internal object CareReminderScheduler {
     private const val PREFS = "pawly_care_reminders"
     private const val PREFIX = "reminder:"
     private const val DAILY_PREFIX = "daily:"
+    private const val WEEKLY_PREFIX = "weekly:"
 
     private fun parseDateTime(value: String): Long? =
         CareReminderDateTimeParser.parseMillis(value)
@@ -31,10 +33,11 @@ internal object CareReminderScheduler {
         if (triggerAt <= System.currentTimeMillis()) return false
         val requestCode = reminderId(dogName, careName)
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs.edit().putString(
-            PREFIX + requestCode,
-            listOf(dogName, careName, dateTime).joinToString("\u001f")
-        ).apply()
+        prefs.edit()
+            .remove(DAILY_PREFIX + requestCode)
+            .remove(WEEKLY_PREFIX + requestCode)
+            .putString(PREFIX + requestCode, listOf(dogName, careName, dateTime).joinToString("\u001f"))
+            .apply()
         scheduleAlarm(context, dogName, careName, triggerAt, requestCode)
         return true
     }
@@ -54,15 +57,45 @@ internal object CareReminderScheduler {
         }
         val requestCode = reminderId(dogName, careName)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(PREFIX + requestCode)
+            .remove(WEEKLY_PREFIX + requestCode)
             .putString(DAILY_PREFIX + requestCode, listOf(dogName, careName, timeOfDay).joinToString("\u001f"))
             .apply()
-        scheduleAlarm(context, dogName, careName, next.timeInMillis, requestCode, true, timeOfDay)
+        scheduleAlarm(context, dogName, careName, next.timeInMillis, requestCode, repeatDaily = true, timeOfDay = timeOfDay)
+        return true
+    }
+
+    /** Repeats a local reminder only on the selected ISO weekdays. */
+    fun scheduleWeekly(
+        context: Context,
+        dogName: String,
+        careName: String,
+        timeOfDay: String,
+        daysOfWeek: List<Int>
+    ): Boolean {
+        val days = CareTaskSchedule.normalizeDays(daysOfWeek)
+        val next = CareTaskSchedule.nextWeeklyReminderAt(timeOfDay, days)?.toInstant()?.toEpochMilli() ?: return false
+        val requestCode = reminderId(dogName, careName)
+        val daysCsv = days.joinToString(",")
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(PREFIX + requestCode)
+            .remove(DAILY_PREFIX + requestCode)
+            .putString(
+                WEEKLY_PREFIX + requestCode,
+                listOf(dogName, careName, timeOfDay, daysCsv).joinToString("\u001f")
+            )
+            .apply()
+        scheduleAlarm(
+            context, dogName, careName, next, requestCode,
+            repeatWeekly = true, timeOfDay = timeOfDay, daysOfWeekCsv = daysCsv
+        )
         return true
     }
 
     private fun scheduleAlarm(
         context: Context, dogName: String, careName: String, triggerAt: Long, requestCode: Int,
-        repeatDaily: Boolean = false, timeOfDay: String = ""
+        repeatDaily: Boolean = false, timeOfDay: String = "",
+        repeatWeekly: Boolean = false, daysOfWeekCsv: String = ""
     ) {
         val intent = Intent(context, CareReminderReceiver::class.java).apply {
             action = ACTION
@@ -70,7 +103,9 @@ internal object CareReminderScheduler {
             putExtra("careName", careName)
             putExtra("notificationId", requestCode)
             putExtra("repeatDaily", repeatDaily)
+            putExtra("repeatWeekly", repeatWeekly)
             putExtra("timeOfDay", timeOfDay)
+            putExtra("daysOfWeekCsv", daysOfWeekCsv)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context, requestCode, intent,
@@ -123,13 +158,32 @@ internal object CareReminderScheduler {
                 }
             }
         }
+        prefs.all.filterKeys { it.startsWith(WEEKLY_PREFIX) }.forEach { (key, raw) ->
+            val parts = (raw as? String)?.split("\u001f")
+            if (parts == null || parts.size != 4) {
+                editor.remove(key)
+            } else {
+                val days = parts[3].split(",").mapNotNull { it.toIntOrNull() }
+                val normalized = CareTaskSchedule.normalizeDays(days)
+                val next = CareTaskSchedule.nextWeeklyReminderAt(parts[2], normalized)
+                val requestCode = key.removePrefix(WEEKLY_PREFIX).toIntOrNull()
+                if (requestCode == null || normalized.isEmpty() || normalized != days || next == null) {
+                    editor.remove(key)
+                } else {
+                    scheduleAlarm(
+                        context, parts[0], parts[1], next.toInstant().toEpochMilli(), requestCode,
+                        repeatWeekly = true, timeOfDay = parts[2], daysOfWeekCsv = normalized.joinToString(",")
+                    )
+                }
+            }
+        }
         editor.apply()
     }
 
     fun cancel(context: Context, dogName: String, careName: String) {
         val requestCode = reminderId(dogName, careName)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().remove(PREFIX + requestCode).remove(DAILY_PREFIX + requestCode).apply()
+            .edit().remove(PREFIX + requestCode).remove(DAILY_PREFIX + requestCode).remove(WEEKLY_PREFIX + requestCode).apply()
         val intent = Intent(context, CareReminderReceiver::class.java).apply { action = ACTION }
         val pendingIntent = PendingIntent.getBroadcast(
             context, requestCode, intent,
@@ -182,11 +236,13 @@ internal class CareReminderReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .build()
         runCatching { manager.notify(notificationId, notification) }
-        if (intent.getBooleanExtra("repeatDaily", false)) {
-            val timeOfDay = intent.getStringExtra("timeOfDay").orEmpty()
-            if (timeOfDay.isNotBlank()) {
-                CareReminderScheduler.scheduleDaily(context.applicationContext, dogName, careName, timeOfDay)
-            }
+        val timeOfDay = intent.getStringExtra("timeOfDay").orEmpty()
+        if (intent.getBooleanExtra("repeatDaily", false) && timeOfDay.isNotBlank()) {
+            CareReminderScheduler.scheduleDaily(context.applicationContext, dogName, careName, timeOfDay)
+        } else if (intent.getBooleanExtra("repeatWeekly", false) && timeOfDay.isNotBlank()) {
+            val days = intent.getStringExtra("daysOfWeekCsv").orEmpty()
+                .split(",").mapNotNull { it.toIntOrNull() }
+            CareReminderScheduler.scheduleWeekly(context.applicationContext, dogName, careName, timeOfDay, days)
         }
     }
 }
