@@ -170,30 +170,36 @@ class FirebasePetCareRepository(
         require(petId.isNotBlank() && entry.id.isNotBlank())
         require(entry.title.isNotBlank() && entry.title.length <= 120)
         require(entry.detail.length <= 1200 && entry.date.length <= 40 && entry.type.length <= 40)
-        passport(petId).document(entry.id).set(passportData(entry)).await()
+        val ref = passport(petId).document(entry.id)
+        // Preserve the original creation order when an existing measurement is edited.
+        val existingOrder = ref.get().await().getLong("createdAtOrder")
+        val order = existingOrder ?: (System.currentTimeMillis() * 1_000_000L + (System.nanoTime() % 1_000_000L))
+        ref.set(passportData(entry) + ("createdAtOrder" to order)).await()
     }
 
     override suspend fun savePassportEntries(petId: String, entries: List<PassportEntry>) {
         require(petId.isNotBlank() && entries.size <= 450)
         val batch = db.batch()
-        entries.forEach { entry ->
+        val baseOrder = System.currentTimeMillis() * 1_000_000L
+        entries.forEachIndexed { index, entry ->
             require(entry.id.isNotBlank() && entry.title.isNotBlank())
             require(entry.title.length <= 120 && entry.detail.length <= 1200)
             require(entry.date.length <= 40 && entry.type.length <= 40)
-            batch.set(passport(petId).document(entry.id), passportData(entry))
+            batch.set(
+                passport(petId).document(entry.id),
+                passportData(entry) + ("createdAtOrder" to (baseOrder + index))
+            )
         }
         if (entries.isNotEmpty()) batch.commit().await()
     }
 
-    override suspend fun loadPassportEntries(petId: String): List<PassportEntry> {
-        // Firestore document iteration is not a reliable insertion order. Use
-        // each document's server creation time to break ties when several
-        // measurements share the same user-entered date.
-        return passport(petId).get().await().documents
+    override suspend fun loadPassportEntries(petId: String): List<PassportEntry> =
+        passport(petId).get().await().documents
+            // A separate creation-order field is necessary because several
+            // measurements can legitimately have the same calendar date.
             .sortedWith(
                 compareBy<com.google.firebase.firestore.DocumentSnapshot> { it.getString("date").orEmpty() }
-                    .thenBy { it.createTime?.seconds ?: 0L }
-                    .thenBy { it.createTime?.nanoseconds ?: 0 }
+                    .thenBy { it.getLong("createdAtOrder") ?: 0L }
                     .thenBy { it.id }
             )
             .mapNotNull { doc ->
@@ -201,7 +207,6 @@ class FirebasePetCareRepository(
                 PassportEntry(doc.id, doc.getString("type").orEmpty(), title,
                     doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
             }
-    }
 
     override suspend fun deletePassportEntry(petId: String, entryId: String) {
         require(petId.isNotBlank() && entryId.isNotBlank())
