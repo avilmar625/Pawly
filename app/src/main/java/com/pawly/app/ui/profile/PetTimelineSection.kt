@@ -117,6 +117,11 @@ internal fun PetTimelineSection(
     onOpenCalendar: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val language = LocalPawlyLanguage.current
+    val savedLocalLabel = PawlyI18n.text("Guardado en este dispositivo", language)
+    val loadingLabel = PawlyI18n.text("Cargando historial…", language)
+    val syncedLabel = PawlyI18n.text("Historial sincronizado", language)
+    val offlineLabel = PawlyI18n.text("Sin conexión: se conserva la copia local", language)
     val localEntries = remember(petName, storageScope) {
         PetCareLocalStore.loadEntries(context, petName, storageScope)
     }
@@ -128,8 +133,8 @@ internal fun PetTimelineSection(
             buildPetTimelineItems(localEntries, localLogs, diaryEntries, calendarReminders, healthDates)
         )
     }
-    var syncLabel by remember(storageScope) {
-        androidx.compose.runtime.mutableStateOf(if (storageScope.isNullOrBlank()) tr("Guardado en este dispositivo") else tr("Cargando historial…"))
+    var syncLabel by remember(storageScope, language) {
+        androidx.compose.runtime.mutableStateOf(if (storageScope.isNullOrBlank()) savedLocalLabel else loadingLabel)
     }
     androidx.compose.runtime.LaunchedEffect(petName, petId, storageScope, diaryEntries, calendarReminders, healthDates) {
         if (storageScope.isNullOrBlank()) return@LaunchedEffect
@@ -146,9 +151,9 @@ internal fun PetTimelineSection(
             PetCareLocalStore.saveEntries(context, petName, entries, storageScope)
             PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
             timelineItems = buildPetTimelineItems(entries, logs, diaryEntries, calendarReminders, healthDates)
-            syncLabel = tr("Historial sincronizado")
+            syncLabel = syncedLabel
         }.onFailure {
-            syncLabel = tr("Sin conexión: se conserva la copia local")
+            syncLabel = offlineLabel
         }
     }
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
