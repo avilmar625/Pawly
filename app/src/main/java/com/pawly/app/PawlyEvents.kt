@@ -9,6 +9,8 @@ import android.app.TimePickerDialog
 import java.util.Locale
 import java.util.Calendar
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import android.view.MotionEvent
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -509,84 +511,117 @@ private fun EventDetailsDialog(
     onAddToCalendar: () -> Unit,
     onToggleInterest: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(event.title, fontWeight = FontWeight.Bold)
-                Text("${tr(event.category)} · ${event.dateText}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-            }
-        },
-        text = {
-            Column(
-                Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(event.description, style = MaterialTheme.typography.bodyMedium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
-                    Text(event.location, style = MaterialTheme.typography.bodySmall)
-                }
-                Text("${tr("Organiza")} ${event.organizerName}", style = MaterialTheme.typography.labelMedium)
-                HorizontalDivider()
-                Text("${tr("Personas interesadas")} · ${event.interestedCount}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                if (canViewAttendees) {
-                    OutlinedButton(
-                        onClick = onLoadAttendees,
-                        enabled = !attendeesLoading && (attendees.isEmpty() || hasMoreAttendees)
-                    ) {
-                        Icon(Icons.Default.Groups, null, modifier = Modifier.size(17.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(tr(if (attendees.isEmpty()) "Ver asistentes" else if (hasMoreAttendees) "Ver más asistentes" else "Asistentes cargados"))
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(.96f).widthIn(max = 560.dp).heightIn(max = 780.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column {
+                Box(
+                    Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary))).padding(22.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(color = Color.White.copy(alpha = .18f), shape = RoundedCornerShape(12.dp)) {
+                                Text(tr(event.category).uppercase(), modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(Modifier.weight(1f))
+                            IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = tr("Cerrar"), tint = Color.White) }
+                        }
+                        Text(event.title, color = Color.White, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Icon(Icons.Default.CalendarMonth, null, tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(18.dp))
+                            Text(event.dateText, color = Color.White.copy(alpha = .95f), style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
-                    if (attendeesLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    if (attendeesError != null) Text(attendeesError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    attendees.forEach { attendee ->
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            AsyncImage(model = attendee.photoUrl.takeIf { it.isNotBlank() }, contentDescription = null,
-                                modifier = Modifier.size(34.dp).clip(CircleShape), contentScale = ContentScale.Crop)
-                            Column(Modifier.weight(1f)) {
-                                Text(attendee.displayName, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
-                                if (attendee.username.isNotBlank()) Text("@${attendee.username}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                }
+                Column(
+                    Modifier.weight(1f, fill = false).fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(event.description, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f), shape = RoundedCornerShape(18.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+                                Column(Modifier.weight(1f)) {
+                                    Text(tr("Lugar"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(event.location, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Icon(Icons.Default.Pets, null, tint = MaterialTheme.colorScheme.primary)
+                                Column(Modifier.weight(1f)) {
+                                    Text(tr("Organiza"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(event.organizerName, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Icon(Icons.Default.Groups, null, tint = MaterialTheme.colorScheme.primary)
+                                Column(Modifier.weight(1f)) {
+                                    Text(tr("Personas interesadas"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(event.interestedCount.toString(), fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleLarge)
+                                }
                             }
                         }
                     }
-                    if (attendees.isNotEmpty()) Text(tr("La lista se pagina y oculta los perfiles bloqueados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                } else {
-                    Text(
-                        tr("Por privacidad, solo la persona organizadora puede consultar la lista de asistentes. Aquí se muestra el número total de personas interesadas."),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(tr("Asistentes"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                            if (canViewAttendees) {
+                                TextButton(onClick = onLoadAttendees, enabled = !attendeesLoading && (attendees.isEmpty() || hasMoreAttendees)) {
+                                    Text(tr(if (attendees.isEmpty()) "Ver asistentes" else if (hasMoreAttendees) "Cargar más" else "Lista completa"))
+                                }
+                            }
+                        }
+                        if (canViewAttendees) {
+                            if (attendeesLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                            if (attendeesError != null) {
+                                Text(attendeesError, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                OutlinedButton(onClick = onLoadAttendees, enabled = !attendeesLoading, modifier = Modifier.fillMaxWidth()) { Text(tr("Reintentar")) }
+                            }
+                            if (attendees.isEmpty() && !attendeesLoading && attendeesError == null) {
+                                Text(tr("Todavía no hay asistentes cargados. Pulsa «Ver asistentes» para consultar la lista."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                            attendees.forEach { attendee ->
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    AsyncImage(model = attendee.photoUrl.takeIf { it.isNotBlank() }, contentDescription = null, modifier = Modifier.size(42.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                                    Column(Modifier.weight(1f)) {
+                                        Text(attendee.displayName.ifBlank { tr("Usuario de Pawly") }, fontWeight = FontWeight.SemiBold)
+                                        if (attendee.username.isNotBlank()) Text("@${attendee.username}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                            if (attendees.isNotEmpty()) Text(tr("La lista se pagina y oculta los perfiles bloqueados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        } else {
+                            Text(tr("Por privacidad, solo la persona organizadora puede consultar la lista de asistentes. Aquí se muestra el número total de personas interesadas."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Button(onClick = onToggleInterest, modifier = Modifier.fillMaxWidth()) {
+                        Icon(if (event.interestedByMe) Icons.Default.PersonRemove else Icons.Default.PersonAdd, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr(if (event.interestedByMe) "Ya no me interesa" else "Me interesa"))
+                    }
+                    OutlinedButton(onClick = onAddToCalendar, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.EventAvailable, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr("Añadir al calendario"))
+                    }
                 }
             }
-        },
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = onAddToCalendar) {
-                    Icon(Icons.Default.EventAvailable, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(5.dp))
-                    Text(tr("Añadir al calendario"))
-                }
-                if (event.interestedByMe) {
-                    OutlinedButton(onClick = onToggleInterest) {
-                        Icon(Icons.Default.PersonRemove, null, modifier = Modifier.size(17.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text(tr("Quitar interés"))
-                    }
-                } else {
-                    Button(onClick = onToggleInterest) {
-                        Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(17.dp))
-                        Spacer(Modifier.width(5.dp))
-                        Text(tr("Me interesa"))
-                    }
-                }
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } }
-    )
+        }
+    }
 }
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CreatePawlyEventDialog(
