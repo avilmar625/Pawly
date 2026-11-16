@@ -53,12 +53,13 @@ internal fun HomeCareTasksSection(
         else runCatching { FirebasePetCareRepository() }.getOrNull()
     }
     val scope = rememberCoroutineScope()
-    var canEdit by remember(petName, storageScope) { mutableStateOf(true) }
+    var canEdit by remember(petName, storageScope) { mutableStateOf(storageScope.isNullOrBlank()) }
     var syncMessage by remember(petName, storageScope) {
         mutableStateOf(if (storageScope.isNullOrBlank()) "Guardado en este dispositivo" else "Cargando cuidados…")
     }
     var loading by remember(petName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
     var pendingIds by remember(petName, storageScope) { mutableStateOf(emptySet<String>()) }
+    var pendingMedicationConfirmation by remember(petName, storageScope) { mutableStateOf<Pair<CareTask, CareLogEntry>?>(null) }
 
     LaunchedEffect(petName, storageScope, repository) {
         val repo = repository ?: run { loading = false; return@LaunchedEffect }
@@ -140,6 +141,23 @@ internal fun HomeCareTasksSection(
             }
             pendingIds = pendingIds - task.id
         }
+    }
+
+    fun requestTaskToggle(task: CareTask, checked: Boolean) {
+        if (!canEdit || task.id in pendingIds) return
+        if (checked && task.action.equals("Medicación", ignoreCase = true)) {
+            val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            val duplicate = com.pawly.app.care.domain.CareDuplicateGuard.findRecentMedicationLog(
+                logs = logs,
+                task = task,
+                currentUid = currentUid
+            )
+            if (duplicate != null) {
+                pendingMedicationConfirmation = task to duplicate
+                return
+            }
+        }
+        toggleTask(task, checked)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -233,7 +251,7 @@ internal fun HomeCareTasksSection(
                     ) {
                         Row(
                             Modifier.fillMaxWidth().clickable(enabled = canEdit && task.id !in pendingIds) {
-                                toggleTask(task, !complete)
+                                requestTaskToggle(task, !complete)
                             }.padding(horizontal = 13.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -258,7 +276,7 @@ internal fun HomeCareTasksSection(
                             Checkbox(
                                 checked = complete,
                                 enabled = canEdit && task.id !in pendingIds,
-                                onCheckedChange = { toggleTask(task, it) }
+                                onCheckedChange = { requestTaskToggle(task, it) }
                             )
                         }
                     }
@@ -305,6 +323,29 @@ internal fun HomeCareTasksSection(
                 }
             }
         }
+    }
+    pendingMedicationConfirmation?.let { (task, previousLog) ->
+        AlertDialog(
+            onDismissRequest = { pendingMedicationConfirmation = null },
+            title = { Text("¿Registrar otra toma?") },
+            text = {
+                Text(
+                    "${previousLog.actorName} ya registró «${task.title}» hoy. " +
+                        "Comprueba que no se vaya a administrar dos veces."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingMedicationConfirmation = null
+                    toggleTask(task, true)
+                }) { Text("Registrar igualmente") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingMedicationConfirmation = null }) {
+                    Text("No, ya está dada")
+                }
+            }
+        )
     }
 }
 
