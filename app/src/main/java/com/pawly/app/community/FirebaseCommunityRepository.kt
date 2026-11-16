@@ -863,7 +863,7 @@ class FirebaseCommunityRepository private constructor(
         db.collection("communityPlaces").add(mapOf(
             "name" to cleanName, "category" to category, "location" to cleanLocation,
             "latitude" to latitude, "longitude" to longitude,
-            "description" to cleanDescription, "authorUid" to uid, "status" to "approved",
+            "description" to cleanDescription, "authorUid" to uid, "status" to "pending",
             "createdAt" to FieldValue.serverTimestamp()
         )).await()
     }
