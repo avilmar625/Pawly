@@ -69,12 +69,16 @@ internal fun PetCareHubScreen(
     elegantDesign: Boolean = false,
     sharedPetOwnerUid: String? = null,
     onOpenSharedPet: (PetShareInvitation) -> Unit = {},
-    onCloseSharedPet: () -> Unit = {}
+    onCloseSharedPet: () -> Unit = {},
+    initialSection: String? = null,
+    initialPassportType: String? = null,
+    initialCareAction: String? = null,
+    onInitialActionConsumed: () -> Unit = {}
 ) {
     var section by remember { mutableStateOf("Agenda") }
     var sharedPhotoUrl by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(sharedPetOwnerUid, petId) {
-        section = if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte"
+    LaunchedEffect(sharedPetOwnerUid, petId, initialSection, initialPassportType, initialCareAction) {
+        section = initialSection ?: if (sharedPetOwnerUid == null) "Agenda" else "Pasaporte"
         sharedPhotoUrl = if (sharedPetOwnerUid == null) null else runCatching {
             FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).loadProfile(petId)?.photoUrl
         }.getOrNull()
@@ -152,15 +156,22 @@ internal fun PetCareHubScreen(
                 dates = dates,
                 onDateChange = onDateChange
             )
-            "Pasaporte" -> PetPassportSection(petName, storageScope, petId, sharedPetOwnerUid)
-            "Cuidados" -> PetCarePlanSection(petName, storageScope, petId, sharedPetOwnerUid)
+            "Pasaporte" -> PetPassportSection(petName, storageScope, petId, sharedPetOwnerUid, initialPassportType, onInitialActionConsumed)
+            "Cuidados" -> PetCarePlanSection(petName, storageScope, petId, sharedPetOwnerUid, initialCareAction, onInitialActionConsumed)
             else -> PetSharingSection(petName = petName, petId = petId, ownerUid = storageScope, onOpenSharedPet = onOpenSharedPet)
         }
     }
 }
 
 @Composable
-private fun PetPassportSection(petName: String, storageScope: String?, petId: String, sharedPetOwnerUid: String? = null) {
+private fun PetPassportSection(
+    petName: String,
+    storageScope: String?,
+    petId: String,
+    sharedPetOwnerUid: String? = null,
+    initialType: String? = null,
+    onInitialActionConsumed: () -> Unit = {}
+) {
     val context = LocalContext.current
     val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
     var entries by remember(petName, localStorageScope, petId) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, localStorageScope)) }
@@ -201,6 +212,13 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
     }
     var showAdd by remember { mutableStateOf(false) }
     var selectedType by remember { mutableStateOf("Vacuna") }
+    LaunchedEffect(initialType) {
+        if (!initialType.isNullOrBlank()) {
+            selectedType = initialType
+            showAdd = true
+            onInitialActionConsumed()
+        }
+    }
     var title by remember { mutableStateOf("") }
     var detail by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -351,7 +369,14 @@ private fun PetPassportSection(petName: String, storageScope: String?, petId: St
 }
 
 @Composable
-private fun PetCarePlanSection(petName: String, storageScope: String?, petId: String, sharedPetOwnerUid: String? = null) {
+private fun PetCarePlanSection(
+    petName: String,
+    storageScope: String?,
+    petId: String,
+    sharedPetOwnerUid: String? = null,
+    initialAction: String? = null,
+    onInitialActionConsumed: () -> Unit = {}
+) {
     val context = LocalContext.current
     val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
     val today = remember { LocalDate.now().toString() }
@@ -409,6 +434,13 @@ private fun PetCarePlanSection(petName: String, storageScope: String?, petId: St
     var responsible by remember { mutableStateOf("") }
     var frequency by remember { mutableStateOf("Diario") }
     var action by remember { mutableStateOf("Otro") }
+    LaunchedEffect(initialAction) {
+        if (!initialAction.isNullOrBlank()) {
+            action = initialAction
+            showAdd = true
+            onInitialActionConsumed()
+        }
+    }
     var dose by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
     var reminderEnabled by remember { mutableStateOf(false) }
