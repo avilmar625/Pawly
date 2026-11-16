@@ -165,8 +165,18 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                         if (register) configuredRepo.register(email, password, username) else configuredRepo.signIn(email, password)
                         onAuthenticated()
                     }
-                } catch (e: Exception) { error = e.toPawlyMessage("No se pudo completar la operación.") }
-                finally { busy = false }
+                } catch (e: Exception) {
+                    val message = e.toPawlyMessage("No se pudo completar la operación.")
+                    if (repo.currentUid != null) {
+                        // Firebase Auth may already have accepted the credentials while
+                        // Firestore profile bootstrap failed. Do not leave the user on a
+                        // login form with a live authenticated session.
+                        status = message
+                        onAuthenticated()
+                    } else {
+                        error = message
+                    }
+                } finally { busy = false }
             }
         }, enabled = !busy && email.contains("@") && password.length >= 6 && (!register || username.length >= 3), modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
@@ -245,6 +255,13 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                     }
                                 }
                             } catch (e: Exception) {
+                                if (repo.currentUid != null) {
+                                    // Credential Manager/Firebase can complete Auth before
+                                    // the profile bootstrap reports a Firestore failure.
+                                    status = e.toPawlyMessage("Has iniciado sesión, pero falta completar tu perfil.")
+                                    onAuthenticated()
+                                    return@launch
+                                }
                                 val exceptionName = e.javaClass.simpleName
                                 val exceptionMessage = e.localizedMessage.orEmpty()
                                 val accountReauthFailed = exceptionMessage.contains("Account reauth failed", ignoreCase = true)
