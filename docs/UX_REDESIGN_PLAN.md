@@ -162,3 +162,5 @@ Cada función requiere diseño de datos, privacidad, persistencia y tests antes 
 - La barra inferior mantiene cinco destinos. Diario y Calendario resaltan «Mi perro» como sección activa; Aprender, Profesionales y Ayuda resaltan «Más». El conjunto usa el verde de marca y el contenedor salvia del tema, en lugar de cinco colores independientes.
 - No se elimina ningún destino ni acción: los tabs secundarios continúan usando sus pantallas existentes.
 - Revisión de compilación y visual en dispositivo pendiente.
+
+- El bloque «Próximamente» presenta la fecha en formato legible según el idioma del dispositivo (día y número) y añade «hoy», «mañana» o el tiempo restante; reconoce variantes de texto de vacunas para usar el icono sanitario.
