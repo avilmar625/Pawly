@@ -860,12 +860,17 @@ class FirebaseCommunityRepository private constructor(
         require(latitude != null && longitude != null && latitude in -90.0..90.0 && longitude in -180.0..180.0) {
             "Selecciona el punto exacto del lugar en el mapa."
         }
-        db.collection("communityPlaces").add(mapOf(
-            "name" to cleanName, "category" to category, "location" to cleanLocation,
-            "latitude" to latitude, "longitude" to longitude,
-            "description" to cleanDescription, "authorUid" to uid, "status" to "pending",
-            "createdAt" to FieldValue.serverTimestamp()
-        )).await()
+        postBackend(
+            "/v1/community-places",
+            JSONObject()
+                .put("submissionId", java.util.UUID.randomUUID().toString())
+                .put("name", cleanName)
+                .put("category", category)
+                .put("location", cleanLocation)
+                .put("latitude", latitude)
+                .put("longitude", longitude)
+                .put("description", cleanDescription)
+        )
     }
 
     suspend fun searchProfessionalProfiles(category: String = "", area: String = ""): List<PawlyUser> {
