@@ -439,17 +439,31 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 message = communityPlacesMessage,
                 enabled = repository != null,
                 repository = repository,
-                onSubmit = { name, category, location, description, latitude, longitude ->
+                onSubmit = { placeId, name, category, location, description, latitude, longitude ->
                     val repo = repository ?: return@CommunityPlacesPanel
                     scope.launch {
                         communityPlacesLoading = true
-                        runCatching { repo.submitCommunityPlace(name, category, location, description, latitude, longitude) }
-                            .onSuccess {
-                                communityPlacesMessage = "¡Gracias! Tu propuesta se ha enviado y estará visible cuando el equipo la apruebe."
-                                communityPlaces = runCatching { repo.loadCommunityPlaces() }.getOrDefault(communityPlaces)
-                            }
-                            .onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido enviar la propuesta." }
+                        runCatching {
+                            if (placeId == null) repo.submitCommunityPlace(name, category, location, description, latitude, longitude)
+                            else repo.updateOwnCommunityPlace(placeId, name, category, location, description, latitude, longitude)
+                        }.onSuccess {
+                            communityPlacesMessage = if (placeId == null)
+                                "¡Gracias! Tu propuesta se ha enviado y estará visible cuando el equipo la apruebe."
+                            else "La recomendación se ha actualizado."
+                            communityPlaces = runCatching { repo.loadCommunityPlaces() }.getOrDefault(communityPlaces)
+                        }.onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido guardar el lugar." }
                         communityPlacesLoading = false
+                    }
+                },
+                onDeletePlace = { placeId ->
+                    val repo = repository ?: return@CommunityPlacesPanel
+                    scope.launch {
+                        runCatching { repo.deleteOwnCommunityPlace(placeId) }
+                            .onSuccess {
+                                communityPlaces = communityPlaces.filterNot { it.id == placeId }
+                                communityPlacesMessage = "Has eliminado tu recomendación."
+                            }
+                            .onFailure { communityPlacesMessage = it.localizedMessage ?: "No se ha podido eliminar el lugar." }
                     }
                 },
                 onOpenPlace = { place ->
@@ -757,12 +771,16 @@ private fun CommunityPlacesPanel(
     loading: Boolean,
     message: String?,
     enabled: Boolean,
-    onSubmit: (String, String, String, String, Double?, Double?) -> Unit,
+    onSubmit: (String?, String, String, String, String, Double?, Double?) -> Unit,
     onOpenPlace: (PawlyCommunityPlace) -> Unit,
+    onDeletePlace: (String) -> Unit,
     repository: FirebaseCommunityRepository?
 ) {
     var dialog by remember { mutableStateOf(false) }
     var reportPlaceId by remember { mutableStateOf<String?>(null) }
+    var editingPlaceId by remember { mutableStateOf<String?>(null) }
+    var deletePlaceId by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("Parque") }
     var location by remember { mutableStateOf("") }
@@ -817,8 +835,26 @@ private fun CommunityPlacesPanel(
                             Text(place.category + " · " + place.location, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
                             Text(place.description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
-                        IconButton(onClick = { reportPlaceId = place.id }) {
-                            Icon(Icons.Default.Flag, contentDescription = tr("Denunciar lugar"), tint = MaterialTheme.colorScheme.error)
+                        if (repository?.currentUid == place.authorUid) {
+                            IconButton(onClick = {
+                                editingPlaceId = place.id
+                                name = place.name
+                                category = place.category
+                                location = place.location
+                                description = place.description
+                                selectedLatitude = place.latitude
+                                selectedLongitude = place.longitude
+                                latitudeText = place.latitude?.let { "%.6f".format(java.util.Locale.US, it) }.orEmpty()
+                                longitudeText = place.longitude?.let { "%.6f".format(java.util.Locale.US, it) }.orEmpty()
+                                dialog = true
+                            }) { Icon(Icons.Default.Edit, contentDescription = tr("Editar lugar")) }
+                            IconButton(onClick = { deletePlaceId = place.id }) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = tr("Eliminar lugar"), tint = MaterialTheme.colorScheme.error)
+                            }
+                        } else {
+                            IconButton(onClick = { reportPlaceId = place.id }) {
+                                Icon(Icons.Default.Flag, contentDescription = tr("Denunciar lugar"), tint = MaterialTheme.colorScheme.error)
+                            }
                         }
                         Icon(Icons.Default.OpenInNew, contentDescription = tr("Abrir en el mapa"), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
                     }
@@ -836,10 +872,25 @@ private fun CommunityPlacesPanel(
             onDone = { reportPlaceId = null }
         )
     }
+    if (deletePlaceId != null) {
+        AlertDialog(
+            onDismissRequest = { deletePlaceId = null },
+            title = { Text(tr("Eliminar recomendación")) },
+            text = { Text(tr("Esta acción retirará tu recomendación de Pawly. No se puede deshacer.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    val id = deletePlaceId ?: return@TextButton
+                    onDeletePlace(id)
+                    deletePlaceId = null
+                }) { Text(tr("Eliminar"), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { deletePlaceId = null }) { Text(tr("Cancelar")) } }
+        )
+    }
     if (dialog) {
         AlertDialog(
             onDismissRequest = { dialog = false },
-            title = { Text(tr("Compartir un lugar")) },
+            title = { Text(tr(if (editingPlaceId == null) "Compartir un lugar" else "Editar recomendación")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text(tr("Cuéntanos dónde está y por qué merece la pena visitarlo con mascota."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -890,8 +941,9 @@ private fun CommunityPlacesPanel(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onSubmit(name.trim(), category, location.trim(), description.trim(), selectedLatitude, selectedLongitude)
+                        onSubmit(editingPlaceId, name.trim(), category, location.trim(), description.trim(), selectedLatitude!!, selectedLongitude!!)
                         dialog = false
+                        editingPlaceId = null
                     },
                     enabled = name.trim().length >= 3 && location.trim().length >= 3 && description.trim().length >= 10 &&
                         selectedLatitude != null && selectedLongitude != null && enabled && !loading
