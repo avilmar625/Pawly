@@ -438,11 +438,11 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 loading = communityPlacesLoading,
                 message = communityPlacesMessage,
                 enabled = repository != null,
-                onSubmit = { name, category, location, description ->
+                onSubmit = { name, category, location, description, latitude, longitude ->
                     val repo = repository ?: return@CommunityPlacesPanel
                     scope.launch {
                         communityPlacesLoading = true
-                        runCatching { repo.submitCommunityPlace(name, category, location, description) }
+                        runCatching { repo.submitCommunityPlace(name, category, location, description, latitude, longitude) }
                             .onSuccess {
                                 communityPlacesMessage = "¡Gracias! El lugar ya está publicado en las recomendaciones de la comunidad."
                                 communityPlaces = runCatching { repo.loadCommunityPlaces() }.getOrDefault(communityPlaces)
@@ -453,7 +453,9 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 },
                 onOpenPlace = { place ->
                     val query = Uri.encode("${place.name} ${place.location}")
-                    val geo = Uri.parse("geo:0,0?q=$query")
+                    val geo = if (place.latitude != null && place.longitude != null)
+                        Uri.parse("geo:${place.latitude},${place.longitude}?q=${place.latitude},${place.longitude}($query)")
+                    else Uri.parse("geo:0,0?q=$query")
                     val maps = Intent(Intent.ACTION_VIEW, geo).setPackage("com.google.android.apps.maps")
                     runCatching {
                         if (maps.resolveActivity(context.packageManager) != null) context.startActivity(maps)
@@ -754,7 +756,7 @@ private fun CommunityPlacesPanel(
     loading: Boolean,
     message: String?,
     enabled: Boolean,
-    onSubmit: (String, String, String, String) -> Unit,
+    onSubmit: (String, String, String, String, Double?, Double?) -> Unit,
     onOpenPlace: (PawlyCommunityPlace) -> Unit
 ) {
     var dialog by remember { mutableStateOf(false) }
@@ -762,6 +764,10 @@ private fun CommunityPlacesPanel(
     var category by remember { mutableStateOf("Parque") }
     var location by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
+    var latitudeText by remember { mutableStateOf("") }
+    var longitudeText by remember { mutableStateOf("") }
+    var selectedLatitude by remember { mutableStateOf<Double?>(null) }
+    var selectedLongitude by remember { mutableStateOf<Double?>(null) }
     var categoryExpanded by remember { mutableStateOf(false) }
     val categories = listOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro")
     Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp,
@@ -783,7 +789,11 @@ private fun CommunityPlacesPanel(
             if (places.isEmpty()) {
                 Text(tr("Todavía no hay lugares aprobados por la comunidad. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             } else {
-                places.take(8).forEach { place ->
+                val categoryOrder = listOf("Playa", "Parque", "Ruta", "Restaurante", "Alojamiento", "Veterinario", "Otro")
+                places.sortedWith(compareBy<PawlyCommunityPlace> {
+                    val index = categoryOrder.indexOfFirst { category -> category.equals(it.category, ignoreCase = true) }
+                    if (index < 0) categoryOrder.size else index
+                }.thenBy { it.name.lowercase() }).take(100).forEach { place ->
                     Row(
                         Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
                             .clickable { onOpenPlace(place) }
@@ -824,13 +834,47 @@ private fun CommunityPlacesPanel(
                         }
                     }
                     OutlinedTextField(location, { location = it.take(120) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Ciudad o dirección")) })
+                    Text(tr("Marca el punto exacto en el mapa"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Toca el mapa donde se encuentra el lugar. También puedes introducir las coordenadas manualmente."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    PawlyOpenStreetMap(
+                        modifier = Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(16.dp)),
+                        centerLatitude = selectedLatitude ?: 36.7213,
+                        centerLongitude = selectedLongitude ?: -4.4214,
+                        zoom = if (selectedLatitude != null) 15.0 else 11.0,
+                        markers = if (selectedLatitude != null && selectedLongitude != null)
+                            listOf(PawlyMapMarker(selectedLatitude!!, selectedLongitude!!, name.ifBlank { "Lugar recomendado" }))
+                        else emptyList(),
+                        onMapTap = { lat, lon ->
+                            selectedLatitude = lat
+                            selectedLongitude = lon
+                            latitudeText = "%.6f".format(java.util.Locale.US, lat)
+                            longitudeText = "%.6f".format(java.util.Locale.US, lon)
+                        }
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(latitudeText, {
+                            latitudeText = it.take(14)
+                            selectedLatitude = it.toDoubleOrNull()?.takeIf { value -> value in -90.0..90.0 }
+                        }, modifier = Modifier.weight(1f), singleLine = true, label = { Text("Latitud") })
+                        OutlinedTextField(longitudeText, {
+                            longitudeText = it.take(14)
+                            selectedLongitude = it.toDoubleOrNull()?.takeIf { value -> value in -180.0..180.0 }
+                        }, modifier = Modifier.weight(1f), singleLine = true, label = { Text("Longitud") })
+                    }
+                    if (selectedLatitude != null && selectedLongitude != null) {
+                        Text(tr("Punto seleccionado: ") + "%.5f, %.5f".format(java.util.Locale.getDefault(), selectedLatitude, selectedLongitude), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall)
+                    }
                     OutlinedTextField(description, { description = it.take(500) }, modifier = Modifier.fillMaxWidth(), minLines = 3, label = { Text(tr("¿Por qué lo recomiendas?")) })
                 }
             },
             confirmButton = {
                 TextButton(
-                    onClick = { onSubmit(name.trim(), category, location.trim(), description.trim()); dialog = false },
-                    enabled = name.trim().length >= 3 && location.trim().length >= 3 && description.trim().length >= 10 && enabled && !loading
+                    onClick = {
+                        onSubmit(name.trim(), category, location.trim(), description.trim(), selectedLatitude, selectedLongitude)
+                        dialog = false
+                    },
+                    enabled = name.trim().length >= 3 && location.trim().length >= 3 && description.trim().length >= 10 &&
+                        selectedLatitude != null && selectedLongitude != null && enabled && !loading
                 ) { Text(tr("Publicar lugar")) }
             },
             dismissButton = { TextButton(onClick = { dialog = false }) { Text(tr("Cancelar")) } }
