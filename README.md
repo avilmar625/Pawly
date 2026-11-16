@@ -6,6 +6,8 @@ Pawly es una aplicación Android en desarrollo para organizar la vida cotidiana 
 
 > Estado: proyecto en desarrollo activo. La comunidad utiliza Firebase Authentication y Firestore; la ficha/diario y los datos compartidos de mascotas tienen sincronización por mascota. Las fotos y vídeos de comunidad se alojan en Cloudinary. Las funciones aún locales o pendientes de backend se detallan en [la guía de configuración](docs/FIREBASE_SETUP.md). Los mapas usan OpenStreetMap/osmdroid y requieren conexión para cargar teselas y lugares. Para activar Firebase y multimedia hacen falta archivos locales y pasos de consola; no se incluyen credenciales en Git.
 
+> Rama de continuidad actual: `cambios66-estabilizacion-y-lint`, derivada de `cambios65-hoy-cuidados-diseno`. Sigue sin fusionar a `main`; consulta [docs/CAMBIOS66.md](docs/CAMBIOS66.md) para el estado de CI, cambios y validaciones pendientes.
+
 ## Creadores
 
 - **Alex Vilarrubla Martín**
