@@ -486,3 +486,6 @@ Rama: `cambios65-hoy-cuidados-diseno`, basada en el commit maestro `03e55679a1ec
 - Se implementó «Mi perro → Todo» como cronología de pasaporte sanitario, logs de cuidados, recuerdos del diario y recordatorios/fechas sanitarias, ordenada por fecha descendente. Intenta hidratar pasaporte y logs desde Firebase y conserva fallback local.
 - La cronología es parcial: no incluye todavía eventos comunitarios ni todo lo que puede aparecer en el calendario externo. No afirmar que sea un historial total.
 - Nuevos tests: agregación/orden y JSON inválido de cronología. Validación CI y manual pendiente para el HEAD más reciente.
+
+- La cronología «Todo» usa scroll vertical propio y tiene test de integración de sus fuentes. Se añadió implementación JVM de org.json en testImplementation para probar JSON sin los stubs del SDK Android.
+- La validación de esta nueva cronología y del nuevo test queda pendiente de la ejecución CI del último HEAD.
