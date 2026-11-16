@@ -197,15 +197,47 @@ private fun PawlyMainApp(
     }
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
     var showOnboarding by remember(preferences) { mutableStateOf(!preferences.getBoolean("onboarding_completed", false)) }
+    // Daily completion is scoped to the selected pet. Migrate the legacy
+    // account-wide flags once, assigning them to the pet selected at upgrade.
+    val petRoutineScope = remember(dogName) {
+        com.pawly.app.care.domain.PetRoutinePreferenceKeys.scope(dogName)
+    }
+    val routineDayKey = com.pawly.app.care.domain.PetRoutinePreferenceKeys.day(petRoutineScope)
+    val walkDoneKey = com.pawly.app.care.domain.PetRoutinePreferenceKeys.walkDone(petRoutineScope)
+    val medicineDoneKey = com.pawly.app.care.domain.PetRoutinePreferenceKeys.medicineDone(petRoutineScope)
     val todayRoutineKey = java.time.LocalDate.now().toString()
-    val savedRoutineDay = remember(preferences) { preferences.getString("routine_day", "") ?: "" }
-    var walkDone by remember(preferences) { mutableStateOf(savedRoutineDay == todayRoutineKey && preferences.getBoolean("walk_done", false)) }
-    var medicineDone by remember(preferences) { mutableStateOf(savedRoutineDay == todayRoutineKey && preferences.getBoolean("medicine_done", false)) }
-    LaunchedEffect(preferences, todayRoutineKey) {
-        if (savedRoutineDay != todayRoutineKey) {
+    val legacyRoutineNotMigrated = !preferences.getBoolean("routine_legacy_migrated", false)
+    val savedRoutineDay = remember(preferences, petRoutineScope) {
+        preferences.getString(routineDayKey, null)
+            ?: if (legacyRoutineNotMigrated) preferences.getString("routine_day", "") ?: "" else ""
+    }
+    var walkDone by remember(preferences, petRoutineScope) {
+        mutableStateOf(savedRoutineDay == todayRoutineKey && preferences.getBoolean(
+            walkDoneKey, if (legacyRoutineNotMigrated) preferences.getBoolean("walk_done", false) else false
+        ))
+    }
+    var medicineDone by remember(preferences, petRoutineScope) {
+        mutableStateOf(savedRoutineDay == todayRoutineKey && preferences.getBoolean(
+            medicineDoneKey, if (legacyRoutineNotMigrated) preferences.getBoolean("medicine_done", false) else false
+        ))
+    }
+    LaunchedEffect(preferences, petRoutineScope, todayRoutineKey) {
+        if (!preferences.getBoolean("routine_legacy_migrated", false)) {
+            preferences.edit()
+                .putString(routineDayKey, preferences.getString("routine_day", "") ?: "")
+                .putBoolean(walkDoneKey, preferences.getBoolean("walk_done", false))
+                .putBoolean(medicineDoneKey, preferences.getBoolean("medicine_done", false))
+                .putBoolean("routine_legacy_migrated", true)
+                .apply()
+        }
+        if ((preferences.getString(routineDayKey, "") ?: "") != todayRoutineKey) {
             walkDone = false
             medicineDone = false
-            preferences.edit().putString("routine_day", todayRoutineKey).putBoolean("walk_done", false).putBoolean("medicine_done", false).apply()
+            preferences.edit()
+                .putString(routineDayKey, todayRoutineKey)
+                .putBoolean(walkDoneKey, false)
+                .putBoolean(medicineDoneKey, false)
+                .apply()
         }
     }
     var healthDates by remember(preferences) {
