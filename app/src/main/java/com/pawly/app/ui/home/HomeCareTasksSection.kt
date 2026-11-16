@@ -34,7 +34,10 @@ internal fun HomeCareTasksSection(
     medicineDone: Boolean,
     onWalkToggle: (Boolean) -> Unit,
     onMedicineToggle: (Boolean) -> Unit,
-    onOpenCalendar: () -> Unit
+    onOpenCalendar: () -> Unit,
+    onWeight: () -> Unit,
+    onPhoto: () -> Unit,
+    onFood: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val today = LocalDate.now()
@@ -261,6 +264,19 @@ internal fun HomeCareTasksSection(
                     }
                 }
         }
+        Text("Registrar rápido", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            HomeCareQuickAction(Icons.Filled.DirectionsWalk, "Paseo", Color(0xFFE2F1E6), {
+                val task = visibleTasks.firstOrNull { it.action == "Paseo" }
+                if (task != null) toggleTask(task, !isComplete(task)) else onWalkToggle(!walkDone)
+            }, Modifier.weight(1f))
+            HomeCareQuickAction(Icons.Filled.MonitorWeight, "Peso", Color(0xFFDDF1EE), onWeight, Modifier.weight(1f))
+            HomeCareQuickAction(Icons.Filled.PhotoCamera, "Foto", Color(0xFFFFE9DF), onPhoto, Modifier.weight(1f))
+            HomeCareQuickAction(Icons.Filled.Restaurant, "Comida", Color(0xFFE4EBC1), {
+                val task = visibleTasks.firstOrNull { it.action == "Comida" }
+                if (task != null) toggleTask(task, !isComplete(task)) else onFood()
+            }, Modifier.weight(1f))
+        }
         if (syncMessage.isNotBlank()) {
             Text(syncMessage, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall)
@@ -315,5 +331,32 @@ private fun HomeRoutineRow(
             Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
         Checkbox(checked = checked, onCheckedChange = onChecked)
+    }
+}
+
+
+@Composable
+private fun HomeCareQuickAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(17.dp),
+            color = MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(36.dp).background(tint, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
