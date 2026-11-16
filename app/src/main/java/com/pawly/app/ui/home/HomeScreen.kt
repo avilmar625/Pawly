@@ -12,8 +12,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,135 +50,178 @@ internal fun HomeScreen(
     onDiary: () -> Unit = {},
     onCalendar: () -> Unit = {},
     onCommunity: () -> Unit = {},
-    onHealth: () -> Unit = {}
+    onHealth: () -> Unit = {},
+    storageScope: String? = null
 ) {
-    val completed = listOf(walkDone, medicineDone).count { it }
+    val context = androidx.compose.ui.platform.LocalContext.current
     val language = LocalPawlyLanguage.current
     val locale = PawlyI18n.locale(language)
     val dateLabel = DateFormat.getDateInstance(DateFormat.FULL, locale)
         .format(Date()).replaceFirstChar { it.uppercase(locale) }
-    val firstName = dogName.ifBlank { "tu compañero" }
+    var weightEntries by remember(dogName, storageScope) {
+        mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
+            .filter { it.type.equals("Peso", true) })
+    }
+
+    LaunchedEffect(dogName, storageScope) {
+        val local = com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
+            .filter { it.type.equals("Peso", true) }
+        weightEntries = local
+        if (!storageScope.isNullOrBlank()) {
+            runCatching {
+                val repository = com.pawly.app.care.data.FirebasePetCareRepository()
+                repository.ensureSharedPet(dogName, dogName)
+                repository.loadPassportEntries(dogName).filter { it.type.equals("Peso", true) }
+            }.onSuccess { remote ->
+                weightEntries = remote
+                com.pawly.app.care.data.PetCareLocalStore.saveEntries(
+                    context, dogName,
+                    com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
+                        .filterNot { it.type.equals("Peso", true) } + remote,
+                    storageScope
+                )
+            }
+        }
+    }
+
+    val parsedWeights = weightEntries.mapNotNull { entry ->
+        val raw = "${entry.title} ${entry.detail}"
+        val match = Regex("""(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*(?:kg)?""", RegexOption.IGNORE_CASE).find(raw)
+        val value = match?.groupValues?.getOrNull(1)?.replace(',', '.')?.toFloatOrNull()
+        value?.takeIf { it in 0.1f..150f }?.let { entry.date to it }
+    }.sortedBy { it.first }
+    val latestWeight = parsedWeights.lastOrNull()?.second
+    val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
+    val weightChange = if (latestWeight != null && previousWeight != null) latestWeight - previousWeight else null
+    val completed = listOf(walkDone, medicineDone).count { it }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 30.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(dateLabel.uppercase(locale), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.25.sp)
-                    Text(tr("Qué bien tenerte por aquí"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text(dateLabel.uppercase(locale), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(tr("¡Qué bien tenerte por aquí!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                Surface(
-                    onClick = onNotifications,
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.NotificationsNone, contentDescription = tr("Notificaciones"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
+                Surface(onClick = onNotifications, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.NotificationsNone, contentDescription = tr("Notificaciones"), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                Surface(
-                    onClick = onAbout,
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Pets, contentDescription = tr("Acerca de Pawly"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                Surface(onClick = onAbout, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Settings, contentDescription = tr("Acerca de Pawly"), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
         }
         item { HomePetHero(dogName, dogPhoto, dogPhotoUrl, onEditProfile, elegantDesign) }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(tr("Accesos rápidos"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HomeQuickAction(Icons.Filled.Groups, "Comunidad", Color(0xFFEDE7F6), onCommunity, Modifier.weight(1f))
-                    HomeQuickAction(Icons.Filled.CalendarMonth, "Agenda", Color(0xFFE3F1F2), onCalendar, Modifier.weight(1f))
-                    HomeQuickAction(Icons.Filled.AutoStories, "Diario", Color(0xFFF7EBDD), onDiary, Modifier.weight(1f))
-                    HomeQuickAction(Icons.Filled.FavoriteBorder, "Salud", Color(0xFFF9E8EB), onHealth, Modifier.weight(1f))
-                }
-            }
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(tr("Un día bonito\ncon $firstName."), style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onSurface)
-                Text(tr("Cuidados, recuerdos y nuevas aventuras. Todo vuestro, en un mismo lugar."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                HomeStatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Filled.CheckCircle,
-                    value = "$completed/2",
-                    label = "rutinas de hoy",
-                    accent = Color(0xFFE5EFE5)
-                )
-                HomeStatCard(
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Filled.AutoStories,
-                    value = diaryCount.toString(),
-                    label = "recuerdos",
-                    accent = Color(0xFFF6E9DF)
-                )
-            }
-        }
-        item {
-            Surface(
-                shape = RoundedCornerShape(26.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Column(Modifier.fillMaxWidth().padding(17.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(tr("Vuestro día, paso a paso"), style = MaterialTheme.typography.titleLarge)
-                            Text(tr(if (completed == 2) "¡Todo hecho! Os lo habéis ganado." else "Pequeños gestos, grandes cuidados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(tr("Para hoy"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(tr(if (completed == 2) "¡Todo listo! Qué buen equipo." else "Pequeños cuidados que marcan la diferencia."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
-                        Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(14.dp)) {
-                            Text(tr("$completed/2"), modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
+                        TextButton(onClick = onCalendar) { Text(tr("Ver agenda")) }
                     }
-                    LinearProgressIndicator(
-                        progress = { completed / 2f },
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                    HomeRoutineRow(
-                        icon = Icons.Filled.DirectionsWalk,
-                        title = "Paseo y olfateo",
-                        subtitle = "Un rato para explorar sin prisa",
-                        checked = walkDone,
-                        onChecked = onWalkToggle,
-                        iconBackground = Color(0xFFE6EFDF),
-                        iconTint = Color(0xFF456C50)
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    HomeRoutineRow(
-                        icon = Icons.Filled.FavoriteBorder,
-                        title = "Revisar sus cuidados",
-                        subtitle = "Comprueba lo que toca hoy",
-                        checked = medicineDone,
-                        onChecked = onMedicineToggle,
-                        iconBackground = Color(0xFFF6E9DF),
-                        iconTint = Color(0xFF986747)
-                    )
+                    HomeRoutineRow(Icons.Filled.DirectionsWalk, "Paseo diario", "Un rato para explorar y olfatear", walkDone, onWalkToggle, Color(0xFFE2F1E6), Color(0xFF287A4B))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = .55f))
+                    HomeRoutineRow(Icons.Filled.Medication, "Medicación", "Comprueba la toma de hoy", medicineDone, onMedicineToggle, Color(0xFFFCE8E8), Color(0xFFB54F5C))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(tr("$completed de 2 cuidados completados"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        Spacer(Modifier.weight(1f))
+                        Text("${completed * 50}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                    }
+                    LinearProgressIndicator(progress = { completed / 2f }, modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape))
                 }
             }
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text(tr("Accesos rápidos"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    HomeQuickAction(Icons.Filled.DirectionsWalk, "Paseo", Color(0xFFE2F1E6), { onWalkToggle(!walkDone) }, Modifier.weight(1f))
+                    HomeQuickAction(Icons.Filled.MonitorWeight, "Peso", Color(0xFFDDF1EE), onHealth, Modifier.weight(1f))
+                    HomeQuickAction(Icons.Filled.PhotoCamera, "Foto", Color(0xFFFFE9DF), onEditProfile, Modifier.weight(1f))
+                }
+            }
+        }
+        item {
+            Surface(onClick = onHealth, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.MonitorWeight, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr("Evolución del peso"), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                        Text(tr("Ver salud"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    if (latestWeight != null) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(String.format(locale, "%.1f", latestWeight), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                            Spacer(Modifier.width(5.dp))
+                            Text("kg", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.dp))
+                            Spacer(Modifier.weight(1f))
+                            if (weightChange != null) {
+                                Text(String.format(locale, "%+.1f kg", weightChange), color = if (weightChange > 0) Color(0xFF31845B) else if (weightChange < 0) Color(0xFFB45A54) else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        if (parsedWeights.size > 1) {
+                            Row(Modifier.fillMaxWidth().height(46.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+                                val recent = parsedWeights.takeLast(7).map { it.second }
+                                val min = (recent.minOrNull() ?: 0f) - .25f
+                                val max = (recent.maxOrNull() ?: 1f) + .25f
+                                recent.forEachIndexed { index, value ->
+                                    val fraction = ((value - min) / (max - min).coerceAtLeast(.1f)).coerceIn(.12f, 1f)
+                                    Box(Modifier.weight(1f).fillMaxHeight(fraction).clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                        .background(if (index == recent.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
+                                }
+                            }
+                            Text(tr("Últimos registros guardados en el pasaporte de salud"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        } else {
+                            Text(tr("Añade más mediciones para ver la evolución."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
+                    } else {
+                        Text(tr("Todavía no hay mediciones. Registra el primer peso en Mi perro → Pasaporte → Peso."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = onHealth) { Text(tr("Registrar primer peso")) }
+                    }
+                }
+            }
+        }
+        item {
+            Surface(onClick = onDiary, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFF8EBDD)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.AutoStories, null, tint = Color(0xFF9A7043), modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(tr("Diario de recuerdos"), fontWeight = FontWeight.Bold)
+                        Text(tr(if (diaryCount == 0) "Guarda vuestra primera aventura." else "$diaryCount recuerdos guardados"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+        }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(tr("Salid a descubrir"), style = MaterialTheme.typography.titleLarge)
-                        Text(tr("Hay un mundo de planes por compartir."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Column(Modifier.weight(1f)) {
+                        Text(tr("Ideas para vuestra próxima salida"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(tr("Planes y lugares dog-friendly"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     TextButton(onClick = onExplore) { Text(tr("Ver todo")) }
                 }
@@ -186,15 +230,10 @@ internal fun HomeScreen(
         }
         item { HomeLearnCard(onClick = onLearn) }
         item {
-            Text(
-                "HECHO PARA COMPARTIR MÁS VIDA JUNTOS",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.25.sp,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                textAlign = TextAlign.Center
-            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onCommunity, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Groups, null); Spacer(Modifier.width(5.dp)); Text(tr("Comunidad")) }
+                TextButton(onClick = onCalendar, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.CalendarMonth, null); Spacer(Modifier.width(5.dp)); Text(tr("Calendario")) }
+            }
         }
     }
 }

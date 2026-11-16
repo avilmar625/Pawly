@@ -62,7 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 internal enum class Tab(val label: String) {
-    HOME("Inicio"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), CALENDAR("Calendario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda")
+    HOME("Hoy"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Mi perro"), DIARY("Diario"), CALENDAR("Calendario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda")
 }
 
 @Composable
@@ -190,9 +190,22 @@ private fun PawlyMainApp(
             dogPhotoPath = destination.absolutePath
         }
     }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        profileSyncStatus = if (granted) "Notificaciones activadas." else "Puedes activarlas más adelante desde los ajustes del móvil."
+    }
     val dogPhoto = remember(dogPhotoPath) { dogPhotoPath?.let(BitmapFactory::decodeFile) }
-    var walkDone by remember(preferences) { mutableStateOf(preferences.getBoolean("walk_done", false)) }
-    var medicineDone by remember(preferences) { mutableStateOf(preferences.getBoolean("medicine_done", false)) }
+    var showOnboarding by remember(preferences) { mutableStateOf(!preferences.getBoolean("onboarding_completed", false)) }
+    val todayRoutineKey = java.time.LocalDate.now().toString()
+    val savedRoutineDay = remember(preferences) { preferences.getString("routine_day", "") ?: "" }
+    var walkDone by remember(preferences) { mutableStateOf(savedRoutineDay == todayRoutineKey && preferences.getBoolean("walk_done", false)) }
+    var medicineDone by remember(preferences) { mutableStateOf(savedRoutineDay == todayRoutineKey && preferences.getBoolean("medicine_done", false)) }
+    LaunchedEffect(preferences, todayRoutineKey) {
+        if (savedRoutineDay != todayRoutineKey) {
+            walkDone = false
+            medicineDone = false
+            preferences.edit().putString("routine_day", todayRoutineKey).putBoolean("walk_done", false).putBoolean("medicine_done", false).apply()
+        }
+    }
     var healthDates by remember(preferences) {
         mutableStateOf(runCatching {
             val json = JSONArray(preferences.getString("health_dates", "[]") ?: "[]")
@@ -301,7 +314,7 @@ private fun PawlyMainApp(
                 ) {
                     listOf(Tab.HOME, Tab.EXPLORE, Tab.HEALTH, Tab.COMMUNITY, Tab.MORE).forEach { tab ->
                         val label = PawlyI18n.text(tab.label, language)
-                        val active = selected == tab || (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.CALENDAR))
+                        val active = selected == tab || (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.CALENDAR, Tab.DIARY, Tab.LEARN))
                         val tabTint = when (tab) {
                             Tab.HOME -> Color(0xFF26836B)
                             Tab.EXPLORE -> Color(0xFF3979B8)
@@ -380,7 +393,8 @@ private fun PawlyMainApp(
                     onDiary = { selected = Tab.DIARY },
                     onCalendar = { selected = Tab.CALENDAR },
                     onCommunity = { selected = Tab.COMMUNITY },
-                    onHealth = { selected = Tab.HEALTH }
+                    onHealth = { selected = Tab.HEALTH },
+                    storageScope = storageScope
                 )
                 Tab.EXPLORE -> ExploreScreen(
                     savedPlaces = savedPlaceNames,
@@ -529,6 +543,27 @@ private fun PawlyMainApp(
         }
     }
 
+    if (showOnboarding) {
+        PawlyOnboardingDialog(
+            petName = dogName,
+            onPetNameChange = { dogName = it },
+            hasPhoto = dogPhoto != null,
+            onPickPhoto = { galleryPicker.launch("image/*") },
+            onEnableNotifications = {
+                if (Build.VERSION.SDK_INT >= 33 &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                ) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else profileSyncStatus = "Las notificaciones están disponibles en este dispositivo."
+            },
+            onFinish = {
+                val cleanName = dogName.trim().ifBlank { "Mi mascota" }
+                dogName = cleanName
+                dogProfiles = dogProfiles + cleanName
+                preferences.edit().putBoolean("onboarding_completed", true).putString("dog_name", cleanName).apply()
+                showOnboarding = false
+            }
+        )
+    }
     if (showAbout) {
         AboutDialog(onDismiss = { showAbout = false })
     }
