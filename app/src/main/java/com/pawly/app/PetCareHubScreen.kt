@@ -685,7 +685,7 @@ private fun PetCarePlanSection(
                     }
                     if (action == "Medicación") {
                         OutlinedTextField(dose, { dose = it }, label = { Text(tr("Dosis (ej. 1 comprimido)")) }, singleLine = true)
-                        OutlinedTextField(time, { time = it }, label = { Text(tr("Hora diaria (HH:mm)")) }, singleLine = true)
+                        OutlinedTextField(time, { time = it }, label = { Text(tr("Hora del aviso (HH:mm)")) }, singleLine = true)
                         if (frequency != "Puntual") {
                             val weeklyReminder = frequency == "Semanal"
                             Row(verticalAlignment = Alignment.CenterVertically) {
