@@ -18,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -486,6 +487,11 @@ internal fun HomeCareTasksSection(
             }
         }
     }
+    val invalidWalkDistanceMessage = tr("Introduce una distancia válida entre 0,01 y 1.000 km.")
+    val invalidWalkMapMessage = tr("El enlace del mapa debe ser una URL web válida.")
+    val walkPhotoSyncWarningMessage = tr("Paseo sincronizado; alguna fotografía queda solo en este dispositivo.")
+    val walkPendingSyncMessage = tr("Paseo guardado localmente; pendiente de sincronizar.")
+
     if (showWalkDialog) {
         AlertDialog(
             onDismissRequest = { if (!walkSaving) showWalkDialog = false },
@@ -580,8 +586,8 @@ internal fun HomeCareTasksSection(
                             parsed.scheme in setOf("https", "http") && !parsed.host.isNullOrBlank()
                         }.getOrDefault(false)
                         when {
-                            hasInvalidDistance -> walkError = tr("Introduce una distancia válida entre 0,01 y 1.000 km.")
-                            !mapIsValid -> walkError = tr("El enlace del mapa debe ser una URL web válida.")
+                            hasInvalidDistance -> walkError = invalidWalkDistanceMessage
+                            !mapIsValid -> walkError = invalidWalkMapMessage
                             else -> {
                                 walkSaving = true
                                 walkError = null
@@ -641,10 +647,10 @@ internal fun HomeCareTasksSection(
                                             logs = (listOf(visibleEntry) + logs.filterNot { it.id == localId }).take(100)
                                             PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
                                             syncMessage = if (failedPhotoUploads > 0) {
-                                                tr("Paseo sincronizado; alguna fotografía queda solo en este dispositivo.")
+                                                walkPhotoSyncWarningMessage
                                             } else changesSyncedMessage
                                         }.onFailure {
-                                            syncMessage = tr("Paseo guardado localmente; pendiente de sincronizar.")
+                                            syncMessage = walkPendingSyncMessage
                                         }
                                     }
                                 }
