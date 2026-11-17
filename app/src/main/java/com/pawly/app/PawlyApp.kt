@@ -404,7 +404,7 @@ private fun PawlyMainApp(
                 runCatching {
                     if (cloudRepository != null && !storageScope.isNullOrBlank()) {
                         cloudRepository.saveHomePetState(snapshot.petName, snapshot.dogProfiles)
-                        val careRepository = FirebasePetCareRepository()
+                        val careRepository = FirebasePetCareRepository(sharedPetOwnerUid = storageScope)
                         careRepository.ensureSharedPet(snapshot.petName, snapshot.petName)
                         careRepository.savePassportEntries(snapshot.petName, snapshot.passportEntries)
                         careRepository.saveCareTasks(snapshot.petName, snapshot.careTasks)
