@@ -932,14 +932,6 @@ service cloud.firestore {
     }
 
   }
-})
-        && request.resource.data.publicId.matches('^pawly/(profile-photos|dog-photos|pet-photos|post-photos|message-photos|diary-photos|post-videos|message-videos)/' + request.auth.uid + '/.+$')
-        && request.resource.data.resourceType in ['image', 'video']
-        && request.resource.data.createdAt == request.time;
-      allow get, list: if signedIn() && resource.data.uid == request.auth.uid;
-      allow update, delete: if false;
-    }
-
     match /accountDeletionRequests/{requestId} {
       allow create: if signedIn()
         && requestId == request.auth.uid
