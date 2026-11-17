@@ -15,7 +15,9 @@ data class PawlyUser(
     val professionalLocation: String = "",
     val professionalDescription: String = "",
     val professionalContact: String = "",
-    val professionalContactPublic: Boolean = false
+    val professionalContactPublic: Boolean = false,
+    /** Set only by Pawly moderators after an identity/entity review. */
+    val isVerified: Boolean = false
 )
 
 data class PawlyDog(

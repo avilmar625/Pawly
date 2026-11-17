@@ -1499,7 +1499,8 @@ class FirebaseCommunityRepository private constructor(
             professionalLocation = getString("professionalLocation") ?: "",
             professionalDescription = getString("professionalDescription") ?: "",
             professionalContact = "",
-            professionalContactPublic = getBoolean("professionalContactPublic") ?: false
+            professionalContactPublic = getBoolean("professionalContactPublic") ?: false,
+            isVerified = getBoolean("isVerified") ?: false
         ).copy(professionalContact = getString("professionalPublicContact").orEmpty())
     }
 }
