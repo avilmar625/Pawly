@@ -63,24 +63,24 @@ internal fun PawlyCalendarScreen(
     var agendaSyncMessage by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
     val activeReminders = if (sharedPetOwnerUid != null) sharedReminders else reminders
     var canEditSharedAgenda by remember(sharedPetOwnerUid, petId) { mutableStateOf(sharedPetOwnerUid == null) }
-    LaunchedEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
-        if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
-            runCatching { canEditSharedAgenda = sharedAgendaRepository.canEditAgenda(petId) }
-                .onFailure { agendaSyncMessage = "No se pudieron comprobar los permisos de la agenda." }
-        }
-    }
+    var agendaReady by remember(sharedPetOwnerUid, petId) { mutableStateOf(false) }
     LaunchedEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
         if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
             runCatching {
                 if (sharedPetOwnerUid == FirebaseAuth.getInstance().currentUser?.uid) {
                     FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).ensurePet(petId, dogName)
                 }
+                canEditSharedAgenda = sharedAgendaRepository.canEditAgenda(petId)
                 sharedAgendaRepository.migrateLocalIfCloudEmpty(petId, initialLocalReminders)
-            }.onFailure { agendaSyncMessage = "No se pudo preparar la agenda compartida: ${it.localizedMessage}" }
+                agendaReady = true
+            }.onFailure {
+                canEditSharedAgenda = false
+                agendaSyncMessage = "No se pudo preparar la agenda compartida: ${it.localizedMessage}"
+            }
         }
     }
-    DisposableEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
-        val listener = if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
+    DisposableEffect(sharedPetOwnerUid, petId, sharedAgendaRepository, agendaReady) {
+        val listener = if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null && agendaReady) {
             sharedAgendaRepository.listenReminders(
                 petId,
                 onReminders = { remote ->
