@@ -414,7 +414,7 @@ class FirebaseCommunityRepository private constructor(
         relatedId: String = "",
         sourceEventId: String = ""
     ) {
-        val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/').ifBlank { "https://pawly-api.alexvilarrubla619.workers.dev" }
+        val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/').ifBlank { "https://pawly-api.alexvilarrubla619.workers.dev" }.ifBlank { "https://pawly-api.alexvilarrubla619.workers.dev" }
         if (baseUrl.isBlank() || targetUid.isBlank()) return
         val idToken = auth.currentUser?.getIdToken(false)?.await()?.token ?: return
         val payload = JSONObject()
