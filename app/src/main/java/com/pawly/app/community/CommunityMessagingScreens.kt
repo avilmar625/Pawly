@@ -118,7 +118,7 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
 }
 
 @Composable
-internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, onDismiss: () -> Unit) {
+internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, onDismiss: () -> Unit, onOpenUser: (String) -> Unit = {}) {
     var comments by remember(post.id) { mutableStateOf(emptyList<PawlyComment>()) }
     var draft by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -137,7 +137,13 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(Modifier.fillMaxWidth().padding(11.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(comment.authorName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                comment.authorName,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.clickable { if (comment.authorId.isNotBlank()) onOpenUser(comment.authorId) }
+                            )
                             Text(comment.text, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                             if (comment.createdAt > 0L) Text(
                                 java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(comment.createdAt)),
