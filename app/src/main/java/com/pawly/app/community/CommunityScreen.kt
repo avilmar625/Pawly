@@ -386,6 +386,15 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                         Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
                     }
                 }
+                Row(Modifier.align(Alignment.TopEnd).padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
+                        Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
+                    }
+                    IconButton(onClick = { page = CommunityPage.PROFILE; selectedUser = null; chat = null }) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = tr("Mi perfil"), tint = Color.White,
+                            modifier = Modifier.size(27.dp))
+                    }
+                }
             }
         } else Surface(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
