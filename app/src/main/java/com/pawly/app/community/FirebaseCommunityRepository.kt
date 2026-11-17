@@ -692,7 +692,10 @@ class FirebaseCommunityRepository private constructor(
     private suspend fun loadRelationshipUsers(collectionName: String): List<PawlyUser> {
         require(collectionName == "following" || collectionName == "followers")
         val me = requireUid()
-        val relations = db.collection("users").document(me).collection(collectionName).get().await()
+        val relations = db.collection("users").document(me).collection(collectionName)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(50)
+            .get().await()
         return relations.documents.map { relation ->
             runCatching { getUser(relation.id) }.getOrNull()
                 ?: PawlyUser(uid = relation.id, displayName = "Cuenta privada", isPublic = false)
