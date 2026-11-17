@@ -42,7 +42,8 @@ internal fun PawlyDropdownSelector(
     selectedValue: String,
     onSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
-    leadingIcon: ImageVector? = null
+    leadingIcon: ImageVector? = null,
+    enabled: Boolean = true
 ) {
     var expanded by remember(title) { mutableStateOf(false) }
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -50,6 +51,7 @@ internal fun PawlyDropdownSelector(
         androidx.compose.foundation.layout.Box {
             Surface(
                 onClick = { expanded = true },
+                enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(15.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -80,6 +82,7 @@ internal fun PawlyDropdownSelector(
                     val selected = value == selectedValue
                     DropdownMenuItem(
                         text = { Text(label, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
+                        enabled = enabled,
                         trailingIcon = {
                             if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         },
