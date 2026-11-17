@@ -81,6 +81,19 @@ class PawlyI18nTest {
     }
 
     @Test
+    fun supportsGermanAndEuropeanPortugueseNavigationAndDiaryLabels() {
+        assertEquals("Start", PawlyI18n.text("Inicio", "de"))
+        assertEquals("Start", PawlyI18n.text("Inicio", "de"))
+        assertEquals("Início", PawlyI18n.text("Inicio", "pt"))
+        assertEquals("ERINNERUNGSTAGEBUCH", PawlyI18n.text("DIARIO DE RECUERDOS", "de"))
+        assertEquals("DIÁRIO DE MEMÓRIAS", PawlyI18n.text("DIARIO DE RECUERDOS", "pt"))
+        assertEquals("Erinnerungen filtern", PawlyI18n.text("Filtrar recuerdos", "de"))
+        assertEquals("Filtrar memórias", PawlyI18n.text("Filtrar recuerdos", "pt"))
+        assertEquals(java.util.Locale.GERMANY, PawlyI18n.locale("de"))
+        assertEquals(java.util.Locale.forLanguageTag("pt-PT"), PawlyI18n.locale("pt"))
+    }
+
+    @Test
     fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
         assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
         assertEquals("Texto nuevo", PawlyI18n.text("Texto nuevo", "en"))
