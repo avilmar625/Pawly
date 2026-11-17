@@ -73,7 +73,7 @@ internal fun DiaryScreen(
     onPhotoPickerOpened: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val photoConfigErrorText = tr("Configura la subida de fotografías para guardar imágenes en el diario.")
+    val photoConfigErrorText = tr("La subida de fotografías no está disponible ahora. Comprueba la conexión e inténtalo de nuevo.")
     val diarySaveErrorText = tr("No se pudo guardar el recuerdo.")
     var note by remember { mutableStateOf("") }
     var memoryTitle by remember { mutableStateOf("") }
