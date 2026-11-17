@@ -19,6 +19,12 @@ class FirebasePetAgendaRepository(
         .document("${ownerUid}_${petId}")
         .collection("agenda")
 
+    suspend fun canEditAgenda(petId: String): Boolean {
+        val member = db.collection("sharedPets").document("${ownerUid}_${petId}")
+            .collection("members").document(uid()).get().await()
+        return member.getString("role") in setOf("owner", "editor")
+    }
+
     fun listenReminders(
         petId: String,
         onReminders: (List<String>) -> Unit,
