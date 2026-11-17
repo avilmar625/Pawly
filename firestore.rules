@@ -537,7 +537,7 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 12000
           && request.resource.data.position is int
           && request.resource.data.position >= 0
-          && request.resource.data.position <= 199;
+          && request.resource.data.position <= 499;
         allow delete: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
       }
