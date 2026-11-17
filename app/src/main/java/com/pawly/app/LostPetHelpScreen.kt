@@ -161,8 +161,7 @@ internal fun LostPetHelpScreen(
                     selectedLabel = "$alertRadius km",
                     options = listOf(5, 10, 20).map { it.toString() to "$it km" },
                     selectedValue = alertRadius.toString(),
-                    onSelected = { alertRadius = it.toInt(); subscriptionSaved = false },
-                    leadingIcon = Icons.Default.Radar
+                    onSelected = { alertRadius = it.toInt(); subscriptionSaved = false }
                 )
                 Text(
                     t("Pawly utiliza una ubicación aproximada (redondeada a unos 1 km). No se comparte tu posición exacta. Los avisos solo se envían a personas que hayan activado esta opción y estén dentro del radio."),
