@@ -117,8 +117,7 @@ internal fun PawlyMarketHubScreen(
                     Column(Modifier.padding(21.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                         Text("EL UNIVERSO DE $petName", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .78f),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold)
-                        Text("Todo lo que necesita,
-en un solo lugar.", color = MaterialTheme.colorScheme.onPrimary,
+                        Text("Todo lo que necesita,\nen un solo lugar.", color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text("Compras útiles, rutinas, gastos, salud y profesionales.", color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .88f))
                     }
