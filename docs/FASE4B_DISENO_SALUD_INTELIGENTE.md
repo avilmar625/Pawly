@@ -78,3 +78,12 @@ Convertir el pasaporte sanitario de Pawly en un historial útil y accionable por
 
 - PassportEntryScheduleTest: compatibilidad con registro antiguo, próxima dosis futura, próxima dosis vencida y actuación pendiente sin próxima dosis explícita.
 - Pendiente de validar el resultado final del workflow Android de GitHub Actions para esta rama.
+## Revisión adicional previa a pruebas manuales
+
+- La fecha de administración ya no se reutiliza como fecha de vencimiento cuando falta una próxima actuación. Una entrada pendiente sin fecha prevista sigue en la agenda y se etiqueta como fecha por definir.
+- Un estado marcado expresamente como vencido se mantiene vencido; una próxima fecha pasada también pasa a vencido automáticamente.
+- Una administración realizada puede seguir teniendo una próxima dosis pendiente: el historial conserva el estado del registro y la agenda muestra el estado de la siguiente actuación.
+- La preferencia reminderEnabled solo se guarda como activa después de que Android haya aceptado programar la alarma. Si se deniega el permiso, las notificaciones están desactivadas en Ajustes o la alarma no se puede programar, el registro se conserva pero el aviso queda desactivado y se informa a la persona usuaria.
+- Al conceder permiso, se actualizan tanto la copia local como Firestore para reflejar el recordatorio realmente programado.
+- Se comprueba también el estado general de notificaciones de la aplicación, no solo el permiso POST_NOTIFICATIONS.
+- Las nuevas etiquetas del pasaporte y los estados están traducidos a español, catalán, francés, inglés, alemán, portugués y euskera.
