@@ -13,8 +13,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -71,10 +69,22 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text(tr("Todos")) })
-                FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text(tr("Siguiendo")) })
-            }
+            PawlyDropdownSelector(
+                title = tr("Mostrar publicaciones"),
+                selectedLabel = tr(if (followingOnly) "Siguiendo" else "Todos"),
+                options = listOf("all" to tr("Todos"), "following" to tr("Siguiendo")),
+                selectedValue = if (followingOnly) "following" else "all",
+                onSelected = { followingOnly = it == "following" },
+                leadingIcon = Icons.Default.People
+            )
+            PawlyDropdownSelector(
+                title = tr("Categoría"),
+                selectedLabel = tr(categoryOptions.firstOrNull { it.first == categoryFilter }?.second ?: "Todo"),
+                options = categoryOptions.map { it.first to tr(it.second) },
+                selectedValue = categoryFilter,
+                onSelected = { categoryFilter = it },
+                leadingIcon = Icons.Default.FilterList
+            )
             OutlinedTextField(
                 value = keyword,
                 onValueChange = { keyword = it.take(80) },
@@ -85,15 +95,6 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
                 trailingIcon = { if (keyword.isNotBlank()) IconButton(onClick = { keyword = "" }) { Icon(Icons.Default.Close, contentDescription = tr("Borrar búsqueda")) } },
                 shape = RoundedCornerShape(14.dp)
             )
-            FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                categoryOptions.forEach { (value, label) ->
-                    FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) })
-                }
-            }
             Spacer(Modifier.height(8.dp))
             Box(Modifier.fillMaxWidth()) {
                 OutlinedButton(onClick = { sortMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
