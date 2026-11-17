@@ -494,7 +494,8 @@ internal fun PawlyEventsScreen(
                         }
                         .onFailure { error = it.localizedMessage ?: interestUpdateErrorText }
                 }
-            }
+            },
+            onOpenProfile = onOpenProfile
         )
     }
     if (reportEventId != null) ReportDialog(
@@ -539,7 +540,8 @@ private fun EventDetailsDialog(
     onLoadAttendees: () -> Unit,
     onDismiss: () -> Unit,
     onAddToCalendar: () -> Unit,
-    onToggleInterest: () -> Unit
+    onToggleInterest: () -> Unit,
+    onOpenProfile: (String) -> Unit = {}
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -585,12 +587,20 @@ private fun EventDetailsDialog(
                                 }
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth().then(if (event.organizerUid.isNotBlank()) Modifier.clickable {
+                                    onOpenProfile(event.organizerUid)
+                                } else Modifier),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 Icon(Icons.Default.Pets, null, tint = MaterialTheme.colorScheme.primary)
                                 Column(Modifier.weight(1f)) {
                                     Text(tr("Organiza"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(event.organizerName, fontWeight = FontWeight.SemiBold)
+                                    Text(event.organizerName, fontWeight = FontWeight.SemiBold,
+                                        color = if (event.organizerUid.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                                 }
+                                if (event.organizerUid.isNotBlank()) Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
