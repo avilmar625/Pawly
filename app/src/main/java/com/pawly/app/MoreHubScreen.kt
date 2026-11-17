@@ -40,6 +40,7 @@ internal fun MoreHubScreen(
     onCalendar: () -> Unit,
     onSettings: () -> Unit,
     onProfessionals: () -> Unit,
+    onPawlyMarket: () -> Unit,
     onLostPet: () -> Unit,
     onSharePetPdf: () -> Unit,
     onSavePetPdf: () -> Unit,
@@ -85,6 +86,7 @@ internal fun MoreHubScreen(
             }
         }
         MoreSectionLabel(t("CUIDADO Y COMUNIDAD"))
+        MoreDestinationCard(Icons.Filled.Storefront, t("Pawly Market y cuidados"), t("Productos por categorías, alimentación, higiene, gastos y ficha de emergencia."), onPawlyMarket, Color(0xFFB16C27), Color(0xFFFFF0DB))
         MoreDestinationCard(Icons.Filled.WorkspacePremium, t("Servicios profesionales"), t("Adiestradores, etólogos, veterinarios, paseadores y cuidadores."), onProfessionals, Color(0xFF247A67), Color(0xFFE2F3EC))
         MoreDestinationCard(Icons.Filled.Help, t("He perdido a mi mascota"), t("Ayuda a encontrarla y difunde un aviso."), onLostPet, Color(0xFFB34F42), Color(0xFFFFE9E4))
         MoreSectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
