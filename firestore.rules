@@ -250,6 +250,19 @@ service cloud.firestore {
         allow update: if false;
       }
 
+      // Reverse index: lets the blocked account hide the blocker from its
+      // community surfaces without exposing the blocker's other relationships.
+      match /blockedBy/{blockerUid} {
+        allow read: if owner(uid);
+        allow create: if signedIn()
+          && request.auth.uid == blockerUid
+          && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
+          && request.resource.data.uid == blockerUid
+          && request.resource.data.createdAt == request.time;
+        allow delete: if signedIn() && request.auth.uid == blockerUid;
+        allow update: if false;
+      }
+
       match /fcmTokens/{tokenId} {
         allow read: if owner(uid);
         allow create, update: if owner(uid)
