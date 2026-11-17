@@ -713,7 +713,10 @@ private fun SuggestedProfilesRow(
                         else Surface(modifier = Modifier.size(54.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
                             Box(contentAlignment = Alignment.Center) { Text(user.displayName.take(1).uppercase(), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) }
                         }
-                        Text(user.displayName.ifBlank { user.username }, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(user.displayName.ifBlank { user.username }, fontWeight = FontWeight.Bold, maxLines = 1)
+                            if (user.isVerified) PawlyVerifiedBadge(15.dp)
+                        }
                         Text("@${user.username}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                         if (user.accountType == "professional") Text(tr("Perfil profesional"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         Button(onClick = { onFollow(user) }, modifier = Modifier.fillMaxWidth()) { Text(tr("Seguir")) }
