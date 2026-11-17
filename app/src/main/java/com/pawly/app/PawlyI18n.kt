@@ -590,6 +590,8 @@ internal object PawlyI18n {
                 "en" -> "Vaccinations, check-ups and care for " + pet + ", all in one place."
                 "ca" -> "Vacunes, revisions i cures de " + pet + ", tot en un sol lloc."
                 "fr" -> "Vaccins, contrôles et soins de " + pet + ", tout au même endroit."
+                "de" -> "Impfungen, Untersuchungen und Pflege für " + pet + ", alles an einem Ort."
+                "pt" -> "Vacinas, consultas e cuidados para " + pet + ", tudo no mesmo lugar."
                 "eu" -> pet + " txertoak, azterketak eta zaintzak leku berean."
                 else -> null
             }
@@ -602,6 +604,8 @@ internal object PawlyI18n {
                 "en" -> "$person wants to share $pet's profile with you."
                 "ca" -> "$person vol compartir amb tu el perfil de $pet."
                 "fr" -> "$person souhaite partager avec vous le profil de $pet."
+                "de" -> "$person möchte das Profil von $pet mit dir teilen."
+                "pt" -> "$person quer partilhar o perfil de $pet contigo."
                 "eu" -> "$person erabiltzaileak $pet-ren profila zurekin partekatu nahi du."
                 else -> null
             }
@@ -642,6 +646,22 @@ internal object PawlyI18n {
                 "Foto de " to "Foto de ",
                 "Aviso programado para " to "Avís programat per a ",
                 "Un día bonito\ncon " to "Un dia bonic\namb "
+            )
+            "de" -> listOf(
+                "Perfil compartido · " to "Geteiltes Profil · ",
+                "Zona: " to "Gebiet: ",
+                "Contacto: " to "Kontakt: ",
+                "Foto de " to "Foto von ",
+                "Aviso programado para " to "Erinnerung für ",
+                "Una selección para " to "Eine Auswahl für "
+            )
+            "pt" -> listOf(
+                "Perfil compartido · " to "Perfil partilhado · ",
+                "Zona: " to "Zona: ",
+                "Contacto: " to "Contacto: ",
+                "Foto de " to "Fotografia de ",
+                "Aviso programado para " to "Lembrete para ",
+                "Una selección para " to "Uma seleção para "
             )
             "fr" -> listOf(
                 "Perfil compartido · " to "Profil partagé · ",
@@ -690,6 +710,8 @@ internal object PawlyI18n {
         "ca" -> "$completed de $total rutines previstes avui completades"
         "fr" -> "$completed sur $total routines prévues aujourd’hui terminées"
         "en" -> "$completed of $total routines scheduled for today completed"
+        "de" -> "$completed von $total für heute geplanten Routinen abgeschlossen"
+        "pt" -> "$completed de $total rotinas previstas para hoje concluídas"
         "eu" -> "$completed / $total gaurko errutinak osatuta"
         else -> "$completed de $total rutinas previstas hoy completadas"
     }
