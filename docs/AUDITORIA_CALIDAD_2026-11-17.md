@@ -92,7 +92,7 @@ La regla permite a cada usuario leer/escribir únicamente su documento de suscri
 - La retirada moderada de una publicación borra primero el documento y después intenta borrar sus recursos. Si Cloudinary falla, el índice queda intacto para permitir reintento.
 - Al sustituir la foto de perfil se intenta borrar la anterior; al borrar recuerdos se intenta borrar sus fotografías. Los errores de limpieza no conceden permisos sobre archivos ajenos.
 
-**Configuración necesaria antes del despliegue del Worker:** guardar en Cloudflare los secretos `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` mediante `wrangler secret put`. Sin estos secretos, el endpoint responde 503 de forma segura y no borra el índice. No se han desplegado reglas ni Worker en producción.
+**Configuración necesaria antes del despliegue del Worker:** desde `backend/cloudflare-worker`, ejecutar `npx wrangler secret put CLOUDINARY_CLOUD_NAME`, `npx wrangler secret put CLOUDINARY_API_KEY` y `npx wrangler secret put CLOUDINARY_API_SECRET`, introduciendo los valores de la cuenta de Cloudinary. Sin estos secretos, el endpoint responde 503 de forma segura y no borra el índice. Después habrá que desplegar el Worker y las reglas Firestore por separado. No se han desplegado reglas ni Worker en producción.
 
 **Compatibilidad y deuda de migración:** los recursos subidos por versiones antiguas no contienen `secureUrl` en su índice, por lo que no se pueden localizar por URL automáticamente en este flujo. Requieren una migración administrativa o se limpiarán cuando se elimine la cuenta propietaria. Los recuerdos eliminados por un cuidador distinto del que subió las fotos no permiten borrar archivos ajenos; quedan protegidos frente a borrados no autorizados.
 
