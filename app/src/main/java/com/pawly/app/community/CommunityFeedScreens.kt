@@ -46,12 +46,21 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
     var keyword by remember { mutableStateOf("") }
     var sortOrder by remember { mutableStateOf("recent") }
     val categoryOptions = listOf("ALL" to "Todo", "STORY" to "Historias", "ADOPTION" to "Adopción", "LOST" to "Perdidos", "FOUND" to "Encontrados", "FOSTER" to "Acogida")
-    val filteredPosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) && (keyword.isBlank() || listOf(it.text, it.dogName, it.authorName).any { value -> value.contains(keyword.trim(), ignoreCase = true) }) }
-    val visiblePosts = when (sortOrder) {
-        "oldest" -> filteredPosts.sortedBy { it.createdAt }
-        "likes" -> filteredPosts.sortedWith(compareByDescending<PawlyPost> { it.likeCount }.thenByDescending { it.createdAt })
-        "comments" -> filteredPosts.sortedWith(compareByDescending<PawlyPost> { it.commentCount }.thenByDescending { it.createdAt })
-        else -> filteredPosts.sortedByDescending { it.createdAt }
+    // Filtering and sorting can be O(n log n); keep the result stable across unrelated recompositions.
+    val visiblePosts = remember(posts, followingIds, followingOnly, categoryFilter, keyword, sortOrder) {
+        val filtered = posts.filter {
+            (categoryFilter == "ALL" || it.category == categoryFilter) &&
+                (!followingOnly || it.authorId in followingIds) &&
+                (keyword.isBlank() || listOf(it.text, it.dogName, it.authorName).any { value ->
+                    value.contains(keyword.trim(), ignoreCase = true)
+                })
+        }
+        when (sortOrder) {
+            "oldest" -> filtered.sortedBy { it.createdAt }
+            "likes" -> filtered.sortedWith(compareByDescending<PawlyPost> { it.likeCount }.thenByDescending { it.createdAt })
+            "comments" -> filtered.sortedWith(compareByDescending<PawlyPost> { it.commentCount }.thenByDescending { it.createdAt })
+            else -> filtered.sortedByDescending { it.createdAt }
+        }
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
         item {
