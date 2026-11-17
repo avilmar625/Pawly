@@ -14,7 +14,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -67,15 +66,21 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
         title = { Text(if (category == "LOST") "Aviso de mascota perdida" else if (category == "FOUND") "Aviso de mascota encontrada" else if (category == "ADOPTION") "Publicar adopción" else if (category == "FOSTER") "Buscar casa de acogida" else "Compartir en Pawly") },
         text = {
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Tipo de publicación"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
-                Row(
-                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    listOf("STORY" to "Historia", "ADOPTION" to "Adopción", "LOST" to "Perdido", "FOUND" to "Encontrado", "FOSTER" to "Acogida").forEach { (value, label) ->
-                        FilterChip(selected = category == value, onClick = { category = value }, label = { Text(label, maxLines = 1) })
-                    }
-                }
+                val publicationTypes = listOf(
+                    "STORY" to tr("Historia"),
+                    "ADOPTION" to tr("Adopción"),
+                    "LOST" to tr("Perdido"),
+                    "FOUND" to tr("Encontrado"),
+                    "FOSTER" to tr("Acogida")
+                )
+                PawlyDropdownSelector(
+                    title = tr("Tipo de publicación"),
+                    selectedLabel = publicationTypes.firstOrNull { it.first == category }?.second ?: tr("Historia"),
+                    options = publicationTypes,
+                    selectedValue = category,
+                    onSelected = { category = it },
+                    leadingIcon = Icons.Default.Tune
+                )
                 OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado de la mascota"; "ADOPTION" -> "Especie, edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
                 OutlinedTextField(dog, { dog = it }, label = { Text(tr("Nombre de la mascota (opcional)")) }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

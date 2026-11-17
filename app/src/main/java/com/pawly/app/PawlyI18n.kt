@@ -16,7 +16,7 @@ internal fun tr(value: String): String = PawlyI18n.text(value, LocalPawlyLanguag
 internal object PawlyI18n {
     private val ca = mapOf(
         "Inicio" to "Inici", "Explorar" to "Explorar", "Aprender" to "Aprendre", "Salud" to "Salut", "Diario" to "Diari", "Comunidad" to "Comunitat", "Más" to "Més", "Profesionales" to "Professionals",
-        "Ajustes" to "Configuració", "Haz Pawly tuya" to "Fes Pawly teva", "Estilo de diseño" to "Estil de disseny", "Simple" to "Simple", "Elegante" to "Elegant", "Apariencia" to "Aparença", "Modo oscuro" to "Mode fosc", "Reduce el brillo de la interfaz" to "Redueix la brillantor de la interfície", "Color de Pawly" to "Color de Pawly", "Idioma preferido" to "Idioma preferit", "Español" to "Espanyol", "Català" to "Català", "Français" to "Francès", "Listo" to "Fet",
+        "Ajustes" to "Configuració", "Haz Pawly tuya" to "Fes Pawly teva", "Estilo de diseño" to "Estil de disseny", "Simple" to "Simple", "Elegante" to "Elegant", "Apariencia" to "Aparença", "Modo oscuro" to "Mode fosc", "Reduce el brillo de la interfaz" to "Redueix la brillantor de la interfície", "Color de Pawly" to "Color de Pawly", "Idioma preferido" to "Idioma preferit", "DIARIO DE RECUERDOS" to "DIARI DE RECORDS", "Diario de" to "Diari de", "Filtrar recuerdos" to "Filtra els records", "Español" to "Espanyol", "Català" to "Català", "Français" to "Francès", "Listo" to "Fet",
         "TU ESPACIO PAWLY" to "EL TEU ESPAI PAWLY", "Todo lo vuestro,\nen un mismo lugar." to "Tot el que és vostre,\nen un mateix lloc.", "Herramientas, ayuda y recuerdos para acompañaros cada día." to "Eines, ajuda i records per acompanyar-vos cada dia.", "CUIDADO Y COMUNIDAD" to "CURA I COMUNITAT", "VUESTROS RECUERDOS Y RECURSOS" to "ELS VOSTRES RECORDS I RECURSOS",
         "Servicios profesionales" to "Serveis professionals", "Adiestradores, etólogos, veterinarios, paseadores y cuidadores." to "Educadors, etòlegs, veterinaris, passejadors i cuidadors.", "Mascotas perdidas y encontradas" to "Mascotes perdudes i trobades", "Ayuda a difundir avisos y comunica una pérdida." to "Ajuda a difondre avisos i comunica una pèrdua.", "Diario de recuerdos" to "Diari de records", "Guarda momentos, pequeñas historias y fotografías." to "Desa moments, petites històries i fotografies.", "Aprender" to "Aprendre", "Artículos, consejos y recursos para su bienestar." to "Articles, consells i recursos per al seu benestar.", "Ajustes" to "Configuració", "Diseño, colores, modo oscuro, idioma y servicios multimedia." to "Disseny, colors, mode fosc, idioma i serveis multimèdia.",
         "Encontrad a la persona adecuada." to "Trobeu la persona adequada.", "Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa." to "Explora serveis per cuidar, educar i acompanyar la teva mascota en cada etapa.", "¿Qué servicio necesitáis?" to "Quin servei necessiteu?", "Afina la búsqueda" to "Afina la cerca", "Servicio o especialidad (opcional)" to "Servei o especialitat (opcional)", "Ciudad o zona (opcional)" to "Ciutat o zona (opcional)", "Buscar profesionales en el mapa" to "Cerca professionals al mapa", "Buscar también en la web" to "Cerca també al web", "Antes de contratar" to "Abans de contractar",
@@ -24,7 +24,7 @@ internal object PawlyI18n {
     )
     private val fr = mapOf(
         "Inicio" to "Accueil", "Explorar" to "Explorer", "Aprender" to "Apprendre", "Salud" to "Santé", "Diario" to "Journal", "Comunidad" to "Communauté", "Más" to "Plus", "Profesionales" to "Professionnels",
-        "Ajustes" to "Paramètres", "Haz Pawly tuya" to "Personnalisez Pawly", "Estilo de diseño" to "Style de design", "Simple" to "Simple", "Elegante" to "Élégant", "Apariencia" to "Apparence", "Modo oscuro" to "Mode sombre", "Reduce el brillo de la interfaz" to "Réduit la luminosité de l’interface", "Color de Pawly" to "Couleur de Pawly", "Idioma preferido" to "Langue préférée", "Español" to "Espagnol", "Català" to "Catalan", "Français" to "Français", "Listo" to "Terminé",
+        "Ajustes" to "Paramètres", "Haz Pawly tuya" to "Personnalisez Pawly", "Estilo de diseño" to "Style de design", "Simple" to "Simple", "Elegante" to "Élégant", "Apariencia" to "Apparence", "Modo oscuro" to "Mode sombre", "Reduce el brillo de la interfaz" to "Réduit la luminosité de l’interface", "Color de Pawly" to "Couleur de Pawly", "Idioma preferido" to "Langue préférée", "DIARIO DE RECUERDOS" to "JOURNAL DE SOUVENIRS", "Diario de" to "Journal de", "Filtrar recuerdos" to "Filtrer les souvenirs", "Español" to "Espagnol", "Català" to "Catalan", "Français" to "Français", "Listo" to "Terminé",
         "TU ESPACIO PAWLY" to "VOTRE ESPACE PAWLY", "Todo lo vuestro,\nen un mismo lugar." to "Tout votre univers,\nen un seul endroit.", "Herramientas, ayuda y recuerdos para acompañaros cada día." to "Des outils, de l’aide et des souvenirs pour vous accompagner chaque jour.", "CUIDADO Y COMUNIDAD" to "SOINS ET COMMUNAUTÉ", "VUESTROS RECUERDOS Y RECURSOS" to "VOS SOUVENIRS ET RESSOURCES",
         "Servicios profesionales" to "Services professionnels", "Adiestradores, etólogos, veterinarios, paseadores y cuidadores." to "Éducateurs, comportementalistes, vétérinaires, promeneurs et gardiens.", "Mascotas perdidas y encontradas" to "Animaux perdus et retrouvés", "Ayuda a difundir avisos y comunica una pérdida." to "Aidez à diffuser les avis et signalez une disparition.", "Diario de recuerdos" to "Journal de souvenirs", "Guarda momentos, pequeñas historias y fotografías." to "Conservez des moments, des histoires et des photos.", "Aprender" to "Apprendre", "Artículos, consejos y recursos para su bienestar." to "Articles, conseils et ressources pour leur bien-être.", "Diseño, colores, modo oscuro, idioma y servicios multimedia." to "Design, couleurs, mode sombre, langue et services multimédias.",
         "Encontrad a la persona adecuada." to "Trouvez le bon professionnel.", "Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa." to "Découvrez des services pour soigner, éduquer et accompagner votre animal à chaque étape.", "¿Qué servicio necesitáis?" to "De quel service avez-vous besoin ?", "Afina la búsqueda" to "Affinez votre recherche", "Servicio o especialidad (opcional)" to "Service ou spécialité (facultatif)", "Ciudad o zona (opcional)" to "Ville ou quartier (facultatif)", "Buscar profesionales en el mapa" to "Trouver des professionnels sur la carte", "Buscar también en la web" to "Rechercher aussi sur le web", "Antes de contratar" to "Avant de choisir",
@@ -33,7 +33,7 @@ internal object PawlyI18n {
 
     private val en = mapOf(
         "Inicio" to "Home", "Explorar" to "Explore", "Aprender" to "Learn", "Salud" to "Health", "Diario" to "Diary", "Comunidad" to "Community", "Más" to "More", "Profesionales" to "Professionals", "Ayuda" to "Help",
-        "Ajustes" to "Settings", "Haz Pawly tuya" to "Make Pawly yours", "Estilo de diseño" to "Design style", "Simple" to "Simple", "Elegante" to "Elegant", "Apariencia" to "Appearance", "Modo oscuro" to "Dark mode", "Reduce el brillo de la interfaz" to "Reduce interface brightness", "Color de Pawly" to "Pawly colour", "Idioma preferido" to "Preferred language", "Español" to "Spanish", "Català" to "Catalan", "Français" to "French", "English" to "English", "Listo" to "Done",
+        "Ajustes" to "Settings", "Haz Pawly tuya" to "Make Pawly yours", "Estilo de diseño" to "Design style", "Simple" to "Simple", "Elegante" to "Elegant", "Apariencia" to "Appearance", "Modo oscuro" to "Dark mode", "Reduce el brillo de la interfaz" to "Reduce interface brightness", "Color de Pawly" to "Pawly colour", "Idioma preferido" to "Preferred language", "DIARIO DE RECUERDOS" to "MEMORY DIARY", "Diario de" to "Diary for", "Filtrar recuerdos" to "Filter memories", "Español" to "Spanish", "Català" to "Catalan", "Français" to "French", "English" to "English", "Listo" to "Done",
         "TU ESPACIO PAWLY" to "YOUR PAWLY SPACE", "TU UNIVERSO PAWLY" to "YOUR PAWLY WORLD", "Todo lo vuestro,\nen un mismo lugar." to "Everything you need,\nin one place.", "Herramientas, ayuda y recuerdos para acompañaros cada día." to "Tools, help and memories for every day.", "CUIDADO Y COMUNIDAD" to "CARE AND COMMUNITY", "VUESTROS RECUERDOS Y RECURSOS" to "YOUR MEMORIES AND RESOURCES",
         "Servicios profesionales" to "Professional services", "Adiestradores, etólogos, veterinarios, paseadores y cuidadores." to "Trainers, behaviourists, vets, walkers and pet sitters.", "He perdido a mi mascota" to "I've lost my pet", "Ayuda a encontrarla y difunde un aviso." to "Get help finding your pet and share an alert.", "Diario de recuerdos" to "Memory diary", "Guarda momentos, pequeñas historias y fotografías." to "Save moments, little stories and photos.", "Artículos, consejos y recursos para su bienestar." to "Articles, tips and resources for their wellbeing.", "Diseño, colores, idioma y servicios multimedia." to "Design, colours, language and media services.",
         "Encontrad a la persona adecuada." to "Find the right professional.", "¿Necesitáis ayuda profesional?" to "Need professional help?", "Explorar profesionales  →" to "Explore professionals  →", "Ficha completa y PDF" to "Full pet profile and PDF", "Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado." to "Includes the pet profile, health passport and care routines.", "Guardar en el móvil" to "Save to device", "Compartir PDF" to "Share PDF",
@@ -42,6 +42,105 @@ internal object PawlyI18n {
         "Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras." to "Choose how you want to use Pawly. You can change it at any time.", "Vista elegante activada" to "Elegant view enabled", "Vista simple activada" to "Simple view enabled", "Fotografías, portadas y tarjetas con más personalidad." to "Photos, covers and more expressive cards.", "Interfaz ligera, directa y con menos elementos visuales." to "A lighter, simpler interface with fewer visual elements.", "Limpio y directo" to "Clean and simple", "Fotos y color" to "Photos and colour", "Servicios multimedia · Cloudinary" to "Media services · Cloudinary", "Configura aquí las subidas de fotos y vídeos sin tener que recompilar la aplicación. Estos datos son nombres de configuración, no incluyas el API Secret." to "Configure photo and video uploads here without rebuilding the app. These are configuration names; do not enter your API Secret.", "Cloud name" to "Cloud name", "Preset unsigned de imágenes" to "Unsigned image preset", "Preset unsigned de vídeos" to "Unsigned video preset", "Introduce un Cloud name válido y los dos presets." to "Enter a valid Cloud name and both presets.", "Configuración guardada. Ya puedes volver a intentar la subida." to "Settings saved. You can try uploading again.", "Guardar configuración multimedia" to "Save media settings", "Crea los presets como Unsigned en Cloudinary. No pegues aquí una API Key ni un API Secret." to "Create both presets as Unsigned in Cloudinary. Do not paste an API Key or API Secret here.", "Tus ajustes se guardan en este dispositivo." to "Your settings are saved on this device.",
         "Nombre público" to "Public name", "Presentación" to "Bio", "Perfil público" to "Public profile", "Permite que te encuentren." to "Let other people find you.", "Guardar perfil" to "Save profile", "Cambiar foto de perfil" to "Change profile photo", "Fotografía seleccionada" to "Photo selected", "Servicios y experiencia" to "Services and experience", "Ciudad o zona de trabajo" to "City or service area",
         "Añadir" to "Add", "Mis mascotas" to "My pets", "Cuentas bloqueadas" to "Blocked accounts", "No has bloqueado a nadie." to "You haven't blocked anyone.", "Desbloquear" to "Unblock", "Perfil actualizado." to "Profile updated.", "Guardar…" to "Saving…"
+    )
+
+    // Initial German and European Portuguese catalogues for the app shell and core workflows.
+    // Uncatalogued copy falls back to the existing English catalogue, never to a blank label.
+    private val de = mapOf(
+        "Inicio" to "Start", "Hoy" to "Heute", "Mi perro" to "Mein Tier", "Explorar" to "Entdecken", "Aprender" to "Lernen",
+        "Salud" to "Gesundheit", "Diario" to "Tagebuch", "Comunidad" to "Community", "Más" to "Mehr",
+        "Profesionales" to "Fachleute", "Ayuda" to "Hilfe", "Calendario" to "Kalender", "NAVEGACIÓN" to "NAVIGATION",
+        "IR A UNA SECCIÓN" to "BEREICH ÖFFNEN", "Abrir menú" to "Menü öffnen",
+        "Idioma preferido" to "Bevorzugte Sprache", "El idioma elegido se aplica en toda la aplicación." to "Die gewählte Sprache wird in der gesamten App verwendet.",
+        "Español" to "Spanisch", "English" to "Englisch", "Català" to "Katalanisch", "Euskera" to "Baskisch", "Français" to "Französisch",
+        "Português" to "Portugiesisch", "Deutsch" to "Deutsch",
+        "Ajustes" to "Einstellungen", "Haz Pawly tuya" to "Gestalte Pawly nach deinem Geschmack", "Estilo de diseño" to "Designstil",
+        "Simple" to "Einfach", "Elegante" to "Elegant", "Apariencia" to "Darstellung", "Modo oscuro" to "Dunkelmodus",
+        "Reduce el brillo de la interfaz" to "Reduziert die Helligkeit der Oberfläche", "Color de Pawly" to "Pawly-Farbe", "Listo" to "Fertig",
+        "Mostrar publicaciones" to "Beiträge anzeigen", "Todos" to "Alle", "Siguiendo" to "Folge ich", "Categoría" to "Kategorie",
+        "Todo" to "Alle", "Historias" to "Geschichten", "Adopción" to "Adoption", "Perdidos" to "Vermisst", "Encontrados" to "Gefunden", "Acogida" to "Pflegeplatz",
+        "Más recientes primero" to "Neueste zuerst", "Más antiguas primero" to "Älteste zuerst", "Más populares" to "Beliebteste zuerst", "Más comentadas" to "Meistkommentiert",
+        "Tipo de registro" to "Eintragstyp", "Tipo de cuidado" to "Art der Pflege", "Frecuencia" to "Häufigkeit", "Días de la semana" to "Wochentage",
+        "Ningún día seleccionado" to "Kein Tag ausgewählt", "Diario" to "Täglich", "Semanal" to "Wöchentlich", "Puntual" to "Einmalig",
+        "Paseo" to "Spaziergang", "Comida" to "Futter", "Medicación" to "Medikamente", "Higiene" to "Pflege", "Otro" to "Sonstiges", "Peso" to "Gewicht",
+        "Tipo de mascota" to "Haustiertyp", "Tipo de cuenta" to "Kontotyp", "Particular" to "Privatperson", "Profesional" to "Fachkraft",
+        "Perro" to "Hund", "Gato" to "Katze", "Conejo" to "Kaninchen", "Ave" to "Vogel", "Roedor" to "Nagetier", "Reptil" to "Reptil",
+        "Filtrar recuerdos" to "Erinnerungen filtern", "Filtrar historial" to "Verlauf filtern", "Sección de aprendizaje" to "Lernbereich",
+        "Radio de recepción" to "Benachrichtigungsradius", "Ordenar por" to "Sortieren nach", "Categoría" to "Kategorie",
+        "Personal" to "Privat", "Veterinario" to "Tierarzt", "Cuidado" to "Pflege", "Viaje" to "Reise",
+        "Paseos" to "Spaziergänge", "Viajes" to "Reisen", "Juegos" to "Spiele", "Amigos" to "Freunde", "Celebraciones" to "Feiern", "Otros" to "Sonstiges",
+        "Más próximos primero" to "Nächste zuerst", "Más lejanos primero" to "Entfernteste zuerst", "Más personas interesadas" to "Meistes Interesse",
+        "Tipo de evento" to "Veranstaltungstyp", "Quedada" to "Treffen", "Ruta" to "Wanderung", "Taller" to "Workshop",
+        "Planes para compartir" to "Gemeinsame Aktivitäten", "Encuentros reales para personas y mascotas." to "Echte Treffen für Menschen und Haustiere.",
+        "Crear evento" to "Veranstaltung erstellen", "Todos los eventos" to "Alle Veranstaltungen", "Mapa" to "Karte",
+        "Me interesa" to "Interessiert mich", "Denunciar evento" to "Veranstaltung melden", "Descripción" to "Beschreibung",
+        "Publicar" to "Veröffentlichen", "Fecha" to "Datum", "Hora" to "Uhrzeit",
+        "Perfil de la comunidad" to "Community-Profil", "Seguidores" to "Follower", "Siguiendo" to "Folge ich",
+        "Mascotas" to "Haustiere", "Publicaciones" to "Beiträge", "Seguir" to "Folgen", "Dejar de seguir" to "Nicht mehr folgen",
+        "Mensaje" to "Nachricht", "Sus compañeros" to "Deine tierischen Begleiter", "Todavía no ha añadido mascotas." to "Noch keine Haustiere hinzugefügt.",
+        "Todavía no ha compartido publicaciones." to "Noch keine Beiträge geteilt.", "Buscar personas por nombre o usuario" to "Personen nach Name oder Benutzername suchen",
+        "Avisos" to "Benachrichtigungen", "Mi perfil" to "Mein Profil", "Volver" to "Zurück", "Guardar" to "Speichern", "Cancelar" to "Abbrechen",
+        "Próximos cuidados" to "Anstehende Pflege", "Programa avisos locales para no olvidarte" to "Richte lokale Erinnerungen ein",
+        "Vacunación" to "Impfung", "Desparasitación" to "Entwurmung", "Próxima revisión" to "Nächste Untersuchung",
+        "Añadir aviso" to "Erinnerung hinzufügen", "Recordatorio diario" to "Tägliche Erinnerung",
+        "Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras." to "Wähle, wie du Pawly nutzen möchtest. Du kannst das jederzeit ändern.",
+        "Vista elegante activada" to "Elegante Ansicht aktiviert", "Vista simple activada" to "Einfache Ansicht aktiviert",
+        "Fotografías, portadas y tarjetas con más personalidad." to "Fotos, Titelbilder und ausdrucksstarke Karten.",
+        "Interfaz ligera, directa y con menos elementos visuales." to "Eine klare, leichte Oberfläche mit weniger visuellen Elementen.",
+        "DIARIO DE RECUERDOS" to "ERINNERUNGSTAGEBUCH",
+        "Diario de" to "Tagebuch von",
+        "Filtrar recuerdos" to "Erinnerungen filtern",
+        "Paseos" to "Spaziergänge", "Viajes" to "Reisen", "Juegos" to "Spiele",
+        "Amigos" to "Freunde", "Celebraciones" to "Feiern", "Otros" to "Sonstiges",
+        "Todos" to "Alle", "Categoría" to "Kategorie", "Euskara" to "Baskisch"
+    )
+    private val pt = mapOf(
+        "Inicio" to "Início", "Hoy" to "Hoje", "Mi perro" to "O meu animal", "Explorar" to "Explorar", "Aprender" to "Aprender",
+        "Salud" to "Saúde", "Diario" to "Diário", "Comunidad" to "Comunidade", "Más" to "Mais",
+        "Profesionales" to "Profissionais", "Ayuda" to "Ajuda", "Calendario" to "Calendário", "NAVEGACIÓN" to "NAVEGAÇÃO",
+        "IR A UNA SECCIÓN" to "IR PARA UMA SECÇÃO", "Abrir menú" to "Abrir menu",
+        "Idioma preferido" to "Idioma preferido", "El idioma elegido se aplica en toda la aplicación." to "O idioma escolhido é aplicado em toda a aplicação.",
+        "Español" to "Espanhol", "English" to "Inglês", "Català" to "Catalão", "Euskera" to "Basco", "Français" to "Francês",
+        "Português" to "Português", "Deutsch" to "Alemão",
+        "Ajustes" to "Definições", "Haz Pawly tuya" to "Personaliza a Pawly", "Estilo de diseño" to "Estilo de design",
+        "Simple" to "Simples", "Elegante" to "Elegante", "Apariencia" to "Aspeto", "Modo oscuro" to "Modo escuro",
+        "Reduce el brillo de la interfaz" to "Reduz o brilho da interface", "Color de Pawly" to "Cor da Pawly", "Listo" to "Concluído",
+        "Mostrar publicaciones" to "Mostrar publicações", "Todos" to "Todos", "Siguiendo" to "A seguir", "Categoría" to "Categoria",
+        "Todo" to "Tudo", "Historias" to "Histórias", "Adopción" to "Adoção", "Perdidos" to "Desaparecidos", "Encontrados" to "Encontrados", "Acogida" to "Acolhimento",
+        "Más recientes primero" to "Mais recentes primeiro", "Más antiguas primero" to "Mais antigos primeiro", "Más populares" to "Mais populares", "Más comentadas" to "Mais comentadas",
+        "Tipo de registro" to "Tipo de registo", "Tipo de cuidado" to "Tipo de cuidado", "Frecuencia" to "Frequência", "Días de la semana" to "Dias da semana",
+        "Ningún día seleccionado" to "Nenhum dia selecionado", "Diario" to "Diário", "Semanal" to "Semanal", "Puntual" to "Pontual",
+        "Paseo" to "Passeio", "Comida" to "Alimentação", "Medicación" to "Medicação", "Higiene" to "Higiene", "Otro" to "Outro", "Peso" to "Peso",
+        "Tipo de mascota" to "Tipo de animal", "Tipo de cuenta" to "Tipo de conta", "Particular" to "Particular", "Profesional" to "Profissional",
+        "Perro" to "Cão", "Gato" to "Gato", "Conejo" to "Coelho", "Ave" to "Ave", "Roedor" to "Roedor", "Reptil" to "Réptil",
+        "Filtrar recuerdos" to "Filtrar memórias", "Filtrar historial" to "Filtrar histórico", "Sección de aprendizaje" to "Secção de aprendizagem",
+        "Radio de recepción" to "Raio de receção", "Ordenar por" to "Ordenar por", "Categoría" to "Categoria",
+        "Personal" to "Pessoal", "Veterinario" to "Veterinário", "Cuidado" to "Cuidados", "Viaje" to "Viagem",
+        "Paseos" to "Passeios", "Viajes" to "Viagens", "Juegos" to "Jogos", "Amigos" to "Amigos", "Celebraciones" to "Celebrações", "Otros" to "Outros",
+        "Más próximos primero" to "Mais próximos primeiro", "Más lejanos primero" to "Mais distantes primeiro", "Más personas interesadas" to "Mais pessoas interessadas",
+        "Tipo de evento" to "Tipo de evento", "Quedada" to "Encontro", "Ruta" to "Percurso", "Taller" to "Workshop",
+        "Planes para compartir" to "Planos para partilhar", "Encuentros reales para personas y mascotas." to "Encontros reais para pessoas e animais.",
+        "Crear evento" to "Criar evento", "Todos los eventos" to "Todos os eventos", "Mapa" to "Mapa",
+        "Me interesa" to "Tenho interesse", "Denunciar evento" to "Denunciar evento", "Descripción" to "Descrição",
+        "Publicar" to "Publicar", "Fecha" to "Data", "Hora" to "Hora",
+        "Perfil de la comunidad" to "Perfil da comunidade", "Seguidores" to "Seguidores", "Siguiendo" to "A seguir",
+        "Mascotas" to "Animais", "Publicaciones" to "Publicações", "Seguir" to "Seguir", "Dejar de seguir" to "Deixar de seguir",
+        "Mensaje" to "Mensagem", "Sus compañeros" to "Os seus companheiros", "Todavía no ha añadido mascotas." to "Ainda não adicionou animais.",
+        "Todavía no ha compartido publicaciones." to "Ainda não partilhou publicações.", "Buscar personas por nombre o usuario" to "Pesquisar pessoas por nome ou utilizador",
+        "Avisos" to "Notificações", "Mi perfil" to "O meu perfil", "Volver" to "Voltar", "Guardar" to "Guardar", "Cancelar" to "Cancelar",
+        "Próximos cuidados" to "Próximos cuidados", "Programa avisos locales para no olvidarte" to "Programe lembretes locais para não se esquecer",
+        "Vacunación" to "Vacinação", "Desparasitación" to "Desparasitação", "Próxima revisión" to "Próxima consulta",
+        "Añadir aviso" to "Adicionar lembrete", "Recordatorio diario" to "Lembrete diário",
+        "Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras." to "Escolhe como queres utilizar a Pawly. Podes alterar esta opção quando quiseres.",
+        "Vista elegante activada" to "Vista elegante ativada", "Vista simple activada" to "Vista simples ativada",
+        "Fotografías, portadas y tarjetas con más personalidad." to "Fotografias, capas e cartões com mais personalidade.",
+        "Interfaz ligera, directa y con menos elementos visuales." to "Uma interface simples, direta e com menos elementos visuais.",
+        "DIARIO DE RECUERDOS" to "DIÁRIO DE MEMÓRIAS",
+        "Diario de" to "Diário de",
+        "Filtrar recuerdos" to "Filtrar memórias",
+        "Paseos" to "Passeios", "Viajes" to "Viagens", "Juegos" to "Jogos",
+        "Amigos" to "Amigos", "Celebraciones" to "Celebrações", "Otros" to "Outros",
+        "Todos" to "Todos", "Categoría" to "Categoria", "Euskara" to "Basco"
     )
 
     private val enExtra = mapOf(
@@ -491,6 +590,8 @@ internal object PawlyI18n {
                 "en" -> "Vaccinations, check-ups and care for " + pet + ", all in one place."
                 "ca" -> "Vacunes, revisions i cures de " + pet + ", tot en un sol lloc."
                 "fr" -> "Vaccins, contrôles et soins de " + pet + ", tout au même endroit."
+                "de" -> "Impfungen, Untersuchungen und Pflege für " + pet + ", alles an einem Ort."
+                "pt" -> "Vacinas, consultas e cuidados para " + pet + ", tudo no mesmo lugar."
                 "eu" -> pet + " txertoak, azterketak eta zaintzak leku berean."
                 else -> null
             }
@@ -503,6 +604,8 @@ internal object PawlyI18n {
                 "en" -> "$person wants to share $pet's profile with you."
                 "ca" -> "$person vol compartir amb tu el perfil de $pet."
                 "fr" -> "$person souhaite partager avec vous le profil de $pet."
+                "de" -> "$person möchte das Profil von $pet mit dir teilen."
+                "pt" -> "$person quer partilhar o perfil de $pet contigo."
                 "eu" -> "$person erabiltzaileak $pet-ren profila zurekin partekatu nahi du."
                 else -> null
             }
@@ -543,6 +646,22 @@ internal object PawlyI18n {
                 "Foto de " to "Foto de ",
                 "Aviso programado para " to "Avís programat per a ",
                 "Un día bonito\ncon " to "Un dia bonic\namb "
+            )
+            "de" -> listOf(
+                "Perfil compartido · " to "Geteiltes Profil · ",
+                "Zona: " to "Gebiet: ",
+                "Contacto: " to "Kontakt: ",
+                "Foto de " to "Foto von ",
+                "Aviso programado para " to "Erinnerung für ",
+                "Una selección para " to "Eine Auswahl für "
+            )
+            "pt" -> listOf(
+                "Perfil compartido · " to "Perfil partilhado · ",
+                "Zona: " to "Zona: ",
+                "Contacto: " to "Contacto: ",
+                "Foto de " to "Fotografia de ",
+                "Aviso programado para " to "Lembrete para ",
+                "Una selección para " to "Uma seleção para "
             )
             "fr" -> listOf(
                 "Perfil compartido · " to "Profil partagé · ",
@@ -591,6 +710,8 @@ internal object PawlyI18n {
         "ca" -> "$completed de $total rutines previstes avui completades"
         "fr" -> "$completed sur $total routines prévues aujourd’hui terminées"
         "en" -> "$completed of $total routines scheduled for today completed"
+        "de" -> "$completed von $total für heute geplanten Routinen abgeschlossen"
+        "pt" -> "$completed de $total rotinas previstas para hoje concluídas"
         "eu" -> "$completed / $total gaurko errutinak osatuta"
         else -> "$completed de $total rutinas previstas hoy completadas"
     }
@@ -599,6 +720,8 @@ internal object PawlyI18n {
         "ca" -> Locale("ca", "ES")
         "fr" -> Locale.FRANCE
         "en" -> Locale.UK
+        "de" -> Locale.GERMANY
+        "pt" -> Locale.forLanguageTag("pt-PT")
         "eu" -> Locale.forLanguageTag("eu-ES")
         else -> Locale("es", "ES")
     }
@@ -657,6 +780,8 @@ internal object PawlyI18n {
         "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: homeCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
         "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: homeFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
         "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: homeEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "de" -> de[value] ?: text(value, "en")
+        "pt" -> pt[value] ?: text(value, "en")
         else -> value
     }
 }

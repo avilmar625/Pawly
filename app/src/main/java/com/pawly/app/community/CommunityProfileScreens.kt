@@ -15,8 +15,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -163,11 +161,13 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                         Column(Modifier.weight(1f)) { Text(tr("Perfil público"), fontWeight = FontWeight.SemiBold); Text(tr("Permite que te encuentren."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                         Switch(isPublic, { isPublic = it })
                     }
-                    Text(tr("Tipo de cuenta"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(selected = accountType == "personal", onClick = { accountType = "personal" }, label = { Text(tr("Particular")) }, leadingIcon = { Icon(Icons.Default.Pets, null) })
-                        FilterChip(selected = accountType == "professional", onClick = { accountType = "professional" }, label = { Text(tr("Profesional")) }, leadingIcon = { Icon(Icons.Default.WorkspacePremium, null) })
-                    }
+                    PawlyDropdownSelector(
+                        title = tr("Tipo de cuenta"),
+                        selectedLabel = tr(if (accountType == "professional") "Profesional" else "Particular"),
+                        options = listOf("personal" to tr("Particular"), "professional" to tr("Profesional")),
+                        selectedValue = accountType,
+                        onSelected = { accountType = it }
+                    )
                     if (accountType == "professional") {
                         Text(tr("Perfil profesional"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         Text(tr("Estos datos aparecerán en tu perfil público si activas la visibilidad. La insignia indica el tipo de cuenta, no una verificación de credenciales."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -339,12 +339,14 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Añadir mascota" else "Editar mascota") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Photo, null); Text(if (uri != null || photoUrl.isNotBlank()) "Cambiar foto" else "Añadir foto") }
-            Text(tr("Tipo de mascota"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                listOf("Perro", "Gato", "Conejo", "Ave", "Roedor", "Reptil", "Otro").forEach { option ->
-                    FilterChip(selected = species == option, onClick = { species = option }, label = { Text(option) })
-                }
-            }
+            PawlyDropdownSelector(
+                title = tr("Tipo de mascota"),
+                selectedLabel = tr(species),
+                options = listOf("Perro", "Gato", "Conejo", "Ave", "Roedor", "Reptil", "Otro").map { it to tr(it) },
+                selectedValue = species,
+                onSelected = { species = it },
+                leadingIcon = Icons.Default.Pets
+            )
             OutlinedTextField(name, { name = it }, label = { Text(tr("Nombre")) })
             OutlinedTextField(breed, { breed = it }, label = { Text(tr("Raza")) })
             OutlinedTextField(age, { age = it }, label = { Text(tr("Edad")) })

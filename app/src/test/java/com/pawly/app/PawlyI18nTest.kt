@@ -1,6 +1,7 @@
 package com.pawly.app
 
 import org.junit.Assert.assertEquals
+import java.util.Locale
 import org.junit.Test
 
 class PawlyI18nTest {
@@ -78,6 +79,31 @@ class PawlyI18nTest {
         assertEquals("Reminder time (HH:mm)", PawlyI18n.text("Hora del aviso (HH:mm)", "en"))
         assertEquals("Rappels les jours sélectionnés", PawlyI18n.text("Avisos en los días seleccionados", "fr"))
         assertEquals("3 of 5 routines scheduled for today completed", PawlyI18n.careRoutineProgress(3, 5, "en"))
+    }
+
+    @Test
+    fun supportsGermanAndEuropeanPortugueseNavigationAndDiaryLabels() {
+        assertEquals("Start", PawlyI18n.text("Inicio", "de"))
+        assertEquals("Tagebuch", PawlyI18n.text("Diario", "de"))
+        assertEquals("Início", PawlyI18n.text("Inicio", "pt"))
+        assertEquals("ERINNERUNGSTAGEBUCH", PawlyI18n.text("DIARIO DE RECUERDOS", "de"))
+        assertEquals("DIÁRIO DE MEMÓRIAS", PawlyI18n.text("DIARIO DE RECUERDOS", "pt"))
+        assertEquals("Erinnerungen filtern", PawlyI18n.text("Filtrar recuerdos", "de"))
+        assertEquals("Filtrar memórias", PawlyI18n.text("Filtrar recuerdos", "pt"))
+        assertEquals(java.util.Locale.GERMANY, PawlyI18n.locale("de"))
+        assertEquals(java.util.Locale.forLanguageTag("pt-PT"), PawlyI18n.locale("pt"))
+    }
+
+    @Test
+    fun germanAndEuropeanPortugueseAreAvailableForCoreNavigationAndMenus() {
+        assertEquals("Community", PawlyI18n.text("Comunidad", "de"))
+        assertEquals("Comunidade", PawlyI18n.text("Comunidad", "pt"))
+        assertEquals("Bevorzugte Sprache", PawlyI18n.text("Idioma preferido", "de"))
+        assertEquals("Idioma preferido", PawlyI18n.text("Idioma preferido", "pt"))
+        assertEquals("Kategorie", PawlyI18n.text("Categoría", "de"))
+        assertEquals("Categoria", PawlyI18n.text("Categoría", "pt"))
+        assertEquals(Locale.GERMANY, PawlyI18n.locale("de"))
+        assertEquals(Locale.forLanguageTag("pt-PT"), PawlyI18n.locale("pt"))
     }
 
     @Test

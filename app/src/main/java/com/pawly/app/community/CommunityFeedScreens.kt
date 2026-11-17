@@ -13,8 +13,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -47,7 +45,6 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
     var categoryFilter by remember { mutableStateOf("ALL") }
     var keyword by remember { mutableStateOf("") }
     var sortOrder by remember { mutableStateOf("recent") }
-    var sortMenuExpanded by remember { mutableStateOf(false) }
     val categoryOptions = listOf("ALL" to "Todo", "STORY" to "Historias", "ADOPTION" to "Adopción", "LOST" to "Perdidos", "FOUND" to "Encontrados", "FOSTER" to "Acogida")
     val filteredPosts = posts.filter { (categoryFilter == "ALL" || it.category == categoryFilter) && (!followingOnly || it.authorId in followingIds) && (keyword.isBlank() || listOf(it.text, it.dogName, it.authorName).any { value -> value.contains(keyword.trim(), ignoreCase = true) }) }
     val visiblePosts = when (sortOrder) {
@@ -71,10 +68,22 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = !followingOnly, onClick = { followingOnly = false }, label = { Text(tr("Todos")) })
-                FilterChip(selected = followingOnly, onClick = { followingOnly = true }, label = { Text(tr("Siguiendo")) })
-            }
+            PawlyDropdownSelector(
+                title = tr("Mostrar publicaciones"),
+                selectedLabel = tr(if (followingOnly) "Siguiendo" else "Todos"),
+                options = listOf("all" to tr("Todos"), "following" to tr("Siguiendo")),
+                selectedValue = if (followingOnly) "following" else "all",
+                onSelected = { followingOnly = it == "following" },
+                leadingIcon = Icons.Default.People
+            )
+            PawlyDropdownSelector(
+                title = tr("Categoría"),
+                selectedLabel = tr(categoryOptions.firstOrNull { it.first == categoryFilter }?.second ?: "Todo"),
+                options = categoryOptions.map { it.first to tr(it.second) },
+                selectedValue = categoryFilter,
+                onSelected = { categoryFilter = it },
+                leadingIcon = Icons.Default.FilterList
+            )
             OutlinedTextField(
                 value = keyword,
                 onValueChange = { keyword = it.take(80) },
@@ -85,35 +94,22 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
                 trailingIcon = { if (keyword.isNotBlank()) IconButton(onClick = { keyword = "" }) { Icon(Icons.Default.Close, contentDescription = tr("Borrar búsqueda")) } },
                 shape = RoundedCornerShape(14.dp)
             )
-            FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                categoryOptions.forEach { (value, label) ->
-                    FilterChip(selected = categoryFilter == value, onClick = { categoryFilter = value }, label = { Text(label) })
-                }
-            }
             Spacer(Modifier.height(8.dp))
-            Box(Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { sortMenuExpanded = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                    Icon(Icons.Default.Sort, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(8.dp))
-                    val sortLabel = when (sortOrder) { "oldest" -> "Más antiguas primero"; "likes" -> "Más populares"; "comments" -> "Más comentadas"; else -> "Más recientes primero" }
-                    Text(tr("Ordenar por: ") + tr(sortLabel), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
-                    Icon(Icons.Default.ExpandMore, contentDescription = null)
-                }
-                DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
-                    listOf("recent" to "Más recientes primero", "oldest" to "Más antiguas primero", "likes" to "Más populares", "comments" to "Más comentadas").forEach { (value, label) ->
-                        DropdownMenuItem(
-                            text = { Text(tr(label), fontWeight = if (sortOrder == value) FontWeight.Bold else FontWeight.Normal) },
-                            leadingIcon = { Icon(Icons.Default.Sort, contentDescription = null) },
-                            trailingIcon = { if (sortOrder == value) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                            onClick = { sortOrder = value; sortMenuExpanded = false }
-                        )
-                    }
-                }
-            }
+            val sortOptions = listOf(
+                "recent" to tr("Más recientes primero"),
+                "oldest" to tr("Más antiguas primero"),
+                "likes" to tr("Más populares"),
+                "comments" to tr("Más comentadas")
+            )
+            PawlyDropdownSelector(
+                title = tr("Ordenar por"),
+                selectedLabel = sortOptions.firstOrNull { it.first == sortOrder }?.second ?: tr("Más recientes primero"),
+                options = sortOptions,
+                selectedValue = sortOrder,
+                onSelected = { sortOrder = it },
+                leadingIcon = Icons.Default.Sort
+            )
+
         }
         item {
             Surface(
