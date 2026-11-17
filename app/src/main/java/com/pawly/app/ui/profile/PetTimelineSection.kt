@@ -203,18 +203,14 @@ internal fun PetTimelineSection(
                 }
             }
         }
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf("Todo", "Salud", "Diario", "Citas").forEach { filter ->
-                FilterChip(
-                    selected = selectedFilter == filter,
-                    onClick = { selectedFilter = filter },
-                    label = { Text(tr(filter)) }
-                )
-            }
-        }
+        PawlyDropdownSelector(
+            title = tr("Filtrar historial"),
+            selectedLabel = tr(selectedFilter),
+            options = listOf("Todo", "Salud", "Diario", "Citas").map { it to tr(it) },
+            selectedValue = selectedFilter,
+            onSelected = { selectedFilter = it },
+            leadingIcon = Icons.Default.FilterList
+        )
         if (timelineItems.isEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(22.dp)) {
                 Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
