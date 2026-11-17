@@ -1076,8 +1076,10 @@ private fun PetCarePlanSection(
                     }
                     PawlyDropdownSelector(
                         title = tr("Frecuencia"),
-                        selectedLabel = tr(frequency),
-                        options = listOf("Diario", "Semanal", "Puntual").map { it to tr(it) },
+                        selectedLabel = tr(if (frequency == "Diario") "Frecuencia diaria" else frequency),
+                        options = listOf("Diario", "Semanal", "Puntual").map {
+                            it to tr(if (it == "Diario") "Frecuencia diaria" else it)
+                        },
                         selectedValue = frequency,
                         onSelected = { item ->
                             frequency = item
