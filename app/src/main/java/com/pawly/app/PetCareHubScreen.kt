@@ -4,11 +4,9 @@ import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
@@ -510,11 +508,20 @@ private fun PetPassportSection(
             title = { Text(tr(if (editingEntry == null) "Nuevo registro" else "Editar registro")) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        types.forEach { type ->
-                            FilterChip(selected = selectedType == type, onClick = { selectedType = type; if (type == "Peso") { weightKg = lastRecordedWeight ?: 10f; title = String.format(java.util.Locale.US, "%.1f", weightKg) } }, label = { Text(type) })
-                        }
-                    }
+                    PawlyDropdownSelector(
+                        title = tr("Tipo de registro"),
+                        selectedLabel = tr(selectedType),
+                        options = types.map { it to tr(it) },
+                        selectedValue = selectedType,
+                        onSelected = { type ->
+                            selectedType = type
+                            if (type == "Peso") {
+                                weightKg = lastRecordedWeight ?: 10f
+                                title = String.format(java.util.Locale.US, "%.1f", weightKg)
+                            }
+                        },
+                        leadingIcon = Icons.Default.Pets
+                    )
                     if (selectedType == "Peso") {
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(tr("Peso de tu mascota"), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -826,11 +833,14 @@ private fun PetCarePlanSection(
                     OutlinedTextField(title, { title = it }, label = { Text(tr("Cuidado (paseo, comida…)")) }, singleLine = true)
                     OutlinedTextField(responsible, { responsible = it }, label = { Text(tr("Responsable")) }, singleLine = true)
                     Text(tr("Tipo de cuidado"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("Paseo", "Comida", "Medicación", "Higiene", "Otro").forEach { item ->
-                            FilterChip(selected = action == item, onClick = { action = item }, label = { Text(tr(item)) })
-                        }
-                    }
+                    PawlyDropdownSelector(
+                        title = tr("Tipo de cuidado"),
+                        selectedLabel = tr(action),
+                        options = listOf("Paseo", "Comida", "Medicación", "Higiene", "Otro").map { it to tr(it) },
+                        selectedValue = action,
+                        onSelected = { action = it },
+                        leadingIcon = Icons.Default.Pets
+                    )
                     if (action == "Medicación") {
                         OutlinedTextField(dose, { dose = it }, label = { Text(tr("Dosis (ej. 1 comprimido)")) }, singleLine = true)
                         OutlinedTextField(time, { time = it }, label = { Text(tr("Hora del aviso (HH:mm)")) }, singleLine = true)
@@ -858,39 +868,41 @@ private fun PetCarePlanSection(
                             }
                         }
                     }
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("Diario", "Semanal", "Puntual").forEach { item ->
-                            FilterChip(
-                                selected = frequency == item,
-                                onClick = {
-                                    frequency = item
-                                    selectedDays = if (item == "Semanal") {
-                                        selectedDays.ifEmpty { setOf(LocalDate.now().dayOfWeek.value) }
-                                    } else emptySet()
-                                    if (item == "Puntual") reminderEnabled = false
-                                },
-                                label = { Text(tr(item)) }
-                            )
-                        }
-                    }
+                    PawlyDropdownSelector(
+                        title = tr("Frecuencia"),
+                        selectedLabel = tr(frequency),
+                        options = listOf("Diario", "Semanal", "Puntual").map { it to tr(it) },
+                        selectedValue = frequency,
+                        onSelected = { item ->
+                            frequency = item
+                            selectedDays = if (item == "Semanal") {
+                                selectedDays.ifEmpty { setOf(LocalDate.now().dayOfWeek.value) }
+                            } else emptySet()
+                            if (item == "Puntual") reminderEnabled = false
+                        },
+                        leadingIcon = Icons.Default.CalendarMonth
+                    )
                     if (frequency == "Semanal") {
-                        Text(tr("Días de la semana"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(
-                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            (1..7).forEach { day ->
-                                val label = DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, weekdayLocale)
-                                    .replace(".", "").replaceFirstChar { it.uppercase(weekdayLocale) }
-                                FilterChip(
-                                    selected = day in selectedDays,
-                                    onClick = {
-                                        selectedDays = if (day in selectedDays) selectedDays - day else selectedDays + day
-                                    },
-                                    label = { Text(label) }
-                                )
-                            }
+                        val weekdayOptions = (1..7).map { day ->
+                            day.toString() to DayOfWeek.of(day).getDisplayName(TextStyle.FULL, weekdayLocale)
+                                .replaceFirstChar { it.uppercase(weekdayLocale) }
                         }
+                        val selectedWeekdaySummary = if (selectedDays.isEmpty()) tr("Ningún día seleccionado") else
+                            CareTaskSchedule.normalizeDays(selectedDays.toList()).joinToString(", ") { day ->
+                                DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, weekdayLocale)
+                                    .replace(".", "").replaceFirstChar { it.uppercase(weekdayLocale) }
+                            }
+                        PawlyMultiSelectDropdown(
+                            title = tr("Días de la semana"),
+                            selectedSummary = selectedWeekdaySummary,
+                            options = weekdayOptions,
+                            selectedValues = selectedDays.map { it.toString() }.toSet(),
+                            onToggle = { value ->
+                                val day = value.toInt()
+                                selectedDays = if (day in selectedDays) selectedDays - day else selectedDays + day
+                            },
+                            leadingIcon = Icons.Default.CalendarMonth
+                        )
                         if (selectedDays.isEmpty()) {
                             Text(
                                 tr("Selecciona al menos un día para la rutina semanal."),

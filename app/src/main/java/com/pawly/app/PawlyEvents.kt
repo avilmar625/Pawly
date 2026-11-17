@@ -26,8 +26,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -198,7 +196,6 @@ internal fun PawlyEventsScreen(
     var category by remember { mutableStateOf("Todos") }
     var sortAscending by remember { mutableStateOf(true) }
     var sortByInterested by remember { mutableStateOf(false) }
-    var sortMenuExpanded by remember { mutableStateOf(false) }
     val loadPermissionDeniedMessage = tr("Firestore no permite leer los eventos. Publica las reglas incluidas en cambios55 desde la consola de Firebase.")
     val defaultLoadErrorMessage = tr("No se pudieron cargar los eventos.")
     val publishPermissionDeniedMessage = tr("Firebase ha rechazado la publicación. Publica las reglas de firestore.rules de esta rama y confirma que el correo de la cuenta está verificado.")
@@ -252,65 +249,48 @@ internal fun PawlyEventsScreen(
             if (!mapOnly) FilledTonalIconButton(onClick = { createError = null; showCreate = true }) { Icon(Icons.Default.Add, contentDescription = tr("Crear evento")) }
         }
         Spacer(Modifier.height(12.dp))
-        var eventCategoryMenuExpanded by remember { mutableStateOf(false) }
-        Box(Modifier.fillMaxWidth()) {
-            OutlinedButton(
-                onClick = { eventCategoryMenuExpanded = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                Icon(Icons.Default.FilterList, null, tint = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.width(9.dp))
-                Text(tr("Tipo de evento: ") + tr(if (category == "Todos") "Todos los eventos" else category), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
-                Icon(Icons.Default.ExpandMore, null)
-            }
-            DropdownMenu(expanded = eventCategoryMenuExpanded, onDismissRequest = { eventCategoryMenuExpanded = false }, modifier = Modifier.fillMaxWidth(.9f)) {
-                listOf("Todos", "Quedada", "Ruta", "Taller", "Adopción").forEach { item ->
-                    DropdownMenuItem(
-                        text = { Text(tr(if (item == "Todos") "Todos los eventos" else item), fontWeight = if (category == item) FontWeight.Bold else FontWeight.Normal) },
-                        leadingIcon = { if (category == item) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick = { category = item; eventCategoryMenuExpanded = false }
-                    )
-                }
-            }
-        }
+        PawlyDropdownSelector(
+            title = tr("Tipo de evento"),
+            selectedLabel = tr(if (category == "Todos") "Todos los eventos" else category),
+            options = listOf(
+                "Todos" to tr("Todos los eventos"),
+                "Quedada" to tr("Quedada"),
+                "Ruta" to tr("Ruta"),
+                "Taller" to tr("Taller"),
+                "Adopción" to tr("Adopción")
+            ),
+            selectedValue = category,
+            onSelected = { category = it },
+            leadingIcon = Icons.Default.FilterList
+        )
+
         if (!mapOnly) {
             Spacer(Modifier.height(6.dp))
-            Box(Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { sortMenuExpanded = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp)
-                ) {
-                    Icon(Icons.Default.Sort, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(9.dp))
-                    Text(tr("Ordenar por: ") + tr(if (sortByInterested) "Más personas interesadas" else if (sortAscending) "Más próximos primero" else "Más lejanos primero"),
-                        modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Start)
-                    Icon(Icons.Default.ExpandMore, null)
-                }
-                DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text(tr("Más próximos primero"), fontWeight = if (sortAscending) FontWeight.Bold else FontWeight.Normal) },
-                        leadingIcon = { Icon(Icons.Default.EventAvailable, null) },
-                        trailingIcon = { if (sortAscending) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick = { sortAscending = true; sortByInterested = false; sortMenuExpanded = false }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(tr("Más lejanos primero"), fontWeight = if (!sortAscending && !sortByInterested) FontWeight.Bold else FontWeight.Normal) },
-                        leadingIcon = { Icon(Icons.Default.Event, null) },
-                        trailingIcon = { if (!sortAscending && !sortByInterested) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick = { sortAscending = false; sortByInterested = false; sortMenuExpanded = false }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(tr("Más personas interesadas"), fontWeight = if (sortByInterested) FontWeight.Bold else FontWeight.Normal) },
-                        leadingIcon = { Icon(Icons.Default.Groups, null) },
-                        trailingIcon = { if (sortByInterested) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick = { sortByInterested = true; sortMenuExpanded = false }
-                    )
-                }
+            val eventSort = when {
+                sortByInterested -> "interested"
+                sortAscending -> "nearest"
+                else -> "farthest"
             }
+            PawlyDropdownSelector(
+                title = tr("Ordenar por"),
+                selectedLabel = tr(when (eventSort) {
+                    "interested" -> "Más personas interesadas"
+                    "nearest" -> "Más próximos primero"
+                    else -> "Más lejanos primero"
+                }),
+                options = listOf(
+                    "nearest" to tr("Más próximos primero"),
+                    "farthest" to tr("Más lejanos primero"),
+                    "interested" to tr("Más personas interesadas")
+                ),
+                selectedValue = eventSort,
+                onSelected = { value ->
+                    sortByInterested = value == "interested"
+                    sortAscending = value == "nearest"
+                },
+                leadingIcon = Icons.Default.Sort
+            )
+
         }
         Spacer(Modifier.height(8.dp))
         if (mapOnly) {
@@ -748,15 +728,14 @@ private fun CreatePawlyEventDialog(
                 }
                 if (eventDateTimeMillis != null && !eventDateIsFuture) Text(tr("La fecha y hora deben ser futuras."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
-                        FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value), maxLines = 1) })
-                    }
-                }
+                PawlyDropdownSelector(
+                    title = tr("Tipo de evento"),
+                    selectedLabel = tr(category),
+                    options = listOf("Quedada", "Ruta", "Taller", "Adopción").map { it to tr(it) },
+                    selectedValue = category,
+                    onSelected = { category = it },
+                    leadingIcon = Icons.Default.Event
+                )
                 OutlinedButton(onClick = { showMapPicker = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Map, contentDescription = null)
                     Spacer(Modifier.width(8.dp))

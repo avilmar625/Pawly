@@ -152,18 +152,13 @@ internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) 
             }
         }
 
-        Row(
-            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            PawlyContentSection.entries.forEach { section ->
-                FilterChip(
-                    selected = selectedSection == section,
-                    onClick = { selectedSection = section; search = "" },
-                    label = { Text(section.label) }
-                )
-            }
-        }
+        PawlyDropdownSelector(
+            title = tr("Sección de aprendizaje"),
+            selectedLabel = tr(selectedSection.label),
+            options = PawlyContentSection.entries.map { it.name to tr(it.label) },
+            selectedValue = selectedSection.name,
+            onSelected = { selectedSection = PawlyContentSection.valueOf(it); search = "" }
+        )
 
         when (selectedSection) {
             PawlyContentSection.NEWS -> {

@@ -156,12 +156,13 @@ internal fun LostPetHelpScreen(
                     }
                     Switch(checked = receiveNearbyAlerts, onCheckedChange = { receiveNearbyAlerts = it; subscriptionSaved = false })
                 }
-                Text(t("Radio de recepción"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(5, 10, 20).forEach { radius ->
-                        FilterChip(selected = alertRadius == radius, onClick = { alertRadius = radius; subscriptionSaved = false }, label = { Text("$radius km") })
-                    }
-                }
+                PawlyDropdownSelector(
+                    title = t("Radio de recepción"),
+                    selectedLabel = "$alertRadius km",
+                    options = listOf(5, 10, 20).map { it.toString() to "$it km" },
+                    selectedValue = alertRadius.toString(),
+                    onSelected = { alertRadius = it.toInt(); subscriptionSaved = false }
+                )
                 Text(
                     t("Pawly utiliza una ubicación aproximada (redondeada a unos 1 km). No se comparte tu posición exacta. Los avisos solo se envían a personas que hayan activado esta opción y estén dentro del radio."),
                     style = MaterialTheme.typography.bodySmall,
