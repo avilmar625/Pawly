@@ -520,7 +520,7 @@ private fun PetPassportSection(
                                 title = String.format(java.util.Locale.US, "%.1f", weightKg)
                             }
                         },
-                        leadingIcon = Icons.Default.Category
+                        leadingIcon = Icons.Default.Pets
                     )
                     if (selectedType == "Peso") {
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -880,7 +880,7 @@ private fun PetCarePlanSection(
                             } else emptySet()
                             if (item == "Puntual") reminderEnabled = false
                         },
-                        leadingIcon = Icons.Default.Repeat
+                        leadingIcon = Icons.Default.CalendarMonth
                     )
                     if (frequency == "Semanal") {
                         val weekdayOptions = (1..7).map { day ->
