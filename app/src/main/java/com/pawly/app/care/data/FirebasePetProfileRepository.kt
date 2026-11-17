@@ -78,6 +78,10 @@ class FirebasePetProfileRepository(
             doc.getString("text")?.takeIf { it.isNotBlank() }?.let { withCloudDiaryId(it, doc.id) }
         }
 
+    /** Backup view strips device/cloud bookkeeping while retaining the full diary payload. */
+    suspend fun loadDiaryForBackup(petId: String): List<String> =
+        loadDiary(petId).map(::withoutCloudDiaryId)
+
     fun listenDiary(
         petId: String,
         onEntries: (List<String>) -> Unit,
