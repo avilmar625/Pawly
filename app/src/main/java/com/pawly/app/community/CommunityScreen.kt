@@ -677,7 +677,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         }
     }
     if (createPost) CreatePostDialog(repo, { createPost = false }) { notice = "Publicación compartida."; createPost = false }
-    if (commentsPost != null) CommentsDialog(repo, commentsPost!!, { commentsPost = null })
+    if (commentsPost != null) CommentsDialog(repo, commentsPost!!, { commentsPost = null }, onOpenUser = { id -> selectedUser = id; commentsPost = null })
     if (reportTarget != null) ReportDialog(repo, reportTarget!!.first, reportTarget!!.second, { reportTarget = null }) {
         notice = "Gracias. Hemos recibido tu aviso."
         reportTarget = null
