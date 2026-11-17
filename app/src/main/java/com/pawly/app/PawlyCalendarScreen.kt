@@ -9,6 +9,8 @@ import java.util.Date
 import org.json.JSONObject
 import com.pawly.app.care.CareReminderScheduler
 import com.pawly.app.care.data.FirebasePetAgendaRepository
+import com.pawly.app.care.data.FirebasePetProfileRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -69,8 +71,12 @@ internal fun PawlyCalendarScreen(
     }
     LaunchedEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
         if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
-            runCatching { sharedAgendaRepository.migrateLocalIfCloudEmpty(petId, initialLocalReminders) }
-                .onFailure { agendaSyncMessage = "No se pudo preparar la agenda compartida: ${it.localizedMessage}" }
+            runCatching {
+                if (sharedPetOwnerUid == FirebaseAuth.getInstance().currentUser?.uid) {
+                    FirebasePetProfileRepository(ownerUid = sharedPetOwnerUid).ensurePet(petId, dogName)
+                }
+                sharedAgendaRepository.migrateLocalIfCloudEmpty(petId, initialLocalReminders)
+            }.onFailure { agendaSyncMessage = "No se pudo preparar la agenda compartida: ${it.localizedMessage}" }
         }
     }
     DisposableEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
