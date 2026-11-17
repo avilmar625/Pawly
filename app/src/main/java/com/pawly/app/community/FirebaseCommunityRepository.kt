@@ -414,7 +414,7 @@ class FirebaseCommunityRepository private constructor(
         relatedId: String = "",
         sourceEventId: String = ""
     ) {
-        val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/')
+        val baseUrl = BuildConfig.PAWLY_BACKEND_URL.trim().trimEnd('/').ifBlank { "https://pawly-api.alexvilarrubla619.workers.dev" }
         if (baseUrl.isBlank() || targetUid.isBlank()) return
         val idToken = auth.currentUser?.getIdToken(false)?.await()?.token ?: return
         val payload = JSONObject()
@@ -828,7 +828,7 @@ class FirebaseCommunityRepository private constructor(
     /** Saves a coarse location (rounded to ~1 km) and explicit radius consent for lost-pet alerts. */
     suspend fun saveLostPetSubscription(enabled: Boolean, radiusKm: Int, latitude: Double, longitude: Double) {
         val uid = requireVerifiedUid()
-        require(radiusKm in setOf(5, 10, 20)) { "Selecciona un radio de 5, 10 o 20 km." }
+        require(radiusKm in setOf(5, 10, 20, 30, 50, 100)) { "Selecciona un radio válido entre 5 y 100 km." }
         require(latitude in -90.0..90.0 && longitude in -180.0..180.0)
         db.collection("lostPetSubscriptions").document(uid).set(mapOf(
             "uid" to uid, "enabled" to enabled, "radiusKm" to radiusKm,
