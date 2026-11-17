@@ -675,7 +675,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
             )
             page == CommunityPage.MESSAGES -> ConversationsScreen(repo, onOpen = { chat = it }, onOpenProfile = { id -> selectedUser = id; chat = null })
             page == CommunityPage.NOTIFICATIONS -> NotificationsScreen(repo, onOpenProfile = { selectedUser = it })
-            page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
+            page == CommunityPage.PROFILE -> MyCommunityProfile(repo, onManagePhoneVerification = { page = CommunityPage.SEARCH })
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
         }
     }
