@@ -774,8 +774,18 @@ private fun NotificationsScreen(repo: FirebaseCommunityRepository, onOpenProfile
                         color = if (item.read) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer.copy(alpha = .42f),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth().clickable {
-                            scope.launch { runCatching { repo.markNotificationRead(item.id) } }
-                            if (item.actorId.isNotBlank()) onOpenProfile(item.actorId)
+                            scope.launch {
+                                runCatching { repo.markNotificationRead(item.id) }
+                                    .onFailure { error = "No se pudo actualizar el aviso. Inténtalo de nuevo." }
+                                if (item.actorId.isNotBlank()) {
+                                    val actor = runCatching { repo.getUser(item.actorId) }.getOrNull()
+                                    if (actor?.isPublic == true) {
+                                        onOpenProfile(item.actorId)
+                                    } else {
+                                        error = "El perfil de ${item.actorName} es privado o ya no está disponible."
+                                    }
+                                }
+                            }
                         }
                     ) {
                         Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
