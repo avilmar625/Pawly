@@ -773,7 +773,7 @@ private fun PawlyMainApp(
                                     val latestLogs = careRepository.loadCareLogs(dogName, 500)
                                     val localLogs = PetCareLocalStore.loadCareLogs(context, dogName, storageScope)
                                     val combinedLogs = (latestLogs + localLogs).distinctBy { it.id }
-                                        .sortedByDescending { it.occurredAt }.take(100)
+                                        .sortedByDescending { it.occurredAt }.take(500)
                                     PetCareLocalStore.saveEntries(context, dogName, latestPassport, storageScope)
                                     PetCareLocalStore.saveTasks(context, dogName, latestTasks, storageScope)
                                     // Backup-restored walk history is retained locally even when
