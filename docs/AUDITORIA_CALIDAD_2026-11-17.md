@@ -67,6 +67,35 @@ La regla permite a cada usuario leer/escribir únicamente su documento de suscri
 
 **Alcance que sigue pendiente:** el índice inverso se crea para nuevos bloqueos; las relaciones antiguas no tienen ese índice hasta que se vuelvan a bloquear. La moderación de publicaciones sigue sin borrar automáticamente el archivo multimedia remoto de Cloudinary; hace falta un flujo de borrado de recursos en backend y una política de retención para evitar ficheros huérfanos.
 
+## Cierre de sincronización de diario y agenda, y ciclo de vida de medios
+
+### Diario compartido
+
+- Cada recuerdo compartido tiene su propio documento Firestore con ID independiente; se acabó reescribir la colección completa al guardar un cambio.
+- Se usa un listener en tiempo real y cada alta/borrado afecta solo al recuerdo seleccionado. Dos cuidadores pueden añadir recuerdos sin que el último guardado borre los del otro.
+- La restauración de backup incorpora recuerdos de forma aditiva.
+- El límite de cada registro se amplía a 12.000 caracteres para guardar de forma segura el JSON de metadatos y hasta ocho URLs de fotografías.
+- Al borrar un recuerdo, la app intenta borrar también sus recursos de Cloudinary. El Worker solo autoriza al propietario del recurso o a una cuenta con claim admin.
+
+### Agenda compartida
+
+- Los recordatorios personales de calendario pasan a documentos individuales bajo sharedPets/{ownerUid}_{petId}/agenda.
+- La pantalla usa listener en tiempo real; editores y propietarios pueden añadir, cambiar o eliminar recordatorios, mientras lectores solo los consultan.
+- Las notificaciones locales se programan en cada dispositivo conectado al recibir la agenda compartida.
+- Se migran los recordatorios locales antiguos una sola vez y solo cuando la agenda remota todavía está vacía, evitando reintroducir eliminaciones al conectar otro móvil.
+- La agenda compartida conserva el perfil de la mascota; eventos de Comunidad y citas/recordatorios sanitarios siguen procediendo de sus colecciones existentes.
+
+### Fotografías y vídeos de Comunidad
+
+- Los nuevos registros de recursos incluyen la URL HTTPS exacta además de propietario, publicId y tipo.
+- El Worker añade POST /v1/cloudinary/assets/delete. Verifica el ID token Firebase, localiza el recurso en el índice privado, comprueba que pertenece al usuario o que el usuario tiene claim admin, firma la operación de borrado en servidor y elimina el índice solo después de la confirmación de Cloudinary.
+- La retirada moderada de una publicación borra primero el documento y después intenta borrar sus recursos. Si Cloudinary falla, el índice queda intacto para permitir reintento.
+- Al sustituir la foto de perfil se intenta borrar la anterior; al borrar recuerdos se intenta borrar sus fotografías. Los errores de limpieza no conceden permisos sobre archivos ajenos.
+
+**Configuración necesaria antes del despliegue del Worker:** guardar en Cloudflare los secretos `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` mediante `wrangler secret put`. Sin estos secretos, el endpoint responde 503 de forma segura y no borra el índice. No se han desplegado reglas ni Worker en producción.
+
+**Compatibilidad y deuda de migración:** los recursos subidos por versiones antiguas no contienen `secureUrl` en su índice, por lo que no se pueden localizar por URL automáticamente en este flujo. Requieren una migración administrativa o se limpiarán cuando se elimine la cuenta propietaria. Los recuerdos eliminados por un cuidador distinto del que subió las fotos no permiten borrar archivos ajenos; quedan protegidos frente a borrados no autorizados.
+
 ## Siguiente trabajo recomendado
 
 1. Añadir pruebas de integración para exportar/importar backups con paseos completos y copias antiguas.
