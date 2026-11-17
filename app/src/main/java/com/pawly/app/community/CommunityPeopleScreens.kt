@@ -270,91 +270,248 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
     var following by remember(uid) { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(uid) {
-        try { user = repo.getUser(uid); dogs = repo.getUserDogs(uid); following = repo.isFollowing(uid) }
-        catch (e: Exception) { error = e.localizedMessage }
+        try {
+            user = repo.getUser(uid)
+            dogs = repo.getUserDogs(uid)
+            following = repo.isFollowing(uid)
+        } catch (e: Exception) { error = e.localizedMessage }
     }
     DisposableEffect(uid) {
         val listener = repo.listenUserPosts(uid, { userPosts = it }, { error = it })
         onDispose { listener.remove() }
     }
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        TextButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null); Text(tr("Volver")) }
-        if (user == null) { Text(error ?: "Cargando perfil…", color = Muted); return@Column }
-        Surface(color = Paper, shape = RoundedCornerShape(20.dp)) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Avatar(user!!.photoUrl, user!!.displayName, 72)
-                Text(user!!.displayName, style = MaterialTheme.typography.titleLarge, color = Forest)
-                Text("@" + user!!.username, color = Muted)
-                if (user!!.accountType == "professional") {
-                    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(12.dp), modifier = Modifier.padding(top = 8.dp)) {
-                        Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.WorkspacePremium, null, tint = MaterialTheme.colorScheme.tertiary)
-                            Spacer(Modifier.width(6.dp))
-                            Text(tr("Perfil profesional") + " · " + user!!.professionalCategory, color = MaterialTheme.colorScheme.onTertiaryContainer, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                    if (user!!.professionalLocation.isNotBlank()) Text(tr("Zona: ") + user!!.professionalLocation, color = Muted, style = MaterialTheme.typography.bodySmall)
-                    if (user!!.professionalDescription.isNotBlank()) Text(user!!.professionalDescription, color = Ink, modifier = Modifier.padding(8.dp))
-                    if (user!!.professionalContactPublic && user!!.professionalContact.isNotBlank()) Text(tr("Contacto: ") + user!!.professionalContact, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+    LazyColumn(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = tr("Volver"))
                 }
-                if (user!!.bio.isNotBlank()) Text(user!!.bio, color = Ink, modifier = Modifier.padding(8.dp))
-                Text(user!!.followersCount.toString() + " seguidores · " + user!!.followingCount + " siguiendo", color = Muted, style = MaterialTheme.typography.bodySmall)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (uid != repo.currentUid) {
-                        Button(onClick = {
-                            error = null
-                            busy = true
-                            scope.launch {
-                                runCatching {
-                                    val next = !following
-                                    repo.follow(uid, next)
-                                    following = next
-                                    user = user?.copy(followersCount = (user?.followersCount ?: 0) + if (next) 1 else -1)
-                                }.onFailure { failure ->
-                                    Log.e("PawlyCommunity", "Follow action failed", failure)
-                                    error = failure.toPawlyMessage("No se pudo actualizar el seguimiento.")
-                                }
-                                busy = false
-                            }
-                        }, enabled = !busy) { Text(if (following) "Dejar de seguir" else "Seguir") }
-                        Spacer(Modifier.width(6.dp))
-                        OutlinedButton(onClick = { onMessage(uid) }) { Icon(Icons.Default.Chat, null); Text(tr("Mensaje")) }
-                    }
-                    var menu by remember { mutableStateOf(false) }
-                    Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreHoriz, "Más opciones") }
-                        DropdownMenu(menu, { menu = false }) {
-                            if (uid != repo.currentUid) {
-                                DropdownMenuItem(text = { Text(tr("Denunciar perfil")) }, onClick = { menu = false; onReport(uid to "user") })
-                                DropdownMenuItem(text = { Text(tr("Bloquear usuario")) }, onClick = { menu = false; onBlock(uid) })
-                            }
+                Text(tr("Perfil de la comunidad"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreHoriz, tr("Más opciones")) }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        if (uid != repo.currentUid) {
+                            DropdownMenuItem(text = { Text(tr("Denunciar perfil")) }, onClick = { menu = false; onReport(uid to "user") })
+                            DropdownMenuItem(text = { Text(tr("Bloquear usuario")) }, onClick = { menu = false; onBlock(uid) })
                         }
                     }
                 }
             }
         }
-        if (error != null) {
-            Text(error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 6.dp))
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(tr("Sus compañeros"), color = Forest, fontWeight = FontWeight.Bold)
-        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(dogs, key = { it.id }) { DogProfileCard(it) }
-            item { Text(tr("Publicaciones"), color = Forest, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp)) }
-            if (userPosts.isEmpty()) item { Text(tr("Todavía no ha compartido publicaciones."), color = Muted) }
+        if (user == null) {
+            item {
+                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (error == null) CircularProgressIndicator()
+                        Text(error ?: tr("Cargando perfil…"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        } else {
+            val currentUser = user!!
+            item {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(28.dp),
+                    tonalElevation = 2.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Box(
+                            Modifier.fillMaxWidth().height(112.dp)
+                                .background(
+                                    androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                                    )
+                                )
+                        ) {
+                            Text("PAWLY · COMMUNITY", Modifier.align(Alignment.TopStart).padding(18.dp),
+                                color = Color.White.copy(alpha = .88f), style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.ExtraBold, letterSpacing = 1.8.sp)
+                            Icon(Icons.Default.Pets, null, tint = Color.White.copy(alpha = .18f),
+                                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 20.dp).size(82.dp))
+                        }
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).offset(y = (-48).dp),
+                            verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Row(verticalAlignment = Alignment.Bottom) {
+                                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, tonalElevation = 4.dp,
+                                    border = androidx.compose.foundation.BorderStroke(4.dp, MaterialTheme.colorScheme.surface)) {
+                                    Avatar(currentUser.photoUrl, currentUser.displayName, 88)
+                                }
+                                Spacer(Modifier.weight(1f))
+                                if (uid != repo.currentUid) {
+                                    OutlinedButton(onClick = { onMessage(uid) }) {
+                                        Icon(Icons.Default.ChatBubbleOutline, null)
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(tr("Mensaje"))
+                                    }
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(currentUser.displayName, style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("@${currentUser.username}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (currentUser.accountType == "professional") {
+                                    Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(50)) {
+                                        Row(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(Icons.Default.WorkspacePremium, null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(16.dp))
+                                            Spacer(Modifier.width(5.dp))
+                                            Text(tr("Profesional"), color = MaterialTheme.colorScheme.onTertiaryContainer, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(
+                                    currentUser.followersCount.toString() to tr("Seguidores"),
+                                    currentUser.followingCount.toString() to tr("Siguiendo"),
+                                    dogs.size.toString() to tr("Mascotas"),
+                                    userPosts.size.toString() to tr("Publicaciones")
+                                ).forEach { (value, label) ->
+                                    Surface(Modifier.weight(1f), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .58f),
+                                        shape = RoundedCornerShape(15.dp)) {
+                                        Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text(value, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold,
+                                                style = MaterialTheme.typography.titleMedium)
+                                            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall,
+                                                maxLines = 1)
+                                        }
+                                    }
+                                }
+                            }
+                            if (currentUser.bio.isNotBlank()) {
+                                Text(currentUser.bio, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
+                            }
+                            if (currentUser.accountType == "professional") {
+                                Surface(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .5f),
+                                    shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        Text(currentUser.professionalCategory.ifBlank { tr("Perfil profesional") },
+                                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                        if (currentUser.professionalLocation.isNotBlank()) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                                Text(currentUser.professionalLocation, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    style = MaterialTheme.typography.bodySmall)
+                                            }
+                                        }
+                                        if (currentUser.professionalDescription.isNotBlank()) Text(currentUser.professionalDescription,
+                                            color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
+                                        if (currentUser.professionalContactPublic && currentUser.professionalContact.isNotBlank()) {
+                                            Text(tr("Contacto: ") + currentUser.professionalContact,
+                                                color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                }
+                            }
+                            if (uid != repo.currentUid) {
+                                Button(
+                                    onClick = {
+                                        error = null
+                                        busy = true
+                                        scope.launch {
+                                            runCatching {
+                                                val next = !following
+                                                repo.follow(uid, next)
+                                                following = next
+                                                user = user?.copy(followersCount = (user?.followersCount ?: 0) + if (next) 1 else -1)
+                                            }.onFailure { failure ->
+                                                Log.e("PawlyCommunity", "Follow action failed", failure)
+                                                error = failure.toPawlyMessage("No se pudo actualizar el seguimiento.")
+                                            }
+                                            busy = false
+                                        }
+                                    },
+                                    enabled = !busy,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(15.dp)
+                                ) {
+                                    Icon(if (following) Icons.Default.PersonRemove else Icons.Default.PersonAdd, null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(if (busy) tr("Actualizando…") else if (following) tr("Dejar de seguir") else tr("Seguir"))
+                                }
+                            } else {
+                                OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text(tr("Volver a mi comunidad")) }
+                            }
+                        }
+                    }
+                }
+            }
+            if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Sus compañeros"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    Text(dogs.size.toString(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (dogs.isEmpty()) item {
+                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text(tr("Todavía no ha añadido mascotas."), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            items(dogs, key = { it.id }) { dog -> DogProfileCard(dog) }
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(tr("Publicaciones"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    Text(userPosts.size.toString(), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (userPosts.isEmpty()) item {
+                Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                        Text(tr("Todavía no ha compartido publicaciones."), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
             items(userPosts, key = { "post-" + it.id }) { post ->
-                Surface(color = Paper, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        if (post.text.isNotBlank()) Text(post.text, color = Ink)
-                        if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación", Modifier.fillMaxWidth().heightIn(max = 260.dp))
-                        if (post.videoUrl.isNotBlank()) PawlyVideoPlayer(post.videoUrl, Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(12.dp)))
-                        Text(post.likeCount.toString() + " me gusta · " + post.commentCount + " comentarios", color = Muted, style = MaterialTheme.typography.labelSmall)
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(22.dp),
+                    tonalElevation = 1.dp,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Avatar(currentUser.photoUrl, currentUser.displayName, 38)
+                            Spacer(Modifier.width(9.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(currentUser.displayName, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text(tr("En la comunidad Pawly"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        if (post.text.isNotBlank()) Text(post.text, color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.padding(horizontal = 15.dp))
+                        if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación",
+                            Modifier.fillMaxWidth().heightIn(max = 320.dp))
+                        if (post.videoUrl.isNotBlank()) PawlyVideoPlayer(post.videoUrl,
+                            Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(12.dp)))
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.FavoriteBorder, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+                            Text(" ${post.likeCount} " + tr("me gusta"), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelMedium)
+                            Spacer(Modifier.width(14.dp))
+                            Icon(Icons.Default.ChatBubbleOutline, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+                            Text(" ${post.commentCount} " + tr("comentarios"), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.labelMedium)
+                        }
                     }
                 }
             }
         }
     }
 }
-
