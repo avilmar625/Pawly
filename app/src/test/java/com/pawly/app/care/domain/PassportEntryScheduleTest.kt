@@ -26,7 +26,7 @@ class PassportEntryScheduleTest {
         assertEquals(PassportEntryStates.VENCIDO, PassportEntrySchedule.status(entry, today))
     }
 
-    @Test fun explicitlyPendingWithoutNextDoseUsesItsScheduledDate() {
+    @Test fun explicitlyPendingWithoutNextDoseRemainsInAgenda() {
         val entry = PassportEntry("v3", "Visita veterinaria", "Revisión", "", "2026-11-20", status = PassportEntryStates.PENDIENTE)
         assertEquals(PassportEntryStates.PENDIENTE, PassportEntrySchedule.status(entry, today))
         assertTrue(PassportEntrySchedule.agenda(listOf(entry), today).isNotEmpty())
