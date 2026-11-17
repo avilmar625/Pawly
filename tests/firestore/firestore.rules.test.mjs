@@ -365,7 +365,12 @@ test("Cloudinary asset indexes can only point inside the caller's own Pawly uplo
   const db = env.authenticatedContext("asset-owner", { email_verified: false }).firestore();
   await assertSucceeds(setDoc(doc(db, "cloudinaryAssets/owned"), {
     uid: "asset-owner", publicId: "pawly/diary-photos/asset-owner/photo-1",
-    resourceType: "image", createdAt: serverTimestamp()
+    resourceType: "image", secureUrl: "https://res.cloudinary.com/pawly/image/upload/photo-1",
+    createdAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(db, "cloudinaryAssets/insecure-url"), {
+    uid: "asset-owner", publicId: "pawly/diary-photos/asset-owner/photo-4",
+    resourceType: "image", secureUrl: "http://example.com/photo.jpg", createdAt: serverTimestamp()
   }));
   await assertFails(setDoc(doc(db, "cloudinaryAssets/foreign"), {
     uid: "asset-owner", publicId: "pawly/diary-photos/someone-else/photo-2",
