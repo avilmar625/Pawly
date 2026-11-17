@@ -25,5 +25,6 @@ describe("Cloudinary asset deletion policy", () => {
     expect(isCloudinarySecureUrl("https://res.cloudinary.com/demo/image/upload/a.jpg")).toBe(true);
     expect(isCloudinarySecureUrl("http://res.cloudinary.com/demo/a.jpg")).toBe(false);
     expect(isCloudinarySecureUrl("javascript:alert(1)")).toBe(false);
+    expect(isCloudinarySecureUrl("https://attacker.example/image.jpg")).toBe(false);
   });
 });
