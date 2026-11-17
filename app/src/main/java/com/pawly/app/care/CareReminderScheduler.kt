@@ -9,6 +9,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.content.pm.PackageManager
+import android.Manifest
+import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
 import com.pawly.app.MainActivity
 import com.pawly.app.R
@@ -28,10 +31,16 @@ internal object CareReminderScheduler {
     private fun parseDateTime(value: String): Long? =
         CareReminderDateTimeParser.parseMillis(value)
 
-    fun schedule(context: Context, dogName: String, careName: String, dateTime: String): Boolean {
+    fun schedule(
+        context: Context,
+        dogName: String,
+        careName: String,
+        dateTime: String,
+        reminderKey: String = careName
+    ): Boolean {
         val triggerAt = parseDateTime(dateTime) ?: return false
         if (triggerAt <= System.currentTimeMillis()) return false
-        val requestCode = reminderId(dogName, careName)
+        val requestCode = reminderId(dogName, reminderKey)
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs.edit()
             .remove(DAILY_PREFIX + requestCode)
@@ -180,8 +189,8 @@ internal object CareReminderScheduler {
         editor.apply()
     }
 
-    fun cancel(context: Context, dogName: String, careName: String) {
-        val requestCode = reminderId(dogName, careName)
+    fun cancel(context: Context, dogName: String, careName: String, reminderKey: String = careName) {
+        val requestCode = reminderId(dogName, reminderKey)
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().remove(PREFIX + requestCode).remove(DAILY_PREFIX + requestCode).remove(WEEKLY_PREFIX + requestCode).apply()
         val intent = Intent(context, CareReminderReceiver::class.java).apply { action = ACTION }
@@ -212,30 +221,34 @@ internal class CareReminderReceiver : BroadcastReceiver() {
         val dogName = intent.getStringExtra("dogName").orEmpty().ifBlank { "tu perro" }
         val careName = intent.getStringExtra("careName").orEmpty().ifBlank { "un cuidado pendiente" }
         val notificationId = intent.getIntExtra("notificationId", careName.hashCode())
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CareReminderScheduler.CHANNEL_ID, "Recordatorios de Pawly", NotificationManager.IMPORTANCE_DEFAULT
-                ).apply { description = "Avisos locales de cuidados que has programado" }
-            )
+        val canPostNotifications = Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (canPostNotifications) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                manager.createNotificationChannel(
+                    NotificationChannel(
+                        CareReminderScheduler.CHANNEL_ID, "Recordatorios de Pawly", NotificationManager.IMPORTANCE_DEFAULT
+                    ).apply { description = "Avisos locales de cuidados que has programado" }
+                )
+            }
+            val notification = NotificationCompat.Builder(context, CareReminderScheduler.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification_paw)
+                .setContentIntent(PendingIntent.getActivity(
+                    context, 0,
+                    Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                ))
+                .setContentTitle("Un recordatorio para $dogName")
+                .setContentText("Hoy toca: $careName")
+                .setStyle(NotificationCompat.BigTextStyle().bigText("Habías programado este recordatorio para $dogName: $careName."))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setAutoCancel(true)
+                .build()
+            runCatching { manager.notify(notificationId, notification) }
         }
-        val notification = NotificationCompat.Builder(context, CareReminderScheduler.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_paw)
-            .setContentIntent(PendingIntent.getActivity(
-                context, 0,
-                Intent(context, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                },
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            ))
-            .setContentTitle("Un recordatorio para $dogName")
-            .setContentText("Hoy toca: $careName")
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Habías programado este recordatorio para $dogName: $careName."))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .build()
-        runCatching { manager.notify(notificationId, notification) }
         val timeOfDay = intent.getStringExtra("timeOfDay").orEmpty()
         if (intent.getBooleanExtra("repeatDaily", false) && timeOfDay.isNotBlank()) {
             CareReminderScheduler.scheduleDaily(context.applicationContext, dogName, careName, timeOfDay)
