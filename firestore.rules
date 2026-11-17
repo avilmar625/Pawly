@@ -59,6 +59,7 @@ service cloud.firestore {
         && request.resource.data.username is string
         && request.resource.data.usernameLower is string
         && request.resource.data.isPublic == false
+        && (!('isVerified' in request.resource.data) || request.resource.data.isVerified == false)
         && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.usernameLower)).data.uid == uid
         && existsAfter(/databases/$(database)/documents/usernameReservations/$(uid))
         && getAfter(/databases/$(database)/documents/usernameReservations/$(uid)).data.username == request.resource.data.usernameLower;
