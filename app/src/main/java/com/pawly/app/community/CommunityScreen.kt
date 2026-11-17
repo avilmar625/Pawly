@@ -334,6 +334,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
     var unreadNotifications by remember { mutableIntStateOf(0) }
     var unreadMessages by remember { mutableIntStateOf(0) }
     var conversationsForUnread by remember { mutableStateOf(emptyList<PawlyConversation>()) }
+    var messageUnreadCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var refreshUnreadMessages by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedUser by remember { mutableStateOf<String?>(null) }
@@ -383,11 +384,14 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         }
     }
     LaunchedEffect(conversationsForUnread, refreshUnreadMessages) {
-        var totalUnread = 0
+        val updatedCounts = mutableMapOf<String, Int>()
         conversationsForUnread.forEach { conversation ->
-            totalUnread += runCatching { repo.getUnreadMessageCount(conversation.id) }.getOrDefault(0)
+            updatedCounts[conversation.id] = runCatching {
+                repo.getUnreadMessageCount(conversation.id)
+            }.getOrDefault(0)
         }
-        unreadMessages = totalUnread
+        messageUnreadCounts = updatedCounts
+        unreadMessages = updatedCounts.values.sum()
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (elegantDesign) {
@@ -706,7 +710,13 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     }
                 }
             )
-            page == CommunityPage.MESSAGES -> ConversationsScreen(repo, onOpen = { chat = it }, onOpenProfile = { id -> selectedUser = id; chat = null })
+            page == CommunityPage.MESSAGES -> ConversationsScreen(
+                conversations = conversationsForUnread,
+                unreadCounts = messageUnreadCounts,
+                error = error,
+                onOpen = { chat = it },
+                onOpenProfile = { id -> selectedUser = id; chat = null }
+            )
             page == CommunityPage.NOTIFICATIONS -> NotificationsScreen(repo, onOpenProfile = { selectedUser = it })
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo, onManagePhoneVerification = { page = CommunityPage.SEARCH })
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")

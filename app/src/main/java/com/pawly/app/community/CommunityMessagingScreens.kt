@@ -186,21 +186,13 @@ private fun conversationTimeLabel(timestamp: Long): String {
 
 
 @Composable
-internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (PawlyConversation) -> Unit, onOpenProfile: (String) -> Unit = {}) {
-    var conversations by remember { mutableStateOf(emptyList<PawlyConversation>()) }
-    var error by remember { mutableStateOf<String?>(null) }
-    DisposableEffect(repo) {
-        val listener = repo.listenConversations({ conversations = it }, { error = it })
-        onDispose { listener.remove() }
-    }
-    var unreadCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
-    LaunchedEffect(conversations) {
-        val updated = mutableMapOf<String, Int>()
-        conversations.forEach { conversation ->
-            updated[conversation.id] = runCatching { repo.getUnreadMessageCount(conversation.id) }.getOrDefault(0)
-        }
-        unreadCounts = updated
-    }
+internal fun ConversationsScreen(
+    conversations: List<PawlyConversation>,
+    unreadCounts: Map<String, Int>,
+    error: String?,
+    onOpen: (PawlyConversation) -> Unit,
+    onOpenProfile: (String) -> Unit = {}
+) {
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
@@ -209,7 +201,7 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
         if (conversations.isEmpty()) item {
             EmptyCommunityCard("Tu bandeja está vacía", "Cuando escribas a otra persona, la conversación aparecerá aquí.")
         }
-        if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
+        if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
         items(conversations, key = { it.id }) { conversation ->
             val unread = unreadCounts[conversation.id] ?: 0
             Surface(
