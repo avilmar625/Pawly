@@ -102,7 +102,6 @@ internal fun PawlySettingsDialog(
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(t("Idioma preferido"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     val languageOptions = listOf(
                         "es" to "Español",
                         "en" to "English",
