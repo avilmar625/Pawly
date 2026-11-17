@@ -341,6 +341,7 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
             }
         }
     }
+}
 
 @Composable
 internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, onBack: () -> Unit, onMessage: (String) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
