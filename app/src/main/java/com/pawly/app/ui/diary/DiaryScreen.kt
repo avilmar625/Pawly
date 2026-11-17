@@ -243,11 +243,13 @@ internal fun DiaryScreen(
                             diaryScope.launch {
                                 photoUploadBusy = true
                                 photoUploadError = null
+                                var uploadedPhotoUrls = emptyList<String>()
                                 runCatching {
-                                    val urls = selectedPhotos.map { uri ->
+                                    uploadedPhotoUrls = selectedPhotos.map { uri ->
                                         repository?.uploadImage(uri, "diary-photos")
                                             ?: error(photoConfigErrorText)
                                     }
+                                    val urls = uploadedPhotoUrls
                                     val record = JSONObject()
                                         .put("pawlyDiaryVersion", 1)
                                         .put("title", memoryTitle.trim().ifBlank { note.trim().take(48) })
@@ -257,7 +259,10 @@ internal fun DiaryScreen(
                                         .put("photos", JSONArray(urls))
                                     updateEntries(listOf(record.toString()) + visibleEntries)
                                     memoryTitle = ""; note = ""; selectedPhotos = emptyList()
-                                }.onFailure { photoUploadError = it.localizedMessage ?: diarySaveErrorText }
+                                }.onFailure {
+                                    uploadedPhotoUrls.forEach { url -> runCatching { repository?.deleteCloudinaryAsset(url) } }
+                                    photoUploadError = it.localizedMessage ?: diarySaveErrorText
+                                }
                                 photoUploadBusy = false
                             }
                         },
