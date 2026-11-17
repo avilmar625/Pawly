@@ -157,8 +157,7 @@ internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) 
             selectedLabel = tr(selectedSection.label),
             options = PawlyContentSection.entries.map { it.name to tr(it.label) },
             selectedValue = selectedSection.name,
-            onSelected = { selectedSection = PawlyContentSection.valueOf(it); search = "" },
-            leadingIcon = Icons.Default.MenuBook
+            onSelected = { selectedSection = PawlyContentSection.valueOf(it); search = "" }
         )
 
         when (selectedSection) {
