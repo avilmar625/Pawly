@@ -128,15 +128,29 @@ internal fun DiaryScreen(
     fun updateEntries(updated: List<String>) {
         val previous = visibleEntries
         visibleEntries = updated
+        val removed = previous.filterNot { it in updated }
         if (sharedPetOwnerUid == null) {
             onEntriesChange(updated)
+            if (removed.isNotEmpty() && repository != null) {
+                diaryScope.launch {
+                    removed.forEach { raw ->
+                        parseDiaryRecord(raw).photos.forEach { url ->
+                            runCatching { repository.deleteCloudinaryAsset(url) }
+                        }
+                    }
+                }
+            }
         } else if (petId != null && sharedDiaryRepository != null) {
             val added = updated.filterNot { it in previous }
-            val removed = previous.filterNot { it in updated }
             diaryScope.launch {
                 runCatching {
                     added.forEach { sharedDiaryRepository.addDiaryEntry(petId, it) }
-                    removed.forEach { sharedDiaryRepository.deleteDiaryEntry(petId, it) }
+                    removed.forEach { raw ->
+                        sharedDiaryRepository.deleteDiaryEntry(petId, raw)
+                        if (repository != null) parseDiaryRecord(raw).photos.forEach { url ->
+                            runCatching { repository.deleteCloudinaryAsset(url) }
+                        }
+                    }
                 }.onSuccess {
                     diarySyncMessage = "Diario compartido sincronizado en todos los móviles"
                 }.onFailure {
