@@ -175,7 +175,7 @@ internal fun HealthScreen(
 internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String, date: String, onClick: () -> Unit, onClear: () -> Unit) {
     Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
         Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(43.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(43.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             }
             Spacer(Modifier.width(12.dp))

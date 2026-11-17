@@ -63,7 +63,7 @@ internal fun MoreHubScreen(
         if (elegantDesign) {
             Box(Modifier.fillMaxWidth().height(195.dp).clip(RoundedCornerShape(27.dp))) {
                 coil3.compose.AsyncImage(model = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=1200&h=700&fit=crop", contentDescription = t("Perro disfrutando al aire libre"), modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD910251F)))))
                 Column(Modifier.align(Alignment.BottomStart).padding(19.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(t("TU UNIVERSO PAWLY"), color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.8.sp)
                     Text(t("Todo lo vuestro,\nen un mismo lugar."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
@@ -136,8 +136,8 @@ private fun PdfActionCard(title: String, description: String, saveLabel: String,
     Surface(shape = RoundedCornerShape(19.dp), color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Surface(shape = RoundedCornerShape(14.dp), color = Color(0xFFFFE8E6)) {
-                    Icon(Icons.Filled.PictureAsPdf, null, tint = Color(0xFFB6423B), modifier = Modifier.padding(11.dp).size(24.dp))
+                Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.errorContainer) {
+                    Icon(Icons.Filled.PictureAsPdf, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.padding(11.dp).size(24.dp))
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
@@ -191,10 +191,10 @@ private fun BackupActionCard(
 
 @Composable
 private fun MoreDestinationCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, description: String, onClick: () -> Unit, tint: Color, container: Color) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(19.dp), color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            Surface(shape = RoundedCornerShape(14.dp), color = container) {
-                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.padding(11.dp).size(23.dp))
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(11.dp).size(23.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)

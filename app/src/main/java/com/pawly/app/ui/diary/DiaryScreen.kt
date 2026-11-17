@@ -285,7 +285,7 @@ internal fun DiaryScreen(
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFFE9F0E5)), contentAlignment = Alignment.Center) { Text(tr("🐾"), fontSize = 22.sp) }
+                        Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text(tr("🐾"), fontSize = 22.sp) }
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text(record.title.ifBlank { tr("Un recuerdo especial") }, fontWeight = FontWeight.Bold)
