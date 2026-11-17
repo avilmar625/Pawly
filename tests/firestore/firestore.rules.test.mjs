@@ -149,7 +149,13 @@ test("shared pet owners can change editor and reader roles but collaborators can
   await assertSucceeds(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/editor"), { role: "reader" }));
   await assertFails(updateDoc(doc(editorDb, "sharedPets/owner_pet/members/reader"), { role: "editor" }));
   await assertFails(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/owner"), { role: "reader" }));
+  await assertFails(setDoc(doc(editorDb, "sharedPets/owner_pet/tasks/not-allowed"), {
+    id: "not-allowed", title: "No escribir", responsible: "", frequency: "Diario",
+    completed: false, dose: "", time: "", completedOn: "", action: "Otro"
+  }));
   await assertSucceeds(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/editor"), { role: "editor" }));
+  await assertSucceeds(deleteDoc(doc(ownerDb, "sharedPets/owner_pet/members/reader")));
+  await assertFails(getDoc(doc(readerDb, "sharedPets/owner_pet")));
 });
 
 test("shared profile and diary are editable by editors and read-only for readers", async () => {
