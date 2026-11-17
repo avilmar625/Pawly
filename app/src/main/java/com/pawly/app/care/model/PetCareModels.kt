@@ -1,13 +1,34 @@
 package com.pawly.app.care.model
 
-/** A user-entered item in a pet's shared health passport. */
+/** A user-entered item in a pet's health passport.
+ *
+ * New fields are optional and have defaults so records written by older app
+ * versions remain readable without a destructive migration.
+ */
 data class PassportEntry(
     val id: String,
     val type: String,
     val title: String,
     val detail: String,
-    val date: String
+    /** Legacy date field; represents the administration/record date. */
+    val date: String,
+    val product: String = "",
+    val dose: String = "",
+    val frequency: String = "",
+    val clinic: String = "",
+    val nextDoseDate: String = "",
+    val status: String = PassportEntryStates.REALIZADO,
+    val reminderEnabled: Boolean = false,
+    val reminderTime: String = "09:00"
 )
+
+object PassportEntryStates {
+    const val PENDIENTE = "PENDIENTE"
+    const val REALIZADO = "REALIZADO"
+    const val VENCIDO = "VENCIDO"
+
+    val all = setOf(PENDIENTE, REALIZADO, VENCIDO)
+}
 
 /** A care routine stored locally for offline use and synchronized to the pet's shared Firestore space when signed in. */
 data class CareTask(
