@@ -60,6 +60,13 @@ internal fun PawlyCalendarScreen(
     var sharedReminders by remember(sharedPetOwnerUid, petId) { mutableStateOf(emptyList<String>()) }
     var agendaSyncMessage by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
     val activeReminders = if (sharedPetOwnerUid != null) sharedReminders else reminders
+    var canEditSharedAgenda by remember(sharedPetOwnerUid, petId) { mutableStateOf(sharedPetOwnerUid == null) }
+    LaunchedEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
+        if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
+            runCatching { canEditSharedAgenda = sharedAgendaRepository.canEditAgenda(petId) }
+                .onFailure { agendaSyncMessage = "No se pudieron comprobar los permisos de la agenda." }
+        }
+    }
     LaunchedEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
         if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
             runCatching { sharedAgendaRepository.migrateLocalIfCloudEmpty(petId, initialLocalReminders) }
@@ -223,7 +230,7 @@ internal fun PawlyCalendarScreen(
                     Text(tr("Tu día"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(tr("Eventos, cuidados y recuerdos de esta fecha"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                FilledTonalButton(onClick = { showAdd = true }) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(5.dp)); Text(tr("Añadir")) }
+                if (canEditSharedAgenda) FilledTonalButton(onClick = { showAdd = true }) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(5.dp)); Text(tr("Añadir")) }
             }
         }
         if (loadError != null) item { Text(loadError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -242,7 +249,7 @@ internal fun PawlyCalendarScreen(
         }
         items(remindersForDay, key = { "reminder-" + it.id }) { reminder ->
             if (reminder.raw.isNotBlank()) {
-                AgendaReminderRow(reminder, onDelete = {
+                AgendaReminderRow(reminder, canDelete = canEditSharedAgenda, onDelete = {
                     if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
                         scope.launch {
                             runCatching { sharedAgendaRepository.deleteReminder(petId, reminder.id) }
@@ -295,7 +302,7 @@ internal fun PawlyCalendarScreen(
 }
 
 @Composable
-private fun AgendaReminderRow(reminder: AgendaReminder, onDelete: () -> Unit) {
+private fun AgendaReminderRow(reminder: AgendaReminder, canDelete: Boolean = true, onDelete: () -> Unit) {
     Surface(shape = RoundedCornerShape(17.dp), color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.tertiaryContainer) {
@@ -305,7 +312,7 @@ private fun AgendaReminderRow(reminder: AgendaReminder, onDelete: () -> Unit) {
                 Text(reminder.title, fontWeight = FontWeight.SemiBold)
                 Text("${reminder.category} · ${java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(Date(reminder.date))}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            IconButton(onClick = onDelete) { Icon(Icons.Default.DeleteOutline, tr("Eliminar recordatorio"), tint = MaterialTheme.colorScheme.error) }
+            if (canDelete) IconButton(onClick = onDelete) { Icon(Icons.Default.DeleteOutline, tr("Eliminar recordatorio"), tint = MaterialTheme.colorScheme.error) }
         }
     }
 }
