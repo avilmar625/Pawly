@@ -112,13 +112,31 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp), tonalElevation = 1.dp,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Avatar(profile?.photoUrl.orEmpty(), name, 76)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(name.ifBlank { "Tu perfil" }, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                            Text("@" + profile?.username.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(if (isPublic) tr("Perfil visible para la comunidad") else tr("Perfil privado"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                    Box(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                            .background(
+                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.tertiary)
+                                )
+                            ).padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
+                                Avatar(profile?.photoUrl.orEmpty(), name, 76)
+                            }
+                            Spacer(Modifier.width(13.dp))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(name.ifBlank { "Tu perfil" }, color = Color.White,
+                                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                                Text("@" + profile?.username.orEmpty(), color = Color.White.copy(alpha = .84f))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(if (isPublic) Icons.Default.Public else Icons.Default.Lock, null,
+                                        tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(5.dp))
+                                    Text(if (isPublic) tr("Perfil visible para la comunidad") else tr("Perfil privado"),
+                                        color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
