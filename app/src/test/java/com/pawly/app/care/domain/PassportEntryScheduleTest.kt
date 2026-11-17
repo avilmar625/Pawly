@@ -31,4 +31,23 @@ class PassportEntryScheduleTest {
         assertEquals(PassportEntryStates.PENDIENTE, PassportEntrySchedule.status(entry, today))
         assertTrue(PassportEntrySchedule.agenda(listOf(entry), today).isNotEmpty())
     }
+    @Test fun pendingWithoutNextDoseDoesNotTreatAdministrationDateAsDueDate() {
+        val entry = PassportEntry("v4", "Vacuna", "Revisión", "", "2026-11-10", status = PassportEntryStates.PENDIENTE)
+        assertEquals(null, PassportEntrySchedule.dueDate(entry))
+        assertEquals(PassportEntryStates.PENDIENTE, PassportEntrySchedule.status(entry, today))
+        assertTrue(PassportEntrySchedule.agenda(listOf(entry), today).isNotEmpty())
+    }
+
+    @Test fun explicitlyOverdueEntryStaysOverdueEvenIfNextDateWasCorrected() {
+        val entry = PassportEntry("v5", "Medicación", "Tratamiento", "", "2026-11-01",
+            nextDoseDate = "2026-12-01", status = PassportEntryStates.VENCIDO)
+        assertEquals(PassportEntryStates.VENCIDO, PassportEntrySchedule.status(entry, today))
+    }
+
+    @Test fun completedAdministrationCanHaveANextDoseInAgenda() {
+        val entry = PassportEntry("v6", "Vacuna", "Refuerzo", "", "2026-11-01",
+            nextDoseDate = "2026-12-01", status = PassportEntryStates.REALIZADO)
+        assertEquals(PassportEntryStates.PENDIENTE, PassportEntrySchedule.status(entry, today))
+        assertEquals(listOf(entry), PassportEntrySchedule.agenda(listOf(entry), today))
+    }
 }
