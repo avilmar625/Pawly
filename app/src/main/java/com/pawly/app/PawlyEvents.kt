@@ -385,7 +385,7 @@ internal fun PawlyEventsScreen(
                             } else Modifier),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+                            Icon(Icons.Default.Pets, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 "${tr("Organiza")} ${event.organizerName}",
@@ -600,7 +600,6 @@ private fun EventDetailsDialog(
                                     Text(event.organizerName, fontWeight = FontWeight.SemiBold,
                                         color = if (event.organizerUid.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                                 }
-                                if (event.organizerUid.isNotBlank()) Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
