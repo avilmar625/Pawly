@@ -178,10 +178,6 @@ private fun PawlyMainApp(
     onAccentChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val servicePreferences = remember(context) { context.getSharedPreferences("pawly_services", android.content.Context.MODE_PRIVATE) }
-    var cloudinaryCloudName by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_cloud_name", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_CLOUD_NAME) }
-    var cloudinaryImagePreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_image_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET) }
-    var cloudinaryVideoPreset by remember(servicePreferences) { mutableStateOf(servicePreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET) }
     val preferences = remember(context, storageScope) { context.getSharedPreferences(storageScope?.let { "pawly_user_$it" } ?: "pawly_local", android.content.Context.MODE_PRIVATE) }
     var language by remember(preferences) { mutableStateOf(preferences.getString("language", "es") ?: "es") }
     var profileSyncStatus by remember(preferences, storageScope) { mutableStateOf("") }
@@ -909,19 +905,6 @@ private fun PawlyMainApp(
             onDarkModeChange = onDarkModeChange,
             onAccentChange = onAccentChange,
             onLanguageChange = { language = it; preferences.edit().putString("language", it).apply() },
-            cloudinaryCloudName = cloudinaryCloudName,
-            cloudinaryImagePreset = cloudinaryImagePreset,
-            cloudinaryVideoPreset = cloudinaryVideoPreset,
-            onSaveCloudinary = { cloudName, imagePreset, videoPreset ->
-                cloudinaryCloudName = cloudName
-                cloudinaryImagePreset = imagePreset
-                cloudinaryVideoPreset = videoPreset
-                servicePreferences.edit()
-                    .putString("cloudinary_cloud_name", cloudName)
-                    .putString("cloudinary_image_preset", imagePreset)
-                    .putString("cloudinary_video_preset", videoPreset)
-                    .apply()
-            },
             onDismiss = { showSettings = false }
         )
     }
