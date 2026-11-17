@@ -84,7 +84,7 @@ class PawlyI18nTest {
     @Test
     fun supportsGermanAndEuropeanPortugueseNavigationAndDiaryLabels() {
         assertEquals("Start", PawlyI18n.text("Inicio", "de"))
-        assertEquals("Start", PawlyI18n.text("Inicio", "de"))
+        assertEquals("Tagebuch", PawlyI18n.text("Diario", "de"))
         assertEquals("Início", PawlyI18n.text("Inicio", "pt"))
         assertEquals("ERINNERUNGSTAGEBUCH", PawlyI18n.text("DIARIO DE RECUERDOS", "de"))
         assertEquals("DIÁRIO DE MEMÓRIAS", PawlyI18n.text("DIARIO DE RECUERDOS", "pt"))
