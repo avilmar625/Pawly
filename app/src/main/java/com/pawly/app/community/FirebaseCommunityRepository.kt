@@ -685,6 +685,20 @@ class FirebaseCommunityRepository private constructor(
         return db.collection("users").document(me).collection("following").document(uid).get().await().exists()
     }
 
+    suspend fun loadFollowingUsers(): List<PawlyUser> = loadRelationshipUsers("following")
+
+    suspend fun loadFollowerUsers(): List<PawlyUser> = loadRelationshipUsers("followers")
+
+    private suspend fun loadRelationshipUsers(collectionName: String): List<PawlyUser> {
+        require(collectionName == "following" || collectionName == "followers")
+        val me = requireUid()
+        val relations = db.collection("users").document(me).collection(collectionName).get().await()
+        return relations.documents.map { relation ->
+            runCatching { getUser(relation.id) }.getOrNull()
+                ?: PawlyUser(uid = relation.id, displayName = "Cuenta privada", isPublic = false)
+        }.filter { it.uid != me }
+    }
+
     suspend fun follow(uid: String, follow: Boolean) {
         val me = requireVerifiedUid()
         ensureMyProfile()
