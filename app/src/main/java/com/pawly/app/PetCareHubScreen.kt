@@ -651,7 +651,7 @@ private fun PetPassportSection(
                     ) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text(tr("Fecha") + ": " + date)
+                        Text(tr("Fecha de administración") + ": " + date)
                     }
                     OutlinedTextField(detail, { detail = it }, label = { Text(tr("Observaciones")) }, minLines = 2)
                     OutlinedTextField(product, { product = it }, label = { Text(tr("Producto o medicamento")) }, singleLine = true)
