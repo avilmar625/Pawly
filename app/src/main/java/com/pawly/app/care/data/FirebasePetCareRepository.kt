@@ -307,7 +307,7 @@ class FirebasePetCareRepository(
         }
 
     suspend fun loadCareLogs(petId: String, limit: Long = 30): List<CareLogEntry> {
-        require(petId.isNotBlank() && limit in 1..100)
+        require(petId.isNotBlank() && limit in 1..500)
         return careLogs(petId).orderBy("occurredAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .limit(limit).get().await().documents.mapNotNull { doc ->
                 val title = doc.getString("taskTitle") ?: return@mapNotNull null
