@@ -185,7 +185,8 @@ internal fun DiaryScreen(
                         selectedLabel = tr(memoryCategory),
                         options = listOf("Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").map { it to tr(it) },
                         selectedValue = memoryCategory,
-                        onSelected = { memoryCategory = it }
+                        onSelected = { memoryCategory = it },
+                        enabled = canEditSharedDiary
                     )
                     OutlinedButton(
                         onClick = {
