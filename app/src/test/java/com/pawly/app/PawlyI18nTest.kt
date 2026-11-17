@@ -106,6 +106,25 @@ class PawlyI18nTest {
         assertEquals(Locale.forLanguageTag("pt-PT"), PawlyI18n.locale("pt"))
     }
 
+
+    @Test
+    fun healthPassportActionsAndStatusesAreTranslatedInAllSupportedLanguages() {
+        assertEquals("Upcoming actions", PawlyI18n.text("Próximas actuaciones", "en"))
+        assertEquals("Properes actuacions", PawlyI18n.text("Próximas actuaciones", "ca"))
+        assertEquals("Prochaines actions", PawlyI18n.text("Próximas actuaciones", "fr"))
+        assertEquals("Anstehende Maßnahmen", PawlyI18n.text("Próximas actuaciones", "de"))
+        assertEquals("Próximas ações", PawlyI18n.text("Próximas actuaciones", "pt"))
+        assertEquals("Hurrengo ekintzak", PawlyI18n.text("Próximas actuaciones", "eu"))
+        assertEquals("Overdue", PawlyI18n.text("Vencido", "en"))
+        assertEquals("Vençut", PawlyI18n.text("Vencido", "ca"))
+        assertEquals("En retard", PawlyI18n.text("Vencido", "fr"))
+        assertEquals("Überfällig", PawlyI18n.text("Vencido", "de"))
+        assertEquals("Em atraso", PawlyI18n.text("Vencido", "pt"))
+        assertEquals("Atzeratuta", PawlyI18n.text("Vencido", "eu"))
+        assertEquals("Administration date", PawlyI18n.text("Fecha de administración", "en"))
+        assertEquals("Verabreichungsdatum", PawlyI18n.text("Fecha de administración", "de"))
+    }
+
     @Test
     fun spanishRemainsTheDefaultAndUnknownKeysFallBackSafely() {
         assertEquals("Inicio", PawlyI18n.text("Inicio", "es"))
