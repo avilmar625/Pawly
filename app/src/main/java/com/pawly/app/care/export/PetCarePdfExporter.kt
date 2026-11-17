@@ -31,8 +31,16 @@ object PetCarePdfExporter {
             sections = entries.sortedByDescending { it.date }.map { entry ->
                 listOf(
                     entry.title,
-                    "${entry.type} · ${entry.date}",
-                    entry.detail.ifBlank { "Sin notas adicionales." }
+                    "${entry.type} · Fecha de administración: ${entry.date}",
+                    buildString {
+                        if (entry.product.isNotBlank()) append("Producto: ").append(entry.product).append("\\n")
+                        if (entry.dose.isNotBlank()) append("Dosis: ").append(entry.dose).append("\\n")
+                        if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\\n")
+                        if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\\n")
+                        if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\\n")
+                        append("Estado: ").append(entry.status)
+                        if (entry.detail.isNotBlank()) append("\\nObservaciones: ").append(entry.detail)
+                    }
                 )
             },
             emptyMessage = "Todavía no hay registros en el pasaporte sanitario."
@@ -88,7 +96,19 @@ object PetCarePdfExporter {
             "Descripción: " + description.ifBlank { "Sin descripción registrada" }
         )
         sections += entries.sortedByDescending { it.date }.map { entry ->
-            listOf(entry.title, "${entry.type} · ${entry.date}", entry.detail.ifBlank { "Sin notas adicionales." })
+            listOf(
+                    entry.title,
+                    "${entry.type} · Fecha de administración: ${entry.date}",
+                    buildString {
+                        if (entry.product.isNotBlank()) append("Producto: ").append(entry.product).append("\\n")
+                        if (entry.dose.isNotBlank()) append("Dosis: ").append(entry.dose).append("\\n")
+                        if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\\n")
+                        if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\\n")
+                        if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\\n")
+                        append("Estado: ").append(entry.status)
+                        if (entry.detail.isNotBlank()) append("\\nObservaciones: ").append(entry.detail)
+                    }
+                )
         }
         sections += tasks.map { task ->
             listOf(
