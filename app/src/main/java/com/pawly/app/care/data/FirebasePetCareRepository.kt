@@ -177,7 +177,7 @@ class FirebasePetCareRepository(
         require(entry.product.length <= 120 && entry.dose.length <= 120 && entry.frequency.length <= 120 && entry.clinic.length <= 120)
         require(entry.nextDoseDate.isBlank() || entry.nextDoseDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")))
         require(entry.status in com.pawly.app.care.model.PassportEntryStates.all)
-        require(entry.reminderTime.matches(Regex("\\d{2}:\\d{2}")))
+        require(entry.reminderTime.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d")))
         val ref = passport(petId).document(entry.id)
         // Preserve the original creation order when an existing measurement is edited.
         val existingOrder = ref.get().await().getLong("createdAtOrder")
@@ -196,7 +196,7 @@ class FirebasePetCareRepository(
             require(entry.product.length <= 120 && entry.dose.length <= 120 && entry.frequency.length <= 120 && entry.clinic.length <= 120)
             require(entry.nextDoseDate.isBlank() || entry.nextDoseDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")))
             require(entry.status in com.pawly.app.care.model.PassportEntryStates.all)
-            require(entry.reminderTime.matches(Regex("\\d{2}:\\d{2}")))
+            require(entry.reminderTime.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d")))
             batch.set(
                 passport(petId).document(entry.id),
                 passportData(entry) + ("createdAtOrder" to (baseOrder + index))
