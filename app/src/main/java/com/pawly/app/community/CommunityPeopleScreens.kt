@@ -213,7 +213,7 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
             }
         }
         phoneMatches.forEach { match ->
-            Surface(onClick = { onOpenUser(match.uid) }, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
+            Surface(onClick = { onOpenUser(match.uid) }, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 1.dp, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Avatar(match.photoUrl, match.displayName)
                     Spacer(Modifier.width(10.dp))
@@ -246,7 +246,7 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(users, key = { it.uid }) { user ->
-                Surface(onClick = { onOpenUser(user.uid) }, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp)) {
+                Surface(onClick = { onOpenUser(user.uid) }, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 1.dp, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Avatar(user.photoUrl, user.displayName)
                         Spacer(Modifier.width(10.dp))
