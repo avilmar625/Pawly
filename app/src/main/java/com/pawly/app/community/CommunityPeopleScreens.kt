@@ -63,6 +63,10 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
     var phoneBusy by remember { mutableStateOf(false) }
     var phoneMatches by remember { mutableStateOf(emptyList<PawlyContactMatch>()) }
     var phoneSearchError by remember { mutableStateOf<String?>(null) }
+    var peopleTab by remember { mutableStateOf("discover") }
+    var relationshipUsers by remember { mutableStateOf(emptyList<PawlyUser>()) }
+    var relationshipsLoading by remember { mutableStateOf(false) }
+    var relationshipError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(repo) {
         runCatching { repo.loadPhoneDiscoveryStatus() }
@@ -75,6 +79,18 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
             .onFailure {
                 phoneStatus = it.localizedMessage ?: "El servicio seguro de contactos no está configurado todavía."
             }
+    }
+
+    LaunchedEffect(peopleTab, repo) {
+        if (peopleTab != "discover") {
+            relationshipsLoading = true
+            relationshipError = null
+            runCatching {
+                if (peopleTab == "following") repo.loadFollowingUsers() else repo.loadFollowerUsers()
+            }.onSuccess { relationshipUsers = it }
+                .onFailure { relationshipError = it.localizedMessage ?: "No se pudo cargar esta lista." }
+            relationshipsLoading = false
+        }
     }
 
     val contactPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickContact()) { contactUri ->
@@ -153,6 +169,21 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
     }
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
+        Text(tr("Personas"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+            tr("Descubre perfiles, consulta a quién sigues y quién te sigue."),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall
+        )
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            FilterChip(selected = peopleTab == "discover", onClick = { peopleTab = "discover" }, label = { Text(tr("Descubrir")) })
+            FilterChip(selected = peopleTab == "following", onClick = { peopleTab = "following" }, label = { Text(tr("Siguiendo")) })
+            FilterChip(selected = peopleTab == "followers", onClick = { peopleTab = "followers" }, label = { Text(tr("Seguidores")) })
+        }
+        if (peopleTab == "discover") {
         OutlinedButton(onClick = { contactPicker.launch(null) }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Contacts, null)
             Spacer(Modifier.width(8.dp))
@@ -262,8 +293,54 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
                 }
             }
         }
+        } else {
+            Text(
+                tr(if (peopleTab == "following") "Personas a las que sigues" else "Personas que te siguen"),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (relationshipsLoading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            } else if (relationshipError != null) {
+                Text(relationshipError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            } else if (relationshipUsers.isEmpty()) {
+                Text(
+                    tr(if (peopleTab == "following") "Todavía no sigues a nadie." else "Todavía no tienes seguidores."),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(relationshipUsers, key = { it.uid }) { user ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().clickable(enabled = user.isPublic) { onOpenUser(user.uid) },
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = RoundedCornerShape(18.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                        ) {
+                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Avatar(user.photoUrl, user.displayName)
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                        Text(user.displayName.ifBlank { tr("Cuenta privada") }, fontWeight = FontWeight.Bold)
+                                        if (user.isVerified) PawlyVerifiedBadge()
+                                    }
+                                    Text(
+                                        if (user.username.isNotBlank()) "@${user.username}" else tr("Perfil privado"),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                                if (user.isPublic) Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
+                                else Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
-}
 
 @Composable
 internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, onBack: () -> Unit, onMessage: (String) -> Unit, onReport: (Pair<String, String>) -> Unit, onBlock: (String) -> Unit) {
