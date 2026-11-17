@@ -620,9 +620,37 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             title = { Text(tr(place.name), fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(tr(place.detail), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            tr(place.detail),
+                            modifier = Modifier.padding(13.dp),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                     Text(tr(place.description), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(tr("Esta tarjeta es una idea de plan, no un establecimiento verificado. Consulta las normas, horarios y condiciones antes de salir."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        tr("Esta es una idea de plan, no un lugar concreto ni una recomendación verificada. Busca opciones cercanas y confirma siempre las normas para mascotas."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(onClick = { showCollectionPicker = true }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = null)
+                        Spacer(Modifier.width(7.dp))
+                        Text(tr("Añadir a una colección"))
+                    }
+                    OutlinedButton(onClick = { onToggleSave(place.name) }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(
+                            if (place.name in savedPlaces) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                            contentDescription = null
+                        )
+                        Spacer(Modifier.width(7.dp))
+                        Text(tr(if (place.name in savedPlaces) "Quitar de guardados" else "Guardar idea"))
+                    }
                 }
             },
             confirmButton = {
@@ -637,19 +665,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }) { Text(tr("Buscar opciones en Maps")) }
             },
             dismissButton = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { showCollectionPicker = true }) {
-                        Icon(Icons.Default.FolderOpen, null)
-                        Spacer(Modifier.width(5.dp))
-                        Text(tr("Colección"))
-                    }
-                    TextButton(onClick = { onToggleSave(place.name) }) {
-                        Icon(if (place.name in savedPlaces) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder, null)
-                        Spacer(Modifier.width(5.dp))
-                        Text(tr(if (place.name in savedPlaces) "Guardado" else "Guardar idea"))
-                    }
-                    TextButton(onClick = { selectedPlace = null }) { Text(tr("Cerrar")) }
-                }
+                TextButton(onClick = { selectedPlace = null }) { Text(tr("Cerrar")) }
             }
         )
     }
