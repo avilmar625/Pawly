@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.filled.PersonAddAlt1
 import androidx.compose.material.icons.filled.MailOutline
@@ -89,7 +90,7 @@ internal fun MoreHubScreen(
         MoreSectionLabel(t("AYUDA URGENTE"))
         MoreDestinationCard(Icons.Filled.Campaign, t("He perdido a mi mascota"), t("Acceso rápido para preparar y difundir un aviso de pérdida."), onLostPet, Color(0xFFB34F42), Color(0xFFFFE9E4))
         MoreSectionLabel(t("CUIDADO Y COMUNIDAD"))
-        MoreDestinationCard(Icons.Filled.Storefront, t("Pawly Market y cuidados"), t("Productos por categorías, alimentación, higiene, gastos y ficha de emergencia."), onPawlyMarket, Color(0xFFB16C27), Color(0xFFFFF0DB))
+        MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market y cuidados"), t("Productos por categorías, alimentación, higiene, gastos y ficha de emergencia."), onPawlyMarket, Color(0xFFB16C27), Color(0xFFFFF0DB))
         MoreDestinationCard(Icons.Filled.WorkspacePremium, t("Servicios profesionales"), t("Adiestradores, etólogos, veterinarios, paseadores y cuidadores."), onProfessionals, Color(0xFF247A67), Color(0xFFE2F3EC))
         MoreSectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
         PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
