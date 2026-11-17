@@ -152,7 +152,11 @@ class FirebasePetCareRepository(
 
     private fun passportData(entry: PassportEntry) = mapOf(
         "id" to entry.id, "type" to entry.type.trim().take(40),
-        "title" to entry.title.trim(), "detail" to entry.detail.trim(), "date" to entry.date.trim()
+        "title" to entry.title.trim(), "detail" to entry.detail.trim(), "date" to entry.date.trim(),
+        "product" to entry.product.trim().take(120), "dose" to entry.dose.trim().take(120),
+        "frequency" to entry.frequency.trim().take(120), "clinic" to entry.clinic.trim().take(120),
+        "nextDoseDate" to entry.nextDoseDate.trim().take(10), "status" to entry.status,
+        "reminderEnabled" to entry.reminderEnabled, "reminderTime" to entry.reminderTime.take(5)
     )
 
     private fun taskData(task: CareTask) = mapOf(
@@ -170,6 +174,10 @@ class FirebasePetCareRepository(
         require(petId.isNotBlank() && entry.id.isNotBlank())
         require(entry.title.isNotBlank() && entry.title.length <= 120)
         require(entry.detail.length <= 1200 && entry.date.length <= 40 && entry.type.length <= 40)
+        require(entry.product.length <= 120 && entry.dose.length <= 120 && entry.frequency.length <= 120 && entry.clinic.length <= 120)
+        require(entry.nextDoseDate.isBlank() || entry.nextDoseDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")))
+        require(entry.status in com.pawly.app.care.model.PassportEntryStates.all)
+        require(entry.reminderTime.matches(Regex("\\d{2}:\\d{2}")))
         val ref = passport(petId).document(entry.id)
         // Preserve the original creation order when an existing measurement is edited.
         val existingOrder = ref.get().await().getLong("createdAtOrder")
@@ -185,6 +193,10 @@ class FirebasePetCareRepository(
             require(entry.id.isNotBlank() && entry.title.isNotBlank())
             require(entry.title.length <= 120 && entry.detail.length <= 1200)
             require(entry.date.length <= 40 && entry.type.length <= 40)
+            require(entry.product.length <= 120 && entry.dose.length <= 120 && entry.frequency.length <= 120 && entry.clinic.length <= 120)
+            require(entry.nextDoseDate.isBlank() || entry.nextDoseDate.matches(Regex("\\d{4}-\\d{2}-\\d{2}")))
+            require(entry.status in com.pawly.app.care.model.PassportEntryStates.all)
+            require(entry.reminderTime.matches(Regex("\\d{2}:\\d{2}")))
             batch.set(
                 passport(petId).document(entry.id),
                 passportData(entry) + ("createdAtOrder" to (baseOrder + index))
@@ -204,8 +216,22 @@ class FirebasePetCareRepository(
             )
             .mapNotNull { doc ->
                 val title = doc.getString("title") ?: return@mapNotNull null
-                PassportEntry(doc.id, doc.getString("type").orEmpty(), title,
-                    doc.getString("detail").orEmpty(), doc.getString("date").orEmpty())
+                PassportEntry(
+                    id = doc.id,
+                    type = doc.getString("type").orEmpty(),
+                    title = title,
+                    detail = doc.getString("detail").orEmpty(),
+                    date = doc.getString("date").orEmpty(),
+                    product = doc.getString("product").orEmpty(),
+                    dose = doc.getString("dose").orEmpty(),
+                    frequency = doc.getString("frequency").orEmpty(),
+                    clinic = doc.getString("clinic").orEmpty(),
+                    nextDoseDate = doc.getString("nextDoseDate").orEmpty(),
+                    status = doc.getString("status")?.takeIf { it in com.pawly.app.care.model.PassportEntryStates.all }
+                        ?: com.pawly.app.care.model.PassportEntryStates.REALIZADO,
+                    reminderEnabled = doc.getBoolean("reminderEnabled") ?: false,
+                    reminderTime = doc.getString("reminderTime") ?: "09:00"
+                )
             }
 
     /**
