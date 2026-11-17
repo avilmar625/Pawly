@@ -455,11 +455,11 @@ private fun PetPassportSection(
                     OutlinedButton(
                         onClick = {
                             val message = buildString {
-                                append("Ficha de emergencia de $petName\\n")
+                                append("Ficha de emergencia de $petName\n")
                                 if (emergencyEntries.isEmpty()) {
-                                    append("Todavía no hay datos de emergencia registrados en Pawly.\\n")
+                                    append("Todavía no hay datos de emergencia registrados en Pawly.\n")
                                 } else {
-                                    emergencyEntries.forEach { append("${it.type}: ${it.detail.ifBlank { it.title }}\\n") }
+                                    emergencyEntries.forEach { append("${it.type}: ${it.detail.ifBlank { it.title }}\n") }
                                 }
                             }
                             val send = Intent(Intent.ACTION_SEND).apply {
