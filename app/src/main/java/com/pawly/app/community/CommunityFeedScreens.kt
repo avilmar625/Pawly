@@ -155,7 +155,9 @@ internal fun PostCard(post: PawlyPost, onComments: (PawlyPost) -> Unit, onOpenUs
     ) {
         Column {
             Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                Avatar(post.authorPhoto, post.authorName)
+                Box(Modifier.clickable { onOpenUser(post.authorId) }) {
+                    Avatar(post.authorPhoto, post.authorName)
+                }
                 Spacer(Modifier.width(9.dp))
                 Column(Modifier.weight(1f).clickable { onOpenUser(post.authorId) }) {
                     Text(post.authorName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
