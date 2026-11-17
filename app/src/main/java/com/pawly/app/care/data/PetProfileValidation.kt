@@ -16,7 +16,7 @@ internal object PetProfileValidation {
     }
 
     fun diary(entries: List<String>): List<String> {
-        require(entries.size <= 200) { "El diario admite hasta 200 recuerdos por mascota." }
+        require(entries.size <= 500) { "El diario admite hasta 200 recuerdos por mascota." }
         val clean = entries.map { it.trim() }
         require(clean.all { it.isNotBlank() && it.length <= 12000 }) {
             "Cada recuerdo debe tener entre 1 y 12.000 caracteres."
