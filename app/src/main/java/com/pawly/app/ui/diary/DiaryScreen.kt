@@ -103,11 +103,9 @@ internal fun DiaryScreen(
             visibleEntries = emptyList()
             canEditSharedDiary = false
             if (petId != null && sharedDiaryRepository != null) {
-                runCatching {
-                    visibleEntries = sharedDiaryRepository.loadDiary(petId)
-                    canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId)
-                    diarySyncMessage = if (canEditSharedDiary) "Diario compartido · puedes añadir recuerdos" else "Diario compartido · solo lectura"
-                }.onFailure { diarySyncMessage = "No se pudo cargar el diario compartido" }
+                runCatching { canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId) }
+                    .onSuccess { diarySyncMessage = if (canEditSharedDiary) "Diario compartido · cambios en tiempo real" else "Diario compartido · solo lectura" }
+                    .onFailure { diarySyncMessage = "No se pudieron comprobar tus permisos del diario" }
             } else {
                 diarySyncMessage = "No se puede conectar con el diario compartido"
             }
@@ -117,15 +115,33 @@ internal fun DiaryScreen(
             diarySyncMessage = null
         }
     }
+    DisposableEffect(sharedPetOwnerUid, petId, sharedDiaryRepository) {
+        val listener = if (sharedPetOwnerUid != null && petId != null && sharedDiaryRepository != null) {
+            sharedDiaryRepository.listenDiary(
+                petId,
+                onEntries = { remoteEntries -> visibleEntries = remoteEntries },
+                onError = { message -> diarySyncMessage = message }
+            )
+        } else null
+        onDispose { listener?.remove() }
+    }
     fun updateEntries(updated: List<String>) {
+        val previous = visibleEntries
         visibleEntries = updated
         if (sharedPetOwnerUid == null) {
             onEntriesChange(updated)
         } else if (petId != null && sharedDiaryRepository != null) {
+            val added = updated.filterNot { it in previous }
+            val removed = previous.filterNot { it in updated }
             diaryScope.launch {
-                runCatching { sharedDiaryRepository.replaceDiary(petId, updated) }
-                    .onSuccess { diarySyncMessage = "Diario compartido sincronizado" }
-                    .onFailure { diarySyncMessage = "No se pudo sincronizar el cambio" }
+                runCatching {
+                    added.forEach { sharedDiaryRepository.addDiaryEntry(petId, it) }
+                    removed.forEach { sharedDiaryRepository.deleteDiaryEntry(petId, it) }
+                }.onSuccess {
+                    diarySyncMessage = "Diario compartido sincronizado en todos los móviles"
+                }.onFailure {
+                    diarySyncMessage = "No se pudo sincronizar el cambio: ${it.localizedMessage ?: "comprueba la conexión"}"
+                }
             }
         }
     }
