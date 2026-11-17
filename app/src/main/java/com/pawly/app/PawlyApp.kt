@@ -411,7 +411,7 @@ private fun PawlyMainApp(
                         FirebasePetProfileRepository(ownerUid = storageScope.orEmpty()).mergeDiary(snapshot.petName, snapshot.diaryEntries)
                     }
                 }.onSuccess {
-                    profileSyncStatus = "Copia restaurada y sincronizada. El historial compartido de cuidadores se conserva."
+                    profileSyncStatus = "Copia restaurada. Pasaporte, rutinas y diario sincronizados; el historial importado de paseos se conserva en este dispositivo."
                 }.onFailure {
                     profileSyncStatus = "Copia restaurada localmente; sincronización pendiente: ${it.localizedMessage ?: "sin conexión"}"
                 }
@@ -771,9 +771,14 @@ private fun PawlyMainApp(
                                     val latestPassport = careRepository.loadPassportEntries(dogName)
                                     val latestTasks = careRepository.loadCareTasks(dogName)
                                     val latestLogs = careRepository.loadCareLogs(dogName, 100)
+                                    val localLogs = PetCareLocalStore.loadCareLogs(context, dogName, storageScope)
+                                    val combinedLogs = (latestLogs + localLogs).distinctBy { it.id }
+                                        .sortedByDescending { it.occurredAt }.take(100)
                                     PetCareLocalStore.saveEntries(context, dogName, latestPassport, storageScope)
                                     PetCareLocalStore.saveTasks(context, dogName, latestTasks, storageScope)
-                                    PetCareLocalStore.saveCareLogs(context, dogName, latestLogs, storageScope)
+                                    // Backup-restored walk history is retained locally even when
+                                    // it has not yet been imported into the shared cloud timeline.
+                                    PetCareLocalStore.saveCareLogs(context, dogName, combinedLogs, storageScope)
                                 }
                                 val petDates = healthDates.filterKeys { it.startsWith("$dogName|") }
                                     .mapKeys { (key, _) -> key.removePrefix("$dogName|") }
