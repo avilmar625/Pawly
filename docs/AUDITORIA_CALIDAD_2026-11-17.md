@@ -110,3 +110,10 @@ La regla permite a cada usuario leer/escribir únicamente su documento de suscri
 La rama dispone de workflows para pruebas Kotlin, Android Lint, APK debug, AAB release sin firma, reglas Firestore con Emulator y validación del Worker. El estado de cada ejecución debe consultarse en GitHub Actions para el último commit; una ejecución de un commit anterior no valida automáticamente cambios posteriores.
 
 No se han desplegado reglas Firestore ni Worker en producción desde esta auditoría.
+
+## Seguimiento en `pawly-calidad-coherencia-2026-11`
+
+- Hoy distinguía un pasaporte realmente vacío de una carga remota fallida usando el mismo estado visual. Ahora informa del fallo, conserva los registros locales cuando los hay y permite reintentar cuando no puede cargar nada.
+- Se completaron las traducciones que faltaban para los estados y las etiquetas visibles de Hoy en catalán, francés e inglés; euskera también cubre esos textos. Alemán y portugués usan el catálogo inglés para las cadenas que aún no tienen traducción específica.
+- La lectura del pasaporte de Hoy y la ficha de la mascota propia usan la ruta privada `users/{uid}/petCare/{petId}` por diseño. Las mascotas compartidas se abren desde Salud con su propietario explícito; no se cambió el esquema ni se migraron datos.
+- Esta actualización no se ha validado en un dispositivo ni contra Firebase real. El resultado de CI debe comprobarse para el commit de esta rama.
