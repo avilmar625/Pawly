@@ -612,7 +612,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     }
                 }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
-            chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
+            chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null }, onOpenProfile = { id -> selectedUser = id; chat = null })
             page == CommunityPage.FEED -> Column(Modifier.fillMaxSize()) {
                 if (suggestedUsers.isNotEmpty()) {
                     SuggestedProfilesRow(
@@ -670,7 +670,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     }
                 }
             )
-            page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
+            page == CommunityPage.MESSAGES -> ConversationsScreen(repo, onOpen = { chat = it }, onOpenProfile = { id -> selectedUser = id; chat = null })
             page == CommunityPage.NOTIFICATIONS -> NotificationsScreen(repo, onOpenProfile = { selectedUser = it })
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
