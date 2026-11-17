@@ -747,7 +747,7 @@ async function handleCloudinaryAssetDelete(request: Request, env: Env): Promise<
     if (!/^[A-Za-z0-9_-]{1,128}$/.test(assetId)) return json({ error: "Registro de archivo no válido." }, 400);
 
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const signature = await sha1Hex(`public_id=${asset.publicId}&timestamp=${timestamp}${env.CLOUDINARY_API_SECRET}`);
+    const signature = await sha1Hex(`invalidate=true&public_id=${asset.publicId}&timestamp=${timestamp}${env.CLOUDINARY_API_SECRET}`);
     const form = new URLSearchParams({
       public_id: asset.publicId,
       timestamp,
