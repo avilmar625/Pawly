@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -124,7 +126,7 @@ en un solo lugar.", color = MaterialTheme.colorScheme.onPrimary,
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
                 listOf("market" to "Market", "care" to "Cuidados", "emergency" to "Emergencia", "learn" to "Aprender", "map" to "Mapa").forEach { (id, label) ->
                     FilterChip(selected = section == id, onClick = { section = id }, label = { Text(label) })
                 }
@@ -143,7 +145,7 @@ en un solo lugar.", color = MaterialTheme.colorScheme.onPrimary,
                 item {
                     val cats = listOf("Todo", "Pienso", "Comida húmeda", "Snacks", "Juguetes", "Paseo", "Higiene", "Descanso")
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        cats.chunked(4).forEach { row ->
+                        cats.chunked(2).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                                 row.forEach { c ->
                                     FilterChip(selected = category == c, onClick = { category = c },
