@@ -286,7 +286,11 @@ service cloud.firestore {
         match /passport/{entryId} {
           allow read, delete: if owner(uid);
           allow create, update: if owner(uid)
-            && request.resource.data.keys().hasOnly(['id', 'type', 'title', 'detail', 'date'])
+            && request.resource.data.keys().hasOnly([
+              'id', 'type', 'title', 'detail', 'date', 'product', 'dose',
+              'frequency', 'clinic', 'nextDoseDate', 'status',
+              'reminderEnabled', 'reminderTime', 'createdAtOrder'
+            ])
             && request.resource.data.id == entryId
             && request.resource.data.type is string
             && request.resource.data.type.size() <= 40
@@ -296,7 +300,16 @@ service cloud.firestore {
             && request.resource.data.detail is string
             && request.resource.data.detail.size() <= 1200
             && request.resource.data.date is string
-            && request.resource.data.date.size() <= 40;
+            && request.resource.data.date.size() <= 40
+            && (!('product' in request.resource.data) || (request.resource.data.product is string && request.resource.data.product.size() <= 120))
+            && (!('dose' in request.resource.data) || (request.resource.data.dose is string && request.resource.data.dose.size() <= 120))
+            && (!('frequency' in request.resource.data) || (request.resource.data.frequency is string && request.resource.data.frequency.size() <= 120))
+            && (!('clinic' in request.resource.data) || (request.resource.data.clinic is string && request.resource.data.clinic.size() <= 120))
+            && (!('nextDoseDate' in request.resource.data) || (request.resource.data.nextDoseDate is string && request.resource.data.nextDoseDate.size() <= 10))
+            && (!('status' in request.resource.data) || request.resource.data.status in ['PENDIENTE', 'REALIZADO', 'VENCIDO'])
+            && (!('reminderEnabled' in request.resource.data) || request.resource.data.reminderEnabled is bool)
+            && (!('reminderTime' in request.resource.data) || (request.resource.data.reminderTime is string && request.resource.data.reminderTime.matches('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$')))
+            && (!('createdAtOrder' in request.resource.data) || request.resource.data.createdAtOrder is int);
         }
 
         match /tasks/{taskId} {
@@ -326,14 +339,22 @@ service cloud.firestore {
         match /careLogs/{logId} {
           allow read, delete: if owner(uid);
           allow create: if owner(uid)
-            && request.resource.data.keys().hasOnly(['id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note'])
+            && request.resource.data.keys().hasOnly([
+              'id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note',
+              'distanceKm', 'mapUrl', 'description', 'walker', 'photoUrls'
+            ])
             && request.resource.data.id == logId
             && request.resource.data.actorUid == request.auth.uid
             && request.resource.data.taskTitle is string && request.resource.data.taskTitle.size() > 0 && request.resource.data.taskTitle.size() <= 120
             && request.resource.data.action in ['Paseo', 'Comida', 'Medicación', 'Higiene', 'Otro']
             && request.resource.data.actorName is string && request.resource.data.actorName.size() <= 80
             && request.resource.data.occurredAt == request.time
-            && request.resource.data.note is string && request.resource.data.note.size() <= 300;
+            && request.resource.data.note is string && request.resource.data.note.size() <= 500
+            && (!('distanceKm' in request.resource.data) || (request.resource.data.distanceKm is number && request.resource.data.distanceKm >= 0.01 && request.resource.data.distanceKm <= 1000))
+            && (!('mapUrl' in request.resource.data) || (request.resource.data.mapUrl is string && request.resource.data.mapUrl.size() <= 2048 && (request.resource.data.mapUrl == '' || request.resource.data.mapUrl.matches('^https?://.+$')))
+            && (!('description' in request.resource.data) || (request.resource.data.description is string && request.resource.data.description.size() <= 600))
+            && (!('walker' in request.resource.data) || (request.resource.data.walker is string && request.resource.data.walker.size() <= 80))
+            && (!('photoUrls' in request.resource.data) || (request.resource.data.photoUrls is list && request.resource.data.photoUrls.size() <= 4));
         }
       }
     }
@@ -383,12 +404,27 @@ service cloud.firestore {
         allow read: if isMember();
         allow create, update: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
-          && request.resource.data.keys().hasOnly(['id', 'type', 'title', 'detail', 'date'])
+          && request.resource.data.keys().hasOnly([
+              'id', 'type', 'title', 'detail', 'date', 'product', 'dose',
+              'frequency', 'clinic', 'nextDoseDate', 'status',
+              'reminderEnabled', 'reminderTime', 'createdAtOrder'
+            ])
           && request.resource.data.id == entryId
           && request.resource.data.type is string && request.resource.data.type.size() <= 40
           && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 120
           && request.resource.data.detail is string && request.resource.data.detail.size() <= 1200
-          && request.resource.data.date is string && request.resource.data.date.size() <= 40;
+          && request.resource.data.date is string && request.resource.data.date.size() <= 40
+          && (!('product' in request.resource.data) || (request.resource.data.product is string && request.resource.data.product.size() <= 120))
+          && (!('dose' in request.resource.data) || (request.resource.data.dose is string && request.resource.data.dose.size() <= 120))
+          && (!('frequency' in request.resource.data) || (request.resource.data.frequency is string && request.resource.data.frequency.size() <= 120))
+          && (!('clinic' in request.resource.data) || (request.resource.data.clinic is string && request.resource.data.clinic.size() <= 120))
+          && (!('nextDoseDate' in request.resource.data) || (request.resource.data.nextDoseDate is string && request.resource.data.nextDoseDate.size() <= 10))
+          && (!('status' in request.resource.data) || request.resource.data.status in ['PENDIENTE', 'REALIZADO', 'VENCIDO'])
+          && (!('reminderEnabled' in request.resource.data) || request.resource.data.reminderEnabled is bool)
+          && (!('reminderTime' in request.resource.data) || (request.resource.data.reminderTime is string && request.resource.data.reminderTime.matches('^(?:[01][0-9]|2[0-3]):[0-5][0-9]$')))
+        allow delete: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];)))
+          && (!('createdAtOrder' in request.resource.data) || request.resource.data.createdAtOrder is int);
         allow delete: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
       }
@@ -419,14 +455,24 @@ service cloud.firestore {
         allow read: if isMember();
         allow create: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
-          && request.resource.data.keys().hasOnly(['id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note'])
+          && request.resource.data.keys().hasOnly([
+              'id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note',
+              'distanceKm', 'mapUrl', 'description', 'walker', 'photoUrls'
+            ])
           && request.resource.data.id == logId
           && request.resource.data.actorUid == request.auth.uid
           && request.resource.data.taskTitle is string && request.resource.data.taskTitle.size() > 0 && request.resource.data.taskTitle.size() <= 120
           && request.resource.data.action in ['Paseo', 'Comida', 'Medicación', 'Higiene', 'Otro']
           && request.resource.data.actorName is string && request.resource.data.actorName.size() <= 80
           && request.resource.data.occurredAt == request.time
-          && request.resource.data.note is string && request.resource.data.note.size() <= 300;
+          && request.resource.data.note is string && request.resource.data.note.size() <= 500
+          && (!('distanceKm' in request.resource.data) || (request.resource.data.distanceKm is number && request.resource.data.distanceKm >= 0.01 && request.resource.data.distanceKm <= 1000))
+          && (!('mapUrl' in request.resource.data) || (request.resource.data.mapUrl is string && request.resource.data.mapUrl.size() <= 2048 && (request.resource.data.mapUrl == '' || request.resource.data.mapUrl.matches('^https?://.+$')))
+        allow delete: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];))))
+          && (!('description' in request.resource.data) || (request.resource.data.description is string && request.resource.data.description.size() <= 600))
+          && (!('walker' in request.resource.data) || (request.resource.data.walker is string && request.resource.data.walker.size() <= 80))
+          && (!('photoUrls' in request.resource.data) || (request.resource.data.photoUrls is list && request.resource.data.photoUrls.size() <= 4));
         allow delete: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
       }
@@ -655,7 +701,9 @@ service cloud.firestore {
 
     // Asset ownership index used by the trusted Worker for account deletion.
     match /cloudinaryAssets/{assetId} {
-      allow create: if verified()
+      // Resource index entries are private and can only reference the caller's own upload path.
+      // Email verification is not required to index a photo owned by the authenticated account.
+      allow create: if signedIn()
         && request.resource.data.keys().hasOnly(['uid', 'publicId', 'resourceType', 'createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.publicId is string
@@ -707,7 +755,7 @@ service cloud.firestore {
     match /lostPetSubscriptions/{uid} {
       allow get: if owner(uid);
       allow list: if false;
-      allow create, update: if verified() && request.auth.uid == uid
+      allow create, update: if owner(uid)
         && request.resource.data.keys().hasOnly(['uid', 'enabled', 'radiusKm', 'latCell', 'lonCell', 'updatedAt'])
         && request.resource.data.uid == uid
         && request.resource.data.enabled is bool

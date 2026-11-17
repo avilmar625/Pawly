@@ -1,8 +1,15 @@
 package com.pawly.app
 
+import android.net.Uri
+import java.io.File
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,11 +27,31 @@ import com.pawly.app.care.data.FirebasePetCareRepository
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.model.CareLogEntry
 import com.pawly.app.care.model.CareTask
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private fun mergeCareLogs(
+    remoteLogs: List<CareLogEntry>,
+    cachedLogs: List<CareLogEntry>
+): List<CareLogEntry> {
+    val remoteIds = remoteLogs.mapTo(mutableSetOf()) { it.id }
+    val mergedRemote = remoteLogs.map { remote ->
+        val cached = cachedLogs.firstOrNull { it.id == remote.id }
+        val localPhotos = cached?.photoUrls.orEmpty().filterNot {
+            it.startsWith("https://", ignoreCase = true) || it.startsWith("http://", ignoreCase = true)
+        }
+        if (localPhotos.isEmpty()) remote
+        else remote.copy(photoUrls = (remote.photoUrls + localPhotos).distinct())
+    }
+    val pendingLocal = cachedLogs.filter { it.id.startsWith("local-") && it.id !in remoteIds }
+    return (mergedRemote + pendingLocal).sortedByDescending { it.occurredAt }.take(100)
+}
 
 @Composable
 internal fun HomeCareTasksSection(
@@ -83,6 +110,41 @@ internal fun HomeCareTasksSection(
     var pendingIds by remember(petName, storageScope) { mutableStateOf(emptySet<String>()) }
     var pendingMedicationConfirmation by remember(petName, storageScope) { mutableStateOf<Pair<CareTask, CareLogEntry>?>(null) }
 
+    var showWalkDialog by remember { mutableStateOf(false) }
+    var walkDistance by remember { mutableStateOf("") }
+    var walkMapUrl by remember { mutableStateOf("") }
+    var walkDescription by remember { mutableStateOf("") }
+    var walkWalker by remember { mutableStateOf("") }
+    var walkObservations by remember { mutableStateOf("") }
+    var walkPhotoUris by remember { mutableStateOf(emptyList<Uri>()) }
+    var walkPhotoLocalPaths by remember { mutableStateOf(emptyList<String>()) }
+    var walkError by remember { mutableStateOf<String?>(null) }
+    var walkSaving by remember { mutableStateOf(false) }
+    val walkPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedUris ->
+        val limitedUris = selectedUris.take(4)
+        walkPhotoUris = limitedUris
+        walkPhotoLocalPaths = emptyList()
+        walkError = if (selectedUris.size > 4) "Puedes adjuntar un máximo de cuatro fotografías." else null
+        scope.launch {
+            val localCopies = withContext(Dispatchers.IO) {
+                val photoDirectory = File(context.filesDir, "walk-photos").apply { mkdirs() }
+                limitedUris.mapIndexedNotNull { index, uri ->
+                    runCatching {
+                        val destination = File(photoDirectory, "walk-${System.currentTimeMillis()}-$index.jpg")
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            destination.outputStream().use { output -> input.copyTo(output) }
+                        } ?: error("No se pudo leer una fotografía.")
+                        Uri.fromFile(destination).toString()
+                    }.getOrNull()
+                }
+            }
+            walkPhotoLocalPaths = localCopies
+            if (localCopies.size < limitedUris.size) {
+                walkError = "No se han podido preparar todas las fotografías; vuelve a seleccionarlas."
+            }
+        }
+    }
+
     LaunchedEffect(petName, storageScope, repository, language) {
         val repo = repository ?: run { loading = false; return@LaunchedEffect }
         loading = true
@@ -98,7 +160,7 @@ internal fun HomeCareTasksSection(
                 PetCareLocalStore.saveTasks(context, petName, remoteTasks, storageScope)
                 syncMessage = careSyncedMessage
             }
-            logs = repo.loadCareLogs(petName)
+            logs = mergeCareLogs(repo.loadCareLogs(petName), logs)
             PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
         }.onFailure {
             syncMessage = offlineMessage
@@ -148,8 +210,8 @@ internal fun HomeCareTasksSection(
                 repo.loadCareLogs(petName)
             }.onSuccess { remoteLogs ->
                 if (checked) {
-                    logs = remoteLogs
-                    PetCareLocalStore.saveCareLogs(context, petName, remoteLogs, storageScope)
+                    logs = mergeCareLogs(remoteLogs, logs)
+                    PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
                 }
                 syncMessage = changesSyncedMessage
             }.onFailure {
@@ -342,36 +404,9 @@ internal fun HomeCareTasksSection(
         PawlySectionHeading(title = tr("Registrar rápido"))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), MaterialTheme.colorScheme.primaryContainer, {
-                val task = visibleTasks.firstOrNull { it.action == "Paseo" }
-                if (task != null) {
-                    requestTaskToggle(task, !isComplete(task))
-                } else if (canEdit) {
-                    val now = System.currentTimeMillis()
-                    val localLog = CareLogEntry(
-                        id = "local-$now-walk",
-                        taskTitle = walkLabel,
-                        action = "Paseo",
-                        actorUid = "local",
-                        actorName = youLabel,
-                        occurredAt = now
-                    )
-                    logs = (listOf(localLog) + logs).take(30)
-                    PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
-                    syncMessage = savedLocalMessage
-                    repository?.let { repo ->
-                        scope.launch {
-                            runCatching {
-                                repo.logCareAction(petName, "Paseo", "Paseo")
-                                repo.loadCareLogs(petName)
-                            }.onSuccess { remoteLogs ->
-                                logs = remoteLogs
-                                PetCareLocalStore.saveCareLogs(context, petName, remoteLogs, storageScope)
-                                syncMessage = changesSyncedMessage
-                            }.onFailure {
-                                syncMessage = localPendingMessage
-                            }
-                        }
-                    }
+                if (canEdit) {
+                    walkError = null
+                    showWalkDialog = true
                 } else {
                     syncMessage = cannotRegisterCareMessage
                 }
@@ -405,6 +440,45 @@ internal fun HomeCareTasksSection(
                                     fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 Text(SimpleDateFormat("dd MMM · HH:mm", locale).format(Date(log.occurredAt)),
                                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (log.distanceKm != null) {
+                                    Text(String.format(locale, "%.2f km", log.distanceKm), style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                                }
+                                if (log.walker.isNotBlank()) {
+                                    Text("${tr("Paseador/a")}: ${log.walker}", style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (log.description.isNotBlank()) {
+                                    Text(log.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                if (log.note.isNotBlank()) {
+                                    Text("${tr("Observaciones")}: ${log.note}", style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                if (log.mapUrl.isNotBlank()) {
+                                    TextButton(onClick = {
+                                        runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(log.mapUrl))) }
+                                    }) {
+                                        Icon(Icons.Default.Map, null)
+                                        Spacer(Modifier.width(5.dp))
+                                        Text(tr("Ver mapa"))
+                                    }
+                                }
+                                if (log.photoUrls.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        log.photoUrls.take(4).forEach { photo ->
+                                            AsyncImage(
+                                                model = photo,
+                                                contentDescription = tr("Fotografía del paseo"),
+                                                modifier = Modifier.size(58.dp).clip(RoundedCornerShape(10.dp)),
+                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -412,6 +486,185 @@ internal fun HomeCareTasksSection(
             }
         }
     }
+    if (showWalkDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!walkSaving) showWalkDialog = false },
+            title = { Text(tr("Registrar paseo")) },
+            text = {
+                Column(
+                    Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    Text(
+                        tr("Guarda los detalles de esta salida para consultar después la ruta y cómo fue."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = walkDistance,
+                        onValueChange = { value -> walkDistance = value.filter { it.isDigit() || it == '.' || it == ',' } },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(tr("Distancia recorrida (km)")) },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Route, null) }
+                    )
+                    OutlinedTextField(
+                        value = walkMapUrl,
+                        onValueChange = { walkMapUrl = it.trim().take(2048) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(tr("Enlace del mapa (opcional)")) },
+                        placeholder = { Text("https://maps.google.com/...") },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Map, null) }
+                    )
+                    OutlinedTextField(
+                        value = walkDescription,
+                        onValueChange = { walkDescription = it.take(600) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(tr("Descripción del paseo")) },
+                        minLines = 2,
+                        maxLines = 4
+                    )
+                    OutlinedTextField(
+                        value = walkWalker,
+                        onValueChange = { walkWalker = it.take(80) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(tr("Paseador/a")) },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Person, null) }
+                    )
+                    OutlinedTextField(
+                        value = walkObservations,
+                        onValueChange = { walkObservations = it.take(500) },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(tr("Observaciones")) },
+                        minLines = 2,
+                        maxLines = 4
+                    )
+                    OutlinedButton(
+                        onClick = { walkPhotoPicker.launch("image/*") },
+                        enabled = !walkSaving,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (walkPhotoLocalPaths.isEmpty()) tr("Añadir fotografías") else "${walkPhotoLocalPaths.size} ${tr("fotografías seleccionadas")}")
+                    }
+                    if (walkPhotoLocalPaths.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            walkPhotoLocalPaths.forEach { photoPath ->
+                                AsyncImage(
+                                    model = photoPath,
+                                    contentDescription = tr("Fotografía del paseo"),
+                                    modifier = Modifier.size(76.dp).clip(RoundedCornerShape(12.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                )
+                            }
+                        }
+                    }
+                    walkError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = !walkSaving,
+                    onClick = {
+                        val parsedDistance = walkDistance.replace(',', '.').toDoubleOrNull()
+                        val hasInvalidDistance = walkDistance.isNotBlank() &&
+                            (parsedDistance == null || !parsedDistance.isFinite() || parsedDistance !in 0.01..1000.0)
+                        val mapIsValid = walkMapUrl.isBlank() || runCatching {
+                            val parsed = Uri.parse(walkMapUrl)
+                            parsed.scheme in setOf("https", "http") && !parsed.host.isNullOrBlank()
+                        }.getOrDefault(false)
+                        when {
+                            hasInvalidDistance -> walkError = tr("Introduce una distancia válida entre 0,01 y 1.000 km.")
+                            !mapIsValid -> walkError = tr("El enlace del mapa debe ser una URL web válida.")
+                            else -> {
+                                walkSaving = true
+                                walkError = null
+                                val now = System.currentTimeMillis()
+                                val localId = "local-walk-$now"
+                                val localPhotoUrls = walkPhotoLocalPaths
+                                val localEntry = CareLogEntry(
+                                    id = localId,
+                                    taskTitle = walkLabel,
+                                    action = "Paseo",
+                                    actorUid = "local",
+                                    actorName = walkWalker.trim().ifBlank { youLabel },
+                                    occurredAt = now,
+                                    note = walkObservations.trim(),
+                                    distanceKm = parsedDistance,
+                                    mapUrl = walkMapUrl.trim(),
+                                    description = walkDescription.trim(),
+                                    walker = walkWalker.trim(),
+                                    photoUrls = localPhotoUrls
+                                )
+                                logs = (listOf(localEntry) + logs).take(100)
+                                PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
+                                syncMessage = savedLocalMessage
+                                showWalkDialog = false
+
+                                val photoUrisToUpload = walkPhotoUris
+                                walkDistance = ""; walkMapUrl = ""; walkDescription = ""
+                                walkWalker = ""; walkObservations = ""
+                                walkPhotoUris = emptyList(); walkPhotoLocalPaths = emptyList()
+                                repository?.let { repo ->
+                                    scope.launch {
+                                        var failedPhotoUploads = 0
+                                        val remotePhotoUrls = mutableListOf<String>()
+                                        val localFallbackPhotos = mutableListOf<String>()
+                                        photoUrisToUpload.forEachIndexed { index, uri ->
+                                            runCatching { repo.uploadCarePhoto(context, uri) }
+                                                .onSuccess { remotePhotoUrls += it }
+                                                .onFailure {
+                                                    failedPhotoUploads++
+                                                    localPhotoUrls.getOrNull(index)?.let { localFallbackPhotos += it }
+                                                }
+                                        }
+                                        runCatching {
+                                            repo.logCareAction(
+                                                petName, "Paseo", "Paseo",
+                                                note = localEntry.note,
+                                                distanceKm = localEntry.distanceKm,
+                                                mapUrl = localEntry.mapUrl,
+                                                description = localEntry.description,
+                                                walker = localEntry.walker,
+                                                photoUrls = remotePhotoUrls
+                                            )
+                                        }.onSuccess { remoteEntry ->
+                                            val visibleEntry = remoteEntry.copy(
+                                                photoUrls = remotePhotoUrls + localFallbackPhotos
+                                            )
+                                            logs = (listOf(visibleEntry) + logs.filterNot { it.id == localId }).take(100)
+                                            PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
+                                            syncMessage = if (failedPhotoUploads > 0) {
+                                                tr("Paseo sincronizado; alguna fotografía queda solo en este dispositivo.")
+                                            } else changesSyncedMessage
+                                        }.onFailure {
+                                            syncMessage = tr("Paseo guardado localmente; pendiente de sincronizar.")
+                                        }
+                                    }
+                                }
+                                walkSaving = false
+                            }
+                        }
+                    }
+                ) {
+                    if (walkSaving) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    else Text(tr("Guardar paseo"))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWalkDialog = false }, enabled = !walkSaving) {
+                    Text(tr("Cancelar"))
+                }
+            }
+        )
+    }
+
     pendingMedicationConfirmation?.let { (task, previousLog) ->
         AlertDialog(
             onDismissRequest = { pendingMedicationConfirmation = null },

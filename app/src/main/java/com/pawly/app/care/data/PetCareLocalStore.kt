@@ -112,7 +112,14 @@ internal object PetCareLocalStore {
                 id = row.optString("id"), taskTitle = row.optString("taskTitle"),
                 action = row.optString("action"), actorUid = row.optString("actorUid"),
                 actorName = row.optString("actorName"), occurredAt = row.optLong("occurredAt"),
-                note = row.optString("note")
+                note = row.optString("note"),
+                distanceKm = if (row.isNull("distanceKm")) null else row.optDouble("distanceKm"),
+                mapUrl = row.optString("mapUrl"),
+                description = row.optString("description"),
+                walker = row.optString("walker"),
+                photoUrls = row.optJSONArray("photoUrls")?.let { photos ->
+                    List(photos.length()) { photoIndex -> photos.optString(photoIndex) }
+                }.orEmpty()
             )
         }.sortedByDescending { it.occurredAt }
     }.getOrDefault(emptyList())
@@ -123,7 +130,12 @@ internal object PetCareLocalStore {
             json.put(JSONObject().put("id", log.id).put("taskTitle", log.taskTitle)
                 .put("action", log.action).put("actorUid", log.actorUid)
                 .put("actorName", log.actorName).put("occurredAt", log.occurredAt)
-                .put("note", log.note))
+                .put("note", log.note)
+                .put("distanceKm", log.distanceKm)
+                .put("mapUrl", log.mapUrl)
+                .put("description", log.description)
+                .put("walker", log.walker)
+                .put("photoUrls", JSONArray(log.photoUrls)))
         }
         preferences(context, storageScope).edit().putString(key("care_logs", petName), json.toString()).apply()
     }

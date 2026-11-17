@@ -53,5 +53,10 @@ data class CareLogEntry(
     val actorUid: String,
     val actorName: String,
     val occurredAt: Long,
-    val note: String = ""
+    val note: String = "",
+    val distanceKm: Double? = null,
+    val mapUrl: String = "",
+    val description: String = "",
+    val walker: String = "",
+    val photoUrls: List<String> = emptyList()
 )

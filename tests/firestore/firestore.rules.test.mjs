@@ -147,7 +147,10 @@ test("shared care logs are visible to members and can only be created by editors
   const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
   await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/careLogs/log-1"), {
     id: "log-1", taskTitle: "Medicación", action: "Medicación",
-    actorUid: "editor", actorName: "Cuidador", occurredAt: serverTimestamp(), note: "Dosis de la mañana"
+    actorUid: "editor", actorName: "Cuidador", occurredAt: serverTimestamp(), note: "Dosis de la mañana",
+    distanceKm: 1.2, mapUrl: "https://maps.google.com/?q=36.72,-4.42",
+    description: "Paseo tranquilo", walker: "Cuidador",
+    photoUrls: ["https://images.example/pet-walk.jpg"]
   }));
   const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
   await assertSucceeds(getDocs(collection(readerDb, "sharedPets/owner_pet/careLogs")));
@@ -186,6 +189,70 @@ test("shared care routines accept optional ISO weekdays and reject invalid sched
   }));
 });
 
+test("private passport accepts all supported health fields while remaining owner-only", async () => {
+  const ownerDb = env.authenticatedContext("passport-owner", { email_verified: false }).firestore();
+  await assertSucceeds(setDoc(doc(ownerDb, "users/passport-owner/petCare/nala/passport/entry-1"), {
+    id: "entry-1", type: "Vacuna", title: "Rabia", detail: "Primera dosis",
+    date: "2026-11-17", product: "Vacuna", dose: "1 dosis", frequency: "Anual",
+    clinic: "Clínica", nextDoseDate: "2027-11-17", status: "REALIZADO",
+    reminderEnabled: true, reminderTime: "09:00", createdAtOrder: 1234
+  }));
+  await assertSucceeds(setDoc(doc(ownerDb, "users/passport-owner/petCare/nala/passport/legacy"), {
+    id: "legacy", type: "Peso", title: "13 kg", detail: "", date: "2026-11-17"
+  }));
+  const otherDb = env.authenticatedContext("someone-else", { email_verified: true }).firestore();
+  await assertFails(getDoc(doc(otherDb, "users/passport-owner/petCare/nala/passport/entry-1")));
+  await assertFails(setDoc(doc(ownerDb, "users/passport-owner/petCare/nala/passport/extra"), {
+    id: "extra", type: "Peso", title: "13 kg", detail: "", date: "2026-11-17", unexpected: true
+  }));
+});
+
+test("shared passport supports full health records for editors and rejects readers", async () => {
+  const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/passport/vaccine"), {
+    id: "vaccine", type: "Vacuna", title: "Rabia", detail: "",
+    date: "2026-11-17", product: "Vacuna", dose: "1", frequency: "Anual",
+    clinic: "", nextDoseDate: "", status: "REALIZADO",
+    reminderEnabled: false, reminderTime: "09:00", createdAtOrder: 1234
+  }));
+  const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
+  await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/passport/other"), {
+    id: "other", type: "Peso", title: "13 kg", detail: "", date: "2026-11-17"
+  }));
+});
+
+test("private care logs accept walk details, map links and photo URLs", async () => {
+  const ownerDb = env.authenticatedContext("walk-owner", { email_verified: false }).firestore();
+  await assertSucceeds(setDoc(doc(ownerDb, "users/walk-owner/petCare/nala/careLogs/walk-1"), {
+    id: "walk-1", taskTitle: "Paseo", action: "Paseo", actorUid: "walk-owner",
+    actorName: "Alex", occurredAt: serverTimestamp(), note: "Buen paseo",
+    distanceKm: 2.4, mapUrl: "https://maps.google.com/?q=36.72,-4.42",
+    description: "Por el parque", walker: "Alex",
+    photoUrls: ["https://images.example/walk.jpg"]
+  }));
+  await assertFails(setDoc(doc(ownerDb, "users/walk-owner/petCare/nala/careLogs/invalid"), {
+    id: "invalid", taskTitle: "Paseo", action: "Paseo", actorUid: "walk-owner",
+    actorName: "Alex", occurredAt: serverTimestamp(), note: "",
+    distanceKm: 2000, mapUrl: "", description: "", walker: "", photoUrls: []
+  }));
+});
+
+test("an unverified account can save only its own lost-pet alert preferences", async () => {
+  const ownerDb = env.authenticatedContext("lost-owner", { email_verified: false }).firestore();
+  await assertSucceeds(setDoc(doc(ownerDb, "lostPetSubscriptions/lost-owner"), {
+    uid: "lost-owner", enabled: true, radiusKm: 20, latCell: 3672,
+    lonCell: -442, updatedAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(ownerDb, "lostPetSubscriptions/other-user"), {
+    uid: "other-user", enabled: true, radiusKm: 20, latCell: 3672,
+    lonCell: -442, updatedAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(ownerDb, "lostPetSubscriptions/lost-owner"), {
+    uid: "lost-owner", enabled: true, radiusKm: 17, latCell: 3672,
+    lonCell: -442, updatedAt: serverTimestamp()
+  }));
+});
+
 test("phone discovery hashes and rate-limit reservations are inaccessible to clients", async () => {
   const db = env.authenticatedContext("verified-user", { email_verified: true }).firestore();
   await assertFails(getDoc(doc(db, "phoneDirectory/private-hash")));
@@ -199,7 +266,7 @@ test("phone discovery hashes and rate-limit reservations are inaccessible to cli
 });
 
 test("Cloudinary asset indexes can only point inside the caller's own Pawly upload folders", async () => {
-  const db = env.authenticatedContext("asset-owner", { email_verified: true }).firestore();
+  const db = env.authenticatedContext("asset-owner", { email_verified: false }).firestore();
   await assertSucceeds(setDoc(doc(db, "cloudinaryAssets/owned"), {
     uid: "asset-owner", publicId: "pawly/diary-photos/asset-owner/photo-1",
     resourceType: "image", createdAt: serverTimestamp()

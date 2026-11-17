@@ -612,7 +612,7 @@ private fun EventDetailsDialog(
                             }
                             attendees.forEach { attendee ->
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    AsyncImage(model = attendee.photoUrl.takeIf { it.isNotBlank() }, contentDescription = null, modifier = Modifier.size(42.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+                                    Avatar(attendee.photoUrl, attendee.displayName, 42)
                                     Column(Modifier.weight(1f)) {
                                         Text(attendee.displayName.ifBlank { tr("Usuario de Pawly") }, fontWeight = FontWeight.SemiBold)
                                         if (attendee.username.isNotBlank()) Text("@${attendee.username}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)

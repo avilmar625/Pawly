@@ -43,9 +43,36 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun Avatar(url: String, label: String, size: Int = 44) {
-    if (url.isNotBlank()) AsyncImage(url, "Foto de " + label, Modifier.size(size.dp).clip(CircleShape))
-    else Box(Modifier.size(size.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-        Text(label.trim().firstOrNull()?.uppercase() ?: "🐾", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = (size / 2).sp)
+    // Firestore profiles created by older builds may contain blank or malformed
+    // image references. Only hand absolute HTTP(S) URLs to Coil; keep the initials
+    // underneath as a graceful fallback for missing or failed network images.
+    val safePhotoUrl = remember(url) {
+        url.trim().takeIf { candidate ->
+            runCatching {
+                val parsed = Uri.parse(candidate)
+                parsed.scheme in setOf("https", "http") && !parsed.host.isNullOrBlank()
+            }.getOrDefault(false)
+        }
+    }
+    Box(
+        Modifier.size(size.dp).clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label.trim().firstOrNull()?.uppercase() ?: "🐾",
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            fontSize = (size / 2).sp
+        )
+        if (safePhotoUrl != null) {
+            AsyncImage(
+                model = safePhotoUrl,
+                contentDescription = "Foto de $label",
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            )
+        }
     }
 }
 

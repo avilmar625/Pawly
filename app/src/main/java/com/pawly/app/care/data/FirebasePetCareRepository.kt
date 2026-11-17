@@ -1,7 +1,11 @@
 package com.pawly.app.care.data
 
+import android.content.Context
+import android.net.Uri
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.pawly.app.CloudinaryImageUploader
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.domain.PetCareRepository
 import com.pawly.app.care.model.PassportEntry
@@ -311,15 +315,36 @@ class FirebasePetCareRepository(
                     id = doc.id, taskTitle = title, action = doc.getString("action").orEmpty(),
                     actorUid = doc.getString("actorUid").orEmpty(), actorName = doc.getString("actorName").orEmpty(),
                     occurredAt = doc.getTimestamp("occurredAt")?.toDate()?.time ?: 0L,
-                    note = doc.getString("note").orEmpty()
+                    note = doc.getString("note").orEmpty(),
+                    distanceKm = doc.getDouble("distanceKm"),
+                    mapUrl = doc.getString("mapUrl").orEmpty(),
+                    description = doc.getString("description").orEmpty(),
+                    walker = doc.getString("walker").orEmpty(),
+                    photoUrls = (doc.get("photoUrls") as? List<*>)?.filterIsInstance<String>().orEmpty()
                 )
             }
     }
 
-    suspend fun logCareAction(petId: String, taskTitle: String, action: String, note: String = ""): CareLogEntry {
+    suspend fun logCareAction(
+        petId: String,
+        taskTitle: String,
+        action: String,
+        note: String = "",
+        distanceKm: Double? = null,
+        mapUrl: String = "",
+        description: String = "",
+        walker: String = "",
+        photoUrls: List<String> = emptyList()
+    ): CareLogEntry {
         require(petId.isNotBlank() && taskTitle.isNotBlank() && taskTitle.length <= 120)
         require(action in setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro"))
-        require(note.length <= 300)
+        require(note.length <= 500 && description.length <= 600 && walker.length <= 80)
+        require(distanceKm == null || (distanceKm.isFinite() && distanceKm in 0.01..1000.0))
+        require(mapUrl.length <= 2048 && (mapUrl.isBlank() || runCatching {
+            val parsed = Uri.parse(mapUrl)
+            parsed.scheme in setOf("https", "http") && !parsed.host.isNullOrBlank()
+        }.getOrDefault(false)))
+        require(photoUrls.size <= 4 && photoUrls.all { it.startsWith("https://") && it.length <= 2048 })
         val actorUid = uid()
         val actorName = auth.currentUser?.displayName?.takeIf { it.isNotBlank() }
             ?: auth.currentUser?.email?.substringBefore("@")?.take(60).orEmpty().ifBlank { "Cuidador" }
@@ -327,10 +352,33 @@ class FirebasePetCareRepository(
         ref.set(mapOf(
             "id" to ref.id, "taskTitle" to taskTitle.trim(), "action" to action,
             "actorUid" to actorUid, "actorName" to actorName,
-            "occurredAt" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
-            "note" to note.trim()
+            "occurredAt" to FieldValue.serverTimestamp(),
+            "note" to note.trim(),
+            "distanceKm" to distanceKm,
+            "mapUrl" to mapUrl.trim(),
+            "description" to description.trim(),
+            "walker" to walker.trim(),
+            "photoUrls" to photoUrls
         )).await()
-        return CareLogEntry(ref.id, taskTitle.trim(), action, actorUid, actorName, System.currentTimeMillis(), note.trim())
+        return CareLogEntry(
+            ref.id, taskTitle.trim(), action, actorUid, actorName, System.currentTimeMillis(),
+            note.trim(), distanceKm, mapUrl.trim(), description.trim(), walker.trim(), photoUrls
+        )
+    }
+
+    /** Upload a walk photo to the pet owner's Cloudinary folder and index it for account cleanup. */
+    suspend fun uploadCarePhoto(context: Context, uri: Uri): String {
+        val ownerUid = uid()
+        val asset = CloudinaryImageUploader(context).upload(uri, "pet-photos", ownerUid)
+        db.collection("cloudinaryAssets").document(java.util.UUID.randomUUID().toString()).set(
+            mapOf(
+                "uid" to ownerUid,
+                "publicId" to asset.publicId,
+                "resourceType" to asset.resourceType,
+                "createdAt" to FieldValue.serverTimestamp()
+            )
+        ).await()
+        return asset.secureUrl
     }
 
     override suspend fun deleteCareTask(petId: String, taskId: String) {

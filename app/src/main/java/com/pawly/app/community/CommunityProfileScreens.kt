@@ -1,7 +1,10 @@
 package com.pawly.app
 
 import android.Manifest
+import android.graphics.Bitmap
 import android.content.pm.PackageManager
+import java.io.File
+import androidx.core.content.FileProvider
 import android.os.Build
 import android.net.Uri
 import android.content.Intent
@@ -55,10 +58,24 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
     var professionalContact by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalContact.orEmpty()) }
     var professionalContactPublic by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalContactPublic ?: false) }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { avatarUri = it }
+    val avatarCamera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        if (bitmap != null) runCatching {
+            val photoDirectory = File(context.cacheDir, "profile_photos").apply { mkdirs() }
+            val photoFile = File(photoDirectory, "avatar-${System.currentTimeMillis()}.jpg")
+            photoFile.outputStream().use { output ->
+                check(bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)) {
+                    "No se pudo preparar la fotografía."
+                }
+            }
+            avatarUri = FileProvider.getUriForFile(
+                context, "${context.packageName}.fileprovider", photoFile
+            )
+        }.onFailure { error = it.localizedMessage ?: "No se pudo abrir la cámara." }
+    }
     var editDog by remember { mutableStateOf<PawlyDog?>(null) }
     var showDogEditor by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
     var status by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var confirmAccountDeletion by remember { mutableStateOf(false) }
@@ -154,9 +171,23 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
                             }
                         }
                     }
-                    OutlinedButton(onClick = { avatarPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.PhotoCamera, null)
-                        Text(if (avatarUri != null) "Fotografía seleccionada" else "Cambiar foto de perfil")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { avatarPicker.launch("image/*") },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.PhotoLibrary, null)
+                            Spacer(Modifier.width(5.dp))
+                            Text(if (avatarUri != null) "Foto seleccionada" else "Galería")
+                        }
+                        OutlinedButton(
+                            onClick = { avatarCamera.launch(null) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.PhotoCamera, null)
+                            Spacer(Modifier.width(5.dp))
+                            Text("Cámara")
+                        }
                     }
                     OutlinedTextField(name, { name = it }, label = { Text(tr("Nombre público")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                     OutlinedTextField(bio, { bio = it }, label = { Text(tr("Presentación")) }, modifier = Modifier.fillMaxWidth(), minLines = 2)

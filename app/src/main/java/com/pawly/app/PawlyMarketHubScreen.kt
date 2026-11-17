@@ -5,8 +5,6 @@ import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +67,14 @@ internal fun PawlyMarketHubScreen(
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
             .onFailure { feedback = "No se ha podido abrir el enlace." }
     }
+    fun searchMarket() {
+        val query = search.trim()
+        if (query.isBlank()) {
+            feedback = "Escribe qué producto quieres buscar."
+        } else {
+            openExternal("https://www.google.com/search?tbm=shop&q=" + Uri.encode(query))
+        }
+    }
     fun shareReport() {
         val report = buildString {
             appendLine("FICHA DE EMERGENCIA · PAWLY")
@@ -125,11 +131,14 @@ internal fun PawlyMarketHubScreen(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp), modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                listOf("market" to "Market", "care" to "Cuidados", "emergency" to "Emergencia", "learn" to "Aprender", "map" to "Mapa").forEach { (id, label) ->
-                    FilterChip(selected = section == id, onClick = { section = id }, label = { Text(label) })
-                }
-            }
+            PawlyDropdownSelector(
+                title = "Sección",
+                selectedLabel = listOf("market" to "Market", "care" to "Cuidados", "emergency" to "Emergencia", "learn" to "Aprender", "map" to "Mapa").first { it.first == section }.second,
+                options = listOf("market" to "Market", "care" to "Cuidados", "emergency" to "Emergencia", "learn" to "Aprender", "map" to "Mapa"),
+                selectedValue = section,
+                onSelected = { section = it },
+                leadingIcon = Icons.Default.Tune
+            )
         }
         when (section) {
             "market" -> {
@@ -138,21 +147,34 @@ internal fun PawlyMarketHubScreen(
                     Text("Encuentra productos por necesidad. Pawly te lleva a tiendas externas; no procesa pagos ni gestiona pedidos.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item {
-                    OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
-                        singleLine = true, label = { Text("¿Qué estás buscando?") }, leadingIcon = { Icon(Icons.Default.Search, null) })
-                }
-                item {
-                    val cats = listOf("Todo", "Pienso", "Comida húmeda", "Snacks", "Juguetes", "Paseo", "Higiene", "Descanso")
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        cats.chunked(2).forEach { row ->
-                            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                row.forEach { c ->
-                                    FilterChip(selected = category == c, onClick = { category = c },
-                                        label = { Text(c, maxLines = 1) })
-                                }
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        label = { Text("¿Qué estás buscando?") },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        trailingIcon = {
+                            IconButton(onClick = { searchMarket() }) {
+                                Icon(Icons.Default.ArrowForward, contentDescription = "Buscar productos")
                             }
                         }
+                    )
+                    TextButton(onClick = { searchMarket() }, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.Search, null)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Buscar en tiendas")
                     }
+                }
+                item {
+                    PawlyDropdownSelector(
+                        title = "Categoría",
+                        selectedLabel = category,
+                        options = listOf("Todo", "Pienso", "Comida húmeda", "Snacks", "Juguetes", "Paseo", "Higiene", "Descanso").map { it to it },
+                        selectedValue = category,
+                        onSelected = { category = it },
+                        leadingIcon = Icons.Default.Category
+                    )
                 }
                 item {
                     val products = listOf(

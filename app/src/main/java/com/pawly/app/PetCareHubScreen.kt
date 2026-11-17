@@ -359,9 +359,11 @@ private fun PetPassportSection(
     }
     var title by remember { mutableStateOf("") }
     var weightKg by remember { mutableFloatStateOf(0f) }
-    val lastRecordedWeight = entries.asSequence()
+    // Cloud passport entries are returned oldest-first (date, then creation order).
+    // Reverse the complete list so the most recently created measurement wins,
+    // including when several records share exactly the same calendar date.
+    val lastRecordedWeight = entries.asReversed().asSequence()
         .filter { it.type.equals("Peso", ignoreCase = true) }
-        .sortedByDescending { it.date }
         .mapNotNull { entry ->
             com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.title)
                 ?: com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.detail)

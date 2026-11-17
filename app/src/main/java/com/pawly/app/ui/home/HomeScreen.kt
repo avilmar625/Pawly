@@ -265,12 +265,6 @@ internal fun HomeScreen(
             }
         }
         item { HomeLearnCard(onClick = onLearn) }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onCommunity, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Groups, null); Spacer(Modifier.width(5.dp)); Text(tr("Comunidad")) }
-                TextButton(onClick = onCalendar, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.CalendarMonth, null); Spacer(Modifier.width(5.dp)); Text(tr("Calendario")) }
-            }
-        }
         }
     }
 }
