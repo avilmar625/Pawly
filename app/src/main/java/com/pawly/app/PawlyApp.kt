@@ -203,8 +203,10 @@ private fun PawlyMainApp(
         pendingPdfFile = null
     }
     var selected by remember { mutableStateOf(Tab.HOME) }
+    var previousTab by remember { mutableStateOf(Tab.HOME) }
+    LaunchedEffect(selected) { if (selected != Tab.DIARY) previousTab = selected }
     var mainNavigationExpanded by remember { mutableStateOf(false) }
-    BackHandler(enabled = selected == Tab.DIARY) { selected = Tab.HOME }
+    BackHandler(enabled = selected == Tab.DIARY) { selected = previousTab }
     var openCommunityNotifications by remember { mutableStateOf(false) }
     var pendingCareAction by remember { mutableStateOf<String?>(null) }
     var pendingPassportType by remember { mutableStateOf<String?>(null) }
@@ -497,7 +499,7 @@ private fun PawlyMainApp(
                         Modifier.fillMaxWidth().statusBarsPadding().padding(start = 6.dp, end = 18.dp, top = 7.dp, bottom = 9.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = { selected = Tab.HOME }) {
+                        IconButton(onClick = { selected = previousTab }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = PawlyI18n.text("Volver", language), tint = MaterialTheme.colorScheme.primary)
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
