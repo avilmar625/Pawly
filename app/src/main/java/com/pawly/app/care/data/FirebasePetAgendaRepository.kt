@@ -39,6 +39,15 @@ class FirebasePetAgendaRepository(
             })
         }
 
+    /** One-time migration: seed the shared agenda only when it has no cloud records yet. */
+    suspend fun migrateLocalIfCloudEmpty(petId: String, localReminders: List<String>) {
+        if (collection(petId).limit(1).get().await().isEmpty && localReminders.isNotEmpty()) {
+            localReminders.distinct().forEach { raw ->
+                runCatching { saveReminder(petId, raw) }
+            }
+        }
+    }
+
     suspend fun saveReminder(petId: String, raw: String) {
         val json = JSONObject(raw)
         val id = json.optString("id")
