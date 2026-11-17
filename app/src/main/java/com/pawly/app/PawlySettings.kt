@@ -122,7 +122,7 @@ internal fun PawlySettingsDialog(
                     Text(t("El idioma elegido se aplica en toda la aplicación."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (BuildConfig.DEBUG) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(t("Servicios multimedia · Cloudinary"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
                     Text(t("Configura aquí las subidas de fotos y vídeos sin tener que recompilar la aplicación. Estos datos son nombres de configuración, no incluyas el API Secret."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
