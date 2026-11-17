@@ -818,16 +818,14 @@ private fun CommunityPlacesPanel(
             Text(tr("Las propuestas se revisan antes de aparecer públicamente. Puedes denunciar un lugar si detectas información incorrecta."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (places.isNotEmpty()) {
-                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    items(recommendationCategories) { option ->
-                        FilterChip(
-                            selected = recommendationFilter == option,
-                            onClick = { recommendationFilter = option },
-                            label = { Text(tr(option)) },
-                            leadingIcon = if (recommendationFilter == option) ({ Icon(Icons.Default.Check, null) }) else null
-                        )
-                    }
-                }
+                PawlyDropdownSelector(
+                    title = tr("Categoría"),
+                    selectedLabel = tr(recommendationFilter),
+                    options = recommendationCategories.map { it to tr(it) },
+                    selectedValue = recommendationFilter,
+                    onSelected = { recommendationFilter = it },
+                    leadingIcon = Icons.Default.FilterList
+                )
             }
             if (places.isEmpty()) {
                 Text(tr("Todavía no hay lugares visibles. ¡Puedes proponer el primero!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
