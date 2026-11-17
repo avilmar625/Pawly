@@ -97,6 +97,7 @@ internal fun DiaryScreen(
     }
     var visibleEntries by remember(sharedPetOwnerUid, petId, entries) { mutableStateOf(if (sharedPetOwnerUid == null) entries else emptyList()) }
     var canEditSharedDiary by remember(sharedPetOwnerUid, petId) { mutableStateOf(sharedPetOwnerUid == null) }
+    var diaryReady by remember(sharedPetOwnerUid, petId) { mutableStateOf(sharedPetOwnerUid == null) }
     var diarySyncMessage by remember(sharedPetOwnerUid) { mutableStateOf<String?>(null) }
     val diaryScope = rememberCoroutineScope()
     LaunchedEffect(sharedPetOwnerUid, petId, sharedDiaryRepository) {
@@ -109,9 +110,13 @@ internal fun DiaryScreen(
                         sharedDiaryRepository.ensurePet(petId, dogName)
                     }
                     canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId)
+                    diaryReady = true
                 }
                     .onSuccess { diarySyncMessage = if (canEditSharedDiary) "Diario compartido · cambios en tiempo real" else "Diario compartido · solo lectura" }
-                    .onFailure { diarySyncMessage = "No se pudieron preparar los permisos del diario: ${it.localizedMessage}" }
+                    .onFailure {
+                        diaryReady = false
+                        diarySyncMessage = "No se pudieron preparar los permisos del diario: ${it.localizedMessage}"
+                    }
             } else {
                 diarySyncMessage = "No se puede conectar con el diario compartido"
             }
@@ -121,8 +126,8 @@ internal fun DiaryScreen(
             diarySyncMessage = null
         }
     }
-    DisposableEffect(sharedPetOwnerUid, petId, sharedDiaryRepository) {
-        val listener = if (sharedPetOwnerUid != null && petId != null && sharedDiaryRepository != null) {
+    DisposableEffect(sharedPetOwnerUid, petId, sharedDiaryRepository, diaryReady) {
+        val listener = if (sharedPetOwnerUid != null && petId != null && sharedDiaryRepository != null && diaryReady) {
             sharedDiaryRepository.listenDiary(
                 petId,
                 onEntries = { remoteEntries -> visibleEntries = remoteEntries },
