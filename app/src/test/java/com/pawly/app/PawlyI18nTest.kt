@@ -1,6 +1,7 @@
 package com.pawly.app
 
 import org.junit.Assert.assertEquals
+import java.util.Locale
 import org.junit.Test
 
 class PawlyI18nTest {
@@ -91,6 +92,18 @@ class PawlyI18nTest {
         assertEquals("Filtrar memórias", PawlyI18n.text("Filtrar recuerdos", "pt"))
         assertEquals(java.util.Locale.GERMANY, PawlyI18n.locale("de"))
         assertEquals(java.util.Locale.forLanguageTag("pt-PT"), PawlyI18n.locale("pt"))
+    }
+
+    @Test
+    fun germanAndEuropeanPortugueseAreAvailableForCoreNavigationAndMenus() {
+        assertEquals("Community", PawlyI18n.text("Comunidad", "de"))
+        assertEquals("Comunidade", PawlyI18n.text("Comunidad", "pt"))
+        assertEquals("Bevorzugte Sprache", PawlyI18n.text("Idioma preferido", "de"))
+        assertEquals("Idioma preferido", PawlyI18n.text("Idioma preferido", "pt"))
+        assertEquals("Kategorie", PawlyI18n.text("Categoría", "de"))
+        assertEquals("Categoria", PawlyI18n.text("Categoría", "pt"))
+        assertEquals(Locale.GERMANY, PawlyI18n.locale("de"))
+        assertEquals(Locale.forLanguageTag("pt-PT"), PawlyI18n.locale("pt"))
     }
 
     @Test
