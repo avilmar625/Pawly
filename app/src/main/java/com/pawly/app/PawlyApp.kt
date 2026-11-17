@@ -718,7 +718,7 @@ private fun PawlyMainApp(
                     openPhotoPickerOnEnter = openDiaryPhotoPicker,
                     onPhotoPickerOpened = { openDiaryPhotoPicker = false }
                 )
-                Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository, healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") }, diaryEntries = diaryEntries, dogName = dogName)
+                Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository, healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") }, diaryEntries = diaryEntries, dogName = dogName, sharedPetOwnerUid = sharedPetOwnerUid, petId = dogName)
                 Tab.COMMUNITY -> CommunityScreen(
                     elegantDesign = elegantDesign,
                     openNotifications = openCommunityNotifications
