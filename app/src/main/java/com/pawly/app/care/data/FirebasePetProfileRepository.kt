@@ -102,7 +102,7 @@ class FirebasePetProfileRepository(
         require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
         val clean = PetProfileValidation.diary(listOf(withoutCloudDiaryId(rawEntry))).single()
         val collection = diary(petId)
-        val existing = collection.limit(201).get().await()
+        val existing = collection.limit(501).get().await()
         require(existing.size() < 200) { "El diario admite hasta 200 recuerdos por mascota." }
         val id = java.util.UUID.randomUUID().toString()
         collection.document(id).set(mapOf(
