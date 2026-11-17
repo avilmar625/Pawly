@@ -341,7 +341,38 @@ internal fun HomeCareTasksSection(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), MaterialTheme.colorScheme.primaryContainer, {
                 val task = visibleTasks.firstOrNull { it.action == "Paseo" }
-                if (task != null) requestTaskToggle(task, !isComplete(task)) else onOpenCalendar()
+                if (task != null) {
+                    requestTaskToggle(task, !isComplete(task))
+                } else if (canEdit) {
+                    val now = System.currentTimeMillis()
+                    val localLog = CareLogEntry(
+                        id = "local-$now-walk",
+                        taskTitle = tr("Paseo"),
+                        action = "Paseo",
+                        actorUid = "local",
+                        actorName = tr("Tú"),
+                        occurredAt = now
+                    )
+                    logs = (listOf(localLog) + logs).take(30)
+                    PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
+                    syncMessage = savedLocalMessage
+                    repository?.let { repo ->
+                        scope.launch {
+                            runCatching {
+                                repo.logCareAction(petName, "Paseo", "Paseo")
+                                repo.loadCareLogs(petName)
+                            }.onSuccess { remoteLogs ->
+                                logs = remoteLogs
+                                PetCareLocalStore.saveCareLogs(context, petName, remoteLogs, storageScope)
+                                syncMessage = changesSyncedMessage
+                            }.onFailure {
+                                syncMessage = localPendingMessage
+                            }
+                        }
+                    }
+                } else {
+                    syncMessage = tr("No tienes permiso para registrar cuidados de esta mascota.")
+                }
             }, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.MonitorWeight, tr("Peso"), MaterialTheme.colorScheme.secondaryContainer, onWeight, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.PhotoCamera, tr("Foto"), MaterialTheme.colorScheme.secondaryContainer, onPhoto, Modifier.weight(1f))
