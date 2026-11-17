@@ -52,7 +52,7 @@ class FirebasePetProfileRepository(
     }
 
     suspend fun saveProfile(petId: String, name: String, photoUrl: String?) {
-        require(uid() == ownerUid) { "Solo el propietario puede modificar este perfil." }
+        require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
         val cleanName = PetProfileValidation.name(name)
         val cleanPhotoUrl = PetProfileValidation.photoUrl(photoUrl)
         profile(petId).set(mapOf(
