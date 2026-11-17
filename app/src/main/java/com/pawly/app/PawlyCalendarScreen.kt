@@ -71,6 +71,23 @@ internal fun PawlyCalendarScreen(
             sharedAgendaRepository.listenReminders(
                 petId,
                 onReminders = { remote ->
+                    val previous = sharedReminders.mapNotNull { raw ->
+                        runCatching { JSONObject(raw).let { it.optString("id") to it.optString("title") } }.getOrNull()
+                    }.toMap()
+                    val current = remote.mapNotNull { raw ->
+                        runCatching { JSONObject(raw).let { it.optString("id") to it.optString("title") } }.getOrNull()
+                    }.toMap()
+                    previous.filter { (id, title) -> current[id] != title }.values.forEach { title ->
+                        CareReminderScheduler.cancel(context, dogName, "Agenda: $title")
+                    }
+                    remote.forEach { raw ->
+                        runCatching {
+                            val json = JSONObject(raw)
+                            val dateTime = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT)
+                                .format(Date(json.optLong("date")))
+                            CareReminderScheduler.schedule(context, dogName, "Agenda: ${json.optString("title")}", dateTime)
+                        }
+                    }
                     sharedReminders = remote
                     onRemindersChange(remote)
                     agendaSyncMessage = "Agenda compartida sincronizada en tiempo real"
