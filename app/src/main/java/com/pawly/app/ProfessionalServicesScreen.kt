@@ -140,7 +140,7 @@ internal fun ProfessionalServicesScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
@@ -152,16 +152,11 @@ internal fun ProfessionalServicesScreen(
             }
         }
 
-        Card(
-            shape = RoundedCornerShape(26.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(19.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(t("PROFESIONALES PARA SU BIENESTAR"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.4.sp)
-                Text(tr("Encontrad a la persona adecuada."), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text(tr("Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa."), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-        }
+        PawlyPageHeader(
+            eyebrow = "Profesionales para su bienestar",
+            title = "Encontrad a la persona adecuada.",
+            subtitle = "Explora servicios para cuidar, educar y acompañar a tu mascota en cada etapa."
+        )
 
         Card(
             shape = RoundedCornerShape(23.dp),

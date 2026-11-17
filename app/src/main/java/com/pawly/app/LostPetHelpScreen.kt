@@ -121,7 +121,7 @@ internal fun LostPetHelpScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(13.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

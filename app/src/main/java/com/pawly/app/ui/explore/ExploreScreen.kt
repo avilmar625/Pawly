@@ -325,7 +325,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     val visible = places.filter { (filter == "Todo" || it.category == filter) && (query.isBlank() || it.name.contains(query, true) || it.description.contains(query, true)) }
 
     LazyColumn(
-        Modifier.fillMaxSize(),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(22.dp),
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {

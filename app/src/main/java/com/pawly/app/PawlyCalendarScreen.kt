@@ -104,9 +104,11 @@ internal fun PawlyCalendarScreen(
     ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(tr("TU AGENDA PAWLY"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
-                Text(tr("Calendario"), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.ExtraBold)
-                Text(tr("Eventos, planes y recordatorios para que nada importante se os pase."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                PawlyPageHeader(
+                    eyebrow = "Tu agenda Pawly",
+                    title = "Calendario",
+                    subtitle = "Eventos, planes y recordatorios para que nada importante se os pase."
+                )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     FilledTonalButton(onClick = {
                         val intent = Intent(Intent.ACTION_VIEW).setData(CalendarContract.CONTENT_URI)
