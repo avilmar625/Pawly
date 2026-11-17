@@ -606,7 +606,11 @@ private fun PawlyMainApp(
             }
         }
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+            // On tablets and foldables, keep reading columns comfortably narrow and centered.
+            // Compact phones retain the full available width without horizontal scrolling.
+            val contentWidth = if (maxWidth >= 840.dp) Modifier.widthIn(max = 840.dp).align(Alignment.TopCenter) else Modifier.fillMaxWidth()
+            Box(contentWidth.fillMaxHeight()) {
             when (selected) {
                 Tab.HOME -> HomeScreen(
                     dogName = dogName,
@@ -821,6 +825,7 @@ private fun PawlyMainApp(
                     onBack = { selected = Tab.MORE },
                     onPublished = { selected = Tab.COMMUNITY }
                 )
+            }
             }
         }
     }
