@@ -570,7 +570,16 @@ private fun PetPassportSection(
                         if (entry.nextDoseDate.isNotBlank()) Text(tr("Próxima dosis") + ": " + entry.nextDoseDate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         val recordState = entry.status
-                        Text(tr(if (recordState == PassportEntryStates.PENDIENTE) "Pendiente" else "Realizado"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text(
+                            tr(when (recordState) {
+                                PassportEntryStates.PENDIENTE -> "Pendiente"
+                                PassportEntryStates.VENCIDO -> "Vencido"
+                                else -> "Realizado"
+                            }),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (recordState == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
                         if (canEdit) Text(tr("Toca para editar"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(onClick = {
@@ -673,8 +682,16 @@ private fun PetPassportSection(
                     }
                     PawlyDropdownSelector(
                         title = tr("Estado del registro"),
-                        selectedLabel = tr(if (entryStatus == PassportEntryStates.PENDIENTE) "Pendiente" else "Realizado"),
-                        options = listOf(PassportEntryStates.PENDIENTE to tr("Pendiente"), PassportEntryStates.REALIZADO to tr("Realizado")),
+                        selectedLabel = tr(when (entryStatus) {
+                            PassportEntryStates.PENDIENTE -> "Pendiente"
+                            PassportEntryStates.VENCIDO -> "Vencido"
+                            else -> "Realizado"
+                        }),
+                        options = listOf(
+                            PassportEntryStates.PENDIENTE to tr("Pendiente"),
+                            PassportEntryStates.REALIZADO to tr("Realizado"),
+                            PassportEntryStates.VENCIDO to tr("Vencido")
+                        ),
                         selectedValue = entryStatus,
                         onSelected = { entryStatus = it },
                         leadingIcon = Icons.Default.CheckCircle
@@ -684,14 +701,18 @@ private fun PetPassportSection(
                             Text(tr("Recordatorio local"), fontWeight = FontWeight.SemiBold)
                             Text(tr("Aviso en este dispositivo, si permites las notificaciones."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it })
+                        Switch(
+                            checked = reminderEnabled,
+                            enabled = nextDoseDate.isNotBlank(),
+                            onCheckedChange = { reminderEnabled = it }
+                        )
                     }
                     if (reminderEnabled) {
                         OutlinedTextField(
                             reminderTime, { reminderTime = it },
                             label = { Text(tr("Hora del aviso (HH:mm)")) },
                             singleLine = true,
-                            isError = !reminderTime.matches(Regex("\\d{2}:\\d{2}"))
+                            isError = !reminderTime.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d"))
                         )
                     }
                 }
@@ -750,7 +771,7 @@ private fun PetPassportSection(
                 }, enabled = canEdit && title.isNotBlank() &&
                     runCatching { LocalDate.parse(date.trim()) }.isSuccess &&
                     (nextDoseDate.isBlank() || runCatching { LocalDate.parse(nextDoseDate.trim()) }.isSuccess) &&
-                    reminderTime.matches(Regex("\\d{2}:\\d{2}"))) { Text(tr("Guardar")) }
+                    reminderTime.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d"))) { Text(tr("Guardar")) }
             },
             dismissButton = { TextButton(onClick = { showAdd = false; editingEntry = null }) { Text(tr("Cancelar")) } }
         )
@@ -1144,7 +1165,7 @@ private fun PetCarePlanSection(
                     }
                 }, enabled = canEdit && title.isNotBlank() &&
                     (frequency != "Semanal" || selectedDays.isNotEmpty()) &&
-                    (!reminderEnabled || time.matches(Regex("\\d{2}:\\d{2}"))) &&
+                    (!reminderEnabled || time.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d"))) &&
                     (!reminderEnabled || action == "Medicación") &&
                     (!reminderEnabled || frequency in setOf("Diario", "Semanal"))) { Text(tr("Guardar")) }
             },
