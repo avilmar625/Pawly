@@ -359,10 +359,14 @@ private fun PetPassportSection(
     }
     var title by remember { mutableStateOf("") }
     var weightKg by remember { mutableFloatStateOf(0f) }
-    val lastRecordedWeight = entries.asSequence().filter { it.type.equals("Peso", ignoreCase = true) }.sortedByDescending { it.date }.mapNotNull { entry ->
-        val pattern = Regex("""\d+(?:[.,]\d+)?""")
-        (pattern.find(entry.title)?.value ?: pattern.find(entry.detail)?.value)?.replace(",", ".")?.toFloatOrNull()
-    }.firstOrNull()
+    val lastRecordedWeight = entries.asSequence()
+        .filter { it.type.equals("Peso", ignoreCase = true) }
+        .sortedByDescending { it.date }
+        .mapNotNull { entry ->
+            com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.title)
+                ?: com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.detail)
+        }
+        .firstOrNull()
     LaunchedEffect(initialType, lastRecordedWeight) {
         if (initialType == "Peso") {
             weightKg = lastRecordedWeight ?: 10f
@@ -452,7 +456,11 @@ private fun PetPassportSection(
                         onClick = {
                             val message = buildString {
                                 append("Ficha de emergencia de $petName\\n")
-                                emergencyEntries.forEach { append("${it.type}: ${it.detail.ifBlank { it.title }}\\n") }
+                                if (emergencyEntries.isEmpty()) {
+                                    append("Todavía no hay datos de emergencia registrados en Pawly.\\n")
+                                } else {
+                                    emergencyEntries.forEach { append("${it.type}: ${it.detail.ifBlank { it.title }}\\n") }
+                                }
                             }
                             val send = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
@@ -461,7 +469,7 @@ private fun PetPassportSection(
                             }
                             runCatching { context.startActivity(Intent.createChooser(send, "Compartir ficha de emergencia")) }
                         },
-                        enabled = emergencyEntries.isNotEmpty()
+                        enabled = true
                     ) { Text(tr("Compartir ficha con veterinario o persona de confianza")) }
                 }
             }
@@ -580,8 +588,9 @@ private fun PetPassportSection(
                 reminderEnabled = entry.reminderEnabled
                 reminderTime = entry.reminderTime
                 if (entry.type.equals("Peso", true)) {
-                    val raw = Regex("[0-9]+([.,][0-9]+)?").find(entry.title)?.value ?: Regex("[0-9]+([.,][0-9]+)?").find(entry.detail)?.value
-                    weightKg = raw?.replace(",", ".")?.toFloatOrNull() ?: 10f
+                    weightKg = com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.title)
+                        ?: com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.detail)
+                        ?: lastRecordedWeight ?: 10f
                 }
                 showAdd = true
             }) {
@@ -687,14 +696,25 @@ private fun PetPassportSection(
                     ) {
                         Icon(Icons.Default.CalendarMonth, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text(tr("Fecha de administración") + ": " + date)
+                        Text(tr(when (selectedType) {
+                            "Peso" -> "Fecha de medición"
+                            "Vacuna", "Desparasitación", "Medicación" -> "Fecha de administración"
+                            else -> "Fecha del registro"
+                        }) + ": " + date)
                     }
-                    OutlinedTextField(detail, { detail = it }, label = { Text(tr("Observaciones")) }, minLines = 2)
-                    OutlinedTextField(product, { product = it }, label = { Text(tr("Producto o medicamento")) }, singleLine = true)
-                    OutlinedTextField(dose, { dose = it }, label = { Text(tr("Dosis indicada por el veterinario")) }, singleLine = true)
-                    OutlinedTextField(frequency, { frequency = it }, label = { Text(tr("Pauta o frecuencia indicada")) }, singleLine = true)
-                    OutlinedTextField(clinic, { clinic = it }, label = { Text(tr("Clínica veterinaria")) }, singleLine = true)
-                    OutlinedButton(
+                    OutlinedTextField(
+                        detail,
+                        { detail = it },
+                        label = { Text(tr(if (selectedType == "Peso") "Notas (opcional)" else "Observaciones")) },
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (selectedType in setOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Intervención")) {
+                        OutlinedTextField(product, { product = it }, label = { Text(tr("Producto o medicamento")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(dose, { dose = it }, label = { Text(tr("Dosis indicada por el veterinario")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(frequency, { frequency = it }, label = { Text(tr("Pauta o frecuencia indicada")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(clinic, { clinic = it }, label = { Text(tr("Clínica veterinaria")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        OutlinedButton(
                         onClick = {
                             val initialDate = runCatching { LocalDate.parse(nextDoseDate) }.getOrDefault(LocalDate.now().plusMonths(1))
                             android.app.DatePickerDialog(context, { _, year, month, day ->
@@ -748,20 +768,27 @@ private fun PetPassportSection(
                 Button(onClick = {
                     val cleanTitle = title.trim()
                     if (cleanTitle.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) {
-                        val wantsReminder = reminderEnabled && nextDoseDate.isNotBlank()
+                        val treatmentFields = selectedType in setOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Intervención")
+                        val wantsReminder = treatmentFields && reminderEnabled && nextDoseDate.isNotBlank()
                         val newEntry = editingEntry?.copy(
                             type = selectedType, title = cleanTitle.take(80),
                             detail = detail.trim().take(1200), date = date.trim(),
-                            product = product.trim().take(120), dose = dose.trim().take(120),
-                            frequency = frequency.trim().take(120), clinic = clinic.trim().take(120),
-                            nextDoseDate = nextDoseDate.trim(), status = entryStatus,
+                            product = if (treatmentFields) product.trim().take(120) else "",
+                            dose = if (treatmentFields) dose.trim().take(120) else "",
+                            frequency = if (treatmentFields) frequency.trim().take(120) else "",
+                            clinic = if (treatmentFields) clinic.trim().take(120) else "",
+                            nextDoseDate = if (treatmentFields) nextDoseDate.trim() else "",
+                            status = if (treatmentFields) entryStatus else PassportEntryStates.REALIZADO,
                             reminderEnabled = false, reminderTime = reminderTime.trim()
                         ) ?: PassportEntry(
                             id = UUID.randomUUID().toString(), type = selectedType,
                             title = cleanTitle.take(80), detail = detail.trim().take(1200), date = date.trim(),
-                            product = product.trim().take(120), dose = dose.trim().take(120),
-                            frequency = frequency.trim().take(120), clinic = clinic.trim().take(120),
-                            nextDoseDate = nextDoseDate.trim(), status = entryStatus,
+                            product = if (treatmentFields) product.trim().take(120) else "",
+                            dose = if (treatmentFields) dose.trim().take(120) else "",
+                            frequency = if (treatmentFields) frequency.trim().take(120) else "",
+                            clinic = if (treatmentFields) clinic.trim().take(120) else "",
+                            nextDoseDate = if (treatmentFields) nextDoseDate.trim() else "",
+                            status = if (treatmentFields) entryStatus else PassportEntryStates.REALIZADO,
                             reminderEnabled = false, reminderTime = reminderTime.trim()
                         )
                         entries = if (editingEntry == null) entries + newEntry else entries.map { if (it.id == newEntry.id) newEntry else it }
