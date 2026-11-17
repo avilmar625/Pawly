@@ -26,7 +26,7 @@ class FirebasePetAgendaRepository(
     }
 
     suspend fun loadReminders(petId: String): List<String> =
-        collection(petId).orderBy("date").limit(200).get().await().documents.map { doc ->
+        collection(petId).orderBy("date").limit(500).get().await().documents.map { doc ->
             JSONObject()
                 .put("id", doc.id)
                 .put("title", doc.getString("title").orEmpty())
