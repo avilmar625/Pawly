@@ -185,7 +185,7 @@ test("shared agenda reminders are live collaborative records with reader-only ac
     title: "Veterinario actualizado", updatedAt: serverTimestamp()
   }));
   await assertFails(updateDoc(doc(editorDb, "sharedPets/owner_pet/agenda/reminder-1"), {
-    createdBy: "editor", updatedAt: serverTimestamp()
+    createdBy: "reader", updatedAt: serverTimestamp()
   }));
   await assertFails(setDoc(doc(editorDb, "sharedPets/owner_pet/agenda/invalid-category"), {
     id: "invalid-category", title: "Recordatorio", date: 1900000000000,
