@@ -16,8 +16,10 @@ object PassportEntrySchedule {
     fun status(entry: PassportEntry, today: LocalDate = LocalDate.now()): String {
         val due = dueDate(entry)
         if (due != null) return if (due.isBefore(today)) PassportEntryStates.VENCIDO else PassportEntryStates.PENDIENTE
-        return if (entry.status == PassportEntryStates.PENDIENTE) PassportEntryStates.VENCIDO
-        else PassportEntryStates.REALIZADO
+        return when (entry.status) {
+            PassportEntryStates.PENDIENTE, PassportEntryStates.VENCIDO -> PassportEntryStates.VENCIDO
+            else -> PassportEntryStates.REALIZADO
+        }
     }
 
     fun agenda(entries: List<PassportEntry>, today: LocalDate = LocalDate.now()): List<PassportEntry> =
