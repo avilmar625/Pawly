@@ -142,8 +142,8 @@ internal fun HealthScreen(
         }
         item { SectionHeading("Próximos cuidados", "Programa avisos locales para no olvidarte") }
         if (reminderFeedback != null) item {
-            Surface(color = Color(0xFFE8EFE2), shape = RoundedCornerShape(14.dp)) {
-                Text(tr(reminderFeedback!!), color = Forest, modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodySmall)
+            Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = RoundedCornerShape(14.dp)) {
+                Text(tr(reminderFeedback!!), color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth().padding(12.dp), style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -181,7 +181,7 @@ internal fun HealthItem(icon: androidx.compose.ui.graphics.vector.ImageVector, t
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(tr(title), fontWeight = FontWeight.SemiBold)
-                Text(tr(subtitle), color = Muted, fontSize = 11.sp)
+                Text(tr(subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(tr(date), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold)

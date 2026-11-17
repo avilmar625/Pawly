@@ -158,7 +158,7 @@ internal fun DiaryScreen(
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
                 Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                    Text(tr("UN RECUERDO NUEVO"), color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(tr("UN RECUERDO NUEVO"), color = MaterialTheme.colorScheme.tertiaryContainer, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = memoryTitle,

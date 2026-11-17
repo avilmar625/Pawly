@@ -1041,7 +1041,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                     Text(
                         place.category.uppercase(),
                         modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
-                        color = Forest,
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 9.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 1.sp
@@ -1055,7 +1055,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                     Icon(
                         if (saved) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                         contentDescription = tr(if (saved) "Quitar de guardados" else "Guardar idea"),
-                        tint = Forest
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Column(

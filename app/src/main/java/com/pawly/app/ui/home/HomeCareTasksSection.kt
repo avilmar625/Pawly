@@ -205,7 +205,7 @@ internal fun HomeCareTasksSection(
                     CircularProgressIndicator(
                         progress = { progress.coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxSize(),
-                        color = Color(0xFFE4EBC1),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
                         trackColor = Color.White.copy(alpha = .18f),
                         strokeWidth = 7.dp
                     )
@@ -215,8 +215,7 @@ internal fun HomeCareTasksSection(
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(tr("Lo de hoy"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f))
+            PawlySectionHeading(title = tr("Lo de hoy"), modifier = Modifier.weight(1f))
             if (loading) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
             } else {
@@ -307,11 +306,11 @@ internal fun HomeCareTasksSection(
                 upcomingTime?.takeIf { it.isNotBlank() }
             ).filterNotNull().joinToString(" · ")
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Próximamente"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                PawlySectionHeading(title = tr("Próximamente"))
                 Surface(
                     onClick = onUpcomingClick,
                     shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFFF3DCCF)
+                    color = MaterialTheme.colorScheme.secondaryContainer
                 ) {
                     Row(
                         Modifier.fillMaxWidth().padding(14.dp),
@@ -325,20 +324,20 @@ internal fun HomeCareTasksSection(
                             Icon(
                                 if (upcomingType?.contains("vacun", ignoreCase = true) == true) Icons.Filled.HealthAndSafety else Icons.Filled.CalendarMonth,
                                 null,
-                                tint = Color(0xFF315A45)
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(upcomingDisplayLabel, color = Color(0xFF67574E), style = MaterialTheme.typography.labelSmall)
                             Text(upcomingTitle, color = Color(0xFF263A30), fontWeight = FontWeight.Bold)
                         }
-                        Icon(Icons.Filled.ChevronRight, null, tint = Color(0xFF315A45))
+                        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                     }
                 }
             }
         }
 
-        Text(tr("Registrar rápido"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        PawlySectionHeading(title = tr("Registrar rápido"))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), Color(0xFFE2F1E6), {
                 val task = visibleTasks.firstOrNull { it.action == "Paseo" }
