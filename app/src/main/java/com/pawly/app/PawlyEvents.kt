@@ -21,6 +21,7 @@ import org.osmdroid.views.overlay.Overlay
 import coil3.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
