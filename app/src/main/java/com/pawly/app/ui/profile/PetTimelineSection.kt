@@ -208,8 +208,7 @@ internal fun PetTimelineSection(
             selectedLabel = tr(selectedFilter),
             options = listOf("Todo", "Salud", "Diario", "Citas").map { it to tr(it) },
             selectedValue = selectedFilter,
-            onSelected = { selectedFilter = it },
-            leadingIcon = Icons.Default.FilterList
+            onSelected = { selectedFilter = it }
         )
         if (timelineItems.isEmpty()) {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(22.dp)) {
