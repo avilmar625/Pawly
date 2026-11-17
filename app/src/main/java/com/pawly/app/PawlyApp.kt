@@ -100,7 +100,7 @@ private fun openPawlyNotificationSettings(context: Context) {
 }
 
 internal enum class Tab(val label: String) {
-    HOME("Hoy"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Mi perro"), DIARY("Diario"), CALENDAR("Calendario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda")
+    HOME("Hoy"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Mi perro"), DIARY("Diario"), CALENDAR("Calendario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda"), MARKET("Pawly Market")
 }
 
 @Composable
