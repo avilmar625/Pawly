@@ -113,12 +113,12 @@ internal fun HomeCareTasksSection(
     val orderedVisibleTasks = visibleTasks.sortedWith(
         compareBy<CareTask>({ it.time.ifBlank { "99:99" } }, { it.title })
     )
-    val completedCount = if (tasks.isNotEmpty()) orderedVisibleTasks.count(::isComplete)
-        else listOf(walkDone, medicineDone).count { it }
-    val totalCount = if (tasks.isNotEmpty()) orderedVisibleTasks.size else 2
+    // Home reflects only routines explicitly configured by the household.
+    // Never manufacture default walks or medication tasks.
+    val completedCount = orderedVisibleTasks.count(::isComplete)
+    val totalCount = orderedVisibleTasks.size
     val progress = if (totalCount == 0) 0f else completedCount.toFloat() / totalCount
-    val nextCareLabel = if (tasks.isNotEmpty()) orderedVisibleTasks.firstOrNull { !isComplete(it) }?.title
-        else if (!walkDone) walkLabel else if (!medicineDone) medicineLabel else null
+    val nextCareLabel = orderedVisibleTasks.firstOrNull { !isComplete(it) }?.title
 
     fun toggleTask(task: CareTask, checked: Boolean) {
         if (!canEdit || task.id in pendingIds) return
@@ -193,7 +193,8 @@ internal fun HomeCareTasksSection(
                         fontWeight = FontWeight.ExtraBold)
                     Text(
                         when {
-                            totalCount == 0 || completedCount == totalCount -> tr("¡Todo listo! Qué buen equipo.")
+                            totalCount == 0 -> tr("Aún no has creado rutinas para hoy.")
+                            completedCount == totalCount -> tr("¡Todo listo! Qué buen equipo.")
                             completedCount == totalCount - 1 && !nextCareLabel.isNullOrBlank() -> "${tr("Solo falta")} $nextCareLabel."
                             else -> "${tr("Aún quedan")} ${totalCount - completedCount} ${tr("cuidados por completar")}."
                         },
@@ -225,23 +226,13 @@ internal fun HomeCareTasksSection(
             }
         }
 
-        if (tasks.isEmpty()) {
-            HomeRoutineRow(
-                Icons.Filled.DirectionsWalk, tr("Paseo diario"), tr("Un rato para explorar y olfatear"),
-                walkDone, onWalkToggle, Color(0xFFE2F1E6), Color(0xFF287A4B)
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            HomeRoutineRow(
-                Icons.Filled.Medication, tr("Medicación"), tr("Comprueba la toma de hoy"),
-                medicineDone, onMedicineToggle, Color(0xFFFCE8E8), Color(0xFFB54F5C)
-            )
-        } else if (visibleTasks.isEmpty()) {
+        if (visibleTasks.isEmpty()) {
             Surface(
                 shape = RoundedCornerShape(18.dp),
                 color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Text(tr("No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados."),
+                Text(tr(if (tasks.isEmpty()) "Todavía no hay rutinas configuradas. Añádelas en Mi perro → Cuidados para ver aquí los cuidados reales." else "No hay cuidados programados para hoy. Puedes añadir rutinas en Mi perro → Cuidados."),
                     Modifier.fillMaxWidth().padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall)
             }
@@ -351,13 +342,13 @@ internal fun HomeCareTasksSection(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), Color(0xFFE2F1E6), {
                 val task = visibleTasks.firstOrNull { it.action == "Paseo" }
-                if (task != null) toggleTask(task, !isComplete(task)) else onWalkToggle(!walkDone)
+                if (task != null) requestTaskToggle(task, !isComplete(task)) else onOpenCalendar()
             }, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.MonitorWeight, tr("Peso"), Color(0xFFDDF1EE), onWeight, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.PhotoCamera, tr("Foto"), Color(0xFFFFE9DF), onPhoto, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.Restaurant, tr("Comida"), Color(0xFFE4EBC1), {
                 val task = visibleTasks.firstOrNull { it.action == "Comida" }
-                if (task != null) toggleTask(task, !isComplete(task)) else onFood()
+                if (task != null) requestTaskToggle(task, !isComplete(task)) else onFood()
             }, Modifier.weight(1f))
         }
         if (syncMessage.isNotBlank()) {
