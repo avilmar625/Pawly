@@ -251,7 +251,10 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
                         Avatar(user.photoUrl, user.displayName)
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(user.displayName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(user.displayName, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                                if (user.isVerified) PawlyVerifiedBadge()
+                            }
                             Text("@" + user.username + " · " + user.followersCount + " seguidores", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                         Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
@@ -357,8 +360,11 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(currentUser.displayName, style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                        Text(currentUser.displayName, style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                                        if (currentUser.isVerified) PawlyVerifiedBadge(21.dp)
+                                    }
                                     Text("@${currentUser.username}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 if (currentUser.accountType == "professional") {
