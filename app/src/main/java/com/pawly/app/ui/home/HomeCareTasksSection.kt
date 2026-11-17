@@ -263,9 +263,9 @@ internal fun HomeCareTasksSection(
                         ) {
                             Box(Modifier.size(44.dp).background(
                                 when (task.action) {
-                                    "Medicación" -> Color(0xFFF3DCCF)
-                                    "Comida" -> Color(0xFFE4EBC1)
-                                    else -> Color(0xFFDDEBE3)
+                                    "Medicación" -> MaterialTheme.colorScheme.secondaryContainer
+                                    "Comida" -> MaterialTheme.colorScheme.tertiaryContainer
+                                    else -> MaterialTheme.colorScheme.primaryContainer
                                 }, RoundedCornerShape(14.dp)
                             ), contentAlignment = Alignment.Center) {
                                 Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
@@ -328,8 +328,8 @@ internal fun HomeCareTasksSection(
                             )
                         }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(upcomingDisplayLabel, color = Color(0xFF67574E), style = MaterialTheme.typography.labelSmall)
-                            Text(upcomingTitle, color = Color(0xFF263A30), fontWeight = FontWeight.Bold)
+                            Text(upcomingDisplayLabel, color = MaterialTheme.colorScheme.onSecondaryContainer, style = MaterialTheme.typography.labelSmall)
+                            Text(upcomingTitle, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Bold)
                         }
                         Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
                     }
@@ -339,13 +339,13 @@ internal fun HomeCareTasksSection(
 
         PawlySectionHeading(title = tr("Registrar rápido"))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-            HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), Color(0xFFE2F1E6), {
+            HomeCareQuickAction(Icons.Filled.DirectionsWalk, tr("Paseo"), MaterialTheme.colorScheme.primaryContainer, {
                 val task = visibleTasks.firstOrNull { it.action == "Paseo" }
                 if (task != null) requestTaskToggle(task, !isComplete(task)) else onOpenCalendar()
             }, Modifier.weight(1f))
-            HomeCareQuickAction(Icons.Filled.MonitorWeight, tr("Peso"), Color(0xFFDDF1EE), onWeight, Modifier.weight(1f))
-            HomeCareQuickAction(Icons.Filled.PhotoCamera, tr("Foto"), Color(0xFFFFE9DF), onPhoto, Modifier.weight(1f))
-            HomeCareQuickAction(Icons.Filled.Restaurant, tr("Comida"), Color(0xFFE4EBC1), {
+            HomeCareQuickAction(Icons.Filled.MonitorWeight, tr("Peso"), MaterialTheme.colorScheme.secondaryContainer, onWeight, Modifier.weight(1f))
+            HomeCareQuickAction(Icons.Filled.PhotoCamera, tr("Foto"), MaterialTheme.colorScheme.secondaryContainer, onPhoto, Modifier.weight(1f))
+            HomeCareQuickAction(Icons.Filled.Restaurant, tr("Comida"), MaterialTheme.colorScheme.tertiaryContainer, {
                 val task = visibleTasks.firstOrNull { it.action == "Comida" }
                 if (task != null) requestTaskToggle(task, !isComplete(task)) else onFood()
             }, Modifier.weight(1f))
@@ -364,7 +364,7 @@ internal fun HomeCareTasksSection(
                     Text("${tr("En casa de")} $petName", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     logs.take(3).forEach { log ->
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Box(Modifier.size(30.dp).background(Color(0xFFE4EBC1), CircleShape), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(30.dp).background(MaterialTheme.colorScheme.tertiaryContainer, CircleShape), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
                             }
                             Column(Modifier.weight(1f)) {
