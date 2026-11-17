@@ -27,14 +27,14 @@ import com.pawly.app.content.VideoCollection
 @Composable
 internal fun NewsSectionHeader(title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = Ink)
-        Text(subtitle, color = Muted, style = MaterialTheme.typography.bodySmall)
+        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
 }
 
 @Composable
 internal fun SectionLabel(value: String) {
-    Text(value, color = Forest, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+    Text(value, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
 }
 
 @Composable
@@ -46,7 +46,7 @@ internal fun NewsSearch(value: String, onValueChange: (String) -> Unit) {
         singleLine = true,
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         placeholder = { Text(tr("Buscar noticias o temas")) },
-        shape = RoundedCornerShape(16.dp)
+        shape = MaterialTheme.shapes.medium
     )
 }
 
@@ -65,7 +65,7 @@ internal fun NewsResults(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(tr("Últimas publicaciones"), modifier = Modifier.weight(1f), color = Forest, fontWeight = FontWeight.Bold)
             IconButton(onClick = onRefresh, enabled = !loading) {
-                Icon(Icons.Default.Refresh, contentDescription = "Actualizar noticias", tint = Forest)
+                Icon(Icons.Default.Refresh, contentDescription = "Actualizar noticias", tint = MaterialTheme.colorScheme.primary)
             }
         }
     }
@@ -76,7 +76,7 @@ internal fun NewsResults(
             Text(tr("Buscando noticias…"), color = Muted)
         }
     } else if (error != null) {
-        Surface(color = Peach.copy(alpha = .35f), shape = RoundedCornerShape(16.dp)) {
+        Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(16.dp)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(error, color = Ink)
                 OutlinedButton(onClick = onRefresh) { Text(tr("Volver a intentar")) }
@@ -93,10 +93,10 @@ internal fun NewsResults(
 
 @Composable
 internal fun NewsArticleCard(article: DogNewsArticle, saved: Boolean, onToggleSave: () -> Unit, onOpen: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = Paper), shape = RoundedCornerShape(18.dp)) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = MaterialTheme.shapes.large) {
         Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(article.source, color = ForestLight, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+                Text(article.source, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
                 Text(article.publishedAt, color = Muted, style = MaterialTheme.typography.labelSmall)
             }
             Text(article.title, color = Ink, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
@@ -120,7 +120,7 @@ internal fun NewsArticleCard(article: DogNewsArticle, saved: Boolean, onToggleSa
 
 @Composable
 internal fun ContentLinkCard(link: ContentLink, onClick: () -> Unit) {
-    Surface(onClick = onClick, color = Paper, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(onClick = onClick, color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(link.emoji, fontSize = 26.sp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -130,7 +130,7 @@ internal fun ContentLinkCard(link: ContentLink, onClick: () -> Unit) {
                 }
                 Text(link.description, color = Muted, style = MaterialTheme.typography.bodySmall)
             }
-            Icon(Icons.Default.OpenInNew, contentDescription = "Abrir", tint = ForestLight, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.OpenInNew, contentDescription = "Abrir", tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -168,14 +168,14 @@ internal fun GuideCard(guide: LearningGuide) {
                 Text(if (expanded) "−" else "+", color = Forest, fontSize = 24.sp, fontWeight = FontWeight.Light)
             }
             if (expanded) {
-                HorizontalDivider(color = Line)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 guide.points.forEachIndexed { index, point ->
                     Row(horizontalArrangement = Arrangement.spacedBy(9.dp), verticalAlignment = Alignment.Top) {
                         Text(tr("${index + 1}."), color = ForestLight, fontWeight = FontWeight.Bold)
                         Text(point, color = Ink, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
                     }
                 }
-                Surface(color = Lime.copy(alpha = .35f), shape = RoundedCornerShape(12.dp)) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(12.dp)) {
                     Text(guide.note, Modifier.padding(12.dp), color = Forest, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -185,7 +185,7 @@ internal fun GuideCard(guide: LearningGuide) {
 
 @Composable
 internal fun NearbyShelterCard(onClick: () -> Unit) {
-    Surface(onClick = onClick, color = Lime.copy(alpha = .48f), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+    Surface(onClick = onClick, color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(tr("📍"), fontSize = 27.sp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
