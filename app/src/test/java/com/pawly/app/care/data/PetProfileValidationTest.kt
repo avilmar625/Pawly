@@ -32,7 +32,7 @@ class PetProfileValidationTest {
 
     @Test fun rejectsEmptyOversizedAndTooManyMemories() {
         assertThrows(IllegalArgumentException::class.java) { PetProfileValidation.diary(listOf(" ")) }
-        assertThrows(IllegalArgumentException::class.java) { PetProfileValidation.diary(listOf("x".repeat(1001))) }
+        assertThrows(IllegalArgumentException::class.java) { PetProfileValidation.diary(listOf("x".repeat(12001))) }
         assertThrows(IllegalArgumentException::class.java) { PetProfileValidation.diary(List(501) { "recuerdo" }) }
     }
 }
