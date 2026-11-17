@@ -2,7 +2,7 @@ name: Android build
 
 on:
   push:
-    branches: ["main", "cambios*"]
+    branches: ["main", "cambios*", "pawly-*"]
   pull_request:
     branches: ["main"]
   workflow_dispatch:

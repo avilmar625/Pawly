@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'cambios*'
+      - 'pawly-*'
   pull_request:
     branches:
       - main
