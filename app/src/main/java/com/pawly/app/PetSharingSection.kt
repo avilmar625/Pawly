@@ -63,11 +63,14 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
             Text(tr("Invitar a un cuidador"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             OutlinedTextField(username, { username = it.take(24) }, modifier = Modifier.fillMaxWidth(),
                 singleLine = true, label = { Text(tr("Nombre de usuario")) }, placeholder = { Text(tr("@usuario")) })
-            Text(tr("Permisos"), style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = inviteRole == "editor", onClick = { inviteRole = "editor" }, label = { Text(tr("Puede editar")) })
-                FilterChip(selected = inviteRole == "reader", onClick = { inviteRole = "reader" }, label = { Text(tr("Solo lectura")) })
-            }
+            PawlyDropdownSelector(
+                title = tr("Permisos"),
+                selectedLabel = tr(if (inviteRole == "editor") "Puede editar" else "Solo lectura"),
+                options = listOf("editor" to tr("Puede editar"), "reader" to tr("Solo lectura")),
+                selectedValue = inviteRole,
+                onSelected = { inviteRole = it },
+                leadingIcon = Icons.Default.Tune
+            )
             Button(onClick = {
                 val repository = repo ?: return@Button
                 busy = true; message = null
