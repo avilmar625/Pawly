@@ -142,7 +142,15 @@ class SharedPetRepository(
         }
         val memberRef = ref.collection("members").document(memberUid)
         check(memberRef.get().await().exists()) { "Esta persona ya no tiene acceso al perfil." }
-        memberRef.update("role", role).await()
+        val accepted = db.collection("petInvitations")
+            .whereEqualTo("sharedPetId", ref.id)
+            .whereEqualTo("ownerUid", uid())
+            .whereEqualTo("inviteeUid", memberUid)
+            .whereEqualTo("status", "accepted").get().await()
+        val batch = db.batch()
+        batch.update(memberRef, "role", role)
+        accepted.documents.forEach { batch.update(it.reference, "role", role) }
+        batch.commit().await()
     }
 
     suspend fun removeMember(petId: String, memberUid: String) {
