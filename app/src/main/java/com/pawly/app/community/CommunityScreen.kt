@@ -125,7 +125,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                 modifier = Modifier.fillMaxSize(),
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop
             )
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD910251F)))))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
             Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
                 Text(tr("PAWLY COMMUNITY"), color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
                 Text(tr("Una comunidad para compartir más vida juntos."), color = Color.White, style = MaterialTheme.typography.titleLarge)
@@ -381,7 +381,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     modifier = Modifier.fillMaxSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
                 Row(Modifier.fillMaxSize().padding(start = 19.dp, end = 8.dp, top = 15.dp, bottom = 15.dp), verticalAlignment = Alignment.Bottom) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(tr("PAWLY COMMUNITY"), color = Color.White.copy(alpha = .84f), fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
