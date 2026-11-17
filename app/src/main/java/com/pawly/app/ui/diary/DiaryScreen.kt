@@ -181,11 +181,14 @@ internal fun DiaryScreen(
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .3f), cursorColor = Lime)
                     )
                     Text(tr("Categoría"), color = Color.White, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").forEach { value ->
-                            FilterChip(selected = memoryCategory == value, onClick = { memoryCategory = value }, enabled = canEditSharedDiary, label = { Text(tr(value)) })
-                        }
-                    }
+                    PawlyDropdownSelector(
+                        title = tr("Categoría"),
+                        selectedLabel = tr(memoryCategory),
+                        options = listOf("Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").map { it to tr(it) },
+                        selectedValue = memoryCategory,
+                        onSelected = { memoryCategory = it },
+                        leadingIcon = Icons.Default.Category
+                    )
                     OutlinedButton(
                         onClick = {
                             val initial = Calendar.getInstance().apply { timeInMillis = memoryDate }
@@ -259,11 +262,14 @@ internal fun DiaryScreen(
                     Text(tr(if (newestFirst) "Más recientes" else "Más antiguos"))
                 }
             }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Todos", "Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").forEach { value ->
-                    FilterChip(selected = diaryFilter == value, onClick = { diaryFilter = value }, label = { Text(tr(value)) })
-                }
-            }
+            PawlyDropdownSelector(
+                title = tr("Filtrar recuerdos"),
+                selectedLabel = tr(diaryFilter),
+                options = listOf("Todos", "Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").map { it to tr(it) },
+                selectedValue = diaryFilter,
+                onSelected = { diaryFilter = it },
+                leadingIcon = Icons.Default.FilterList
+            )
         }
         if (filteredEntries.isEmpty()) {
             item {
