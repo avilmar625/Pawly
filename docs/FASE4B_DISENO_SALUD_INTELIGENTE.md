@@ -59,3 +59,22 @@ Convertir el pasaporte sanitario de Pawly en un historial útil y accionable por
 - Envío de notificaciones push remotas.
 - Sincronización de alarmas entre Android e iOS.
 - Adjuntos sanitarios en nube si requieren servicios o costes nuevos.
+## Implementación Fase 4B — pasaporte estructurado
+
+- PassportEntry conserva los cinco campos originales (id/type/title/detail/date) y añade campos opcionales con valores por defecto: producto, dosis, pauta, clínica, próxima dosis, estado, recordatorio y hora.
+- La fecha date existente se mantiene como fecha de administración/registro. nextDoseDate representa la próxima actuación y alimenta la agenda.
+- Los registros antiguos que no tienen los campos nuevos se reconstruyen como REALIZADO, sin modificar ni borrar su contenido.
+- PetCareLocalStore sigue usando las claves v16. El JSON antiguo se lee con defaults y al guardar incorpora los nuevos campos.
+- Firestore escribe y lee los campos nuevos en los mismos documentos del pasaporte. La lectura de documentos antiguos usa defaults compatibles.
+- La agenda deriva el estado de la próxima actuación: fecha futura o de hoy = pendiente; fecha anterior = vencido. El estado del registro sanitario se conserva por separado (pendiente/realizado).
+- El formulario incluye fecha de administración, próxima dosis/actuación, producto, dosis, pauta, clínica, observaciones y estado. El contenido del diálogo es desplazable.
+- La exportación PDF incorpora producto, dosis, pauta, clínica, próxima actuación y estado.
+- Los recordatorios son locales. Para Android 13+ se solicita POST_NOTIFICATIONS cuando se activa un recordatorio; si se deniega, el registro se guarda igualmente y la interfaz informa de que no se enviará el aviso.
+- El receptor comprueba el permiso antes de mostrar la notificación y no deja de reprogramar recordatorios recurrentes si el permiso no está concedido.
+- Las alarmas siguen usando setAndAllowWhileIdle; no se solicita el permiso de alarmas exactas.
+- La pauta, dosis y producto son texto introducido por la persona usuaria según las indicaciones veterinarias. Pawly no calcula dosis ni recomienda tratamientos.
+
+## Verificaciones añadidas
+
+- PassportEntryScheduleTest: compatibilidad con registro antiguo, próxima dosis futura, próxima dosis vencida y actuación pendiente sin próxima dosis explícita.
+- Pendiente de validar el resultado final del workflow Android de GitHub Actions para esta rama.
