@@ -236,7 +236,7 @@ internal object PawlyBackupManager {
 
     private fun parseLogs(array: JSONArray?): List<CareLogEntry> {
         if (array == null) return emptyList()
-        require(array.length() <= 100) { "La copia contiene demasiados registros de actividad." }
+        require(array.length() <= 500) { "La copia contiene demasiados registros de actividad." }
         val allowed = setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro")
         return List(array.length()) { i ->
             val row = array.optJSONObject(i) ?: JSONObject()
