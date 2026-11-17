@@ -105,8 +105,15 @@ internal object PawlyBackupManager {
                         .put("photoUrls", JSONArray(log.photoUrls)))
                 }
             })
-        val photo = photoPath?.let { runCatching { File(it).takeIf(File::isFile)?.readBytes() }.getOrNull() }
-            ?.takeIf { it.size <= MAX_PHOTO_BYTES }
+        val photo = photoPath?.let { path ->
+            val file = File(path)
+            require(file.isFile) { "No se ha podido localizar la fotografía de perfil para incluirla en la copia." }
+            file.readBytes().also {
+                require(it.isNotEmpty() && it.size <= MAX_PHOTO_BYTES) {
+                    "La fotografía de perfil supera el límite de 5 MB o está vacía."
+                }
+            }
+        }
         if (photo != null) root.put("photoBase64", Base64.encodeToString(photo, Base64.NO_WRAP))
         val output = root.toString()
         require(output.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) {
