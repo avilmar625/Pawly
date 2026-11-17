@@ -79,3 +79,15 @@ internal fun PawlyVideoPlayer(url: String, modifier: Modifier = Modifier) {
         }
     )
 }
+
+
+/** Blue verification mark. Its visibility is driven only by the moderator-managed profile field. */
+@Composable
+internal fun PawlyVerifiedBadge(size: androidx.compose.ui.unit.Dp = 17.dp) {
+    Icon(
+        imageVector = Icons.Default.Verified,
+        contentDescription = tr("Perfil verificado por Pawly"),
+        tint = Color(0xFF1D9BF0),
+        modifier = Modifier.size(size)
+    )
+}
