@@ -97,11 +97,11 @@ internal fun MoreHubScreen(
         MoreSectionLabel(t("AYUDA Y CUENTA"))
         MoreDestinationCard(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend)
         MoreDestinationCard(Icons.Filled.MailOutline, t("Contacta con nosotros"), t("Envíanos una consulta, incidencia o sugerencia."), onContact)
-        MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)
+        MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings)
         MoreSectionLabel(t("INFORMACIÓN LEGAL"))
         MoreDestinationCard(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy)
         MoreDestinationCard(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms)
-        if (showSignOut) MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true }, Color(0xFFB34F42), Color(0xFFFFE9E4))
+        if (showSignOut) MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true })
         Text(t("La Comunidad y Salud siguen accesibles desde la navegación inferior para evitar accesos duplicados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 3.dp, vertical = 4.dp))
     }
     if (confirmSignOut) {
