@@ -35,12 +35,15 @@ private data class PawlyLogEntry(
 internal fun PawlyMarketHubScreen(
     petName: String,
     elegantDesign: Boolean,
+    storageScope: String?,
     onBack: () -> Unit,
     onProfessionals: () -> Unit
 ) {
     val context = LocalContext.current
-    val prefs = remember(petName) {
-        context.getSharedPreferences("pawly_phase3_${petName.trim().lowercase().replace(Regex("[^a-z0-9]"), "_")}", android.content.Context.MODE_PRIVATE)
+    val prefs = remember(petName, storageScope) {
+        val account = storageScope?.takeIf { it.isNotBlank() } ?: "local"
+        val pet = petName.trim().lowercase().replace(Regex("[^a-z0-9]"), "_")
+        context.getSharedPreferences("pawly_phase3_${account}_$pet", android.content.Context.MODE_PRIVATE)
     }
     var section by remember { mutableStateOf("market") }
     var category by remember { mutableStateOf("Todo") }
