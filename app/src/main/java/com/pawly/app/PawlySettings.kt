@@ -2,9 +2,7 @@ package com.pawly.app
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -105,11 +103,23 @@ internal fun PawlySettingsDialog(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(t("Idioma preferido"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf("es" to t("Español"), "en" to t("English"), "ca" to t("Català"), "eu" to t("Euskera"), "fr" to t("Français")).forEach { (key, label) ->
-                            FilterChip(selected = language == key, onClick = { onLanguageChange(key) }, label = { Text(label) })
-                        }
-                    }
+                    val languageOptions = listOf(
+                        "es" to "Español",
+                        "en" to "English",
+                        "ca" to "Català",
+                        "eu" to "Euskara",
+                        "fr" to "Français",
+                        "pt" to "Português",
+                        "de" to "Deutsch"
+                    )
+                    PawlyDropdownSelector(
+                        title = t("Idioma preferido"),
+                        selectedLabel = languageOptions.firstOrNull { it.first == language }?.second ?: "Español",
+                        options = languageOptions,
+                        selectedValue = language,
+                        onSelected = onLanguageChange,
+                        leadingIcon = Icons.Filled.Translate
+                    )
                     Text(t("El idioma elegido se aplica en toda la aplicación."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
