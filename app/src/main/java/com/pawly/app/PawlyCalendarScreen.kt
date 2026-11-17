@@ -8,6 +8,8 @@ import java.util.Calendar
 import java.util.Date
 import org.json.JSONObject
 import com.pawly.app.care.CareReminderScheduler
+import com.pawly.app.care.data.FirebasePetAgendaRepository
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -45,9 +47,39 @@ internal fun PawlyCalendarScreen(
     repository: FirebaseCommunityRepository?,
     healthDates: Map<String, String> = emptyMap(),
     diaryEntries: List<String> = emptyList(),
-    dogName: String = "tu mascota"
+    dogName: String = "tu mascota",
+    sharedPetOwnerUid: String? = null,
+    petId: String? = null
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val sharedAgendaRepository = remember(sharedPetOwnerUid) {
+        sharedPetOwnerUid?.let { runCatching { FirebasePetAgendaRepository(it) }.getOrNull() }
+    }
+    val initialLocalReminders = remember(sharedPetOwnerUid, petId) { reminders }
+    var sharedReminders by remember(sharedPetOwnerUid, petId) { mutableStateOf(emptyList<String>()) }
+    var agendaSyncMessage by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
+    val activeReminders = if (sharedPetOwnerUid != null) sharedReminders else reminders
+    LaunchedEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
+        if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
+            runCatching { sharedAgendaRepository.migrateLocalIfCloudEmpty(petId, initialLocalReminders) }
+                .onFailure { agendaSyncMessage = "No se pudo preparar la agenda compartida: ${it.localizedMessage}" }
+        }
+    }
+    DisposableEffect(sharedPetOwnerUid, petId, sharedAgendaRepository) {
+        val listener = if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
+            sharedAgendaRepository.listenReminders(
+                petId,
+                onReminders = { remote ->
+                    sharedReminders = remote
+                    onRemindersChange(remote)
+                    agendaSyncMessage = "Agenda compartida sincronizada en tiempo real"
+                },
+                onError = { agendaSyncMessage = it }
+            )
+        } else null
+        onDispose { listener?.remove() }
+    }
     val language = LocalPawlyLanguage.current
     val locale = PawlyI18n.locale(language)
     val openCalendarChooserTitle = tr("Abrir calendario")
@@ -68,7 +100,7 @@ internal fun PawlyCalendarScreen(
     val monthIndex = month.get(Calendar.MONTH)
     val firstWeekday = (month.get(Calendar.DAY_OF_WEEK) + 5) % 7
     val daysInMonth = month.getActualMaximum(Calendar.DAY_OF_MONTH)
-    val parsedReminders = remember(reminders) { reminders.mapNotNull { runCatching {
+    val parsedReminders = remember(activeReminders) { activeReminders.mapNotNull { runCatching {
         val j = JSONObject(it)
         AgendaReminder(j.optString("id"), j.optString("title"), j.optLong("date"), j.optString("category", "Personal"), it)
     }.getOrNull() } }
@@ -178,6 +210,7 @@ internal fun PawlyCalendarScreen(
             }
         }
         if (loadError != null) item { Text(loadError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        if (agendaSyncMessage != null) item { Text(agendaSyncMessage!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall) }
         if (eventsForDay.isEmpty() && remindersForDay.isEmpty()) item {
             Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                 Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -193,8 +226,16 @@ internal fun PawlyCalendarScreen(
         items(remindersForDay, key = { "reminder-" + it.id }) { reminder ->
             if (reminder.raw.isNotBlank()) {
                 AgendaReminderRow(reminder, onDelete = {
-                    onRemindersChange(reminders.filterNot { raw -> runCatching { JSONObject(raw).optString("id") == reminder.id }.getOrDefault(false) })
-                    CareReminderScheduler.cancel(context, dogName, "Agenda: ${reminder.title}")
+                    if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
+                        scope.launch {
+                            runCatching { sharedAgendaRepository.deleteReminder(petId, reminder.id) }
+                                .onSuccess { CareReminderScheduler.cancel(context, dogName, "Agenda: ${reminder.title}") }
+                                .onFailure { agendaSyncMessage = "No se pudo eliminar el recordatorio: ${it.localizedMessage}" }
+                        }
+                    } else {
+                        onRemindersChange(activeReminders.filterNot { raw -> runCatching { JSONObject(raw).optString("id") == reminder.id }.getOrDefault(false) })
+                        CareReminderScheduler.cancel(context, dogName, "Agenda: ${reminder.title}")
+                    }
                 })
             } else {
                 AgendaRow(if (reminder.category == "Recuerdo") Icons.Default.AutoStories else Icons.Default.Pets, reminder.title, reminder.category, if (reminder.category == "Recuerdo") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.tertiary)
@@ -215,7 +256,18 @@ internal fun PawlyCalendarScreen(
             val item = JSONObject().put("id", id).put("title", title).put("date", date).put("category", category).toString()
             val dateTime = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.ROOT).format(Date(date))
             if (CareReminderScheduler.schedule(context, dogName, "Agenda: $title", dateTime)) {
-                onRemindersChange(listOf(item) + reminders)
+                if (sharedPetOwnerUid != null && petId != null && sharedAgendaRepository != null) {
+                    scope.launch {
+                        runCatching { sharedAgendaRepository.saveReminder(petId, item) }
+                            .onSuccess { agendaSyncMessage = "Recordatorio guardado para todos los cuidadores" }
+                            .onFailure {
+                                CareReminderScheduler.cancel(context, dogName, "Agenda: $title")
+                                agendaSyncMessage = "No se pudo sincronizar el recordatorio: ${it.localizedMessage}"
+                            }
+                    }
+                } else {
+                    onRemindersChange(listOf(item) + activeReminders)
+                }
                 selectedDate = date
                 monthAnchor = date
                 showAdd = false
