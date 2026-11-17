@@ -125,10 +125,27 @@ class FirebasePetProfileRepository(
     /** Imports backup entries additively. Existing cloud memories are never overwritten or removed. */
     suspend fun mergeDiary(petId: String, entries: List<String>) {
         require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
-        val existing = loadDiary(petId).map(::withoutCloudDiaryId).toSet()
-        PetProfileValidation.diary(entries).map(::withoutCloudDiaryId).distinct()
-            .filterNot { it in existing }
-            .forEach { addDiaryEntry(petId, it) }
+        val cleanEntries = PetProfileValidation.diary(entries).map(::withoutCloudDiaryId).distinct()
+        val collection = diary(petId)
+        val existing = collection.limit(501).get().await()
+        require(existing.size() <= 500) { "El diario remoto supera el límite de seguridad." }
+        val existingTexts = existing.documents.mapNotNull { it.getString("text") }.toSet()
+        val additions = cleanEntries.filterNot { it in existingTexts }
+        require(existing.size() + additions.size <= 500) {
+            "La copia contiene más recuerdos de los que admite el diario compartido."
+        }
+        if (additions.isEmpty()) return
+        val batch = db.batch()
+        additions.forEach { text ->
+            val id = java.util.UUID.randomUUID().toString()
+            batch.set(collection.document(id), mapOf(
+                "id" to id,
+                "text" to text,
+                "position" to 0,
+                "updatedAt" to FieldValue.serverTimestamp()
+            ))
+        }
+        batch.commit().await()
     }
 
     /** Kept for source compatibility; this method now merges instead of destructively replacing shared memories. */
