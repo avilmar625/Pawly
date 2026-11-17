@@ -68,6 +68,13 @@ class FirebasePetProfileRepository(
             doc.getString("text")?.takeIf { it.isNotBlank() }
         }
 
+    /** Merges an imported diary with cloud entries so restoring one device cannot erase another device's notes. */
+    suspend fun mergeDiary(petId: String, entries: List<String>) {
+        val existing = loadDiary(petId)
+        val merged = (existing + PetProfileValidation.diary(entries)).distinct()
+        replaceDiary(petId, merged)
+    }
+
     /** Replaces the bounded memory book atomically, preserving the visible order. */
     suspend fun replaceDiary(petId: String, entries: List<String>) {
         require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
