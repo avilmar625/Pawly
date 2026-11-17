@@ -146,7 +146,14 @@ test("only the event organizer can list attendees; each member can read only the
 test("shared pet owners can change editor and reader roles but collaborators cannot", async () => {
   const ownerDb = env.authenticatedContext("owner", { email_verified: true }).firestore();
   const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(ownerDb, "petInvitations/invite-editor"), {
+    sharedPetId: "owner_pet", petName: "Chispita", ownerUid: "owner", ownerName: "Owner",
+    inviteeUid: "editor", inviteeUsername: "editor", role: "editor", status: "accepted",
+    createdAt: serverTimestamp()
+  }));
   await assertSucceeds(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/editor"), { role: "reader" }));
+  await assertSucceeds(updateDoc(doc(ownerDb, "petInvitations/invite-editor"), { role: "reader" }));
+  await assertFails(updateDoc(doc(editorDb, "petInvitations/invite-editor"), { role: "editor" }));
   await assertFails(updateDoc(doc(editorDb, "sharedPets/owner_pet/members/reader"), { role: "editor" }));
   await assertFails(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/owner"), { role: "reader" }));
   await assertFails(setDoc(doc(editorDb, "sharedPets/owner_pet/tasks/not-allowed"), {
