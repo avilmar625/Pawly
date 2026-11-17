@@ -547,6 +547,11 @@ service cloud.firestore {
           && resource.data.status == 'accepted'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'revokedAt'])
           && request.resource.data.status == 'revoked')
+        ||
+        (resource.data.ownerUid == request.auth.uid
+          && resource.data.status == 'accepted'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+          && request.resource.data.role in ['editor', 'reader'])
       );
       allow delete: if false;
     }
