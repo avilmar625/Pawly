@@ -58,6 +58,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import coil3.compose.AsyncImage
 import com.pawly.app.care.data.FirebasePetProfileRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 @Composable
@@ -103,9 +104,14 @@ internal fun DiaryScreen(
             visibleEntries = emptyList()
             canEditSharedDiary = false
             if (petId != null && sharedDiaryRepository != null) {
-                runCatching { canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId) }
+                runCatching {
+                    if (sharedPetOwnerUid == FirebaseAuth.getInstance().currentUser?.uid) {
+                        sharedDiaryRepository.ensurePet(petId, dogName)
+                    }
+                    canEditSharedDiary = sharedDiaryRepository.canEditDiary(petId)
+                }
                     .onSuccess { diarySyncMessage = if (canEditSharedDiary) "Diario compartido · cambios en tiempo real" else "Diario compartido · solo lectura" }
-                    .onFailure { diarySyncMessage = "No se pudieron comprobar tus permisos del diario" }
+                    .onFailure { diarySyncMessage = "No se pudieron preparar los permisos del diario: ${it.localizedMessage}" }
             } else {
                 diarySyncMessage = "No se puede conectar con el diario compartido"
             }
