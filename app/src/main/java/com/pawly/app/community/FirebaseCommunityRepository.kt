@@ -306,8 +306,10 @@ class FirebaseCommunityRepository private constructor(
     }
     suspend fun updateProfilePhoto(uri: Uri): String {
         val uid = ensureMyProfile().uid
+        val previousUrl = db.collection("users").document(uid).get().await().getString("photoUrl").orEmpty()
         val url = uploadImage(uri, "profile-photos")
         db.collection("users").document(uid).update("photoUrl", url).await()
+        if (previousUrl.isNotBlank() && previousUrl != url) runCatching { deleteCloudinaryAsset(previousUrl) }
         cachedMyProfileState = cachedMyProfileState?.copy(photoUrl = url)
         return url
     }
@@ -320,8 +322,15 @@ class FirebaseCommunityRepository private constructor(
             "uid" to uid,
             "publicId" to asset.publicId,
             "resourceType" to asset.resourceType,
+            "secureUrl" to asset.secureUrl,
             "createdAt" to FieldValue.serverTimestamp()
         )).await()
+    }
+
+    /** Deletes an indexed Cloudinary resource through the trusted Worker, never with client-side secrets. */
+    suspend fun deleteCloudinaryAsset(secureUrl: String) {
+        require(secureUrl.startsWith("https://") && secureUrl.length <= 2048) { "URL de fotografía no válida." }
+        postBackend("/v1/cloudinary/assets/delete", JSONObject().put("secureUrl", secureUrl))
     }
 
     suspend fun uploadImage(uri: Uri, folder: String): String {
@@ -1227,7 +1236,17 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun removeReportedPost(postId: String) {
         check(isAdmin()) { "No tienes permisos de moderación." }
-        db.collection("posts").document(postId).delete().await()
+        val postRef = db.collection("posts").document(postId)
+        val post = postRef.get().await()
+        val mediaUrls = listOf(post.getString("imageUrl").orEmpty(), post.getString("videoUrl").orEmpty())
+            .filter { it.startsWith("https://") }
+        postRef.delete().await()
+        val cleanupFailures = mediaUrls.mapNotNull { url ->
+            runCatching { deleteCloudinaryAsset(url) }.exceptionOrNull()
+        }
+        if (cleanupFailures.isNotEmpty()) {
+            error("La publicación se ha retirado, pero alguna fotografía o vídeo no pudo borrarse de Cloudinary. El registro del recurso se conserva para reintentar.")
+        }
     }
 
     suspend fun removeReportedEvent(eventId: String) {
