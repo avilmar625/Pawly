@@ -180,7 +180,6 @@ internal fun DiaryScreen(
                         shape = RoundedCornerShape(15.dp),
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .3f), cursorColor = Lime)
                     )
-                    Text(tr("Categoría"), color = Color.White, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
                     PawlyDropdownSelector(
                         title = tr("Categoría"),
                         selectedLabel = tr(memoryCategory),
