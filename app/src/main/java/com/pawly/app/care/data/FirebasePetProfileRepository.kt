@@ -93,11 +93,6 @@ class FirebasePetProfileRepository(
             })
         }
 
-    suspend fun canEditDiary(petId: String): Boolean {
-        val member = root(petId).collection("members").document(uid()).get().await()
-        return member.getString("role") in setOf("owner", "editor")
-    }
-
     /** Adds one immutable diary item. Each memory has its own document, so concurrent carers never replace each other's entries. */
     suspend fun addDiaryEntry(petId: String, rawEntry: String) {
         require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
