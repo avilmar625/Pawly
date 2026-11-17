@@ -277,8 +277,7 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
                     selectedLabel = tr(category),
                     options = listOf("Personal", "Veterinario", "Cuidado", "Paseo", "Viaje").map { it to tr(it) },
                     selectedValue = category,
-                    onSelected = { category = it },
-                    leadingIcon = Icons.Default.CalendarMonth
+                    onSelected = { category = it }
                 )
             }
         },
