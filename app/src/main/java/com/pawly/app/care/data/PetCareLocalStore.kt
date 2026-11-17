@@ -126,7 +126,7 @@ internal object PetCareLocalStore {
 
     fun saveCareLogs(context: Context, petName: String, logs: List<CareLogEntry>, storageScope: String? = null) {
         val json = JSONArray()
-        logs.take(100).forEach { log ->
+        logs.take(500).forEach { log ->
             json.put(JSONObject().put("id", log.id).put("taskTitle", log.taskTitle)
                 .put("action", log.action).put("actorUid", log.actorUid)
                 .put("actorName", log.actorName).put("occurredAt", log.occurredAt)
