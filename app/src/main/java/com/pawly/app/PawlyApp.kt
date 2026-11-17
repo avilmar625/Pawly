@@ -37,6 +37,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -611,7 +616,15 @@ private fun PawlyMainApp(
             // Compact phones retain the full available width without horizontal scrolling.
             val contentWidth = if (maxWidth >= 840.dp) Modifier.widthIn(max = 840.dp).align(Alignment.TopCenter) else Modifier.fillMaxWidth()
             Box(contentWidth.fillMaxHeight()) {
-            when (selected) {
+            AnimatedContent(
+                targetState = selected,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(durationMillis = 180)) togetherWith
+                        fadeOut(animationSpec = tween(durationMillis = 120))
+                },
+                label = "pawly-section-transition"
+            ) { destination ->
+            when (destination) {
                 Tab.HOME -> HomeScreen(
                     dogName = dogName,
                     walkDone = walkDone,
@@ -825,6 +838,7 @@ private fun PawlyMainApp(
                     onBack = { selected = Tab.MORE },
                     onPublished = { selected = Tab.COMMUNITY }
                 )
+            }
             }
             }
         }
