@@ -184,6 +184,46 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
             FilterChip(selected = peopleTab == "followers", onClick = { peopleTab = "followers" }, label = { Text(tr("Seguidores")) })
         }
         if (peopleTab == "discover") {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(18.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(tr("Verificación de teléfono"), fontWeight = FontWeight.Bold)
+                Text(phoneStatus, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (!phoneVerified) {
+                    OutlinedButton(onClick = { requestPhoneVerification() }, enabled = !phoneBusy, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.VerifiedUser, null)
+                        Spacer(Modifier.width(7.dp))
+                        Text(if (phoneBusy) tr("Verificando…") else tr("Verificar mi número"))
+                    }
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Permitir que me encuentren por teléfono"), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                            Text(tr("Solo aparecerás si tú y la otra persona habéis activado esta opción."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Switch(
+                            checked = phoneDiscoveryEnabled,
+                            onCheckedChange = { enabled ->
+                                phoneBusy = true
+                                scope.launch {
+                                    runCatching { repo.setPhoneDiscovery(enabled) }
+                                        .onSuccess { phoneDiscoveryEnabled = it.enabled; phoneStatus = if (it.enabled) "Búsqueda de contactos activada." else "Ya no podrán encontrarte por teléfono." }
+                                        .onFailure { phoneSearchError = it.localizedMessage ?: "No se pudo guardar la preferencia." }
+                                    phoneBusy = false
+                                }
+                            },
+                            enabled = !phoneBusy
+                        )
+                    }
+                }
+                if (phoneTestNumber) Text(tr("Modo de pruebas: el número devuelto por Firebase es ficticio y no se puede usar para encontrar personas reales."), color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall)
+                if (phoneSearchError != null) Text(phoneSearchError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+        }
         OutlinedButton(onClick = { contactPicker.launch(null) }, modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Contacts, null)
             Spacer(Modifier.width(8.dp))
@@ -197,30 +237,7 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
                     Text("Contacto seleccionado: $selectedContactName", fontWeight = FontWeight.SemiBold)
                     Text(if (selectedPhone == null) "No se ha detectado un número válido." else "Número detectado: ••••••${selectedPhone!!.takeLast(3)}",
                         color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    if (!phoneVerified) {
-                        OutlinedButton(onClick = { requestPhoneVerification() }, enabled = !phoneBusy, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (phoneBusy) "Verificando…" else "Verificar mi propio número")
-                        }
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Permitir que me encuentren por teléfono", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
-                                Text("Solo aparecerás si tú y la otra persona habéis activado esta opción.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                            }
-                            Switch(
-                                checked = phoneDiscoveryEnabled,
-                                onCheckedChange = { enabled ->
-                                    phoneBusy = true
-                                    scope.launch {
-                                        runCatching { repo.setPhoneDiscovery(enabled) }
-                                            .onSuccess { phoneDiscoveryEnabled = it.enabled; phoneStatus = if (it.enabled) "Búsqueda de contactos activada." else "Ya no podrán encontrarte por teléfono." }
-                                            .onFailure { phoneSearchError = it.localizedMessage ?: "No se pudo guardar la preferencia." }
-                                        phoneBusy = false
-                                    }
-                                },
-                                enabled = !phoneBusy
-                            )
-                        }
+                    if (phoneVerified) {
                         Button(
                             onClick = {
                                 val number = selectedPhone ?: return@Button
@@ -235,11 +252,8 @@ internal fun PeopleSearchScreen(repo: FirebaseCommunityRepository, onOpenUser: (
                             },
                             enabled = !phoneBusy && phoneDiscoveryEnabled && selectedPhone != null,
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text(if (phoneBusy) "Buscando…" else "Buscar este contacto en Pawly") }
+                        ) { Text(if (phoneBusy) tr("Buscando…") else tr("Buscar este contacto en Pawly")) }
                     }
-                    Text(phoneStatus, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                    if (phoneTestNumber) Text("Modo de pruebas: el número devuelto por Firebase es ficticio y no se puede usar para encontrar personas reales.", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.labelSmall)
-                    if (phoneSearchError != null) Text(phoneSearchError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
