@@ -7,7 +7,8 @@ Convertir el pasaporte sanitario de Pawly en un historial útil y accionable por
 - El modelo actual `PassportEntry` contiene `id`, `type`, `title`, `detail` y `date`.
 - `PetCareLocalStore` ya persiste pasaporte, rutinas y registros en SharedPreferences con ámbito de usuario y clave por mascota. Las claves v16 existentes deben conservarse.
 - Las rutinas `CareTask` y los registros `CareLogEntry` son conceptos distintos del historial sanitario: no se deben reutilizar como si fueran vacunas o tratamientos.
-- Existe un planificador de recordatorios Android (`CareReminderScheduler`); antes de integrarlo se debe revisar su contrato, permisos y comportamiento real. No mostrar recordatorios como activos si el sistema no los ha programado.
+- Existe un planificador de recordatorios Android (`CareReminderScheduler`) que persiste alarmas y las restaura tras reinicio/actualización. Usa `setAndAllowWhileIdle` (alarma no exacta), por lo que no requiere pedir acceso a alarmas exactas.
+- El manifiesto declara `POST_NOTIFICATIONS`, pero el receptor intenta publicar y silencia errores con `runCatching`; la fase debe comprobar el permiso en tiempo de ejecución y dar feedback visible cuando falte. Programar una alarma no equivale a garantizar que se muestre una notificación.
 - La rama base es `cambios80-fase4a-calidad-ux`. Esta rama es independiente y no modifica ramas anteriores.
 
 ## Alcance funcional previsto
@@ -27,7 +28,8 @@ Convertir el pasaporte sanitario de Pawly en un historial útil y accionable por
 
 ### 3. Recordatorios fiables
 - Reutilizar el planificador local existente solo después de verificar implementación y permisos.
-- Respetar permisos de notificaciones y cambios de Android recientes; si no hay permiso, explicar que el registro se guarda pero no se enviará aviso.
+- Comprobar `POST_NOTIFICATIONS` en Android 13+ antes de ofrecer el recordatorio como activo; solicitar permiso desde una acción contextual y explicar el estado denegado. No ocultar errores de publicación.
+- Mantener la alarma como no exacta salvo que una necesidad funcional justifique el permiso especial; mostrar la hora como aproximada cuando corresponda.
 - Reprogramar o cancelar avisos al editar, completar o borrar un registro.
 - No prometer sincronización de recordatorios entre dispositivos si no existe backend que la garantice.
 
