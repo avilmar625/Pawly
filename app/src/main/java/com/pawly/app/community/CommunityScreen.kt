@@ -401,23 +401,29 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     Text(tr("Comunidad"), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                     Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.bodySmall)
                 }
-                Box {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
-                        Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
-                    }
-                    if (unreadNotifications > 0) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = CircleShape,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 3.dp)
-                        ) {
-                            Text(
-                                unreadNotifications.coerceAtMost(99).toString(),
-                                color = MaterialTheme.colorScheme.onError,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                            )
+                        Box {
+                            Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
+                            if (unreadNotifications > 0) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.error,
+                                    shape = CircleShape,
+                                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 5.dp, y = (-4).dp)
+                                ) {
+                                    Text(
+                                        unreadNotifications.coerceAtMost(99).toString(),
+                                        color = MaterialTheme.colorScheme.onError,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
+                    }
+                    IconButton(onClick = { page = CommunityPage.PROFILE; selectedUser = null; chat = null }) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = tr("Mi perfil"), tint = Color.White,
+                            modifier = Modifier.size(27.dp))
                     }
                 }
             }
