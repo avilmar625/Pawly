@@ -153,6 +153,7 @@ test("shared pet owners can change editor and reader roles but collaborators can
   });
   const ownerDb = env.authenticatedContext("owner", { email_verified: true }).firestore();
   const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
   await assertSucceeds(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/editor"), { role: "reader" }));
   await assertSucceeds(updateDoc(doc(ownerDb, "petInvitations/invite-editor"), { role: "reader" }));
   await assertFails(updateDoc(doc(editorDb, "petInvitations/invite-editor"), { role: "editor" }));
