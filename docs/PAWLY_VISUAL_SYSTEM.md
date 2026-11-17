@@ -17,7 +17,7 @@ Este documento recoge la dirección visual de Pawly basada en el PDF «Pawly —
 | Cream | #FFF8F0 | Fondo principal |
 | Paper | #FFFEFB | Superficies y tarjetas |
 | Ink | #202923 | Texto principal |
-| Muted | #817B70 | Texto secundario |
+| Muted | #625F56 | Texto secundario en tema claro |
 | Lime | #E4EBC1 | Acentos positivos y progreso |
 | Peach | #F3DCCF | Próximas citas, avisos suaves |
 | Line | #ECE5DC | Bordes y separadores |
