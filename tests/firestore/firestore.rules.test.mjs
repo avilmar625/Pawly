@@ -206,6 +206,9 @@ test("shared profile and diary are editable by editors and read-only for readers
   await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/diary/entry_000"), {
     id: "entry_000", text: "Primer paseo juntos", position: 0
   }));
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/diary/entry_with_photos"), {
+    id: "entry_with_photos", text: "x".repeat(12000), position: 0
+  }));
   await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/diary/entry_001"), {
     id: "entry_001", text: "No debería poder escribir", position: 1
   }));
