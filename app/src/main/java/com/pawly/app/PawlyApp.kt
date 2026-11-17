@@ -32,6 +32,7 @@ import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -204,6 +205,7 @@ private fun PawlyMainApp(
     }
     var selected by remember { mutableStateOf(Tab.HOME) }
     var mainNavigationExpanded by remember { mutableStateOf(false) }
+    BackHandler(enabled = selected == Tab.DIARY) { selected = Tab.HOME }
     var openCommunityNotifications by remember { mutableStateOf(false) }
     var pendingCareAction by remember { mutableStateOf<String?>(null) }
     var pendingPassportType by remember { mutableStateOf<String?>(null) }
@@ -489,6 +491,27 @@ private fun PawlyMainApp(
     CompositionLocalProvider(LocalPawlyLanguage provides language) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            if (selected == Tab.DIARY) {
+                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
+                    Row(
+                        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 6.dp, end = 18.dp, top = 7.dp, bottom = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { selected = Tab.HOME }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = PawlyI18n.text("Volver", language), tint = MaterialTheme.colorScheme.primary)
+                        }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            Text(PawlyI18n.text("DIARIO DE RECUERDOS", language), style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                            Text(PawlyI18n.text("Diario de", language) + " $dogName", style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        Icon(Icons.Default.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+        },
         bottomBar = {
             val navigationTabs = listOf(
                 Tab.HOME, Tab.HEALTH, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE,
