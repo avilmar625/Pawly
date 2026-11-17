@@ -38,8 +38,8 @@ object PetCarePdfExporter {
                         if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\n")
                         if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\n")
                         if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\n")
-                        append("Estado: ").append(entry.status)
-                        if (entry.detail.isNotBlank()) append("\\nObservaciones: ").append(entry.detail)
+                        append("Estado: ").append(when (entry.status) { "PENDIENTE" -> "Pendiente"; "VENCIDO" -> "Vencido"; else -> "Realizado" })
+                        if (entry.detail.isNotBlank()) append("\nObservaciones: ").append(entry.detail)
                     }
                 )
             },
@@ -105,8 +105,8 @@ object PetCarePdfExporter {
                         if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\n")
                         if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\n")
                         if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\n")
-                        append("Estado: ").append(entry.status)
-                        if (entry.detail.isNotBlank()) append("\\nObservaciones: ").append(entry.detail)
+                        append("Estado: ").append(when (entry.status) { "PENDIENTE" -> "Pendiente"; "VENCIDO" -> "Vencido"; else -> "Realizado" })
+                        if (entry.detail.isNotBlank()) append("\nObservaciones: ").append(entry.detail)
                     }
                 )
         }
