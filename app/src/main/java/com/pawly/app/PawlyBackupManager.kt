@@ -23,13 +23,20 @@ internal data class PawlyBackupSnapshot(
 )
 
 /**
- * Versioned, user-controlled JSON backup. It contains only the selected pet's local
- * data and can be restored without replacing the rest of the user's profiles.
+ * Versioned, user-controlled backup. In addition to the explicit pet snapshot,
+ * it carries the safe local Pawly preferences so new modules do not silently
+ * lose data merely because they add a preference key. Credentials and
+ * device-specific file paths are deliberately excluded.
  */
 internal object PawlyBackupManager {
-    private const val VERSION = 1
-    private const val MAX_BACKUP_BYTES = 15 * 1024 * 1024
+    private const val VERSION = 2
+    private const val MIN_SUPPORTED_VERSION = 1
+    private const val MAX_BACKUP_BYTES = 25 * 1024 * 1024
     private const val MAX_PHOTO_BYTES = 5 * 1024 * 1024
+    private val excludedPreferenceFragments = listOf(
+        "token", "password", "email", "auth", "secret", "credential", "fcm",
+        "path", "filepath", "uid", "scope"
+    )
 
     fun create(
         context: Context,
@@ -44,6 +51,18 @@ internal object PawlyBackupManager {
         val passport = PetCareLocalStore.loadEntries(context, petName, storageScope)
         val tasks = PetCareLocalStore.loadTasks(context, petName, storageScope)
         val logs = PetCareLocalStore.loadCareLogs(context, petName, storageScope)
+        val preferences = context.getSharedPreferences(
+            storageScope?.let { "pawly_user_$it" } ?: "pawly_local", Context.MODE_PRIVATE
+        )
+        val safePreferences = JSONObject()
+        preferences.all.forEach { (key, value) ->
+            if (excludedPreferenceFragments.any { key.lowercase().contains(it) }) return@forEach
+            when (value) {
+                is String -> safePreferences.put(key, value)
+                is Boolean, is Int, is Long, is Float -> safePreferences.put(key, value)
+                is Set<*> -> safePreferences.put(key, JSONArray(value.filterIsInstance<String>()))
+            }
+        }
         val root = JSONObject()
             .put("format", "pawly-backup")
             .put("version", VERSION)
@@ -55,26 +74,34 @@ internal object PawlyBackupManager {
             .put("healthDates", JSONArray().apply {
                 healthDates.forEach { (key, value) -> put(JSONArray().put(key).put(value)) }
             })
+            .put("appPreferences", safePreferences)
             .put("passportEntries", JSONArray().apply {
-                passport.forEach { put(JSONObject().put("id", it.id).put("type", it.type)
-                    .put("title", it.title).put("detail", it.detail).put("date", it.date)) }
+                passport.forEach { entry ->
+                    put(JSONObject()
+                        .put("id", entry.id).put("type", entry.type).put("title", entry.title)
+                        .put("detail", entry.detail).put("date", entry.date)
+                        .put("product", entry.product).put("dose", entry.dose)
+                        .put("frequency", entry.frequency).put("clinic", entry.clinic)
+                        .put("nextDoseDate", entry.nextDoseDate).put("status", entry.status)
+                        .put("reminderEnabled", entry.reminderEnabled).put("reminderTime", entry.reminderTime))
+                }
             })
             .put("careTasks", JSONArray().apply {
-                tasks.forEach { put(JSONObject().put("id", it.id).put("title", it.title)
-                    .put("responsible", it.responsible).put("frequency", it.frequency)
-                    .put("completed", it.completed).put("dose", it.dose).put("time", it.time)
-                    .put("completedOn", it.completedOn).put("action", it.action)
-                    .put("daysOfWeek", JSONArray(it.daysOfWeek))) }
+                tasks.forEach { task ->
+                    put(JSONObject().put("id", task.id).put("title", task.title)
+                        .put("responsible", task.responsible).put("frequency", task.frequency)
+                        .put("completed", task.completed).put("dose", task.dose).put("time", task.time)
+                        .put("completedOn", task.completedOn).put("action", task.action)
+                        .put("daysOfWeek", JSONArray(task.daysOfWeek)))
+                }
             })
             .put("careLogs", JSONArray().apply {
                 logs.forEach { log ->
                     put(JSONObject().put("id", log.id).put("taskTitle", log.taskTitle)
                         .put("action", log.action).put("actorUid", log.actorUid).put("actorName", log.actorName)
                         .put("occurredAt", log.occurredAt).put("note", log.note)
-                        .put("distanceKm", log.distanceKm)
-                        .put("mapUrl", log.mapUrl)
-                        .put("description", log.description)
-                        .put("walker", log.walker)
+                        .put("distanceKm", log.distanceKm).put("mapUrl", log.mapUrl)
+                        .put("description", log.description).put("walker", log.walker)
                         .put("photoUrls", JSONArray(log.photoUrls)))
                 }
             })
@@ -82,14 +109,19 @@ internal object PawlyBackupManager {
             ?.takeIf { it.size <= MAX_PHOTO_BYTES }
         if (photo != null) root.put("photoBase64", Base64.encodeToString(photo, Base64.NO_WRAP))
         val output = root.toString()
-        require(output.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) { "La copia supera el tamaño máximo de 15 MB." }
+        require(output.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) {
+            "La copia supera el tamaño máximo de 25 MB."
+        }
         return output
     }
 
     fun restore(context: Context, raw: String, storageScope: String?): PawlyBackupSnapshot {
-        require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) { "El archivo supera el tamaño máximo de 15 MB." }
+        require(raw.toByteArray(Charsets.UTF_8).size <= MAX_BACKUP_BYTES) {
+            "El archivo supera el tamaño máximo de 25 MB."
+        }
         val root = JSONObject(raw)
-        require(root.optString("format") == "pawly-backup" && root.optInt("version") == VERSION) {
+        val version = root.optInt("version", -1)
+        require(root.optString("format") == "pawly-backup" && version in MIN_SUPPORTED_VERSION..VERSION) {
             "El archivo no es una copia de seguridad Pawly compatible."
         }
         val petName = root.optString("petName").trim()
@@ -99,22 +131,50 @@ internal object PawlyBackupManager {
         val calendar = stringList(root.optJSONArray("calendarReminders")).take(500)
         val health = buildMap {
             val rows = root.optJSONArray("healthDates") ?: JSONArray()
+            require(rows.length() <= 1000) { "La copia contiene demasiados registros de salud." }
             for (i in 0 until rows.length()) {
                 val row = rows.optJSONArray(i) ?: continue
-                if (row.length() >= 2) put(row.optString(0), row.optString(1))
+                if (row.length() >= 2) put(row.optString(0).take(120), row.optString(1).take(120))
             }
         }
         val passport = parsePassport(root.optJSONArray("passportEntries"))
         val tasks = parseTasks(root.optJSONArray("careTasks"))
         val logs = parseLogs(root.optJSONArray("careLogs"))
-        // Decode and validate every optional binary field before mutating local data.
-        // Older version-1 backups simply omit these walk-specific properties.
         val photoBytes = root.optString("photoBase64").takeIf { it.isNotBlank() }?.let {
             runCatching { Base64.decode(it, Base64.DEFAULT) }.getOrElse {
                 throw IllegalArgumentException("La fotografía de la copia está dañada.")
             }.also { bytes ->
-                require(bytes.size <= MAX_PHOTO_BYTES) { "La fotografía de la copia supera los 5 MB." }
+                require(bytes.size in 1..MAX_PHOTO_BYTES) {
+                    "La fotografía de la copia supera los 5 MB o está vacía."
+                }
             }
+        }
+
+        // Restore preferences only after every structured section and binary asset
+        // has been parsed and validated, so a corrupt file cannot leave a half-restore.
+        val prefs = context.getSharedPreferences(
+            storageScope?.let { "pawly_user_$it" } ?: "pawly_local", Context.MODE_PRIVATE
+        )
+        val values = root.optJSONObject("appPreferences")
+        if (values != null) {
+            require(values.length() <= 500) { "La copia contiene demasiadas preferencias." }
+            val editor = prefs.edit()
+            val keys = values.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (excludedPreferenceFragments.any { key.lowercase().contains(it) }) continue
+                when (val value = values.opt(key)) {
+                    is String -> editor.putString(key, value)
+                    is Boolean -> editor.putBoolean(key, value)
+                    is Int -> editor.putInt(key, value)
+                    is Long -> editor.putLong(key, value)
+                    is Double -> editor.putFloat(key, value.toFloat())
+                    is JSONArray -> editor.putStringSet(
+                        key, List(value.length()) { index -> value.optString(index) }.toSet()
+                    )
+                }
+            }
+            editor.apply()
         }
         PetCareLocalStore.saveEntries(context, petName, passport, storageScope)
         PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
@@ -124,20 +184,34 @@ internal object PawlyBackupManager {
 
     private fun stringList(array: JSONArray?): List<String> {
         if (array == null) return emptyList()
-        return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }
+        require(array.length() <= 1000) { "La copia contiene demasiados elementos." }
+        return List(array.length()) { array.optString(it).take(2000) }.filter { it.isNotBlank() }
     }
 
     private fun parsePassport(array: JSONArray?): List<PassportEntry> {
         if (array == null) return emptyList()
+        require(array.length() <= 450) { "La copia contiene demasiados registros del pasaporte." }
         return List(array.length()) { i ->
             val row = array.optJSONObject(i) ?: JSONObject()
-            PassportEntry(row.optString("id"), row.optString("type"), row.optString("title"),
-                row.optString("detail"), row.optString("date"))
-        }.filter { it.id.isNotBlank() && it.title.isNotBlank() }.take(450)
+            PassportEntry(
+                id = row.optString("id"), type = row.optString("type"), title = row.optString("title"),
+                detail = row.optString("detail"), date = row.optString("date"),
+                product = row.optString("product"), dose = row.optString("dose"),
+                frequency = row.optString("frequency"), clinic = row.optString("clinic"),
+                nextDoseDate = row.optString("nextDoseDate"),
+                status = row.optString("status", com.pawly.app.care.model.PassportEntryStates.REALIZADO)
+                    .takeIf { it in com.pawly.app.care.model.PassportEntryStates.all }
+                    ?: com.pawly.app.care.model.PassportEntryStates.REALIZADO,
+                reminderEnabled = row.optBoolean("reminderEnabled", false),
+                reminderTime = row.optString("reminderTime", "09:00")
+                    .takeIf { it.matches(Regex("(?:[01]\\d|2[0-3]):[0-5]\\d")) } ?: "09:00"
+            )
+        }.filter { it.id.isNotBlank() && it.title.isNotBlank() }
     }
 
     private fun parseTasks(array: JSONArray?): List<CareTask> {
         if (array == null) return emptyList()
+        require(array.length() <= 450) { "La copia contiene demasiadas rutinas." }
         val allowed = setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro")
         return List(array.length()) { i ->
             val row = array.optJSONObject(i) ?: JSONObject()
@@ -150,11 +224,12 @@ internal object PawlyBackupManager {
                         List(days.length()) { index -> days.optInt(index, 0) }
                     }.orEmpty()
                 ))
-        }.filter { it.id.isNotBlank() && it.title.isNotBlank() }.take(450)
+        }.filter { it.id.isNotBlank() && it.title.isNotBlank() }
     }
 
     private fun parseLogs(array: JSONArray?): List<CareLogEntry> {
         if (array == null) return emptyList()
+        require(array.length() <= 100) { "La copia contiene demasiados registros de actividad." }
         val allowed = setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro")
         return List(array.length()) { i ->
             val row = array.optJSONObject(i) ?: JSONObject()
@@ -170,9 +245,7 @@ internal object PawlyBackupManager {
                     val parsed = android.net.Uri.parse(value)
                     parsed.scheme in setOf("https", "http") && !parsed.host.isNullOrBlank()
                 }.getOrDefault(false))
-            }) {
-                "El enlace del mapa en la copia no es válido."
-            }
+            }) { "El enlace del mapa en la copia no es válido." }
             require(row.optString("description").length <= 600 && row.optString("walker").length <= 80) {
                 "Los datos del paseo en la copia superan los límites permitidos."
             }
@@ -185,6 +258,6 @@ internal object PawlyBackupManager {
                 row.optLong("occurredAt"), row.optString("note"),
                 distance, row.optString("mapUrl"), row.optString("description"),
                 row.optString("walker"), photos)
-        }.filter { it.id.isNotBlank() && it.taskTitle.isNotBlank() }.take(100)
+        }.filter { it.id.isNotBlank() && it.taskTitle.isNotBlank() }
     }
 }
