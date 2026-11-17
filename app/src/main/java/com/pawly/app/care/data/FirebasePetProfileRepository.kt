@@ -74,7 +74,7 @@ class FirebasePetProfileRepository(
     }.getOrDefault(raw)
 
     suspend fun loadDiary(petId: String): List<String> =
-        diary(petId).orderBy("position").limit(200).get().await().documents.mapNotNull { doc ->
+        diary(petId).orderBy("position").limit(500).get().await().documents.mapNotNull { doc ->
             doc.getString("text")?.takeIf { it.isNotBlank() }?.let { withCloudDiaryId(it, doc.id) }
         }
 
