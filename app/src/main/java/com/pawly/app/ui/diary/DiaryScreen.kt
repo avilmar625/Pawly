@@ -147,7 +147,7 @@ internal fun DiaryScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC10251F)))))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
                 Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
                     Text(tr("VUESTROS RECUERDOS"), color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
                     Text(tr("Cada paseo merece un recuerdo."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
