@@ -777,10 +777,10 @@ private fun PawlyMainApp(
                                     val latestLogs = careRepository.loadCareLogs(dogName, 500)
                                     val profileRepository = FirebasePetProfileRepository(ownerUid = storageScope)
                                     val sharedDiary = profileRepository.loadDiaryForBackup(dogName)
-                                    backupDiaryEntries = (sharedDiary + diaryEntries).distinct().take(200)
+                                    backupDiaryEntries = (sharedDiary + diaryEntries).distinct().take(500)
                                     val agendaRepository = FirebasePetAgendaRepository(ownerUid = storageScope)
                                     val sharedAgenda = agendaRepository.loadReminders(dogName)
-                                    backupCalendarReminders = (sharedAgenda + calendarReminders).distinct().take(200)
+                                    backupCalendarReminders = (sharedAgenda + calendarReminders).distinct().take(500)
                                     val localLogs = PetCareLocalStore.loadCareLogs(context, dogName, storageScope)
                                     val combinedLogs = (latestLogs + localLogs).distinctBy { it.id }
                                         .sortedByDescending { it.occurredAt }.take(500)
