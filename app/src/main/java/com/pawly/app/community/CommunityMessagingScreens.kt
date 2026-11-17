@@ -167,6 +167,24 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
 }
 
 
+private fun conversationTimeLabel(timestamp: Long): String {
+    if (timestamp <= 0L) return ""
+    val now = java.util.Calendar.getInstance()
+    val target = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+    val sameDay = now.get(java.util.Calendar.YEAR) == target.get(java.util.Calendar.YEAR) &&
+        now.get(java.util.Calendar.DAY_OF_YEAR) == target.get(java.util.Calendar.DAY_OF_YEAR)
+    if (sameDay) return java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
+    val yesterday = java.util.Calendar.getInstance().apply {
+        timeInMillis = now.timeInMillis
+        add(java.util.Calendar.DAY_OF_YEAR, -1)
+    }
+    val isYesterday = yesterday.get(java.util.Calendar.YEAR) == target.get(java.util.Calendar.YEAR) &&
+        yesterday.get(java.util.Calendar.DAY_OF_YEAR) == target.get(java.util.Calendar.DAY_OF_YEAR)
+    return if (isYesterday) "Ayer" else
+        java.text.SimpleDateFormat("dd/MM/yy", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
+}
+
+
 @Composable
 internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (PawlyConversation) -> Unit, onOpenProfile: (String) -> Unit = {}) {
     var conversations by remember { mutableStateOf(emptyList<PawlyConversation>()) }
@@ -178,48 +196,77 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
     var unreadCounts by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     LaunchedEffect(conversations) {
         val updated = mutableMapOf<String, Int>()
-        conversations.take(30).forEach { conversation ->
+        conversations.forEach { conversation ->
             updated[conversation.id] = runCatching { repo.getUnreadMessageCount(conversation.id) }.getOrDefault(0)
         }
         unreadCounts = updated
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (conversations.isEmpty()) item { EmptyCommunityCard("Tu bandeja está vacía", "Cuando escribas a otra persona, la conversación aparecerá aquí.") }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
+        if (conversations.isEmpty()) item {
+            EmptyCommunityCard("Tu bandeja está vacía", "Cuando escribas a otra persona, la conversación aparecerá aquí.")
+        }
         if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
-        items(conversations, key = { it.id }) { c ->
+        items(conversations, key = { it.id }) { conversation ->
+            val unread = unreadCounts[conversation.id] ?: 0
             Surface(
-                onClick = { onOpen(c) },
-                color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(18.dp),
+                onClick = { onOpen(conversation) },
+                color = if (unread > 0) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .22f) else MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(17.dp),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.clickable { onOpenProfile(c.otherUserId) }) {
-                        Avatar(c.otherUserPhoto, c.otherUserName)
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.clickable { onOpenProfile(conversation.otherUserId) }) {
+                        Avatar(conversation.otherUserPhoto, conversation.otherUserName, 52)
                     }
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(c.otherUserName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                        Text(c.lastMessage.ifBlank { "Empezad a hablar" }, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, style = MaterialTheme.typography.bodySmall)
-                        if (c.updatedAt > 0L) Text(
-                            java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(c.updatedAt)),
-                            color = MaterialTheme.colorScheme.outline,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                    val unread = unreadCounts[c.id] ?: 0
-                    if (unread > 0) {
-                        Surface(color = Color(0xFFC83D4B), shape = CircleShape) {
+                    Spacer(Modifier.width(11.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                unread.coerceAtMost(99).toString(),
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
+                                conversation.otherUserName,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (unread > 0) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f)
                             )
+                            if (conversation.updatedAt > 0L) {
+                                Text(
+                                    conversationTimeLabel(conversation.updatedAt),
+                                    color = if (unread > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (unread > 0) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                conversation.lastMessage.ifBlank { "Empezad a hablar" },
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (unread > 0) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (unread > 0) {
+                                Spacer(Modifier.width(8.dp))
+                                Surface(color = Color(0xFFC83D4B), shape = CircleShape) {
+                                    Text(
+                                        unread.coerceAtMost(99).toString(),
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
-                    Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
@@ -228,7 +275,13 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
 
 
 @Composable
-internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyConversation, onBack: () -> Unit, onOpenProfile: (String) -> Unit = {}) {
+internal fun ChatScreen(
+    repo: FirebaseCommunityRepository,
+    conversation: PawlyConversation,
+    onBack: () -> Unit,
+    onOpenProfile: (String) -> Unit = {},
+    onReadMessages: () -> Unit = {}
+) {
     val uid = repo.currentUid.orEmpty()
     var messages by remember(conversation.id) { mutableStateOf(emptyList<PawlyMessage>()) }
     var draft by remember { mutableStateOf("") }
@@ -249,7 +302,10 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
     DisposableEffect(conversation.id) {
         val listener = repo.listenMessages(conversation.id, {
             messages = it
-            scope.launch { runCatching { repo.markConversationRead(conversation.id) } }
+            scope.launch {
+                runCatching { repo.markConversationRead(conversation.id) }
+                    .onSuccess { onReadMessages() }
+            }
         }, { error = it })
         onDispose { listener.remove() }
     }
@@ -282,12 +338,22 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
                                 if (item.text.isNotBlank()) Text(item.text, color = if (item.senderId == uid) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                             }
                         }
-                        if (item.createdAt > 0L) Text(
-                            java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(item.createdAt)),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                        if (item.senderId == uid && item.readBy.any { it != uid }) Text(tr("Visto"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                            if (item.createdAt > 0L) Text(
+                                java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(item.createdAt)),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                            if (item.senderId == uid) {
+                                val isRead = item.readBy.any { it != uid }
+                                Text(
+                                    if (isRead) "✓✓" else "✓",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isRead) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
                     }
                 }
             }

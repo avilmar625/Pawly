@@ -330,9 +330,11 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, openNotifications: Boolean = false) {
     var page by remember(openNotifications) { mutableStateOf(if (openNotifications) CommunityPage.NOTIFICATIONS else CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
-    var suggestedUsers by remember { mutableStateOf(emptyList<PawlyUser>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
     var unreadNotifications by remember { mutableIntStateOf(0) }
+    var unreadMessages by remember { mutableIntStateOf(0) }
+    var conversationsForUnread by remember { mutableStateOf(emptyList<PawlyConversation>()) }
+    var refreshUnreadMessages by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var selectedUser by remember { mutableStateOf<String?>(null) }
     var chat by remember { mutableStateOf<PawlyConversation?>(null) }
@@ -358,7 +360,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         notice = if (granted) "Notificaciones activadas." else "Puedes activarlas más adelante desde los ajustes de Android."
     }
     LaunchedEffect(repo, uid) {
-        suggestedUsers = runCatching { repo.getSuggestedUsers() }.getOrDefault(emptyList())
         admin = runCatching { repo.isAdmin() }.getOrDefault(false)
         runCatching { repo.syncMessagingToken() }
             .onFailure { notice = it.localizedMessage ?: "No se pudo registrar este dispositivo para notificaciones." }
@@ -370,7 +371,23 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
             { unreadNotifications = it.count { notification -> !notification.read } },
             { error = it }
         )
-        onDispose { feedListener.remove(); followingListener.remove(); notificationsListener.remove() }
+        val conversationsListener = repo.listenConversations(
+            { conversationsForUnread = it },
+            { error = it }
+        )
+        onDispose {
+            feedListener.remove()
+            followingListener.remove()
+            notificationsListener.remove()
+            conversationsListener.remove()
+        }
+    }
+    LaunchedEffect(conversationsForUnread, refreshUnreadMessages) {
+        var totalUnread = 0
+        conversationsForUnread.forEach { conversation ->
+            totalUnread += runCatching { repo.getUnreadMessageCount(conversation.id) }.getOrDefault(0)
+        }
+        unreadMessages = totalUnread
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (elegantDesign) {
@@ -498,6 +515,18 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                         Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
                         Spacer(Modifier.width(7.dp))
                     }
+                    if (unreadMessages > 0) {
+                        Surface(color = Color(0xFFC83D4B), shape = CircleShape) {
+                            Text(
+                                unreadMessages.coerceAtMost(99).toString(),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(7.dp))
+                    }
                     Icon(Icons.Default.ExpandMore, null, tint = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -563,6 +592,17 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                                 if (item == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
                                     Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
                                 }
+                                if (item == CommunityPage.MESSAGES && unreadMessages > 0) {
+                                    Surface(color = Color(0xFFC83D4B), shape = CircleShape) {
+                                        Text(
+                                            unreadMessages.coerceAtMost(99).toString(),
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
                                 if (selected) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
                             }
                         },
@@ -615,21 +655,14 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     }
                 }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
-            chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null }, onOpenProfile = { id -> selectedUser = id; chat = null })
+            chat != null -> ChatScreen(
+                repo,
+                chat!!,
+                onBack = { chat = null; refreshUnreadMessages += 1 },
+                onOpenProfile = { id -> selectedUser = id; chat = null },
+                onReadMessages = { refreshUnreadMessages += 1 }
+            )
             page == CommunityPage.FEED -> Column(Modifier.fillMaxSize()) {
-                if (suggestedUsers.isNotEmpty()) {
-                    SuggestedProfilesRow(
-                        users = suggestedUsers,
-                        onOpen = { selectedUser = it },
-                        onFollow = { user ->
-                            scope.launch {
-                                runCatching { repo.follow(user.uid, true) }
-                                    .onSuccess { suggestedUsers = suggestedUsers.filterNot { it.uid == user.uid }; notice = "Ahora sigues a esta persona." }
-                                    .onFailure { notice = it.localizedMessage ?: "No se pudo seguir a esta persona." }
-                            }
-                        }
-                    )
-                }
                 Box(Modifier.weight(1f)) {
                     FeedScreen(posts, followingIds, error, onCreate = { createPost = true }, onComments = { commentsPost = it }, onOpenUser = { selectedUser = it }, onLike = { post ->
                         scope.launch { runCatching { repo.toggleLike(post.id) }.onFailure { notice = it.localizedMessage } }
