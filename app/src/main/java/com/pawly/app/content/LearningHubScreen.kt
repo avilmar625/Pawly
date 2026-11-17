@@ -112,7 +112,7 @@ internal fun LearningHubScreen(dogName: String, elegantDesign: Boolean = false) 
                     modifier = Modifier.fillMaxSize(),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
                 Column(Modifier.align(Alignment.BottomStart).padding(20.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(tr("PAWLY · APRENDER Y DESCUBRIR"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp)
                     Text(tr("Un mundo mejor para ellos."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
