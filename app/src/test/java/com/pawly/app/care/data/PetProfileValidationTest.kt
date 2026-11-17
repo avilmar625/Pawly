@@ -25,6 +25,11 @@ class PetProfileValidationTest {
         assertEquals(listOf("Primero", "Después"), PetProfileValidation.diary(listOf(" Primero ", "Después")))
     }
 
+    @Test fun acceptsDiaryPhotoMetadataUpToTwelveThousandCharacters() {
+        assertEquals(12000, PetProfileValidation.diary(listOf("x".repeat(12000))).single().length)
+        assertThrows(IllegalArgumentException::class.java) { PetProfileValidation.diary(listOf("x".repeat(12001))) }
+    }
+
     @Test fun rejectsEmptyOversizedAndTooManyMemories() {
         assertThrows(IllegalArgumentException::class.java) { PetProfileValidation.diary(listOf(" ")) }
         assertThrows(IllegalArgumentException::class.java) { PetProfileValidation.diary(listOf("x".repeat(1001))) }
