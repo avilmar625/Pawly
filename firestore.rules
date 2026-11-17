@@ -745,9 +745,10 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.publicId is string
         && request.resource.data.publicId.size() <= 255
-        && request.resource.data.secureUrl is string
-        && request.resource.data.secureUrl.size() <= 2048
-        && request.resource.data.secureUrl.matches('^https://.+
+        && (!('secureUrl' in request.resource.data)
+          || (request.resource.data.secureUrl is string
+            && request.resource.data.secureUrl.size() <= 2048
+            && request.resource.data.secureUrl.matches('^https://.*')))
         && request.resource.data.publicId.matches('^pawly/(profile-photos|dog-photos|pet-photos|post-photos|message-photos|diary-photos|post-videos|message-videos)/' + request.auth.uid + '/.+$')
         && request.resource.data.resourceType in ['image', 'video']
         && request.resource.data.createdAt == request.time;
