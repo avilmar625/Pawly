@@ -675,8 +675,11 @@ class FirebaseCommunityRepository private constructor(
         if (clean.length < 2) return emptyList()
         val docs = db.collection("users").whereEqualTo("isPublic", true).orderBy("usernameLower")
             .startAt(clean).endAt(clean + "\uf8ff").limit(25).get().await()
-        val blocked = currentUid?.let { db.collection("users").document(it).collection("blocked").get().await().documents.map { doc -> doc.id }.toSet() }.orEmpty()
-        return docs.documents.mapNotNull { it.toPawlyUser() }.filter { it.uid != currentUid && it.isPublic && it.uid !in blocked }
+        val me = requireUid()
+        val blocked = db.collection("users").document(me).collection("blocked").get().await().documents.map { it.id }.toSet() +
+            db.collection("users").document(me).collection("blockedBy").get().await().documents.map { it.id }
+        return docs.documents.mapNotNull { it.toPawlyUser() }
+            .filter { it.uid != me && it.isPublic && it.uid !in blocked }
     }
 
     suspend fun getUser(uid: String): PawlyUser? = db.collection("users").document(uid).get().await()
