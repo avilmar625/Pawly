@@ -118,7 +118,7 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
 }
 
 @Composable
-internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, onDismiss: () -> Unit) {
+internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, onDismiss: () -> Unit, onOpenUser: (String) -> Unit = {}) {
     var comments by remember(post.id) { mutableStateOf(emptyList<PawlyComment>()) }
     var draft by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
@@ -137,7 +137,13 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(Modifier.fillMaxWidth().padding(11.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text(comment.authorName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                comment.authorName,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                modifier = Modifier.clickable { if (comment.authorId.isNotBlank()) onOpenUser(comment.authorId) }
+                            )
                             Text(comment.text, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
                             if (comment.createdAt > 0L) Text(
                                 java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT).format(java.util.Date(comment.createdAt)),
@@ -157,7 +163,7 @@ internal fun CommentsDialog(repo: FirebaseCommunityRepository, post: PawlyPost, 
 
 
 @Composable
-internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (PawlyConversation) -> Unit) {
+internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (PawlyConversation) -> Unit, onOpenProfile: (String) -> Unit = {}) {
     var conversations by remember { mutableStateOf(emptyList<PawlyConversation>()) }
     var error by remember { mutableStateOf<String?>(null) }
     DisposableEffect(repo) {
@@ -183,7 +189,9 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Avatar(c.otherUserPhoto, c.otherUserName)
+                    Box(Modifier.clickable { onOpenProfile(c.otherUserId) }) {
+                        Avatar(c.otherUserPhoto, c.otherUserName)
+                    }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
                         Text(c.otherUserName, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -215,7 +223,7 @@ internal fun ConversationsScreen(repo: FirebaseCommunityRepository, onOpen: (Paw
 
 
 @Composable
-internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyConversation, onBack: () -> Unit) {
+internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyConversation, onBack: () -> Unit, onOpenProfile: (String) -> Unit = {}) {
     val uid = repo.currentUid.orEmpty()
     var messages by remember(conversation.id) { mutableStateOf(emptyList<PawlyMessage>()) }
     var draft by remember { mutableStateOf("") }
@@ -247,9 +255,15 @@ internal fun ChatScreen(repo: FirebaseCommunityRepository, conversation: PawlyCo
         Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(22.dp), tonalElevation = 2.dp) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Volver") }
-                Avatar(conversation.otherUserPhoto, conversation.otherUserName, 36)
-                Spacer(Modifier.width(10.dp))
-                Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium)
+                Row(
+                    Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).clickable { onOpenProfile(conversation.otherUserId) }
+                        .padding(horizontal = 5.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Avatar(conversation.otherUserPhoto, conversation.otherUserName, 36)
+                    Spacer(Modifier.width(10.dp))
+                    Text(conversation.otherUserName.ifBlank { "Conversación" }, style = MaterialTheme.typography.titleMedium)
+                }
             }
         }
         LazyColumn(state = messageListState, modifier = Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {

@@ -379,7 +379,24 @@ internal fun PawlyEventsScreen(
                             Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
                             Text(event.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("${tr("Organiza")} ${event.organizerName} · ${event.interestedCount} ${tr("personas interesadas")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            Modifier.fillMaxWidth().then(if (event.organizerUid.isNotBlank()) Modifier.clickable {
+                                onOpenProfile(event.organizerUid)
+                            } else Modifier),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Pets, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "${tr("Organiza")} ${event.organizerName}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (event.organizerUid.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("· ${event.interestedCount} ${tr("personas interesadas")}",
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = {
                                 val url = if (event.latitude != null && event.longitude != null) {
@@ -477,7 +494,8 @@ internal fun PawlyEventsScreen(
                         }
                         .onFailure { error = it.localizedMessage ?: interestUpdateErrorText }
                 }
-            }
+            },
+            onOpenProfile = onOpenProfile
         )
     }
     if (reportEventId != null) ReportDialog(
@@ -522,7 +540,8 @@ private fun EventDetailsDialog(
     onLoadAttendees: () -> Unit,
     onDismiss: () -> Unit,
     onAddToCalendar: () -> Unit,
-    onToggleInterest: () -> Unit
+    onToggleInterest: () -> Unit,
+    onOpenProfile: (String) -> Unit = {}
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -568,11 +587,18 @@ private fun EventDetailsDialog(
                                 }
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth().then(if (event.organizerUid.isNotBlank()) Modifier.clickable {
+                                    onOpenProfile(event.organizerUid)
+                                } else Modifier),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 Icon(Icons.Default.Pets, null, tint = MaterialTheme.colorScheme.primary)
                                 Column(Modifier.weight(1f)) {
                                     Text(tr("Organiza"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(event.organizerName, fontWeight = FontWeight.SemiBold)
+                                    Text(event.organizerName, fontWeight = FontWeight.SemiBold,
+                                        color = if (event.organizerUid.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

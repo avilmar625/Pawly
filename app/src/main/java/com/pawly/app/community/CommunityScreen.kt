@@ -386,6 +386,15 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                         Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
                     }
                 }
+                Row(Modifier.align(Alignment.TopEnd).padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
+                        Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
+                    }
+                    IconButton(onClick = { page = CommunityPage.PROFILE; selectedUser = null; chat = null }) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = tr("Mi perfil"), tint = Color.White,
+                            modifier = Modifier.size(27.dp))
+                    }
+                }
             }
         } else Surface(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
@@ -401,23 +410,29 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     Text(tr("Comunidad"), color = Color.White, style = MaterialTheme.typography.headlineMedium)
                     Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.bodySmall)
                 }
-                Box {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
-                        Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
-                    }
-                    if (unreadNotifications > 0) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.error,
-                            shape = CircleShape,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 3.dp)
-                        ) {
-                            Text(
-                                unreadNotifications.coerceAtMost(99).toString(),
-                                color = MaterialTheme.colorScheme.onError,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                            )
+                        Box {
+                            Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
+                            if (unreadNotifications > 0) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.error,
+                                    shape = CircleShape,
+                                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 5.dp, y = (-4).dp)
+                                ) {
+                                    Text(
+                                        unreadNotifications.coerceAtMost(99).toString(),
+                                        color = MaterialTheme.colorScheme.onError,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
+                    }
+                    IconButton(onClick = { page = CommunityPage.PROFILE; selectedUser = null; chat = null }) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = tr("Mi perfil"), tint = Color.White,
+                            modifier = Modifier.size(27.dp))
                     }
                 }
             }
@@ -597,7 +612,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     }
                 }
             }, onReport = { reportTarget = it }, onBlock = { id -> blockTarget = id })
-            chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null })
+            chat != null -> ChatScreen(repo, chat!!, onBack = { chat = null }, onOpenProfile = { id -> selectedUser = id; chat = null })
             page == CommunityPage.FEED -> Column(Modifier.fillMaxSize()) {
                 if (suggestedUsers.isNotEmpty()) {
                     SuggestedProfilesRow(
@@ -655,14 +670,14 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                     }
                 }
             )
-            page == CommunityPage.MESSAGES -> ConversationsScreen(repo) { chat = it }
+            page == CommunityPage.MESSAGES -> ConversationsScreen(repo, onOpen = { chat = it }, onOpenProfile = { id -> selectedUser = id; chat = null })
             page == CommunityPage.NOTIFICATIONS -> NotificationsScreen(repo, onOpenProfile = { selectedUser = it })
             page == CommunityPage.PROFILE -> MyCommunityProfile(repo)
             page == CommunityPage.MODERATION -> if (admin) ModerationScreen(repo) else EmptyCommunityCard("Acceso restringido", "Solo el equipo de moderación puede entrar aquí.")
         }
     }
     if (createPost) CreatePostDialog(repo, { createPost = false }) { notice = "Publicación compartida."; createPost = false }
-    if (commentsPost != null) CommentsDialog(repo, commentsPost!!, { commentsPost = null })
+    if (commentsPost != null) CommentsDialog(repo, commentsPost!!, { commentsPost = null }, onOpenUser = { id -> selectedUser = id; commentsPost = null })
     if (reportTarget != null) ReportDialog(repo, reportTarget!!.first, reportTarget!!.second, { reportTarget = null }) {
         notice = "Gracias. Hemos recibido tu aviso."
         reportTarget = null
