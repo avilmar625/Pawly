@@ -166,8 +166,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                         selectedLabel = tr(if (accountType == "professional") "Profesional" else "Particular"),
                         options = listOf("personal" to tr("Particular"), "professional" to tr("Profesional")),
                         selectedValue = accountType,
-                        onSelected = { accountType = it },
-                        leadingIcon = Icons.Default.AccountCircle
+                        onSelected = { accountType = it }
                     )
                     if (accountType == "professional") {
                         Text(tr("Perfil profesional"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
