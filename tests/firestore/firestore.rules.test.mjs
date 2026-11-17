@@ -143,6 +143,46 @@ test("only the event organizer can list attendees; each member can read only the
   await assertFails(getDocs(collection(readerDb, "events/event-1/interested")));
 });
 
+test("shared pet owners can change editor and reader roles but collaborators cannot", async () => {
+  const ownerDb = env.authenticatedContext("owner", { email_verified: true }).firestore();
+  const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  await assertSucceeds(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/editor"), { role: "reader" }));
+  await assertFails(updateDoc(doc(editorDb, "sharedPets/owner_pet/members/reader"), { role: "editor" }));
+  await assertFails(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/owner"), { role: "reader" }));
+  await assertSucceeds(updateDoc(doc(ownerDb, "sharedPets/owner_pet/members/editor"), { role: "editor" }));
+});
+
+test("shared profile and diary are editable by editors and read-only for readers", async () => {
+  const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/profile/current"), {
+    petId: "pet", name: "Chispita", photoUrl: "https://images.example/chispita.jpg"
+  }));
+  await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/profile/current"), {
+    petId: "pet", name: "Chispita 2", photoUrl: null
+  }));
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/diary/entry_000"), {
+    id: "entry_000", text: "Primer paseo juntos", position: 0
+  }));
+  await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/diary/entry_001"), {
+    id: "entry_001", text: "No debería poder escribir", position: 1
+  }));
+});
+
+test("blocking either direction prevents private profile reads", async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    await setDoc(doc(db, "users/blocker"), { uid: "blocker", isPublic: true });
+    await setDoc(doc(db, "users/blocked-user"), { uid: "blocked-user", isPublic: true });
+    await setDoc(doc(db, "users/blocker/blocked/blocked-user"), { uid: "blocked-user" });
+    await setDoc(doc(db, "users/blocked-user/blocked/blocker"), { uid: "blocker" });
+  });
+  const blockerDb = env.authenticatedContext("blocker", { email_verified: true }).firestore();
+  const blockedDb = env.authenticatedContext("blocked-user", { email_verified: true }).firestore();
+  await assertFails(getDoc(doc(blockerDb, "users/blocked-user")));
+  await assertFails(getDoc(doc(blockedDb, "users/blocker")));
+});
+
 test("shared care logs are visible to members and can only be created by editors or owners", async () => {
   const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
   await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/careLogs/log-1"), {
