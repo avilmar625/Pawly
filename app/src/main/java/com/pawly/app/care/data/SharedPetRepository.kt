@@ -133,21 +133,39 @@ class SharedPetRepository(
         }.await()
     }
 
+    suspend fun updateMemberRole(petId: String, memberUid: String, role: String) {
+        require(role in setOf("editor", "reader")) { "Selecciona un permiso válido." }
+        require(memberUid != uid()) { "El propietario siempre conserva el control total." }
+        val ref = petRef(sharedPetId(petId))
+        check(ref.get().await().getString("ownerUid") == uid()) {
+            "Solo el propietario puede gestionar los permisos."
+        }
+        val memberRef = ref.collection("members").document(memberUid)
+        check(memberRef.get().await().exists()) { "Esta persona ya no tiene acceso al perfil." }
+        memberRef.update("role", role).await()
+    }
+
     suspend fun removeMember(petId: String, memberUid: String) {
         require(memberUid != uid()) { "No puedes quitarte como propietario." }
+        val ownerUid = uid()
         val ref = petRef(sharedPetId(petId))
-        check(ref.get().await().getString("ownerUid") == uid()) { "Solo el propietario puede gestionar el acceso." }
-        ref.collection("members").document(memberUid).delete().await()
+        check(ref.get().await().getString("ownerUid") == ownerUid) {
+            "Solo el propietario puede gestionar el acceso."
+        }
+        val memberRef = ref.collection("members").document(memberUid)
         val accepted = db.collection("petInvitations")
             .whereEqualTo("sharedPetId", ref.id)
-            .whereEqualTo("ownerUid", uid())
+            .whereEqualTo("ownerUid", ownerUid)
             .whereEqualTo("inviteeUid", memberUid)
             .whereEqualTo("status", "accepted").get().await()
+        val batch = db.batch()
+        batch.delete(memberRef)
         accepted.documents.forEach { invite ->
-            invite.reference.update(mapOf(
+            batch.update(invite.reference, mapOf(
                 "status" to "revoked",
                 "revokedAt" to FieldValue.serverTimestamp()
-            )).await()
+            ))
         }
+        batch.commit().await()
     }
 }
