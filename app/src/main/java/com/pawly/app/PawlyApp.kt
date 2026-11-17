@@ -726,7 +726,7 @@ private fun PawlyMainApp(
                     reminders = calendarReminders,
                     onRemindersChange = { calendarReminders = it },
                     repository = cloudRepository,
-                    healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") },
+                    healthDates = healthDates.filterKeys { it.startsWith("${selectedSharedPet?.petName ?: dogName}|") }.mapKeys { it.key.removePrefix("${selectedSharedPet?.petName ?: dogName}|") },
                     diaryEntries = diaryEntries,
                     dogName = selectedSharedPet?.petName ?: dogName,
                     sharedPetOwnerUid = selectedSharedPet?.ownerUid ?: storageScope,
