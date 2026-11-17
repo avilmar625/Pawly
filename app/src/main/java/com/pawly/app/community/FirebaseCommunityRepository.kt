@@ -526,7 +526,8 @@ class FirebaseCommunityRepository private constructor(
         val uid = requireUid()
         var latestPosts = emptyList<PawlyPost>()
         var blockedIds = emptySet<String>()
-        fun emit() { onData(latestPosts.filterNot { it.authorId in blockedIds }) }
+        var blockedByIds = emptySet<String>()
+        fun emit() { onData(latestPosts.filterNot { it.authorId in blockedIds || it.authorId in blockedByIds }) }
         val postsListener = db.collection("posts").orderBy("createdAt", Query.Direction.DESCENDING).limit(50)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) { onError(error.localizedMessage ?: "No se pudo cargar el muro."); return@addSnapshotListener }
@@ -556,8 +557,18 @@ class FirebaseCommunityRepository private constructor(
                 blockedIds = snapshot?.documents.orEmpty().map { it.id }.toSet()
                 emit()
             }
+        val blockedByListener = db.collection("users").document(uid).collection("blockedBy")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudo cargar el estado de privacidad."); return@addSnapshotListener }
+                blockedByIds = snapshot?.documents.orEmpty().map { it.id }.toSet()
+                emit()
+            }
         return object : ListenerRegistration {
-            override fun remove() { postsListener.remove(); blockedListener.remove() }
+            override fun remove() {
+                postsListener.remove()
+                blockedListener.remove()
+                blockedByListener.remove()
+            }
         }
     }
 
@@ -753,11 +764,13 @@ class FirebaseCommunityRepository private constructor(
         val myProfile = db.collection("users").document(me)
         val theirProfile = db.collection("users").document(uid)
         val blocked = db.collection("users").document(me).collection("blocked").document(uid)
+        val blockedBy = db.collection("users").document(uid).collection("blockedBy").document(me)
         val blockedProfile = runCatching { getUser(uid) }.getOrNull()
         db.runTransaction { tx ->
             val iFollow = tx.get(myFollowing).exists()
             val theyFollow = tx.get(theirFollowing).exists()
             tx.set(blocked, mapOf("uid" to uid, "username" to (blockedProfile?.username ?: ""), "displayName" to (blockedProfile?.displayName ?: "Usuario"), "createdAt" to FieldValue.serverTimestamp()))
+            tx.set(blockedBy, mapOf("uid" to me, "createdAt" to FieldValue.serverTimestamp()))
             tx.delete(myFollowing); tx.delete(theirFollowing); tx.delete(myFollower); tx.delete(theirFollower)
             if (iFollow) { tx.update(myProfile, "followingCount", FieldValue.increment(-1)); tx.update(theirProfile, "followersCount", FieldValue.increment(-1)) }
             if (theyFollow) { tx.update(theirProfile, "followingCount", FieldValue.increment(-1)); tx.update(myProfile, "followersCount", FieldValue.increment(-1)) }
@@ -766,7 +779,10 @@ class FirebaseCommunityRepository private constructor(
 
     suspend fun unblock(uid: String) {
         val me = requireUid()
-        db.collection("users").document(me).collection("blocked").document(uid).delete().await()
+        val batch = db.batch()
+        batch.delete(db.collection("users").document(me).collection("blocked").document(uid))
+        batch.delete(db.collection("users").document(uid).collection("blockedBy").document(me))
+        batch.commit().await()
     }
 
     fun listenBlockedUsers(onData: (List<PawlyBlockedUser>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
@@ -784,7 +800,8 @@ class FirebaseCommunityRepository private constructor(
     suspend fun getSuggestedUsers(limit: Long = 12): List<PawlyUser> {
         val me = requireUid()
         val blocked = db.collection("users").document(me).collection("blocked")
-            .get().await().documents.map { it.id }.toSet()
+            .get().await().documents.map { it.id }.toSet() +
+            db.collection("users").document(me).collection("blockedBy").get().await().documents.map { it.id }
         val followed = db.collection("users").document(me).collection("following")
             .get().await().documents.map { it.id }.toSet()
         return db.collection("users").whereEqualTo("isPublic", true)
@@ -985,7 +1002,8 @@ class FirebaseCommunityRepository private constructor(
             .filter { it.accountType == "professional" }
             .filter { category.isBlank() || it.professionalCategory.contains(category, true) }
             .filter { area.isBlank() || it.professionalLocation.contains(area, true) }
-        val blocked = db.collection("users").document(uid).collection("blocked").get().await().documents.map { it.id }.toSet()
+        val blocked = db.collection("users").document(uid).collection("blocked").get().await().documents.map { it.id }.toSet() +
+            db.collection("users").document(uid).collection("blockedBy").get().await().documents.map { it.id }
         return profiles.filter { it.uid != uid && it.uid !in blocked }
     }
 
