@@ -165,7 +165,12 @@ internal object PawlyBackupManager {
             require(distance == null || (distance.isFinite() && distance in 0.01..1000.0)) {
                 "La distancia de un paseo en la copia no es válida."
             }
-            require(row.optString("mapUrl").let { it.isBlank() || (it.length <= 2048 && it.startsWith("https://")) }) {
+            require(row.optString("mapUrl").let { value ->
+                value.isBlank() || (value.length <= 2048 && runCatching {
+                    val parsed = android.net.Uri.parse(value)
+                    parsed.scheme in setOf("https", "http") && !parsed.host.isNullOrBlank()
+                }.getOrDefault(false))
+            }) {
                 "El enlace del mapa en la copia no es válido."
             }
             require(row.optString("description").length <= 600 && row.optString("walker").length <= 80) {
