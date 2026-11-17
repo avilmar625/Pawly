@@ -82,7 +82,10 @@ internal fun FirebaseSetupPanel(onContinueOffline: () -> Unit) {
                 Text(tr("• Muro, likes, comentarios y seguidores"))
                 Text(tr("• Mensajes privados en tiempo real"))
                 Text(tr("• Fotografías optimizadas con Cloudinary"))
-                Text(tr("Añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                if (BuildConfig.DEBUG) {
+                    Text(tr("Configuración de desarrollo: añade app/google-services.json siguiendo docs/FIREBASE_SETUP.md."),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
         Spacer(Modifier.height(14.dp))
@@ -160,7 +163,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                 try {
                     val configuredRepo = repo
                     if (configuredRepo == null) {
-                        error = "La pantalla está disponible, pero para iniciar sesión o crear una cuenta debes configurar Firebase en esta instalación. Añade app/google-services.json y activa Authentication y Firestore."
+                        error = "El acceso a la comunidad no está disponible en esta instalación. Puedes continuar usando el resto de Pawly."
                     } else {
                         if (register) configuredRepo.register(email, password, username) else configuredRepo.signIn(email, password)
                         onAuthenticated()
