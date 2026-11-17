@@ -338,7 +338,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                         modifier = Modifier.fillMaxSize(),
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xD910251F)))))
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
                     Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(tr("AVENTURAS POR COMPARTIR"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
                         Text(tr("El mundo es mejor cuando vais juntos."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
@@ -1030,7 +1030,7 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                 )
                 Box(
                     Modifier.fillMaxSize().background(
-                        Brush.verticalGradient(listOf(Color.Transparent, Color(0x990E211B)))
+                        Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))
                     )
                 )
                 Surface(
