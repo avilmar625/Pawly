@@ -33,11 +33,11 @@ object PetCarePdfExporter {
                     entry.title,
                     "${entry.type} · Fecha de administración: ${entry.date}",
                     buildString {
-                        if (entry.product.isNotBlank()) append("Producto: ").append(entry.product).append("\\n")
-                        if (entry.dose.isNotBlank()) append("Dosis: ").append(entry.dose).append("\\n")
-                        if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\\n")
-                        if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\\n")
-                        if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\\n")
+                        if (entry.product.isNotBlank()) append("Producto: ").append(entry.product).append("\n")
+                        if (entry.dose.isNotBlank()) append("Dosis: ").append(entry.dose).append("\n")
+                        if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\n")
+                        if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\n")
+                        if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\n")
                         append("Estado: ").append(entry.status)
                         if (entry.detail.isNotBlank()) append("\\nObservaciones: ").append(entry.detail)
                     }
@@ -100,11 +100,11 @@ object PetCarePdfExporter {
                     entry.title,
                     "${entry.type} · Fecha de administración: ${entry.date}",
                     buildString {
-                        if (entry.product.isNotBlank()) append("Producto: ").append(entry.product).append("\\n")
-                        if (entry.dose.isNotBlank()) append("Dosis: ").append(entry.dose).append("\\n")
-                        if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\\n")
-                        if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\\n")
-                        if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\\n")
+                        if (entry.product.isNotBlank()) append("Producto: ").append(entry.product).append("\n")
+                        if (entry.dose.isNotBlank()) append("Dosis: ").append(entry.dose).append("\n")
+                        if (entry.frequency.isNotBlank()) append("Pauta: ").append(entry.frequency).append("\n")
+                        if (entry.clinic.isNotBlank()) append("Clínica: ").append(entry.clinic).append("\n")
+                        if (entry.nextDoseDate.isNotBlank()) append("Próxima actuación: ").append(entry.nextDoseDate).append("\n")
                         append("Estado: ").append(entry.status)
                         if (entry.detail.isNotBlank()) append("\\nObservaciones: ").append(entry.detail)
                     }
