@@ -31,7 +31,17 @@ internal object PetCareLocalStore {
                 type = row.optString("type"),
                 title = row.optString("title"),
                 detail = row.optString("detail"),
-                date = row.optString("date")
+                date = row.optString("date"),
+                product = row.optString("product"),
+                dose = row.optString("dose"),
+                frequency = row.optString("frequency"),
+                clinic = row.optString("clinic"),
+                nextDoseDate = row.optString("nextDoseDate"),
+                status = row.optString("status", com.pawly.app.care.model.PassportEntryStates.REALIZADO)
+                    .takeIf { it in com.pawly.app.care.model.PassportEntryStates.all }
+                    ?: com.pawly.app.care.model.PassportEntryStates.REALIZADO,
+                reminderEnabled = row.optBoolean("reminderEnabled", false),
+                reminderTime = row.optString("reminderTime", "09:00")
             )
         }
     }.getOrDefault(emptyList())
@@ -42,6 +52,10 @@ internal object PetCareLocalStore {
             json.put(
                 JSONObject().put("id", entry.id).put("type", entry.type)
                     .put("title", entry.title).put("detail", entry.detail).put("date", entry.date)
+                    .put("product", entry.product).put("dose", entry.dose)
+                    .put("frequency", entry.frequency).put("clinic", entry.clinic)
+                    .put("nextDoseDate", entry.nextDoseDate).put("status", entry.status)
+                    .put("reminderEnabled", entry.reminderEnabled).put("reminderTime", entry.reminderTime)
             )
         }
         preferences(context, storageScope).edit()
