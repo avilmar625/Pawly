@@ -26,10 +26,7 @@ import com.pawly.app.content.VideoCollection
 
 @Composable
 internal fun NewsSectionHeader(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-        Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-    }
+    PawlySectionHeading(title = title, subtitle = subtitle)
 }
 
 @Composable
@@ -93,8 +90,8 @@ internal fun NewsResults(
 
 @Composable
 internal fun NewsArticleCard(article: DogNewsArticle, saved: Boolean, onToggleSave: () -> Unit, onOpen: () -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = MaterialTheme.shapes.large) {
-        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    PawlyCard(contentPadding = 15.dp) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(article.source, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
                 Text(article.publishedAt, color = Muted, style = MaterialTheme.typography.labelSmall)
