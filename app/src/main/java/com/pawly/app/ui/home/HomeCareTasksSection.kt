@@ -55,6 +55,8 @@ internal fun HomeCareTasksSection(
     val changesSyncedMessage = PawlyI18n.text("Cambios sincronizados", language)
     val localPendingMessage = PawlyI18n.text("Guardado localmente; sincronización pendiente", language)
     val walkLabel = PawlyI18n.text("Paseo", language)
+    val youLabel = PawlyI18n.text("Tú", language)
+    val cannotRegisterCareMessage = PawlyI18n.text("No tienes permiso para registrar cuidados de esta mascota.", language)
     val medicineLabel = PawlyI18n.text("Medicación", language)
     val todayLabel = PawlyI18n.text("hoy", language)
     val tomorrowLabel = PawlyI18n.text("mañana", language)
@@ -347,10 +349,10 @@ internal fun HomeCareTasksSection(
                     val now = System.currentTimeMillis()
                     val localLog = CareLogEntry(
                         id = "local-$now-walk",
-                        taskTitle = tr("Paseo"),
+                        taskTitle = walkLabel,
                         action = "Paseo",
                         actorUid = "local",
-                        actorName = tr("Tú"),
+                        actorName = youLabel,
                         occurredAt = now
                     )
                     logs = (listOf(localLog) + logs).take(30)
@@ -371,7 +373,7 @@ internal fun HomeCareTasksSection(
                         }
                     }
                 } else {
-                    syncMessage = tr("No tienes permiso para registrar cuidados de esta mascota.")
+                    syncMessage = cannotRegisterCareMessage
                 }
             }, Modifier.weight(1f))
             HomeCareQuickAction(Icons.Filled.MonitorWeight, tr("Peso"), MaterialTheme.colorScheme.secondaryContainer, onWeight, Modifier.weight(1f))
