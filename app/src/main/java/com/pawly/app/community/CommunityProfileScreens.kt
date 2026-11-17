@@ -39,7 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
+internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhoneVerification: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var profile by remember(repo) { mutableStateOf(repo.cachedMyProfile()) }
@@ -228,10 +228,15 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                         Text(tr("Verificación de teléfono"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                     Text(
-                        tr("La búsqueda por número está temporalmente desactivada. No queremos asociar teléfonos a cuentas sin comprobar que pertenecen realmente a su titular. La reactivaremos cuando exista un método de verificación seguro que no implique costes para Pawly."),
+                        tr("La verificación y la búsqueda por teléfono se gestionan desde Personas. La verificación real permanece desactivada en versiones release para evitar costes; en desarrollo se puede probar con el token de prueba de Firebase PNV."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
+                    OutlinedButton(onClick = onManagePhoneVerification, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.ManageAccounts, contentDescription = null)
+                        Spacer(Modifier.width(7.dp))
+                        Text(tr("Gestionar en Personas"))
+                    }
                 }
             }
         }
