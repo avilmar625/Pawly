@@ -7,6 +7,8 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -33,7 +35,8 @@ internal val ForestLight = Color(0xFF2D6655)
 internal val Cream = Color(0xFFFFF8F0)
 internal val Paper = Color(0xFFFFFEFB)
 internal val Ink = Color(0xFF202923)
-internal val Muted = Color(0xFF817B70)
+// Slightly darker secondary text keeps small labels readable on the warm surface palette.
+internal val Muted = Color(0xFF625F56)
 internal val Lime = Color(0xFFE4EBC1)
 internal val Peach = Color(0xFFF3DCCF)
 internal val Line = Color(0xFFECE5DC)
@@ -132,6 +135,11 @@ internal fun PawlyTheme(darkMode: Boolean = false, accent: String = "forest", co
             extraLarge = RoundedCornerShape(32.dp)
         ),
         typography = PawlyTypography,
-        content = content
+        content = {
+            // Material controls keep a consistent 48dp minimum hit target across the app.
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 48.dp) {
+                content()
+            }
+        }
     )
 }
