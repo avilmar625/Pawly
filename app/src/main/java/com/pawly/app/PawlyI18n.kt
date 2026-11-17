@@ -79,7 +79,13 @@ internal object PawlyI18n {
         "Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras." to "Wähle, wie du Pawly nutzen möchtest. Du kannst das jederzeit ändern.",
         "Vista elegante activada" to "Elegante Ansicht aktiviert", "Vista simple activada" to "Einfache Ansicht aktiviert",
         "Fotografías, portadas y tarjetas con más personalidad." to "Fotos, Titelbilder und ausdrucksstarke Karten.",
-        "Interfaz ligera, directa y con menos elementos visuales." to "Eine klare, leichte Oberfläche mit weniger visuellen Elementen."
+        "Interfaz ligera, directa y con menos elementos visuales." to "Eine klare, leichte Oberfläche mit weniger visuellen Elementen.",
+        "DIARIO DE RECUERDOS" to "ERINNERUNGSTAGEBUCH",
+        "Diario de" to "Tagebuch von",
+        "Filtrar recuerdos" to "Erinnerungen filtern",
+        "Paseos" to "Spaziergänge", "Viajes" to "Reisen", "Juegos" to "Spiele",
+        "Amigos" to "Freunde", "Celebraciones" to "Feiern", "Otros" to "Sonstiges",
+        "Todos" to "Alle", "Categoría" to "Kategorie", "Euskara" to "Baskisch"
     )
     private val pt = mapOf(
         "Inicio" to "Início", "Hoy" to "Hoje", "Mi perro" to "O meu animal", "Explorar" to "Explorar", "Aprender" to "Aprender",
@@ -114,7 +120,13 @@ internal object PawlyI18n {
         "Elige cómo quieres vivir Pawly. Puedes cambiarlo cuando quieras." to "Escolhe como queres utilizar a Pawly. Podes alterar esta opção quando quiseres.",
         "Vista elegante activada" to "Vista elegante ativada", "Vista simple activada" to "Vista simples ativada",
         "Fotografías, portadas y tarjetas con más personalidad." to "Fotografias, capas e cartões com mais personalidade.",
-        "Interfaz ligera, directa y con menos elementos visuales." to "Uma interface simples, direta e com menos elementos visuais."
+        "Interfaz ligera, directa y con menos elementos visuales." to "Uma interface simples, direta e com menos elementos visuais.",
+        "DIARIO DE RECUERDOS" to "DIÁRIO DE MEMÓRIAS",
+        "Diario de" to "Diário de",
+        "Filtrar recuerdos" to "Filtrar memórias",
+        "Paseos" to "Passeios", "Viajes" to "Viagens", "Juegos" to "Jogos",
+        "Amigos" to "Amigos", "Celebraciones" to "Celebrações", "Otros" to "Outros",
+        "Todos" to "Todos", "Categoría" to "Categoria", "Euskara" to "Basco"
     )
 
     private val enExtra = mapOf(
