@@ -573,11 +573,16 @@ class FirebaseCommunityRepository private constructor(
     }
 
     fun listenUserPosts(uid: String, onData: (List<PawlyPost>) -> Unit, onError: (String) -> Unit): ListenerRegistration {
-        return db.collection("posts").whereEqualTo("authorId", uid)
+        val me = requireUid()
+        var latestPosts = emptyList<PawlyPost>()
+        var blockedByMe = false
+        var blockedMe = false
+        fun emit() { onData(if (blockedByMe || blockedMe) emptyList() else latestPosts) }
+        val postsListener = db.collection("posts").whereEqualTo("authorId", uid)
             .orderBy("createdAt", Query.Direction.DESCENDING).limit(30)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) { onError(error.localizedMessage ?: "No se pudieron cargar las publicaciones."); return@addSnapshotListener }
-                onData(snapshot?.documents.orEmpty().map { doc ->
+                latestPosts = snapshot?.documents.orEmpty().map { doc ->
                     val likedBy = doc.get("likedBy") as? List<*> ?: emptyList<Any>()
                     PawlyPost(
                         id = doc.id,
@@ -590,12 +595,32 @@ class FirebaseCommunityRepository private constructor(
                         videoUrl = doc.getString("videoUrl") ?: "",
                         likeCount = doc.getLong("likeCount") ?: 0,
                         commentCount = doc.getLong("commentCount") ?: 0,
-                        likedByMe = currentUid in likedBy,
+                        likedByMe = me in likedBy,
                         createdAt = doc.getTimestamp("createdAt")?.toDate()?.time ?: 0,
                         category = doc.getString("category") ?: "STORY"
                     )
-                })
+                }
+                emit()
             }
+        val outgoingBlockListener = db.collection("users").document(me).collection("blocked").document(uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudo comprobar el bloqueo."); return@addSnapshotListener }
+                blockedByMe = snapshot?.exists() == true
+                emit()
+            }
+        val incomingBlockListener = db.collection("users").document(me).collection("blockedBy").document(uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) { onError(error.localizedMessage ?: "No se pudo comprobar el bloqueo."); return@addSnapshotListener }
+                blockedMe = snapshot?.exists() == true
+                emit()
+            }
+        return object : ListenerRegistration {
+            override fun remove() {
+                postsListener.remove()
+                outgoingBlockListener.remove()
+                incomingBlockListener.remove()
+            }
+        }
     }
 
     suspend fun publishPost(text: String, imageUrl: String, videoUrl: String, dogName: String, category: String = "STORY"): String {
