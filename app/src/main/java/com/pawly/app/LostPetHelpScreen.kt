@@ -160,7 +160,7 @@ internal fun LostPetHelpScreen(
                 PawlyDropdownSelector(
                     title = t("Radio de recepción"),
                     selectedLabel = "$alertRadius km",
-                    options = listOf(5, 10, 20).map { it.toString() to "$it km" },
+                    options = listOf(5, 10, 20, 30, 50, 100).map { it.toString() to "$it km" },
                     selectedValue = alertRadius.toString(),
                     onSelected = { alertRadius = it.toInt(); subscriptionSaved = false }
                 )
