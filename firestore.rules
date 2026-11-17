@@ -501,6 +501,31 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role == 'owner';
       }
 
+      // Shared agenda reminders are independent documents: edits on one device
+      // cannot overwrite a complete local reminder list from another device.
+      match /agenda/{reminderId} {
+        allow read: if isMember();
+        allow create: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+          && request.resource.data.keys().hasOnly(['id', 'title', 'date', 'category', 'createdBy', 'updatedAt'])
+          && request.resource.data.id == reminderId
+          && request.resource.data.title is string && request.resource.data.title.size() >= 2 && request.resource.data.title.size() <= 100
+          && request.resource.data.date is int && request.resource.data.date >= 0 && request.resource.data.date <= 4102444800000
+          && request.resource.data.category in ['Personal', 'Veterinario', 'Cuidado', 'Paseo', 'Viaje']
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.updatedAt == request.time;
+        allow update: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'date', 'category', 'updatedAt'])
+          && request.resource.data.id == resource.data.id
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.title is string && request.resource.data.title.size() >= 2 && request.resource.data.title.size() <= 100
+          && request.resource.data.date is int && request.resource.data.date >= 0 && request.resource.data.date <= 4102444800000
+          && request.resource.data.category in ['Personal', 'Veterinario', 'Cuidado', 'Paseo', 'Viaje']
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if isMember()
+          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
+      }
       match /diary/{entryId} {
         allow read: if isMember();
         allow create, update: if isMember()
@@ -509,7 +534,7 @@ service cloud.firestore {
           && request.resource.data.id == entryId
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 1000
+          && request.resource.data.text.size() <= 12000
           && request.resource.data.position is int
           && request.resource.data.position >= 0
           && request.resource.data.position <= 199;
