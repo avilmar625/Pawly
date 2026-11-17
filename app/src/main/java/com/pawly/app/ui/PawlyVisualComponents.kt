@@ -1,5 +1,6 @@
 package com.pawly.app
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -38,7 +39,7 @@ internal fun PawlyPageHeader(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(bottom = 2.dp),
+        modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = tween(durationMillis = 180)).padding(bottom = 2.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Text(
