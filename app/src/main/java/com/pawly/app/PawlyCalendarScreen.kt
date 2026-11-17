@@ -272,9 +272,14 @@ private fun AddAgendaReminderDialog(initialDate: Long, onDismiss: () -> Unit, on
                 }, modifier = Modifier.fillMaxWidth()) { Text(java.text.DateFormat.getDateInstance(java.text.DateFormat.DEFAULT, locale).format(Date(date))) }
                 OutlinedButton(onClick = { TimePickerDialog(context, { _, h, m -> hour = h; minute = m; date = Calendar.getInstance().apply { timeInMillis = date; set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }.timeInMillis }, hour, minute, true).show() }, modifier = Modifier.fillMaxWidth()) { Text(String.format(java.util.Locale.ROOT, "%02d:%02d", hour, minute)) }
                 if (saveError != null) Text(saveError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    listOf("Personal", "Veterinario", "Cuidado", "Paseo", "Viaje").forEach { value -> FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value)) }) }
-                }
+                PawlyDropdownSelector(
+                    title = tr("Categoría"),
+                    selectedLabel = tr(category),
+                    options = listOf("Personal", "Veterinario", "Cuidado", "Paseo", "Viaje").map { it to tr(it) },
+                    selectedValue = category,
+                    onSelected = { category = it },
+                    leadingIcon = Icons.Default.CalendarMonth
+                )
             }
         },
         confirmButton = { Button(onClick = { if (!onSave(title.trim(), date, category)) saveError = reminderDateErrorText }, enabled = title.trim().length >= 2 && date > System.currentTimeMillis()) { Text(tr("Guardar")) } },
