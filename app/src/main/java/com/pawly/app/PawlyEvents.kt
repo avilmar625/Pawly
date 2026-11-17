@@ -379,7 +379,24 @@ internal fun PawlyEventsScreen(
                             Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
                             Text(event.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("${tr("Organiza")} ${event.organizerName} · ${event.interestedCount} ${tr("personas interesadas")}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(
+                            Modifier.fillMaxWidth().then(if (event.organizerUid.isNotBlank()) Modifier.clickable {
+                                onOpenProfile(event.organizerUid)
+                            } else Modifier),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "${tr("Organiza")} ${event.organizerName}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (event.organizerUid.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("· ${event.interestedCount} ${tr("personas interesadas")}",
+                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = {
                                 val url = if (event.latitude != null && event.longitude != null) {
