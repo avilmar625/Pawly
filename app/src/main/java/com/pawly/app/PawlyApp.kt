@@ -516,7 +516,7 @@ private fun PawlyMainApp(
         bottomBar = {
             val navigationTabs = listOf(
                 Tab.HOME, Tab.HEALTH, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE,
-                Tab.LEARN, Tab.DIARY, Tab.CALENDAR, Tab.SERVICES, Tab.LOST
+                Tab.LEARN, Tab.DIARY, Tab.CALENDAR, Tab.SERVICES, Tab.LOST, Tab.MARKET
             )
             fun iconForTab(tab: Tab) = when (tab) {
                 Tab.HOME -> Icons.Filled.WbSunny
@@ -529,6 +529,7 @@ private fun PawlyMainApp(
                 Tab.MORE -> Icons.Filled.MoreHoriz
                 Tab.SERVICES -> Icons.Filled.WorkspacePremium
                 Tab.LOST -> Icons.Filled.ReportProblem
+                Tab.MARKET -> Icons.Filled.Storefront
             }
             Surface(
                 color = MaterialTheme.colorScheme.surface,
@@ -577,7 +578,7 @@ private fun PawlyMainApp(
                         navigationTabs.forEach { tab ->
                             val active = selected == tab ||
                                 (tab == Tab.HEALTH && selected in setOf(Tab.DIARY, Tab.CALENDAR)) ||
-                                (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.LEARN))
+                                (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.LEARN, Tab.MARKET))
                             DropdownMenuItem(
                                 text = { Text(PawlyI18n.text(tab.label, language),
                                     fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
@@ -717,6 +718,7 @@ private fun PawlyMainApp(
                     onCalendar = { selected = Tab.CALENDAR },
                     onSettings = { showSettings = true },
                     onProfessionals = { selected = Tab.SERVICES },
+                    onPawlyMarket = { selected = Tab.MARKET },
                     onLostPet = { selected = Tab.LOST },
                     onSharePetPdf = {
                         coroutineScope.launch {
@@ -798,6 +800,12 @@ private fun PawlyMainApp(
                     showSignOut = cloudRepository != null,
                     language = language,
                     elegantDesign = elegantDesign
+                )
+                Tab.MARKET -> PawlyMarketHubScreen(
+                    petName = dogName,
+                    elegantDesign = elegantDesign,
+                    onBack = { selected = Tab.MORE },
+                    onProfessionals = { selected = Tab.SERVICES }
                 )
                 Tab.SERVICES -> ProfessionalServicesScreen(
                     onBack = { selected = Tab.MORE },
