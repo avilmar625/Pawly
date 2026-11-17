@@ -203,6 +203,7 @@ private fun PawlyMainApp(
         pendingPdfFile = null
     }
     var selected by remember { mutableStateOf(Tab.HOME) }
+    var mainNavigationExpanded by remember { mutableStateOf(false) }
     var openCommunityNotifications by remember { mutableStateOf(false) }
     var pendingCareAction by remember { mutableStateOf<String?>(null) }
     var pendingPassportType by remember { mutableStateOf<String?>(null) }
@@ -489,67 +490,90 @@ private fun PawlyMainApp(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
+            val navigationTabs = listOf(
+                Tab.HOME, Tab.HEALTH, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE,
+                Tab.LEARN, Tab.DIARY, Tab.CALENDAR, Tab.SERVICES, Tab.LOST
+            )
+            fun iconForTab(tab: Tab) = when (tab) {
+                Tab.HOME -> Icons.Filled.WbSunny
+                Tab.EXPLORE -> Icons.Filled.Explore
+                Tab.LEARN -> Icons.Filled.MenuBook
+                Tab.HEALTH -> Icons.Filled.Pets
+                Tab.DIARY -> Icons.Filled.AutoStories
+                Tab.COMMUNITY -> Icons.Filled.Groups
+                Tab.CALENDAR -> Icons.Filled.CalendarMonth
+                Tab.MORE -> Icons.Filled.MoreHoriz
+                Tab.SERVICES -> Icons.Filled.WorkspacePremium
+                Tab.LOST -> Icons.Filled.ReportProblem
+            }
             Surface(
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 12.dp,
                 shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
             ) {
-                Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding()
-                        .padding(horizontal = 5.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 9.dp)
                 ) {
-                    listOf(Tab.HOME, Tab.HEALTH, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE).forEach { tab ->
-                        val label = PawlyI18n.text(tab.label, language)
-                        val active = selected == tab ||
-                            (tab == Tab.HEALTH && selected in setOf(Tab.DIARY, Tab.CALENDAR)) ||
-                            (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.LEARN))
-                        val tabTint = MaterialTheme.colorScheme.primary
-                        val tabIcon = when (tab) {
-                            Tab.HOME -> Icons.Filled.WbSunny
-                            Tab.EXPLORE -> Icons.Filled.Explore
-                            Tab.LEARN -> Icons.Filled.MenuBook
-                            Tab.HEALTH -> Icons.Filled.Pets
-                            Tab.DIARY -> Icons.Filled.AutoStories
-                            Tab.COMMUNITY -> Icons.Filled.Groups
-                            Tab.CALENDAR -> Icons.Filled.CalendarMonth
-                            Tab.MORE -> Icons.Filled.MoreHoriz
-                            Tab.SERVICES -> Icons.Filled.WorkspacePremium
-                            Tab.LOST -> Icons.Filled.ReportProblem
+                    Surface(
+                        onClick = { mainNavigationExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(17.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        tonalElevation = 1.dp
+                    ) {
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                                Icon(iconForTab(selected), null, tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(9.dp).size(22.dp))
+                            }
+                            Spacer(Modifier.width(11.dp))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                                Text(PawlyI18n.text("NAVEGACIÓN", language), color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+                                Text(PawlyI18n.text(selected.label, language), style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                            Icon(Icons.Default.ExpandLess.takeIf { mainNavigationExpanded } ?: Icons.Default.ExpandMore,
+                                contentDescription = PawlyI18n.text("Abrir menú", language), tint = MaterialTheme.colorScheme.primary)
                         }
-                        Column(
-                            Modifier.weight(1f).clip(RoundedCornerShape(15.dp))
-                                .clickable {
+                    }
+                    DropdownMenu(
+                        expanded = mainNavigationExpanded,
+                        onDismissRequest = { mainNavigationExpanded = false },
+                        modifier = Modifier.fillMaxWidth(.94f).heightIn(max = 520.dp)
+                    ) {
+                        Text(PawlyI18n.text("IR A UNA SECCIÓN", language), color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.1.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        navigationTabs.forEach { tab ->
+                            val active = selected == tab ||
+                                (tab == Tab.HEALTH && selected in setOf(Tab.DIARY, Tab.CALENDAR)) ||
+                                (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.LEARN))
+                            DropdownMenuItem(
+                                text = { Text(PawlyI18n.text(tab.label, language),
+                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
+                                leadingIcon = {
+                                    Surface(shape = RoundedCornerShape(10.dp),
+                                        color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) {
+                                        Icon(iconForTab(tab), null,
+                                            tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(8.dp).size(19.dp))
+                                    }
+                                },
+                                trailingIcon = {
+                                    if (active) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                                },
+                                onClick = {
                                     if (tab != Tab.COMMUNITY) openCommunityNotifications = false
                                     selected = tab
+                                    mainNavigationExpanded = false
                                 }
-                                .padding(vertical = 4.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Box(
-                                Modifier.width(42.dp).height(29.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    tabIcon,
-                                    contentDescription = label,
-                                    tint = tabTint,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            // Keep every destination labelled: icon-only navigation
-                            // made the app harder to discover for first-time users.
-                            Text(
-                                label,
-                                color = if (active) tabTint else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 9.sp,
-                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                maxLines = 1,
-                                softWrap = false
                             )
                         }
                     }
