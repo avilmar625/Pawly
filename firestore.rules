@@ -711,7 +711,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['uid', 'enabled', 'radiusKm', 'latCell', 'lonCell', 'updatedAt'])
         && request.resource.data.uid == uid
         && request.resource.data.enabled is bool
-        && request.resource.data.radiusKm in [5, 10, 20]
+        && request.resource.data.radiusKm in [5, 10, 20, 30, 50, 100]
         && request.resource.data.latCell is int
         && request.resource.data.latCell >= -9000 && request.resource.data.latCell <= 9000
         && request.resource.data.lonCell is int
