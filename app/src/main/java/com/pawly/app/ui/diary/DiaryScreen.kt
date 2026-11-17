@@ -186,8 +186,7 @@ internal fun DiaryScreen(
                         selectedLabel = tr(memoryCategory),
                         options = listOf("Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").map { it to tr(it) },
                         selectedValue = memoryCategory,
-                        onSelected = { memoryCategory = it },
-                        leadingIcon = Icons.Default.Category
+                        onSelected = { memoryCategory = it }
                     )
                     OutlinedButton(
                         onClick = {
@@ -267,8 +266,7 @@ internal fun DiaryScreen(
                 selectedLabel = tr(diaryFilter),
                 options = listOf("Todos", "Paseos", "Viajes", "Juegos", "Amigos", "Celebraciones", "Otros").map { it to tr(it) },
                 selectedValue = diaryFilter,
-                onSelected = { diaryFilter = it },
-                leadingIcon = Icons.Default.FilterList
+                onSelected = { diaryFilter = it }
             )
         }
         if (filteredEntries.isEmpty()) {
