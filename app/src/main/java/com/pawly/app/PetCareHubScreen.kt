@@ -900,9 +900,13 @@ private fun PetCarePlanSection(
                 PetCareLocalStore.saveTasks(context, petName, remoteTasks, localStorageScope)
                 syncMessage = "Sincronizado con tu cuenta"
             }
-            runCatching { repo.loadCareLogs(petId) }.onSuccess {
-                careLogs = it
-                PetCareLocalStore.saveCareLogs(context, petName, it, localStorageScope)
+            runCatching { repo.loadCareLogs(petId) }.onSuccess { remoteLogs ->
+                val mergedLogs = (remoteLogs + PetCareLocalStore.loadCareLogs(context, petName, localStorageScope))
+                    .distinctBy { it.id }
+                    .sortedByDescending { it.occurredAt }
+                    .take(100)
+                careLogs = mergedLogs
+                PetCareLocalStore.saveCareLogs(context, petName, mergedLogs, localStorageScope)
             }
         } catch (error: Exception) {
             syncMessage = error.toCareSyncMessage()
