@@ -40,6 +40,8 @@ internal val Muted = Color(0xFF625F56)
 internal val Lime = Color(0xFFE4EBC1)
 internal val Peach = Color(0xFFF3DCCF)
 internal val Line = Color(0xFFECE5DC)
+// Shared dark overlay for photographic headers; keeps white text legible across destinations.
+internal val PawlyPhotoScrim = Color(0xD910251F)
 
 private data class PawlyAccent(
     val primary: Color,
