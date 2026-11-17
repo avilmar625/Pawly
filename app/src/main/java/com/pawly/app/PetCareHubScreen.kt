@@ -3,6 +3,8 @@ package com.pawly.app
 import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,7 +39,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,6 +72,8 @@ import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.model.CareLogEntry
 import com.pawly.app.care.model.PassportEntry
+import com.pawly.app.care.model.PassportEntryStates
+import com.pawly.app.care.domain.PassportEntrySchedule
 import com.pawly.app.care.CareReminderScheduler
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -266,6 +277,23 @@ private fun PetPassportSection(
     }
     var cloudLoading by remember(cloudOwnerUid) { mutableStateOf(cloudOwnerUid != null) }
     var canEdit by remember(cloudOwnerUid, petId) { mutableStateOf(sharedPetOwnerUid == null) }
+    var reminderEntryPending by remember { mutableStateOf<PassportEntry?>(null) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val target = reminderEntryPending
+        reminderEntryPending = null
+        if (granted && target != null) {
+            val scheduled = CareReminderScheduler.schedule(
+                context, petName, target.title,
+                "${target.nextDoseDate.ifBlank { target.date }} ${target.reminderTime}",
+                reminderKey = "passport-${target.id}"
+            )
+            syncMessage = if (scheduled) "Recordatorio sanitario programado" else "No se pudo programar el recordatorio"
+        } else if (target != null) {
+            syncMessage = "Registro guardado. Activa las notificaciones para recibir avisos."
+        }
+    }
     LaunchedEffect(cloudRepository, petId) {
         val repo = cloudRepository ?: return@LaunchedEffect
         cloudLoading = true
@@ -316,6 +344,14 @@ private fun PetPassportSection(
     }
     var detail by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
+    var product by remember { mutableStateOf("") }
+    var dose by remember { mutableStateOf("") }
+    var frequency by remember { mutableStateOf("") }
+    var clinic by remember { mutableStateOf("") }
+    var nextDoseDate by remember { mutableStateOf("") }
+    var entryStatus by remember { mutableStateOf(PassportEntryStates.REALIZADO) }
+    var reminderEnabled by remember { mutableStateOf(false) }
+    var reminderTime by remember { mutableStateOf("09:00") }
     val types = listOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Alergia", "Intervención", "Peso", "Microchip", "Seguro", "Veterinario habitual", "Contacto de emergencia", "Otro")
 
     LazyColumn(
@@ -334,6 +370,41 @@ private fun PetPassportSection(
                     Text(tr("Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria."), style = MaterialTheme.typography.bodyMedium)
                     Text(syncMessage, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+            }
+        }
+        item {
+            val agendaEntries = PassportEntrySchedule.agenda(entries)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f))
+            ) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr("Próximas actuaciones"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                    if (agendaEntries.isEmpty()) {
+                        Text(tr("No hay próximas actuaciones registradas."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        agendaEntries.forEach { upcoming ->
+                            val due = PassportEntrySchedule.dueDate(upcoming)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(upcoming.title, fontWeight = FontWeight.SemiBold)
+                                    Text("${upcoming.type} · ${due?.toString() ?: upcoming.date}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                val state = PassportEntrySchedule.status(upcoming)
+                                Text(
+                                    tr(if (state == PassportEntryStates.VENCIDO) "Vencido" else "Pendiente"),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (state == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -442,7 +513,12 @@ private fun PetPassportSection(
                     Text(tr("${entries.size} registros"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(onClick = { editingEntry = null; selectedType = "Vacuna"; title = ""; detail = ""; date = LocalDate.now().toString(); showAdd = true }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text(tr("Añadir")) }
+                    Button(onClick = {
+                        editingEntry = null; selectedType = "Vacuna"; title = ""; detail = ""
+                        date = LocalDate.now().toString(); product = ""; dose = ""; frequency = ""
+                        clinic = ""; nextDoseDate = ""; entryStatus = PassportEntryStates.REALIZADO
+                        reminderEnabled = false; reminderTime = "09:00"; showAdd = true
+                    }, enabled = !cloudLoading && canEdit) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text(tr("Añadir")) }
                     TextButton(onClick = {
                         runCatching { PetCarePdfExporter.sharePassport(context, petName, entries) }
                             .onFailure { syncMessage = "No se pudo preparar el PDF" }
@@ -468,6 +544,14 @@ private fun PetPassportSection(
                 title = entry.title
                 detail = entry.detail
                 date = entry.date
+                product = entry.product
+                dose = entry.dose
+                frequency = entry.frequency
+                clinic = entry.clinic
+                nextDoseDate = entry.nextDoseDate
+                entryStatus = entry.status
+                reminderEnabled = entry.reminderEnabled
+                reminderTime = entry.reminderTime
                 if (entry.type.equals("Peso", true)) {
                     val raw = Regex("[0-9]+([.,][0-9]+)?").find(entry.title)?.value ?: Regex("[0-9]+([.,][0-9]+)?").find(entry.detail)?.value
                     weightKg = raw?.replace(",", ".")?.toFloatOrNull() ?: 10f
@@ -480,11 +564,18 @@ private fun PetPassportSection(
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(entry.title, fontWeight = FontWeight.SemiBold)
                         Text(entry.type + " · " + entry.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        if (entry.product.isNotBlank()) Text(tr("Producto") + ": " + entry.product, style = MaterialTheme.typography.bodySmall)
+                        if (entry.dose.isNotBlank() || entry.frequency.isNotBlank()) Text(listOf(entry.dose, entry.frequency).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                        if (entry.clinic.isNotBlank()) Text(tr("Clínica") + ": " + entry.clinic, style = MaterialTheme.typography.bodySmall)
+                        if (entry.nextDoseDate.isNotBlank()) Text(tr("Próxima dosis") + ": " + entry.nextDoseDate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val recordState = PassportEntrySchedule.status(entry)
+                        Text(tr(when (recordState) { PassportEntryStates.VENCIDO -> "Vencido"; PassportEntryStates.PENDIENTE -> "Pendiente"; else -> "Realizado" }), style = MaterialTheme.typography.labelSmall, color = if (recordState == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         if (canEdit) Text(tr("Toca para editar"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(onClick = {
                         entries = entries.filterNot { it.id == entry.id }
+                        CareReminderScheduler.cancel(context, petName, entry.title, reminderKey = "passport-${entry.id}")
                         PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
@@ -507,7 +598,10 @@ private fun PetPassportSection(
             onDismissRequest = { showAdd = false },
             title = { Text(tr(if (editingEntry == null) "Nuevo registro" else "Editar registro")) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     PawlyDropdownSelector(
                         title = tr("Tipo de registro"),
                         selectedLabel = tr(selectedType),
@@ -559,7 +653,47 @@ private fun PetPassportSection(
                         Spacer(Modifier.width(8.dp))
                         Text(tr("Fecha") + ": " + date)
                     }
-                    OutlinedTextField(detail, { detail = it }, label = { Text(tr("Notas, clínica o detalles")) }, minLines = 2)
+                    OutlinedTextField(detail, { detail = it }, label = { Text(tr("Observaciones")) }, minLines = 2)
+                    OutlinedTextField(product, { product = it }, label = { Text(tr("Producto o medicamento")) }, singleLine = true)
+                    OutlinedTextField(dose, { dose = it }, label = { Text(tr("Dosis indicada por el veterinario")) }, singleLine = true)
+                    OutlinedTextField(frequency, { frequency = it }, label = { Text(tr("Pauta o frecuencia indicada")) }, singleLine = true)
+                    OutlinedTextField(clinic, { clinic = it }, label = { Text(tr("Clínica veterinaria")) }, singleLine = true)
+                    OutlinedButton(
+                        onClick = {
+                            val initialDate = runCatching { LocalDate.parse(nextDoseDate) }.getOrDefault(LocalDate.now().plusMonths(1))
+                            android.app.DatePickerDialog(context, { _, year, month, day ->
+                                nextDoseDate = LocalDate.of(year, month + 1, day).toString()
+                            }, initialDate.year, initialDate.monthValue - 1, initialDate.dayOfMonth).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr("Próxima dosis o actuación") + ": " + nextDoseDate.ifBlank { tr("Sin programar") })
+                    }
+                    PawlyDropdownSelector(
+                        title = tr("Estado del registro"),
+                        selectedLabel = tr(if (entryStatus == PassportEntryStates.PENDIENTE) "Pendiente" else "Realizado"),
+                        options = listOf(PassportEntryStates.PENDIENTE to tr("Pendiente"), PassportEntryStates.REALIZADO to tr("Realizado")),
+                        selectedValue = entryStatus,
+                        onSelected = { entryStatus = it },
+                        leadingIcon = Icons.Default.CheckCircle
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Recordatorio local"), fontWeight = FontWeight.SemiBold)
+                            Text(tr("Aviso en este dispositivo, si permites las notificaciones."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it })
+                    }
+                    if (reminderEnabled) {
+                        OutlinedTextField(
+                            reminderTime, { reminderTime = it },
+                            label = { Text(tr("Hora del aviso (HH:mm)")) },
+                            singleLine = true,
+                            isError = !reminderTime.matches(Regex("\\d{2}:\\d{2}"))
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -567,23 +701,56 @@ private fun PetPassportSection(
                     val cleanTitle = title.trim()
                     if (cleanTitle.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) {
                         val newEntry = editingEntry?.copy(
-                            type = selectedType,
-                            title = cleanTitle.take(80),
-                            detail = detail.trim().take(500),
-                            date = date.trim()
-                        ) ?: PassportEntry(UUID.randomUUID().toString(), selectedType, cleanTitle.take(80), detail.trim().take(500), date.trim())
+                            type = selectedType, title = cleanTitle.take(80),
+                            detail = detail.trim().take(1200), date = date.trim(),
+                            product = product.trim().take(120), dose = dose.trim().take(120),
+                            frequency = frequency.trim().take(120), clinic = clinic.trim().take(120),
+                            nextDoseDate = nextDoseDate.trim(), status = entryStatus,
+                            reminderEnabled = reminderEnabled && nextDoseDate.isNotBlank(),
+                            reminderTime = reminderTime.trim()
+                        ) ?: PassportEntry(
+                            id = UUID.randomUUID().toString(), type = selectedType,
+                            title = cleanTitle.take(80), detail = detail.trim().take(1200), date = date.trim(),
+                            product = product.trim().take(120), dose = dose.trim().take(120),
+                            frequency = frequency.trim().take(120), clinic = clinic.trim().take(120),
+                            nextDoseDate = nextDoseDate.trim(), status = entryStatus,
+                            reminderEnabled = reminderEnabled && nextDoseDate.isNotBlank(), reminderTime = reminderTime.trim()
+                        )
                         entries = if (editingEntry == null) entries + newEntry else entries.map { if (it.id == newEntry.id) newEntry else it }
                         PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
+                        if (editingEntry != null) CareReminderScheduler.cancel(context, petName, editingEntry!!.title, reminderKey = "passport-${newEntry.id}")
+                        if (newEntry.reminderEnabled) {
+                            val hasPermission = Build.VERSION.SDK_INT < 33 ||
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                            if (hasPermission) {
+                                val scheduled = CareReminderScheduler.schedule(
+                                    context, petName, newEntry.title,
+                                    "${newEntry.nextDoseDate} ${newEntry.reminderTime}",
+                                    reminderKey = "passport-${newEntry.id}"
+                                )
+                                syncMessage = if (scheduled) "Recordatorio sanitario programado" else "No se pudo programar el recordatorio"
+                            } else {
+                                reminderEntryPending = newEntry
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        } else {
+                            CareReminderScheduler.cancel(context, petName, newEntry.title, reminderKey = "passport-${newEntry.id}")
+                        }
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
                                 runCatching { repo.savePassportEntry(petId, newEntry) }
-                                    .onSuccess { syncMessage = "Registro guardado y sincronizado" }
+                                    .onSuccess { if (!newEntry.reminderEnabled) syncMessage = "Registro guardado y sincronizado" }
                                     .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
                             }
                         }
-                        title = ""; detail = ""; date = LocalDate.now().toString(); selectedType = "Vacuna"; editingEntry = null; showAdd = false
+                        title = ""; detail = ""; date = LocalDate.now().toString(); product = ""; dose = ""; frequency = ""
+                        clinic = ""; nextDoseDate = ""; entryStatus = PassportEntryStates.REALIZADO
+                        reminderEnabled = false; reminderTime = "09:00"; selectedType = "Vacuna"; editingEntry = null; showAdd = false
                     }
-                }, enabled = canEdit && title.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) { Text(tr("Guardar")) }
+                }, enabled = canEdit && title.isNotBlank() &&
+                    runCatching { LocalDate.parse(date.trim()) }.isSuccess &&
+                    (nextDoseDate.isBlank() || runCatching { LocalDate.parse(nextDoseDate.trim()) }.isSuccess) &&
+                    reminderTime.matches(Regex("\\d{2}:\\d{2}"))) { Text(tr("Guardar")) }
             },
             dismissButton = { TextButton(onClick = { showAdd = false; editingEntry = null }) { Text(tr("Cancelar")) } }
         )
