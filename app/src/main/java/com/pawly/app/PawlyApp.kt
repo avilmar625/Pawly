@@ -760,16 +760,33 @@ private fun PawlyMainApp(
                         }
                     },
                     onExportBackup = {
-                        runCatching {
-                            val petDates = healthDates.filterKeys { it.startsWith("$dogName|") }
-                                .mapKeys { (key, _) -> key.removePrefix("$dogName|") }
-                            pendingBackupJson = PawlyBackupManager.create(
-                                context, dogName, dogProfiles, diaryEntries, calendarReminders,
-                                petDates, storageScope, dogPhotoPath
-                            )
-                            val safeName = dogName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "mascota" }
-                            backupSaveLauncher.launch("pawly-backup-$safeName.json")
-                        }.onFailure { profileSyncStatus = "No se pudo preparar la copia: ${it.localizedMessage ?: "error"}" }
+                        coroutineScope.launch {
+                            runCatching {
+                                // Pull the latest shared cloud records first. A backup taken
+                                // while signed in must not silently omit another device's
+                                // latest passport, routines or care history.
+                                if (cloudRepository != null && !storageScope.isNullOrBlank()) {
+                                    val careRepository = FirebasePetCareRepository(sharedPetOwnerUid = storageScope)
+                                    careRepository.ensureSharedPet(dogName, dogName)
+                                    val latestPassport = careRepository.loadPassportEntries(dogName)
+                                    val latestTasks = careRepository.loadCareTasks(dogName)
+                                    val latestLogs = careRepository.loadCareLogs(dogName, 100)
+                                    PetCareLocalStore.saveEntries(context, dogName, latestPassport, storageScope)
+                                    PetCareLocalStore.saveTasks(context, dogName, latestTasks, storageScope)
+                                    PetCareLocalStore.saveCareLogs(context, dogName, latestLogs, storageScope)
+                                }
+                                val petDates = healthDates.filterKeys { it.startsWith("$dogName|") }
+                                    .mapKeys { (key, _) -> key.removePrefix("$dogName|") }
+                                pendingBackupJson = PawlyBackupManager.create(
+                                    context, dogName, dogProfiles, diaryEntries, calendarReminders,
+                                    petDates, storageScope, dogPhotoPath
+                                )
+                                val safeName = dogName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "mascota" }
+                                backupSaveLauncher.launch("pawly-backup-$safeName.json")
+                            }.onFailure {
+                                profileSyncStatus = "No se pudo preparar la copia completa: ${it.localizedMessage ?: "error"}"
+                            }
+                        }
                     },
                     onImportBackup = { backupImportLauncher.launch("application/json") },
                     onInviteFriend = {
