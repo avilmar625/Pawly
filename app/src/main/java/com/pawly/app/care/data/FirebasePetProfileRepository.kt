@@ -86,7 +86,7 @@ class FirebasePetProfileRepository(
         petId: String,
         onEntries: (List<String>) -> Unit,
         onError: (String) -> Unit
-    ): ListenerRegistration = diary(petId).orderBy("position").limit(200)
+    ): ListenerRegistration = diary(petId).orderBy("position").limit(500)
         .addSnapshotListener { snapshot, error ->
             if (error != null) {
                 onError(error.localizedMessage ?: "No se pudo sincronizar el diario.")
