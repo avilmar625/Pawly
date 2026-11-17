@@ -4,6 +4,7 @@ import { shouldSuppressDispatch } from "./dispatch-state";
 import { parseCommunityPlaceInput, communityPlaceDailyLimitId } from "./community-place-policy";
 import { distanceKm, parseBearerToken } from "./privacy-utils";
 import { normalizeE164Phone, phoneDiscoveryReservationId, PHONE_CONTACT_BATCH_LIMIT, PHONE_DAILY_BATCH_LIMIT, PHONE_MATCH_RESULT_LIMIT } from "./phone-discovery-policy";
+import { canDeleteCloudinaryAsset, isCloudinarySecureUrl } from "./cloudinary-asset-policy";
 
 interface Env {
   FIREBASE_PROJECT_ID: string;
@@ -12,6 +13,9 @@ interface Env {
   FIREBASE_PROJECT_NUMBER?: string;
   PHONE_DISCOVERY_HMAC_SECRET?: string;
   ALLOW_PNV_TEST_TOKENS?: string;
+  CLOUDINARY_CLOUD_NAME?: string;
+  CLOUDINARY_API_KEY?: string;
+  CLOUDINARY_API_SECRET?: string;
 }
 
 type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
@@ -680,6 +684,93 @@ function decodeFirestoreBoolean(value: any): boolean {
   return value?.booleanValue === true;
 }
 
+async function sha1Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function handleCloudinaryAssetDelete(request: Request, env: Env): Promise<Response> {
+  const bearer = parseBearerToken(request.headers.get("authorization"));
+  if (!bearer) return json({ error: "Inicia sesión para gestionar tus fotografías." }, 401);
+  let uid = "";
+  let isAdmin = false;
+  try {
+    const { payload } = await jwtVerify(bearer, firebaseKeys, {
+      issuer: `https://securetoken.google.com/${env.FIREBASE_PROJECT_ID}`,
+      audience: env.FIREBASE_PROJECT_ID,
+      algorithms: ["RS256"]
+    });
+    if (typeof payload.sub !== "string" || payload.email_verified !== true) return json({ error: "La cuenta debe estar verificada." }, 401);
+    uid = payload.sub;
+    isAdmin = payload.admin === true;
+  } catch {
+    return json({ error: "La sesión no es válida." }, 401);
+  }
+
+  if (!env.CLOUDINARY_CLOUD_NAME || !env.CLOUDINARY_API_KEY || !env.CLOUDINARY_API_SECRET) {
+    return json({ error: "El borrado seguro de fotografías no está configurado en el servidor." }, 503);
+  }
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 4096) return json({ error: "Petición demasiado grande." }, 413);
+    const body = JSON.parse(raw) as { secureUrl?: unknown };
+    if (!isCloudinarySecureUrl(body.secureUrl)) return json({ error: "La URL de la fotografía no es válida." }, 400);
+
+    const accessToken = await googleAccessToken(env);
+    const queryResponse = await fetch(`${firestoreRoot(env)}:runQuery`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: "cloudinaryAssets" }],
+          where: { fieldFilter: {
+            field: { fieldPath: "secureUrl" }, op: "EQUAL",
+            value: { stringValue: body.secureUrl }
+          } },
+          limit: 1
+        }
+      })
+    });
+    if (!queryResponse.ok) return json({ error: "No se pudo localizar el registro de la fotografía." }, 502);
+    const queryRows = await queryResponse.json() as Array<{ document?: any }>;
+    const assetDoc = queryRows.find(row => row.document)?.document;
+    if (!assetDoc) return json({ deleted: false, reason: "not-indexed" }, 404);
+
+    const fields = assetDoc.fields ?? {};
+    const asset = {
+      uid: decodeFirestoreString(fields.uid),
+      publicId: decodeFirestoreString(fields.publicId),
+      resourceType: decodeFirestoreString(fields.resourceType)
+    };
+    if (!canDeleteCloudinaryAsset(uid, isAdmin, asset)) return json({ error: "No tienes permiso para borrar este archivo." }, 403);
+    const assetId = String(assetDoc.name ?? "").split("/").pop() ?? "";
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(assetId)) return json({ error: "Registro de archivo no válido." }, 400);
+
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = await sha1Hex(`public_id=${asset.publicId}&timestamp=${timestamp}${env.CLOUDINARY_API_SECRET}`);
+    const form = new URLSearchParams({
+      public_id: asset.publicId,
+      timestamp,
+      api_key: env.CLOUDINARY_API_KEY,
+      signature,
+      invalidate: "true"
+    });
+    const cloudinaryResponse = await fetch(
+      `https://api.cloudinary.com/v1_1/${encodeURIComponent(env.CLOUDINARY_CLOUD_NAME)}/${asset.resourceType}/destroy`,
+      { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form }
+    );
+    if (!cloudinaryResponse.ok) return json({ error: "Cloudinary no pudo eliminar la fotografía; el registro se conserva para reintentar." }, 502);
+    const result = await cloudinaryResponse.json() as { result?: string };
+    if (result.result !== "ok" && result.result !== "not found") {
+      return json({ error: "Cloudinary no confirmó el borrado; el registro se conserva." }, 502);
+    }
+    await deleteFirestoreDocument(env, accessToken, `cloudinaryAssets/${assetId}`);
+    return json({ deleted: true });
+  } catch {
+    return json({ error: "No se pudo completar el borrado seguro de la fotografía." }, 502);
+  }
+}
+
 async function verifiedRequestUser(request: Request, env: Env): Promise<string | null> {
   const bearer = parseBearerToken(request.headers.get("authorization"));
   if (!bearer) return null;
@@ -930,6 +1021,9 @@ export default {
     const url = new URL(request.url);
     if (request.method === "GET" && url.pathname === "/health") {
       return json({ service: "pawly-api", status: "ok" });
+    }
+    if (request.method === "POST" && url.pathname === "/v1/cloudinary/assets/delete") {
+      return handleCloudinaryAssetDelete(request, env);
     }
     if (request.method === "POST" && url.pathname === "/v1/activity-notifications") {
       return handleActivityNotification(request, env);
