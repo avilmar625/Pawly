@@ -3,6 +3,7 @@ package com.pawly.app
 import com.pawly.app.tr
 
 import android.graphics.Bitmap
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,6 +16,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -75,20 +78,27 @@ internal fun HomeScreen(
         val local = com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
         passportEntries = local
         if (!storageScope.isNullOrBlank()) {
-            runCatching {
-                val repository = com.pawly.app.care.data.FirebasePetCareRepository()
-                repository.ensureSharedPet(dogName, dogName)
-                val remote = repository.loadPassportEntries(dogName)
-                if (remote.isEmpty() && local.isNotEmpty()) {
-                    repository.savePassportEntries(dogName, local)
-                    local
-                } else {
-                    remote
+            isLoadingRemotePassport = local.isEmpty()
+            try {
+                runCatching {
+                    val repository = com.pawly.app.care.data.FirebasePetCareRepository()
+                    repository.ensureSharedPet(dogName, dogName)
+                    val remote = repository.loadPassportEntries(dogName)
+                    if (remote.isEmpty() && local.isNotEmpty()) {
+                        repository.savePassportEntries(dogName, local)
+                        local
+                    } else {
+                        remote
+                    }
+                }.onSuccess { merged ->
+                    passportEntries = merged
+                    com.pawly.app.care.data.PetCareLocalStore.saveEntries(context, dogName, merged, storageScope)
                 }
-            }.onSuccess { merged ->
-                passportEntries = merged
-                com.pawly.app.care.data.PetCareLocalStore.saveEntries(context, dogName, merged, storageScope)
+            } finally {
+                isLoadingRemotePassport = false
             }
+        } else {
+            isLoadingRemotePassport = false
         }
     }
 
@@ -112,12 +122,21 @@ internal fun HomeScreen(
     val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
     val weightChange = if (latestWeight != null && previousWeight != null) latestWeight - previousWeight else null
     val completed = listOf(walkDone, medicineDone).count { it }
+    var isLoadingRemotePassport by remember(dogName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(15.dp)
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wideLayout = maxWidth >= 700.dp
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().widthIn(max = 760.dp).align(Alignment.TopCenter),
+            contentPadding = PaddingValues(
+                start = if (wideLayout) 28.dp else 18.dp,
+                end = if (wideLayout) 28.dp else 18.dp,
+                top = if (wideLayout) 22.dp else 14.dp,
+                bottom = 32.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(if (wideLayout) 19.dp else 15.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -169,7 +188,7 @@ internal fun HomeScreen(
             )
         }
         item {
-            Surface(onClick = onWeight, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
+            Surface(onClick = onWeight, modifier = Modifier.animateContentSize(), shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -179,14 +198,16 @@ internal fun HomeScreen(
                         Text(tr("Ver salud"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                         Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                     }
-                    if (latestWeight != null) {
+                    if (isLoadingRemotePassport && passportEntries.isEmpty()) {
+                        HomeWeightSkeleton()
+                    } else if (latestWeight != null) {
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text(String.format(locale, "%.1f", latestWeight), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
                             Spacer(Modifier.width(5.dp))
                             Text("kg", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.dp))
                             Spacer(Modifier.weight(1f))
                             if (weightChange != null) {
-                                Text(String.format(locale, "%+.1f kg", weightChange), color = if (weightChange > 0) Color(0xFF31845B) else if (weightChange < 0) Color(0xFFB45A54) else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
+                                Text(String.format(locale, "%+.1f kg", weightChange), color = if (weightChange > 0) MaterialTheme.colorScheme.tertiary else if (weightChange < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                             }
                         }
                         if (parsedWeights.size > 1) {
@@ -250,6 +271,7 @@ internal fun HomeScreen(
                 TextButton(onClick = onCommunity, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.Groups, null); Spacer(Modifier.width(5.dp)); Text(tr("Comunidad")) }
                 TextButton(onClick = onCalendar, modifier = Modifier.weight(1f)) { Icon(Icons.Filled.CalendarMonth, null); Spacer(Modifier.width(5.dp)); Text(tr("Calendario")) }
             }
+        }
         }
     }
 }
@@ -470,9 +492,13 @@ internal fun TaskRow(
     onChecked: (Boolean) -> Unit,
     tint: Color
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Row(
-            Modifier.fillMaxWidth().clickable { onChecked(!checked) }.padding(horizontal = 15.dp, vertical = 13.dp),
+            Modifier.fillMaxWidth().clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onChecked(!checked)
+            }.padding(horizontal = 15.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(tint), contentAlignment = Alignment.Center) {
@@ -483,7 +509,7 @@ internal fun TaskRow(
                 Text(tr(title), fontWeight = FontWeight.SemiBold, color = if (checked) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                 Text(tr(subtitle), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Checkbox(checked = checked, onCheckedChange = onChecked, colors = CheckboxDefaults.colors(checkedColor = Forest))
+            Checkbox(checked = checked, onCheckedChange = { checkedNow -> haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onChecked(checkedNow) }, colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary))
         }
     }
 }
@@ -497,8 +523,12 @@ private fun HomeQuickAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -515,5 +545,18 @@ private fun HomeQuickAction(
             }
             Text(tr(label), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+
+@Composable
+private fun HomeWeightSkeleton() {
+    Column(
+        Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        PawlySkeletonBlock(Modifier.fillMaxWidth(0.38f), height = 12.dp)
+        PawlySkeletonBlock(Modifier.fillMaxWidth(0.54f), height = 29.dp)
+        PawlySkeletonBlock(Modifier.fillMaxWidth(), height = 44.dp, shape = RoundedCornerShape(10.dp))
     }
 }
