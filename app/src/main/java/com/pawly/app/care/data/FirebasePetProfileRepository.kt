@@ -103,7 +103,7 @@ class FirebasePetProfileRepository(
         val clean = PetProfileValidation.diary(listOf(withoutCloudDiaryId(rawEntry))).single()
         val collection = diary(petId)
         val existing = collection.limit(501).get().await()
-        require(existing.size() < 500) { "El diario admite hasta 200 recuerdos por mascota." }
+        require(existing.size() < 500) { "El diario admite hasta 500 recuerdos por mascota." }
         val id = java.util.UUID.randomUUID().toString()
         collection.document(id).set(mapOf(
             "id" to id,
