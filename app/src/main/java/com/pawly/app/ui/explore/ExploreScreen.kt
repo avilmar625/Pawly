@@ -352,6 +352,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 subtitle = "Ideas para vuestra próxima aventura."
             )
             Spacer(Modifier.height(8.dp))
+            PawlyMarketSection()
             FilledTonalButton(
                 onClick = {
                     val hasLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -1078,6 +1079,88 @@ private fun PlaceCard(place: Place, saved: Boolean, onOpen: () -> Unit, onSave: 
                 )
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.Filled.ArrowForward, contentDescription = tr("Ver idea"), tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
+}
+
+
+/**
+ * Compact product discovery area. Opens retailer search results externally:
+ * Pawly does not process payments or imply that a product has been clinically endorsed.
+ * Affiliate tracking can be added later once Pawly has an approved partner account.
+ */
+@Composable
+private fun PawlyMarketSection() {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val products = listOf(
+        Triple("Alimentación", "Pienso y comida para perros", Icons.Default.Restaurant),
+        Triple("Snacks y premios", "Premios y snacks para perros", Icons.Default.Cookie),
+        Triple("Juegos", "Juguetes interactivos y mordedores para perros", Icons.Default.SportsEsports),
+        Triple("Paseo y descanso", "Arneses, correas y camas para perros", Icons.Default.Pets)
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(Modifier.padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(13.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                    Icon(Icons.Default.ShoppingBag, null, tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(10.dp).size(23.dp))
+                }
+                Spacer(Modifier.width(11.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Pawly Market", style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Ideas y productos para cuidarles mejor",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) "Mostrar menos" else "Ver categorías")
+                }
+            }
+            if (expanded) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                products.forEach { (title, search, icon) ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                            .clickable {
+                                val url = "https://www.amazon.es/s?k=" + Uri.encode(search)
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                                    .onFailure {
+                                        android.widget.Toast.makeText(context, "No se ha podido abrir la tienda.", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                            }.padding(vertical = 9.dp, horizontal = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
+                            Icon(icon, null, tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(9.dp).size(19.dp))
+                        }
+                        Spacer(Modifier.width(11.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                            Text(search, style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Default.OpenInNew, null, tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp))
+                    }
+                }
+                Text(
+                    "Se abrirán resultados de tiendas externas. Compara ingredientes, tamaño, edad recomendada y opiniones antes de comprar. Pawly no vende estos productos ni procesa pagos.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Text("Alimentación · Snacks · Juguetes · Accesorios",
+                    style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
