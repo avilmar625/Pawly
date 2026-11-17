@@ -775,13 +775,128 @@ internal object PawlyI18n {
         "¡Todo listo! Qué buen equipo." to "All done! What a great team.", "HOY PARA" to "TODAY FOR", "Mi perro" to "My pet", "Agenda" to "Schedule", "Cuidados" to "Care", "Compartir" to "Share", "Citas" to "Appointments", "Paseo" to "Walk", "Peso" to "Weight", "Foto" to "Photo", "Comida" to "Food", "Medicación" to "Medication", "Diario" to "Daily", "Semanal" to "Weekly", "Puntual" to "One-off", "TODO VUESTRO" to "YOUR STORY", "La historia de" to "The story of", "Salud, cuidados, recuerdos y citas en orden cronológico." to "Health, care, memories and appointments in chronological order.", "Aquí aparecerá vuestra historia" to "Your story will appear here", "Cuando guardes una vacuna, un cuidado, un recuerdo o una cita, aparecerá aquí automáticamente." to "Vaccinations, care activities, memories and appointments will appear here when saved.", "Cargando historial…" to "Loading history…", "Historial sincronizado" to "History synced", "No hay registros de este tipo todavía." to "There are no records of this type yet."
     )
 
+    private val passportTranslations = mapOf(
+        "es" to mapOf(
+            "Próximas actuaciones" to "Próximas actuaciones",
+            "No hay próximas actuaciones registradas." to "No hay próximas actuaciones registradas.",
+            "Fecha por definir" to "Fecha por definir",
+            "Producto o medicamento" to "Producto o medicamento",
+            "Dosis indicada por el veterinario" to "Dosis indicada por el veterinario",
+            "Pauta o frecuencia indicada" to "Pauta o frecuencia indicada",
+            "Clínica veterinaria" to "Clínica veterinaria",
+            "Próxima dosis o actuación" to "Próxima dosis o actuación",
+            "Estado del registro" to "Estado del registro",
+            "Recordatorio local" to "Recordatorio local",
+            "Aviso en este dispositivo, si permites las notificaciones." to "Aviso en este dispositivo, si permites las notificaciones.",
+            "Fecha de administración" to "Fecha de administración",
+            "Producto" to "Producto", "Clínica" to "Clínica", "Próxima dosis" to "Próxima dosis",
+            "Observaciones" to "Observaciones", "Pendiente" to "Pendiente", "Realizado" to "Realizado", "Vencido" to "Vencido"
+        ),
+        "en" to mapOf(
+            "Próximas actuaciones" to "Upcoming actions",
+            "No hay próximas actuaciones registradas." to "No upcoming actions recorded.",
+            "Fecha por definir" to "Date to be confirmed",
+            "Producto o medicamento" to "Product or medication",
+            "Dosis indicada por el veterinario" to "Dosage prescribed by the veterinarian",
+            "Pauta o frecuencia indicada" to "Prescribed schedule or frequency",
+            "Clínica veterinaria" to "Veterinary clinic",
+            "Próxima dosis o actuación" to "Next dose or action",
+            "Estado del registro" to "Record status",
+            "Recordatorio local" to "Local reminder",
+            "Aviso en este dispositivo, si permites las notificaciones." to "Reminder on this device, if notifications are enabled.",
+            "Fecha de administración" to "Administration date",
+            "Producto" to "Product", "Clínica" to "Clinic", "Próxima dosis" to "Next dose",
+            "Observaciones" to "Notes", "Pendiente" to "Pending", "Realizado" to "Completed", "Vencido" to "Overdue"
+        ),
+        "ca" to mapOf(
+            "Próximas actuaciones" to "Properes actuacions",
+            "No hay próximas actuaciones registradas." to "No hi ha properes actuacions registrades.",
+            "Fecha por definir" to "Data per determinar",
+            "Producto o medicamento" to "Producte o medicament",
+            "Dosis indicada por el veterinario" to "Dosi indicada pel veterinari",
+            "Pauta o frecuencia indicada" to "Pauta o freqüència indicada",
+            "Clínica veterinaria" to "Clínica veterinària",
+            "Próxima dosis o actuación" to "Propera dosi o actuació",
+            "Estado del registro" to "Estat del registre",
+            "Recordatorio local" to "Recordatori local",
+            "Aviso en este dispositivo, si permites las notificaciones." to "Avís en aquest dispositiu, si permets les notificacions.",
+            "Fecha de administración" to "Data d'administració",
+            "Producto" to "Producte", "Clínica" to "Clínica", "Próxima dosis" to "Propera dosi",
+            "Observaciones" to "Observacions", "Pendiente" to "Pendent", "Realizado" to "Realitzat", "Vencido" to "Vençut"
+        ),
+        "fr" to mapOf(
+            "Próximas actuaciones" to "Prochaines actions",
+            "No hay próximas actuaciones registradas." to "Aucune action à venir enregistrée.",
+            "Fecha por definir" to "Date à confirmer",
+            "Producto o medicamento" to "Produit ou médicament",
+            "Dosis indicada por el veterinario" to "Dose indiquée par le vétérinaire",
+            "Pauta o frecuencia indicada" to "Posologie ou fréquence indiquée",
+            "Clínica veterinaria" to "Clinique vétérinaire",
+            "Próxima dosis o actuación" to "Prochaine dose ou action",
+            "Estado del registro" to "État de l'entrée",
+            "Recordatorio local" to "Rappel local",
+            "Aviso en este dispositivo, si permites las notificaciones." to "Rappel sur cet appareil si les notifications sont autorisées.",
+            "Fecha de administración" to "Date d'administration",
+            "Producto" to "Produit", "Clínica" to "Clinique", "Próxima dosis" to "Prochaine dose",
+            "Observaciones" to "Observations", "Pendiente" to "En attente", "Realizado" to "Effectué", "Vencido" to "En retard"
+        ),
+        "de" to mapOf(
+            "Próximas actuaciones" to "Anstehende Maßnahmen",
+            "No hay próximas actuaciones registradas." to "Keine anstehenden Maßnahmen eingetragen.",
+            "Fecha por definir" to "Datum noch offen",
+            "Producto o medicamento" to "Produkt oder Medikament",
+            "Dosis indicada por el veterinario" to "Vom Tierarzt angegebene Dosis",
+            "Pauta o frecuencia indicada" to "Angegebene Anwendung oder Häufigkeit",
+            "Clínica veterinaria" to "Tierklinik",
+            "Próxima dosis o actuación" to "Nächste Dosis oder Maßnahme",
+            "Estado del registro" to "Eintragsstatus",
+            "Recordatorio local" to "Lokale Erinnerung",
+            "Aviso en este dispositivo, si permites las notificaciones." to "Erinnerung auf diesem Gerät, wenn Benachrichtigungen erlaubt sind.",
+            "Fecha de administración" to "Verabreichungsdatum",
+            "Producto" to "Produkt", "Clínica" to "Klinik", "Próxima dosis" to "Nächste Dosis",
+            "Observaciones" to "Notizen", "Pendiente" to "Ausstehend", "Realizado" to "Erledigt", "Vencido" to "Überfällig"
+        ),
+        "pt" to mapOf(
+            "Próximas actuaciones" to "Próximas ações",
+            "No hay próximas actuaciones registradas." to "Não existem próximas ações registadas.",
+            "Fecha por definir" to "Data por definir",
+            "Producto o medicamento" to "Produto ou medicamento",
+            "Dosis indicada por el veterinario" to "Dose indicada pelo veterinário",
+            "Pauta o frecuencia indicada" to "Posologia ou frequência indicada",
+            "Clínica veterinaria" to "Clínica veterinária",
+            "Próxima dosis o actuación" to "Próxima dose ou ação",
+            "Estado del registro" to "Estado do registo",
+            "Recordatorio local" to "Lembrete local",
+            "Aviso en este dispositivo, si permites las notificaciones." to "Aviso neste dispositivo, se permitires as notificações.",
+            "Fecha de administración" to "Data de administração",
+            "Producto" to "Produto", "Clínica" to "Clínica", "Próxima dosis" to "Próxima dose",
+            "Observaciones" to "Observações", "Pendiente" to "Pendente", "Realizado" to "Realizado", "Vencido" to "Em atraso"
+        ),
+        "eu" to mapOf(
+            "Próximas actuaciones" to "Hurrengo ekintzak",
+            "No hay próximas actuaciones registradas." to "Ez dago hurrengo ekintzarik erregistratuta.",
+            "Fecha por definir" to "Data zehazteke",
+            "Producto o medicamento" to "Produktua edo sendagaia",
+            "Dosis indicada por el veterinario" to "Albaitariak adierazitako dosia",
+            "Pauta o frecuencia indicada" to "Adierazitako pauta edo maiztasuna",
+            "Clínica veterinaria" to "Albaitaritza-klinika",
+            "Próxima dosis o actuación" to "Hurrengo dosia edo ekintza",
+            "Estado del registro" to "Erregistroaren egoera",
+            "Recordatorio local" to "Tokiko abisua",
+            "Aviso en este dispositivo, si permites las notificaciones." to "Abisua gailu honetan, jakinarazpenak baimentzen badituzu.",
+            "Fecha de administración" to "Emate-data",
+            "Producto" to "Produktua", "Clínica" to "Klinika", "Próxima dosis" to "Hurrengo dosia",
+            "Observaciones" to "Oharrak", "Pendiente" to "Egiteke", "Realizado" to "Eginda", "Vencido" to "Atzeratuta"
+        )
+    )
+
     fun text(value: String, language: String): String = when (language) {
-        "eu" -> euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: dynamicText(value, language) ?: value
-        "ca" -> ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: homeCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "fr" -> fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: homeFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "en" -> en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: homeEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "de" -> de[value] ?: text(value, "en")
-        "pt" -> pt[value] ?: text(value, "en")
+        "eu" -> passportTranslations["eu"]?.get(value) ?: euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: dynamicText(value, language) ?: value
+        "ca" -> passportTranslations["ca"]?.get(value) ?: ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: homeCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "fr" -> passportTranslations["fr"]?.get(value) ?: fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: homeFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "en" -> passportTranslations["en"]?.get(value) ?: en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: homeEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "de" -> passportTranslations["de"]?.get(value) ?: de[value] ?: passportTranslations["en"]?.get(value) ?: text(value, "en")
+        "pt" -> passportTranslations["pt"]?.get(value) ?: pt[value] ?: passportTranslations["en"]?.get(value) ?: text(value, "en")
         else -> value
     }
 }
