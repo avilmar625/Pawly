@@ -71,19 +71,19 @@ internal fun ProfileDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(tr("Perfil de tu compañero"), color = Forest) },
+        title = { Text(tr("Perfil de tu compañero"), color = MaterialTheme.colorScheme.primary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = name, onValueChange = onNameChange, label = { Text(tr("Nombre")) }, singleLine = true, shape = RoundedCornerShape(14.dp))
-                Text(if (hasPhoto) "Foto de perfil disponible" else "Añade una foto para reconocer a tu compañero", color = Muted, style = MaterialTheme.typography.bodySmall)
+                Text(if (hasPhoto) "Foto de perfil disponible" else "Añade una foto para reconocer a tu compañero", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 if (syncStatus.isNotBlank()) {
-                    Text(syncStatus, color = ForestLight, style = MaterialTheme.typography.labelSmall)
+                    Text(syncStatus, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelSmall)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onGallery) { Icon(Icons.Filled.PhotoLibrary, contentDescription = null); Spacer(Modifier.width(5.dp)); Text(tr("Galería")) }
                     OutlinedButton(onClick = onCamera) { Icon(Icons.Filled.PhotoCamera, contentDescription = null); Spacer(Modifier.width(5.dp)); Text(tr("Cámara")) }
                 }
-                Text(tr("Perfiles de perros"), color = Forest, fontWeight = FontWeight.SemiBold)
+                Text(tr("Perfiles de perros"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 profiles.sorted().forEach { profile ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(onClick = { onSelectProfile(profile) }, modifier = Modifier.weight(1f)) { Text(profile) }
@@ -94,10 +94,10 @@ internal fun ProfileDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onSave, enabled = name.isNotBlank()) { Text(tr("Guardar"), color = Forest) }
+            TextButton(onClick = onSave, enabled = name.isNotBlank()) { Text(tr("Guardar"), color = MaterialTheme.colorScheme.primary) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(tr("Cancelar"), color = Muted) }
+            TextButton(onClick = onDismiss) { Text(tr("Cancelar"), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         },
         containerColor = Paper
     )
@@ -109,20 +109,20 @@ internal fun AboutDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         containerColor = Paper,
         icon = { Text(tr("🐾"), fontSize = 34.sp) },
-        title = { Text(tr("Pawly"), color = Forest, fontWeight = FontWeight.Bold) },
+        title = { Text(tr("Pawly"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(tr("Más aventuras. Más recuerdos. Más vida juntos."), color = Ink)
+                Text(tr("Más aventuras. Más recuerdos. Más vida juntos."), color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(5.dp))
-                Text(tr("Creadores"), color = ForestLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text(tr("Creadores"), color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 Text(tr("Alex Vilarrubla Martín"), fontWeight = FontWeight.SemiBold)
                 Text(tr("Maialen Cruz Tudanca"), fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(5.dp))
-                Text(tr("Versión inicial 1.0.0 · Proyecto en desarrollo"), color = Muted, fontSize = 11.sp)
+                Text(tr("Versión inicial 1.0.0 · Proyecto en desarrollo"), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(tr("Cerrar"), color = Forest) }
+            TextButton(onClick = onDismiss) { Text(tr("Cerrar"), color = MaterialTheme.colorScheme.primary) }
         }
     )
 }
