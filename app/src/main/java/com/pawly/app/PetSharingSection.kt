@@ -55,7 +55,7 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
                     Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Text(tr("Compartir el perfil de $petName"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Text(tr("Invita a tu pareja u otra persona de confianza mediante su nombre de usuario de Pawly. Podrá aceptar o rechazar la invitación."))
-                    Text(tr("El perfil compartido incluye el pasaporte sanitario, las rutinas y el diario. Los permisos de solo lectura y edición se aplican en Firestore. La agenda y los marcadores rápidos del día siguen siendo locales."),
+                    Text(tr("El perfil compartido sincroniza el pasaporte sanitario, las rutinas y el historial de cuidados. Los permisos de solo lectura y edición se aplican en Firestore. El diario, la agenda y los marcadores rápidos del día todavía no se sincronizan entre cuentas."),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -101,7 +101,21 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
                     if (member.role != "owner" && ownerUid != null && repo != null) {
                         TextButton(onClick = {
                             scope.launch {
-                                runCatching { repo.removeMember(petId, member.uid); refresh() }
+                                val nextRole = if (member.role == "reader") "editor" else "reader"
+                                runCatching { repo.updateMemberRole(petId, member.uid, nextRole) }
+                                    .onSuccess {
+                                        message = if (nextRole == "reader") "Permiso cambiado a solo lectura." else "Permiso de edición concedido."
+                                        refresh()
+                                    }
+                                    .onFailure { message = it.localizedMessage }
+                            }
+                        }) {
+                            Icon(Icons.Default.Tune, contentDescription = null)
+                            Text(if (member.role == "reader") tr("Dar edición") else tr("Solo lectura"))
+                        }
+                        TextButton(onClick = {
+                            scope.launch {
+                                runCatching { repo.removeMember(petId, member.uid); message = "Acceso retirado."; refresh() }
                                     .onFailure { message = it.localizedMessage }
                             }
                         }) { Icon(Icons.Default.PersonRemove, contentDescription = "Retirar acceso") }
