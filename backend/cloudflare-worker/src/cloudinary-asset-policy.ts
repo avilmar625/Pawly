@@ -22,7 +22,7 @@ export function isCloudinarySecureUrl(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 2048) return false;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && url.hostname.length > 0;
+    return url.protocol === "https:" && url.hostname === "res.cloudinary.com";
   } catch {
     return false;
   }
