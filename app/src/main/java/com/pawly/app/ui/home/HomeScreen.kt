@@ -73,6 +73,7 @@ internal fun HomeScreen(
     var passportEntries by remember(dogName, storageScope) {
         mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope))
     }
+    var isLoadingRemotePassport by remember(dogName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
 
     LaunchedEffect(dogName, storageScope) {
         val local = com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
@@ -121,7 +122,6 @@ internal fun HomeScreen(
     val latestWeight = parsedWeights.lastOrNull()?.second
     val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
     val weightChange = if (latestWeight != null && previousWeight != null) latestWeight - previousWeight else null
-        var isLoadingRemotePassport by remember(dogName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wideLayout = maxWidth >= 700.dp

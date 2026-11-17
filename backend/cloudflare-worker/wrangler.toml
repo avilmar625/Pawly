@@ -8,3 +8,4 @@ workers_dev = true
 [vars]
 FIREBASE_PROJECT_ID = "pawly-83dca"
 FIREBASE_PROJECT_NUMBER = "87732467956"
+PAWLY_BACKEND_URL="https://pawly-api.alexvilarrubla619.workers.dev"
