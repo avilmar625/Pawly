@@ -124,8 +124,11 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository) {
                             }
                             Spacer(Modifier.width(13.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(name.ifBlank { "Tu perfil" }, color = Color.White,
-                                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                    Text(name.ifBlank { "Tu perfil" }, color = Color.White,
+                                        style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                                    if (profile?.isVerified == true) PawlyVerifiedBadge(20.dp)
+                                }
                                 Text("@" + profile?.username.orEmpty(), color = Color.White.copy(alpha = .84f))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(if (isPublic) Icons.Default.Public else Icons.Default.Lock, null,
