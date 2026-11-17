@@ -540,7 +540,25 @@ private fun PetPassportSection(
                     } else {
                         OutlinedTextField(title, { title = it }, label = { Text(tr("Nombre o concepto")) }, singleLine = true)
                     }
-                    OutlinedTextField(date, { date = it }, label = { Text(tr("Fecha (AAAA-MM-DD)")) }, singleLine = true)
+                    OutlinedButton(
+                        onClick = {
+                            val initialDate = runCatching { LocalDate.parse(date) }.getOrDefault(LocalDate.now())
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, year, month, day ->
+                                    date = LocalDate.of(year, month + 1, day).toString()
+                                },
+                                initialDate.year,
+                                initialDate.monthValue - 1,
+                                initialDate.dayOfMonth
+                            ).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.CalendarMonth, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr("Fecha") + ": " + date)
+                    }
                     OutlinedTextField(detail, { detail = it }, label = { Text(tr("Notas, clínica o detalles")) }, minLines = 2)
                 }
             },
