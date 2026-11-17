@@ -67,9 +67,16 @@ internal object PawlyBackupManager {
                     .put("daysOfWeek", JSONArray(it.daysOfWeek))) }
             })
             .put("careLogs", JSONArray().apply {
-                logs.forEach { put(JSONObject().put("id", it.id).put("taskTitle", it.taskTitle)
-                    .put("action", it.action).put("actorUid", it.actorUid).put("actorName", it.actorName)
-                    .put("occurredAt", it.occurredAt).put("note", it.note)) }
+                logs.forEach { log ->
+                    put(JSONObject().put("id", log.id).put("taskTitle", log.taskTitle)
+                        .put("action", log.action).put("actorUid", log.actorUid).put("actorName", log.actorName)
+                        .put("occurredAt", log.occurredAt).put("note", log.note)
+                        .put("distanceKm", log.distanceKm)
+                        .put("mapUrl", log.mapUrl)
+                        .put("description", log.description)
+                        .put("walker", log.walker)
+                        .put("photoUrls", JSONArray(log.photoUrls)))
+                }
             })
         val photo = photoPath?.let { runCatching { File(it).takeIf(File::isFile)?.readBytes() }.getOrNull() }
             ?.takeIf { it.size <= MAX_PHOTO_BYTES }
@@ -100,12 +107,18 @@ internal object PawlyBackupManager {
         val passport = parsePassport(root.optJSONArray("passportEntries"))
         val tasks = parseTasks(root.optJSONArray("careTasks"))
         val logs = parseLogs(root.optJSONArray("careLogs"))
+        // Decode and validate every optional binary field before mutating local data.
+        // Older version-1 backups simply omit these walk-specific properties.
+        val photoBytes = root.optString("photoBase64").takeIf { it.isNotBlank() }?.let {
+            runCatching { Base64.decode(it, Base64.DEFAULT) }.getOrElse {
+                throw IllegalArgumentException("La fotografía de la copia está dañada.")
+            }.also { bytes ->
+                require(bytes.size <= MAX_PHOTO_BYTES) { "La fotografía de la copia supera los 5 MB." }
+            }
+        }
         PetCareLocalStore.saveEntries(context, petName, passport, storageScope)
         PetCareLocalStore.saveTasks(context, petName, tasks, storageScope)
         PetCareLocalStore.saveCareLogs(context, petName, logs, storageScope)
-        val photoBytes = root.optString("photoBase64").takeIf { it.isNotBlank() }?.let {
-            runCatching { Base64.decode(it, Base64.DEFAULT) }.getOrNull()
-        }?.takeIf { it.size <= MAX_PHOTO_BYTES }
         return PawlyBackupSnapshot(petName, profiles, diary, calendar, health, passport, tasks, logs, photoBytes)
     }
 
@@ -145,10 +158,28 @@ internal object PawlyBackupManager {
         val allowed = setOf("Paseo", "Comida", "Medicación", "Higiene", "Otro")
         return List(array.length()) { i ->
             val row = array.optJSONObject(i) ?: JSONObject()
+            val distance = if (row.isNull("distanceKm")) null else row.optDouble("distanceKm", Double.NaN)
+            val photos = row.optJSONArray("photoUrls")?.let { array ->
+                List(array.length()) { index -> array.optString(index) }
+            }.orEmpty()
+            require(distance == null || (distance.isFinite() && distance in 0.01..1000.0)) {
+                "La distancia de un paseo en la copia no es válida."
+            }
+            require(row.optString("mapUrl").let { it.isBlank() || (it.length <= 2048 && it.startsWith("https://")) }) {
+                "El enlace del mapa en la copia no es válido."
+            }
+            require(row.optString("description").length <= 600 && row.optString("walker").length <= 80) {
+                "Los datos del paseo en la copia superan los límites permitidos."
+            }
+            require(photos.size <= 4 && photos.all { it.startsWith("https://") && it.length <= 2048 }) {
+                "Las fotografías del paseo en la copia no son válidas."
+            }
             CareLogEntry(row.optString("id"), row.optString("taskTitle"),
                 row.optString("action").takeIf { it in allowed } ?: "Otro",
                 row.optString("actorUid"), row.optString("actorName"),
-                row.optLong("occurredAt"), row.optString("note"))
+                row.optLong("occurredAt"), row.optString("note"),
+                distance, row.optString("mapUrl"), row.optString("description"),
+                row.optString("walker"), photos)
         }.filter { it.id.isNotBlank() && it.taskTitle.isNotBlank() }.take(100)
     }
 }
