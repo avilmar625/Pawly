@@ -3,6 +3,8 @@ package com.pawly.app.care.data
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import org.json.JSONObject
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -63,39 +65,73 @@ class FirebasePetProfileRepository(
         )).await()
     }
 
+    private fun withCloudDiaryId(raw: String, id: String): String = runCatching {
+        JSONObject(raw).put("pawlyCloudId", id).toString()
+    }.getOrDefault(raw)
+
+    private fun withoutCloudDiaryId(raw: String): String = runCatching {
+        JSONObject(raw).remove("pawlyCloudId").toString()
+    }.getOrDefault(raw)
+
     suspend fun loadDiary(petId: String): List<String> =
         diary(petId).orderBy("position").limit(200).get().await().documents.mapNotNull { doc ->
-            doc.getString("text")?.takeIf { it.isNotBlank() }
+            doc.getString("text")?.takeIf { it.isNotBlank() }?.let { withCloudDiaryId(it, doc.id) }
         }
 
-    /** Merges an imported diary with cloud entries so restoring one device cannot erase another device's notes. */
-    suspend fun mergeDiary(petId: String, entries: List<String>) {
-        val existing = loadDiary(petId)
-        val merged = (existing + PetProfileValidation.diary(entries)).distinct()
-        replaceDiary(petId, merged)
+    fun listenDiary(
+        petId: String,
+        onEntries: (List<String>) -> Unit,
+        onError: (String) -> Unit
+    ): ListenerRegistration = diary(petId).orderBy("position").limit(200)
+        .addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                onError(error.localizedMessage ?: "No se pudo sincronizar el diario.")
+                return@addSnapshotListener
+            }
+            onEntries(snapshot?.documents.orEmpty().mapNotNull { doc ->
+                doc.getString("text")?.takeIf { it.isNotBlank() }?.let { withCloudDiaryId(it, doc.id) }
+            })
+        }
+
+    suspend fun canEditDiary(petId: String): Boolean {
+        val member = root(petId).collection("members").document(uid()).get().await()
+        return member.getString("role") in setOf("owner", "editor")
     }
 
-    /** Replaces the bounded memory book atomically, preserving the visible order. */
-    suspend fun replaceDiary(petId: String, entries: List<String>) {
+    /** Adds one immutable diary item. Each memory has its own document, so concurrent carers never replace each other's entries. */
+    suspend fun addDiaryEntry(petId: String, rawEntry: String) {
         require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
-        val cleanEntries = PetProfileValidation.diary(entries)
+        val clean = PetProfileValidation.diary(listOf(withoutCloudDiaryId(rawEntry))).single()
         val collection = diary(petId)
-        val existing = collection.get().await()
-        require(existing.size() <= 450) {
-            "El diario remoto tiene demasiados registros para actualizarse de una vez."
-        }
-        val batch = db.batch()
-        val retainedIds = cleanEntries.indices.map { index -> "entry_${index.toString().padStart(3, '0')}" }.toSet()
-        cleanEntries.forEachIndexed { index, text ->
-            val id = "entry_${index.toString().padStart(3, '0')}"
-            batch.set(collection.document(id), mapOf(
-                "id" to id,
-                "text" to text,
-                "position" to index,
-                "updatedAt" to FieldValue.serverTimestamp()
-            ))
-        }
-        existing.documents.filterNot { it.id in retainedIds }.forEach { batch.delete(it.reference) }
-        batch.commit().await()
+        val existing = collection.limit(201).get().await()
+        require(existing.size() < 200) { "El diario admite hasta 200 recuerdos por mascota." }
+        val id = java.util.UUID.randomUUID().toString()
+        collection.document(id).set(mapOf(
+            "id" to id,
+            "text" to clean,
+            "position" to 0,
+            "updatedAt" to FieldValue.serverTimestamp()
+        )).await()
     }
+
+    /** Deletes only the selected memory document; it never rewrites the other carer's entries. */
+    suspend fun deleteDiaryEntry(petId: String, rawEntry: String) {
+        require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
+        val id = runCatching { JSONObject(rawEntry).optString("pawlyCloudId").takeIf { it.isNotBlank() } }.getOrNull()
+        val collection = diary(petId)
+        val target = id?.let { collection.document(it) } ?: collection.whereEqualTo("text", withoutCloudDiaryId(rawEntry)).limit(1).get().await().documents.firstOrNull()?.reference
+        target?.delete()?.await()
+    }
+
+    /** Imports backup entries additively. Existing cloud memories are never overwritten or removed. */
+    suspend fun mergeDiary(petId: String, entries: List<String>) {
+        require(canEditDiary(petId)) { "Tu permiso en este perfil es de solo lectura." }
+        val existing = loadDiary(petId).map(::withoutCloudDiaryId).toSet()
+        PetProfileValidation.diary(entries).map(::withoutCloudDiaryId).distinct()
+            .filterNot { it in existing }
+            .forEach { addDiaryEntry(petId, it) }
+    }
+
+    /** Kept for source compatibility; this method now merges instead of destructively replacing shared memories. */
+    suspend fun replaceDiary(petId: String, entries: List<String>) = mergeDiary(petId, entries)
 }
