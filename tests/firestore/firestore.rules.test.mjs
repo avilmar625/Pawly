@@ -169,6 +169,20 @@ test("shared profile and diary are editable by editors and read-only for readers
   }));
 });
 
+test("the reciprocal block index can only be written by the blocker and read by its target", async () => {
+  const blockerDb = env.authenticatedContext("blocker", { email_verified: true }).firestore();
+  const targetDb = env.authenticatedContext("target", { email_verified: true }).firestore();
+  const strangerDb = env.authenticatedContext("stranger", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(blockerDb, "users/target/blockedBy/blocker"), {
+    uid: "blocker", createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(getDoc(doc(targetDb, "users/target/blockedBy/blocker")));
+  await assertFails(getDoc(doc(strangerDb, "users/target/blockedBy/blocker")));
+  await assertFails(setDoc(doc(targetDb, "users/target/blockedBy/forged"), {
+    uid: "forged", createdAt: serverTimestamp()
+  }));
+});
+
 test("blocking either direction prevents private profile reads", async () => {
   await env.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
