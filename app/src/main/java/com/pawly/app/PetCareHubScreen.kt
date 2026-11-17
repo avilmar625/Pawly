@@ -44,6 +44,7 @@ import androidx.compose.runtime.*
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -283,15 +284,32 @@ private fun PetPassportSection(
     ) { granted ->
         val target = reminderEntryPending
         reminderEntryPending = null
-        if (granted && target != null) {
-            val scheduled = CareReminderScheduler.schedule(
+        if (target != null) {
+            val notificationsEnabled = granted && NotificationManagerCompat.from(context).areNotificationsEnabled()
+            val scheduled = notificationsEnabled && CareReminderScheduler.schedule(
                 context, petName, target.title,
-                "${target.nextDoseDate.ifBlank { target.date }} ${target.reminderTime}",
+                "${target.nextDoseDate} ${target.reminderTime}",
                 reminderKey = "passport-${target.id}"
             )
-            syncMessage = if (scheduled) "Recordatorio sanitario programado" else "No se pudo programar el recordatorio"
-        } else if (target != null) {
-            syncMessage = "Registro guardado. Activa las notificaciones para recibir avisos."
+            if (scheduled) {
+                syncMessage = "Recordatorio sanitario programado"
+            } else {
+                val withoutReminder = target.copy(reminderEnabled = false)
+                entries = entries.map { if (it.id == target.id) withoutReminder else it }
+                PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
+                CareReminderScheduler.cancel(context, petName, target.title, reminderKey = "passport-${target.id}")
+                cloudRepository?.let { repo ->
+                    coroutineScope.launch {
+                        runCatching { repo.savePassportEntry(petId, withoutReminder) }
+                            .onFailure { syncMessage = "Registro guardado localmente; revisa la sincronización" }
+                    }
+                }
+                syncMessage = if (granted) {
+                    "Registro guardado sin aviso. Comprueba que las notificaciones de Pawly estén activadas."
+                } else {
+                    "Registro guardado sin aviso. No has concedido permiso para notificaciones."
+                }
+            }
         }
     }
     LaunchedEffect(cloudRepository, petId) {
@@ -393,7 +411,7 @@ private fun PetPassportSection(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(upcoming.title, fontWeight = FontWeight.SemiBold)
-                                    Text("${upcoming.type} · ${due?.toString() ?: upcoming.date}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${upcoming.type} · ${due?.toString() ?: tr("Fecha por definir")}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                                 val state = PassportEntrySchedule.status(upcoming)
                                 Text(
@@ -741,18 +759,32 @@ private fun PetPassportSection(
                         PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
                         if (editingEntry != null) CareReminderScheduler.cancel(context, petName, editingEntry!!.title, reminderKey = "passport-${newEntry.id}")
                         if (newEntry.reminderEnabled) {
-                            val hasPermission = Build.VERSION.SDK_INT < 33 ||
+                            val runtimePermissionGranted = Build.VERSION.SDK_INT < 33 ||
                                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-                            if (hasPermission) {
+                            val notificationsEnabled = runtimePermissionGranted &&
+                                NotificationManagerCompat.from(context).areNotificationsEnabled()
+                            if (notificationsEnabled) {
                                 val scheduled = CareReminderScheduler.schedule(
                                     context, petName, newEntry.title,
                                     "${newEntry.nextDoseDate} ${newEntry.reminderTime}",
                                     reminderKey = "passport-${newEntry.id}"
                                 )
                                 syncMessage = if (scheduled) "Recordatorio sanitario programado" else "No se pudo programar el recordatorio"
-                            } else {
+                            } else if (Build.VERSION.SDK_INT >= 33 &&
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                                 reminderEntryPending = newEntry
                                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                val withoutReminder = newEntry.copy(reminderEnabled = false)
+                                entries = entries.map { if (it.id == newEntry.id) withoutReminder else it }
+                                PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
+                                cloudRepository?.let { repo ->
+                                    coroutineScope.launch {
+                                        runCatching { repo.savePassportEntry(petId, withoutReminder) }
+                                            .onFailure { syncMessage = "Registro guardado localmente; revisa la sincronización" }
+                                    }
+                                }
+                                syncMessage = "Registro guardado sin aviso. Comprueba que las notificaciones de Pawly estén activadas."
                             }
                         } else {
                             CareReminderScheduler.cancel(context, petName, newEntry.title, reminderKey = "passport-${newEntry.id}")
