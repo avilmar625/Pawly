@@ -95,7 +95,8 @@ service cloud.firestore {
             && request.resource.data.professionalCategory is string
             && request.resource.data.professionalCategory.size() > 0)))
         || admin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPublic', 'moderationStatus'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPublic', 'moderationStatus', 'isVerified'])
+        && (!('isVerified' in request.resource.data) || request.resource.data.isVerified is bool)
         || verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount'])
         && (
