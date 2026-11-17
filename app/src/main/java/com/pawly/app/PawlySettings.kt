@@ -118,7 +118,7 @@ internal fun PawlySettingsDialog(
                         options = languageOptions,
                         selectedValue = language,
                         onSelected = onLanguageChange,
-                        leadingIcon = Icons.Filled.Translate
+                        leadingIcon = Icons.Filled.Tune
                     )
                     Text(t("El idioma elegido se aplica en toda la aplicación."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
