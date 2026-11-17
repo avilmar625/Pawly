@@ -1,23 +1,25 @@
 # Fase 4C · Diseño premium de Pawly
 
-## Alcance implementado en cambios82
+## 4C.1 — Identidad visual global
+- Nunito Variable integrada localmente con licencia SIL OFL.
+- Tema Material 3 centralizado con cuatro acentos, esquemas claro/oscuro y formas compartidas.
+- Primitivas comunes: PawlyCard, PawlySectionHeading, PawlyStatusPill y PawlyIconTile.
+- Adopción extendida en Inicio/cuidados, Comunidad, aprendizaje, Salud, Diario, Explorar, selectores y diálogos de perfil.
+- Migración de colores de texto, iconos, superficies y estados a roles semánticos donde se han tocado esos componentes.
+- La auditoría exhaustiva de pantallas secundarias y accesibilidad queda para 4C.6.
 
-- Nunito Variable se integra localmente en `res/font`; la interfaz no necesita conexión ni descarga de fuentes para renderizarla.
-- Se incluye la licencia SIL Open Font License 1.1 en `licenses/OFL-NUNITO.txt`.
-- Se centraliza la tipografía Material 3 con Nunito en todos los estilos de texto.
-- Se armonizan los cuatro acentos de marca y se mejora el contraste de los roles principales en modo oscuro.
-- Se añade un componente shimmer reutilizable y se utiliza en la tarjeta de evolución del peso mientras se recupera el pasaporte remoto cuando no hay datos locales.
-- Se introduce feedback háptico discreto al marcar cuidados y utilizar acciones rápidas.
-- Inicio adapta márgenes, separación y ancho máximo en pantallas amplias; en tablets el contenido se mantiene centrado y legible.
-- Las variaciones de peso utilizan colores semánticos del tema en lugar de verdes/rojos literales.
+## 4C.2 — Rediseño de Inicio
+- Cabecera de mascota convertida en una tarjeta de bienvenida destacada, con foto/avatar, nombre, texto de contexto y acción de edición.
+- Jerarquía de Inicio ordenada para priorizar la mascota y sus cuidados reales del día; después salud/peso, recuerdos, próximas ideas y aprendizaje.
+- Secciones de cuidados y próximos eventos usan títulos compartidos.
+- Tarjetas y acentos de Inicio/cuidados usan formas y roles semánticos del tema.
+- Se mantienen callbacks y destinos existentes; el rediseño no crea tareas ficticias ni cambia la persistencia de registros.
 
-## Decisiones de diseño
-
-- La paleta base sigue siendo cálida: fondo crema, superficies marfil, verde bosque y acentos suaves.
-- El modo oscuro usa primarios claros por acento para mantener legibilidad sobre superficies oscuras.
-- Se conservan selector de idioma, paletas, modo simple/elegante y rutas de navegación.
-- No se modifican modelos, claves de almacenamiento, Firestore, Cloudinary ni datos sanitarios.
+## Otras mejoras 4C
+- Shimmer reutilizable para carga remota real y skeleton en evolución de peso.
+- Feedback háptico discreto en acciones rápidas y registros.
+- Inicio limita el ancho en tablets y adapta márgenes/espaciado.
+- Nunito y paletas funcionan sin descargar recursos en tiempo de ejecución.
 
 ## Validación
-
-La revisión de código está realizada sobre la rama de continuidad indicada. La compilación, Android Lint y la validación visual en emulador/dispositivo deben ejecutarse en CI y Android Studio antes de dar la fase por cerrada. La rama no se fusiona a `main`.
+Los cambios están subidos a la rama de trabajo. No se declara compilación ni validación visual en dispositivo: deben ejecutarse en CI y Android Studio/Xcode. La rama no se fusiona a main.
