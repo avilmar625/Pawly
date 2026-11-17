@@ -25,6 +25,21 @@ class FirebasePetAgendaRepository(
         return member.getString("role") in setOf("owner", "editor")
     }
 
+    suspend fun loadReminders(petId: String): List<String> =
+        collection(petId).orderBy("date").limit(200).get().await().documents.map { doc ->
+            JSONObject()
+                .put("id", doc.id)
+                .put("title", doc.getString("title").orEmpty())
+                .put("date", doc.getLong("date") ?: 0L)
+                .put("category", doc.getString("category") ?: "Personal")
+                .toString()
+        }
+
+    /** Restores backup reminders additively without clearing other carers' entries. */
+    suspend fun mergeReminders(petId: String, reminders: List<String>) {
+        reminders.distinct().forEach { raw -> saveReminder(petId, raw) }
+    }
+
     fun listenReminders(
         petId: String,
         onReminders: (List<String>) -> Unit,
