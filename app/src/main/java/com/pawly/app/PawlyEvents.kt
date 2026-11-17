@@ -26,8 +26,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -748,15 +746,14 @@ private fun CreatePawlyEventDialog(
                 }
                 if (eventDateTimeMillis != null && !eventDateIsFuture) Text(tr("La fecha y hora deben ser futuras."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                 Text(tr("Tipo de evento"), style = MaterialTheme.typography.labelMedium)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    verticalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    listOf("Quedada", "Ruta", "Taller", "Adopción").forEach { value ->
-                        FilterChip(selected = category == value, onClick = { category = value }, label = { Text(tr(value), maxLines = 1) })
-                    }
-                }
+                PawlyDropdownSelector(
+                    title = tr("Tipo de evento"),
+                    selectedLabel = tr(category),
+                    options = listOf("Quedada", "Ruta", "Taller", "Adopción").map { it to tr(it) },
+                    selectedValue = category,
+                    onSelected = { category = it },
+                    leadingIcon = Icons.Default.Event
+                )
                 OutlinedButton(onClick = { showMapPicker = true }, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Map, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
