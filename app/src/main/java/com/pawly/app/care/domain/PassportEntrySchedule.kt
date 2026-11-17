@@ -7,18 +7,18 @@ import java.time.LocalDate
 /** Pure scheduling rules for health-passport entries. */
 object PassportEntrySchedule {
     fun dueDate(entry: PassportEntry): LocalDate? {
-        val raw = entry.nextDoseDate.ifBlank {
-            if (entry.status == PassportEntryStates.PENDIENTE) entry.date else ""
-        }
-        return raw.takeIf { it.isNotBlank() }?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+        return entry.nextDoseDate.takeIf { it.isNotBlank() }
+            ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
     }
 
     fun status(entry: PassportEntry, today: LocalDate = LocalDate.now()): String {
+        if (entry.status == PassportEntryStates.VENCIDO) return PassportEntryStates.VENCIDO
         val due = dueDate(entry)
         if (due != null) return if (due.isBefore(today)) PassportEntryStates.VENCIDO else PassportEntryStates.PENDIENTE
-        return when (entry.status) {
-            PassportEntryStates.PENDIENTE, PassportEntryStates.VENCIDO -> PassportEntryStates.VENCIDO
-            else -> PassportEntryStates.REALIZADO
+        return if (entry.status == PassportEntryStates.PENDIENTE) {
+            PassportEntryStates.PENDIENTE
+        } else {
+            PassportEntryStates.REALIZADO
         }
     }
 
