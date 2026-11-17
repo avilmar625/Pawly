@@ -121,8 +121,7 @@ internal fun HomeScreen(
     val latestWeight = parsedWeights.lastOrNull()?.second
     val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
     val weightChange = if (latestWeight != null && previousWeight != null) latestWeight - previousWeight else null
-    val completed = listOf(walkDone, medicineDone).count { it }
-    var isLoadingRemotePassport by remember(dogName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
+        var isLoadingRemotePassport by remember(dogName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wideLayout = maxWidth >= 700.dp
@@ -188,7 +187,7 @@ internal fun HomeScreen(
             )
         }
         item {
-            Surface(onClick = onWeight, modifier = Modifier.animateContentSize(), shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
+            Surface(onClick = onWeight, modifier = Modifier.animateContentSize(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -236,8 +235,8 @@ internal fun HomeScreen(
             Surface(onClick = onDiary, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFF8EBDD)), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.AutoStories, null, tint = Color(0xFF9A7043), modifier = Modifier.size(24.dp))
+                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.AutoStories, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(24.dp))
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -278,55 +277,78 @@ internal fun HomeScreen(
 
 @Composable
 private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit: () -> Unit, elegantDesign: Boolean) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onEdit).padding(vertical = 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(13.dp)
+    PawlyCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentPadding = 16.dp
     ) {
-        Box(
-            Modifier.size(58.dp).clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
+        Row(
+            Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            when {
-                photo != null -> Image(
-                    photo.asImageBitmap(),
-                    contentDescription = tr("Foto de $name"),
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+            Box(
+                Modifier.size(76.dp).clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    photo != null -> Image(
+                        photo.asImageBitmap(),
+                        contentDescription = tr("Foto de $name"),
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                    photoUrl?.startsWith("https://") == true -> AsyncImage(
+                        model = photoUrl,
+                        contentDescription = tr("Foto de $name"),
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
+                    else -> Icon(
+                        Icons.Filled.Pets,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    tr("HOY CON VOSOTROS"),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .72f),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.15.sp
                 )
-                photoUrl?.startsWith("https://") == true -> AsyncImage(
-                    model = photoUrl,
-                    contentDescription = tr("Foto de $name"),
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                Text(
+                    name.ifBlank { tr("Tu mascota") },
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                else -> Text(
-                    name.trim().take(1).uppercase().ifBlank { "P" },
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 25.sp,
-                    fontWeight = FontWeight.ExtraBold
+                Text(
+                    tr("Un día más para compartir aventuras."),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .82f),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Text(tr("Hoy para"), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall)
-            Text(name.ifBlank { tr("Tu mascota") }, color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Icon(
-                Icons.Filled.Edit,
-                contentDescription = tr("Editar perfil de mascota"),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(13.dp).size(19.dp)
-            )
+            Surface(
+                onClick = onEdit,
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = .88f),
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = tr("Editar perfil de mascota"),
+                    modifier = Modifier.padding(12.dp).size(19.dp)
+                )
+            }
         }
     }
 }
@@ -462,8 +484,8 @@ private fun HomeLearnCard(onClick: () -> Unit) {
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
-            Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(Color(0xFFF1EBD9)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.MenuBook, contentDescription = null, tint = Color(0xFF8B7443), modifier = Modifier.size(23.dp))
+            Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.tertiaryContainer), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.MenuBook, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(23.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(tr("Un minuto para aprender"), color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
