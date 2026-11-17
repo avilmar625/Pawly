@@ -770,7 +770,7 @@ private fun PawlyMainApp(
                                     careRepository.ensureSharedPet(dogName, dogName)
                                     val latestPassport = careRepository.loadPassportEntries(dogName)
                                     val latestTasks = careRepository.loadCareTasks(dogName)
-                                    val latestLogs = careRepository.loadCareLogs(dogName, 100)
+                                    val latestLogs = careRepository.loadCareLogs(dogName, 500)
                                     val localLogs = PetCareLocalStore.loadCareLogs(context, dogName, storageScope)
                                     val combinedLogs = (latestLogs + localLogs).distinctBy { it.id }
                                         .sortedByDescending { it.occurredAt }.take(100)
