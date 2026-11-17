@@ -569,8 +569,8 @@ private fun PetPassportSection(
                         if (entry.clinic.isNotBlank()) Text(tr("Clínica") + ": " + entry.clinic, style = MaterialTheme.typography.bodySmall)
                         if (entry.nextDoseDate.isNotBlank()) Text(tr("Próxima dosis") + ": " + entry.nextDoseDate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                         if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        val recordState = PassportEntrySchedule.status(entry)
-                        Text(tr(when (recordState) { PassportEntryStates.VENCIDO -> "Vencido"; PassportEntryStates.PENDIENTE -> "Pendiente"; else -> "Realizado" }), style = MaterialTheme.typography.labelSmall, color = if (recordState == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        val recordState = entry.status
+                        Text(tr(if (recordState == PassportEntryStates.PENDIENTE) "Pendiente" else "Realizado"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         if (canEdit) Text(tr("Toca para editar"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
                     IconButton(onClick = {
