@@ -4,6 +4,7 @@ import com.pawly.app.care.data.PetShareInvitation
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.data.FirebasePetCareRepository
 import com.pawly.app.care.data.FirebasePetProfileRepository
+import com.pawly.app.care.data.FirebasePetAgendaRepository
 import com.pawly.app.care.export.PetCarePdfExporter
 import com.google.firebase.auth.FirebaseAuth
 import androidx.credentials.ClearCredentialStateRequest
@@ -409,6 +410,7 @@ private fun PawlyMainApp(
                         careRepository.savePassportEntries(snapshot.petName, snapshot.passportEntries)
                         careRepository.saveCareTasks(snapshot.petName, snapshot.careTasks)
                         FirebasePetProfileRepository(ownerUid = storageScope.orEmpty()).mergeDiary(snapshot.petName, snapshot.diaryEntries)
+                        FirebasePetAgendaRepository(ownerUid = storageScope.orEmpty()).mergeReminders(snapshot.petName, snapshot.calendarReminders)
                     }
                 }.onSuccess {
                     profileSyncStatus = "Copia restaurada. Pasaporte, rutinas y diario sincronizados; el historial importado de paseos se conserva en este dispositivo."
@@ -765,12 +767,20 @@ private fun PawlyMainApp(
                                 // Pull the latest shared cloud records first. A backup taken
                                 // while signed in must not silently omit another device's
                                 // latest passport, routines or care history.
+                                var backupDiaryEntries = diaryEntries
+                                var backupCalendarReminders = calendarReminders
                                 if (cloudRepository != null && !storageScope.isNullOrBlank()) {
                                     val careRepository = FirebasePetCareRepository(sharedPetOwnerUid = storageScope)
                                     careRepository.ensureSharedPet(dogName, dogName)
                                     val latestPassport = careRepository.loadPassportEntries(dogName)
                                     val latestTasks = careRepository.loadCareTasks(dogName)
                                     val latestLogs = careRepository.loadCareLogs(dogName, 500)
+                                    val profileRepository = FirebasePetProfileRepository(ownerUid = storageScope)
+                                    val sharedDiary = profileRepository.loadDiaryForBackup(dogName)
+                                    backupDiaryEntries = (sharedDiary + diaryEntries).distinct().take(200)
+                                    val agendaRepository = FirebasePetAgendaRepository(ownerUid = storageScope)
+                                    val sharedAgenda = agendaRepository.loadReminders(dogName)
+                                    backupCalendarReminders = (sharedAgenda + calendarReminders).distinct().take(200)
                                     val localLogs = PetCareLocalStore.loadCareLogs(context, dogName, storageScope)
                                     val combinedLogs = (latestLogs + localLogs).distinctBy { it.id }
                                         .sortedByDescending { it.occurredAt }.take(500)
@@ -783,7 +793,7 @@ private fun PawlyMainApp(
                                 val petDates = healthDates.filterKeys { it.startsWith("$dogName|") }
                                     .mapKeys { (key, _) -> key.removePrefix("$dogName|") }
                                 pendingBackupJson = PawlyBackupManager.create(
-                                    context, dogName, dogProfiles, diaryEntries, calendarReminders,
+                                    context, dogName, dogProfiles, backupDiaryEntries, backupCalendarReminders,
                                     petDates, storageScope, dogPhotoPath
                                 )
                                 val safeName = dogName.replace(Regex("[^A-Za-z0-9_-]"), "_").ifBlank { "mascota" }
