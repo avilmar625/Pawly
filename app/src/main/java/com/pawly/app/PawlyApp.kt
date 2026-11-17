@@ -712,15 +712,26 @@ private fun PawlyMainApp(
                     }
                 }
                 Tab.DIARY -> DiaryScreen(
-                    dogName = dogName,
+                    dogName = selectedSharedPet?.petName ?: dogName,
                     elegantDesign = elegantDesign,
                     entries = diaryEntries,
                     onEntriesChange = { diaryEntries = it },
                     repository = cloudRepository,
+                    sharedPetOwnerUid = selectedSharedPet?.ownerUid ?: storageScope,
+                    petId = selectedSharedPet?.let { it.sharedPetId.removePrefix("${it.ownerUid}_") } ?: dogName,
                     openPhotoPickerOnEnter = openDiaryPhotoPicker,
                     onPhotoPickerOpened = { openDiaryPhotoPicker = false }
                 )
-                Tab.CALENDAR -> PawlyCalendarScreen(reminders = calendarReminders, onRemindersChange = { calendarReminders = it }, repository = cloudRepository, healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") }, diaryEntries = diaryEntries, dogName = dogName, sharedPetOwnerUid = sharedPetOwnerUid, petId = dogName)
+                Tab.CALENDAR -> PawlyCalendarScreen(
+                    reminders = calendarReminders,
+                    onRemindersChange = { calendarReminders = it },
+                    repository = cloudRepository,
+                    healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }.mapKeys { it.key.removePrefix("$dogName|") },
+                    diaryEntries = diaryEntries,
+                    dogName = selectedSharedPet?.petName ?: dogName,
+                    sharedPetOwnerUid = selectedSharedPet?.ownerUid ?: storageScope,
+                    petId = selectedSharedPet?.let { it.sharedPetId.removePrefix("${it.ownerUid}_") } ?: dogName
+                )
                 Tab.COMMUNITY -> CommunityScreen(
                     elegantDesign = elegantDesign,
                     openNotifications = openCommunityNotifications
