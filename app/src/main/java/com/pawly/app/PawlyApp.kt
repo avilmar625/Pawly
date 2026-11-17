@@ -804,6 +804,7 @@ private fun PawlyMainApp(
                 Tab.MARKET -> PawlyMarketHubScreen(
                     petName = dogName,
                     elegantDesign = elegantDesign,
+                    storageScope = storageScope,
                     onBack = { selected = Tab.MORE },
                     onProfessionals = { selected = Tab.SERVICES }
                 )
