@@ -168,6 +168,32 @@ test("shared pet owners can change editor and reader roles but collaborators can
   await assertFails(getDoc(doc(readerDb, "sharedPets/owner_pet")));
 });
 
+test("shared agenda reminders are live collaborative records with reader-only access", async () => {
+  const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
+  const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
+  const ownerDb = env.authenticatedContext("owner", { email_verified: true }).firestore();
+  await assertSucceeds(setDoc(doc(editorDb, "sharedPets/owner_pet/agenda/reminder-1"), {
+    id: "reminder-1", title: "Veterinario", date: 1900000000000,
+    category: "Veterinario", createdBy: "editor", updatedAt: serverTimestamp()
+  }));
+  await assertSucceeds(getDoc(doc(readerDb, "sharedPets/owner_pet/agenda/reminder-1")));
+  await assertFails(setDoc(doc(readerDb, "sharedPets/owner_pet/agenda/reminder-2"), {
+    id: "reminder-2", title: "No permitido", date: 1900000000000,
+    category: "Personal", createdBy: "reader", updatedAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(doc(ownerDb, "sharedPets/owner_pet/agenda/reminder-1"), {
+    title: "Veterinario actualizado", updatedAt: serverTimestamp()
+  }));
+  await assertFails(updateDoc(doc(editorDb, "sharedPets/owner_pet/agenda/reminder-1"), {
+    createdBy: "editor", updatedAt: serverTimestamp()
+  }));
+  await assertFails(setDoc(doc(editorDb, "sharedPets/owner_pet/agenda/invalid-category"), {
+    id: "invalid-category", title: "Recordatorio", date: 1900000000000,
+    category: "Hack", createdBy: "editor", updatedAt: serverTimestamp()
+  }));
+  await assertSucceeds(deleteDoc(doc(editorDb, "sharedPets/owner_pet/agenda/reminder-1")));
+});
+
 test("shared profile and diary are editable by editors and read-only for readers", async () => {
   const editorDb = env.authenticatedContext("editor", { email_verified: true }).firestore();
   const readerDb = env.authenticatedContext("reader", { email_verified: true }).firestore();
