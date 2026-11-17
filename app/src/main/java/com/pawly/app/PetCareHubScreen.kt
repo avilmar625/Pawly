@@ -292,6 +292,15 @@ private fun PetPassportSection(
                 reminderKey = "passport-${target.id}"
             )
             if (scheduled) {
+                val withReminder = target.copy(reminderEnabled = true)
+                entries = entries.map { if (it.id == target.id) withReminder else it }
+                PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
+                cloudRepository?.let { repo ->
+                    coroutineScope.launch {
+                        runCatching { repo.savePassportEntry(petId, withReminder) }
+                            .onFailure { syncMessage = "Aviso local activo; pendiente de sincronizar" }
+                    }
+                }
                 syncMessage = "Recordatorio sanitario programado"
             } else {
                 val withoutReminder = target.copy(reminderEnabled = false)
@@ -739,51 +748,49 @@ private fun PetPassportSection(
                 Button(onClick = {
                     val cleanTitle = title.trim()
                     if (cleanTitle.isNotBlank() && runCatching { LocalDate.parse(date.trim()) }.isSuccess) {
+                        val wantsReminder = reminderEnabled && nextDoseDate.isNotBlank()
                         val newEntry = editingEntry?.copy(
                             type = selectedType, title = cleanTitle.take(80),
                             detail = detail.trim().take(1200), date = date.trim(),
                             product = product.trim().take(120), dose = dose.trim().take(120),
                             frequency = frequency.trim().take(120), clinic = clinic.trim().take(120),
                             nextDoseDate = nextDoseDate.trim(), status = entryStatus,
-                            reminderEnabled = reminderEnabled && nextDoseDate.isNotBlank(),
-                            reminderTime = reminderTime.trim()
+                            reminderEnabled = false, reminderTime = reminderTime.trim()
                         ) ?: PassportEntry(
                             id = UUID.randomUUID().toString(), type = selectedType,
                             title = cleanTitle.take(80), detail = detail.trim().take(1200), date = date.trim(),
                             product = product.trim().take(120), dose = dose.trim().take(120),
                             frequency = frequency.trim().take(120), clinic = clinic.trim().take(120),
                             nextDoseDate = nextDoseDate.trim(), status = entryStatus,
-                            reminderEnabled = reminderEnabled && nextDoseDate.isNotBlank(), reminderTime = reminderTime.trim()
+                            reminderEnabled = false, reminderTime = reminderTime.trim()
                         )
                         entries = if (editingEntry == null) entries + newEntry else entries.map { if (it.id == newEntry.id) newEntry else it }
                         PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
                         if (editingEntry != null) CareReminderScheduler.cancel(context, petName, editingEntry!!.title, reminderKey = "passport-${newEntry.id}")
-                        if (newEntry.reminderEnabled) {
+                        var entryToPersist = newEntry
+                        if (wantsReminder) {
                             val runtimePermissionGranted = Build.VERSION.SDK_INT < 33 ||
                                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
                             val notificationsEnabled = runtimePermissionGranted &&
                                 NotificationManagerCompat.from(context).areNotificationsEnabled()
-                            if (notificationsEnabled) {
+                            if (!runtimePermissionGranted && Build.VERSION.SDK_INT >= 33) {
+                                reminderEntryPending = newEntry.copy(reminderEnabled = true)
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else if (notificationsEnabled) {
                                 val scheduled = CareReminderScheduler.schedule(
                                     context, petName, newEntry.title,
                                     "${newEntry.nextDoseDate} ${newEntry.reminderTime}",
                                     reminderKey = "passport-${newEntry.id}"
                                 )
-                                syncMessage = if (scheduled) "Recordatorio sanitario programado" else "No se pudo programar el recordatorio"
-                            } else if (Build.VERSION.SDK_INT >= 33 &&
-                                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                                reminderEntryPending = newEntry
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                val withoutReminder = newEntry.copy(reminderEnabled = false)
-                                entries = entries.map { if (it.id == newEntry.id) withoutReminder else it }
-                                PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
-                                cloudRepository?.let { repo ->
-                                    coroutineScope.launch {
-                                        runCatching { repo.savePassportEntry(petId, withoutReminder) }
-                                            .onFailure { syncMessage = "Registro guardado localmente; revisa la sincronización" }
-                                    }
+                                if (scheduled) {
+                                    entryToPersist = newEntry.copy(reminderEnabled = true)
+                                    entries = entries.map { if (it.id == newEntry.id) entryToPersist else it }
+                                    PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
+                                    syncMessage = "Recordatorio sanitario programado"
+                                } else {
+                                    syncMessage = "Registro guardado; no se pudo programar el aviso."
                                 }
+                            } else {
                                 syncMessage = "Registro guardado sin aviso. Comprueba que las notificaciones de Pawly estén activadas."
                             }
                         } else {
@@ -791,8 +798,8 @@ private fun PetPassportSection(
                         }
                         cloudRepository?.let { repo ->
                             coroutineScope.launch {
-                                runCatching { repo.savePassportEntry(petId, newEntry) }
-                                    .onSuccess { if (!newEntry.reminderEnabled) syncMessage = "Registro guardado y sincronizado" }
+                                runCatching { repo.savePassportEntry(petId, entryToPersist) }
+                                    .onSuccess { if (!entryToPersist.reminderEnabled) syncMessage = "Registro guardado y sincronizado" }
                                     .onFailure { syncMessage = "Guardado localmente; pendiente de sincronizar" }
                             }
                         }
