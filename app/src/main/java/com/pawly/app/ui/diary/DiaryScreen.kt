@@ -1,7 +1,5 @@
 package com.pawly.app
 
-import com.pawly.app.tr
-
 import android.os.Bundle
 import android.content.Intent
 import android.net.Uri
@@ -90,7 +88,7 @@ internal fun DiaryScreen(
     val cameraCapture = rememberPawlyCameraCapture(
         onImageSelected = { uri ->
             if (selectedPhotos.size < 8) selectedPhotos = selectedPhotos + uri
-            else photoUploadError = tr("Puedes adjuntar un máximo de ocho fotografías.")
+            else photoUploadError = "Puedes adjuntar un máximo de ocho fotografías."
         },
         onError = { photoUploadError = it }
     )
