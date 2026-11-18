@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -32,6 +33,19 @@ internal fun PawlySettingsDialog(
     onDismiss: () -> Unit
  ) {
     fun t(value: String) = PawlyI18n.text(value, language)
+    val context = LocalContext.current
+    val mediaPreferences = remember(context) { context.getSharedPreferences("pawly_services", android.content.Context.MODE_PRIVATE) }
+    var cloudName by remember(mediaPreferences) {
+        mutableStateOf(mediaPreferences.getString("cloudinary_cloud_name", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_CLOUD_NAME)
+    }
+    var imagePreset by remember(mediaPreferences) {
+        mutableStateOf(mediaPreferences.getString("cloudinary_image_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET)
+    }
+    var videoPreset by remember(mediaPreferences) {
+        mutableStateOf(mediaPreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET)
+    }
+    var mediaMessage by remember { mutableStateOf<String?>(null) }
+    var mediaSettingsInvalid by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -113,6 +127,58 @@ internal fun PawlySettingsDialog(
                         leadingIcon = Icons.Filled.Tune
                     )
                     Text(t("El idioma elegido se aplica en toda la aplicación."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(t("Servicios multimedia · Cloudinary"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(t("Configura aquí las subidas de fotos y vídeos sin tener que recompilar la aplicación. Estos datos son nombres de configuración, no incluyas el API Secret."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = cloudName,
+                        onValueChange = { cloudName = it.trim().take(80) },
+                        label = { Text(t("Cloud name")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = imagePreset,
+                        onValueChange = { imagePreset = it.trim().take(120) },
+                        label = { Text(t("Preset unsigned de imágenes")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = videoPreset,
+                        onValueChange = { videoPreset = it.trim().take(120) },
+                        label = { Text(t("Preset unsigned de vídeos")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Text(t("Crea los presets como Unsigned en Cloudinary. No pegues aquí una API Key ni un API Secret."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Button(
+                        onClick = {
+                            val cleanCloudName = cloudName.trim()
+                            val cleanImagePreset = imagePreset.trim()
+                            val cleanVideoPreset = videoPreset.trim()
+                            val presetPattern = Regex("[A-Za-z0-9_-]+")
+                            if (!cleanCloudName.matches(presetPattern) || !cleanImagePreset.matches(presetPattern) || (cleanVideoPreset.isNotBlank() && !cleanVideoPreset.matches(presetPattern))) {
+                                mediaMessage = t("Introduce un Cloud name y un preset de imágenes válidos. El preset de vídeo es opcional.")
+                                mediaSettingsInvalid = true
+                            } else {
+                                mediaPreferences.edit()
+                                    .putString("cloudinary_cloud_name", cleanCloudName)
+                                    .putString("cloudinary_image_preset", cleanImagePreset)
+                                    .putString("cloudinary_video_preset", cleanVideoPreset)
+                                    .apply()
+                                cloudName = cleanCloudName
+                                imagePreset = cleanImagePreset
+                                videoPreset = cleanVideoPreset
+                                mediaMessage = t("Configuración guardada. Ya puedes volver a intentar la subida.")
+                                mediaSettingsInvalid = false
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(t("Guardar configuración multimedia")) }
+                    mediaMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = if (mediaSettingsInvalid) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary) }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Text(t("Tus ajustes se guardan en este dispositivo."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

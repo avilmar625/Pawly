@@ -1,5 +1,6 @@
 # Copia este archivo como local.properties en la raíz del proyecto.
 # Sustituye los valores por los de tu propio proyecto/cuenta.
+# También puedes configurar Cloudinary desde Más > Ajustes > Servicios multimedia en la app.
 # Este archivo y local.properties están excluidos de Git.
 CLOUDINARY_CLOUD_NAME=tu_cloud_name
 

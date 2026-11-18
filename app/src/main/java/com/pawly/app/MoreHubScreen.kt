@@ -68,7 +68,7 @@ internal fun MoreHubScreen(
             onClick = { showTools = !showTools }
         )
         if (showTools) {
-            MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos, cuidados, gastos y ficha de emergencia."), onPawlyMarket)
+            MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos y accesorios para tu mascota."), onPawlyMarket)
             PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
             BackupActionCard(
                 title = t("Copia de seguridad y cambio de móvil"),

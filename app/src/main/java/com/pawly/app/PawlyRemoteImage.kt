@@ -1,15 +1,18 @@
 package com.pawly.app
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrokenImage
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,23 +34,36 @@ import coil3.compose.AsyncImage
 @Composable
 internal fun PawlyRemoteImage(url: String, description: String, modifier: Modifier = Modifier) {
     var failed by remember(url) { mutableStateOf(false) }
+    var loading by remember(url) { mutableStateOf(true) }
     if (url.isBlank()) return
     if (failed) {
-        Surface(modifier = modifier, color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
+        Surface(modifier = modifier.clickable { failed = false; loading = true }, color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
             Box(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
                 Column(Modifier.padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     androidx.compose.material3.Icon(Icons.Default.BrokenImage, contentDescription = null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("No se ha podido cargar esta fotografía", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Toca para volver a intentarlo", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }
     } else {
-        AsyncImage(
-            model = url.trim(),
-            contentDescription = description,
-            modifier = modifier,
-            contentScale = ContentScale.Crop,
-            onError = { failed = true }
-        )
+        Box(modifier) {
+            if (loading) {
+                Surface(Modifier.matchParentSize(), color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.medium) {
+                    Box(contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    }
+                }
+            }
+            AsyncImage(
+                model = url.trim(),
+                contentDescription = description,
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+                onLoading = { loading = true },
+                onSuccess = { loading = false },
+                onError = { loading = false; failed = true }
+            )
+        }
     }
 }

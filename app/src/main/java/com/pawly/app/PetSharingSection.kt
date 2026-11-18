@@ -51,12 +51,15 @@ internal fun PetSharingSection(petName: String, petId: String, ownerUid: String?
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Text(tr("Compartir el perfil de $petName"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(tr("Invita a tu pareja u otra persona de confianza mediante su nombre de usuario de Pawly. Podrá aceptar o rechazar la invitación."))
-                    Text(tr("El perfil compartido sincroniza el pasaporte sanitario, las rutinas y el historial de cuidados. Los permisos de solo lectura y edición se aplican en Firestore. El diario, la agenda y los marcadores rápidos del día todavía no se sincronizan entre cuentas."),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Default.Share, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        PawlySectionHeading(
+                            title = tr("Compartir el perfil de $petName"),
+                            subtitle = tr("Invita con el nombre de usuario. Puedes elegir acceso de lectura o edición para el pasaporte sanitario, las rutinas y el historial de cuidados."),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }

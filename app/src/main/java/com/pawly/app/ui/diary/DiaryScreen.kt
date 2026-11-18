@@ -187,7 +187,7 @@ internal fun DiaryScreen(
         verticalArrangement = Arrangement.spacedBy(17.dp)
     ) {
         item {
-            Box(Modifier.fillMaxWidth().height(if (elegantDesign) 245.dp else 205.dp).clip(RoundedCornerShape(28.dp))) {
+            Box(Modifier.fillMaxWidth().height(if (elegantDesign) 138.dp else 118.dp).clip(RoundedCornerShape(22.dp))) {
                 AsyncImage(
                     model = "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1100&h=500&fit=crop",
                     contentDescription = "Perro disfrutando de un paseo",
@@ -195,12 +195,10 @@ internal fun DiaryScreen(
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
-                Column(Modifier.align(Alignment.BottomStart).padding(18.dp)) {
-                    Text(tr("VUESTROS RECUERDOS"), color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
-                    Text(tr("Cada paseo merece un recuerdo."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
+                Column(Modifier.align(Alignment.BottomStart).padding(15.dp)) {
+                    Text(tr("DIARIO DE $dogName"), color = Color.White.copy(alpha = .9f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
                 }
             }
-            Text(tr("Un álbum personal para volver a vuestros mejores momentos."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
@@ -300,9 +298,8 @@ internal fun DiaryScreen(
             }
         }
         if (diarySyncMessage != null) item { Text(diarySyncMessage!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
-        item { SectionHeading("Pequeñas grandes historias", "Diario de $dogName · ${visibleEntries.size} recuerdos guardados") }
+        item { SectionHeading("Pequeñas grandes historias", "Organiza vuestra historia por categorías, fechas y fotografías.") }
         item {
-            Text(tr("Organiza vuestra historia por categorías, fechas y fotografías."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     tr("${filteredEntries.size} recuerdos"),

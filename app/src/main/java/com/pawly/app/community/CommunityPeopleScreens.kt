@@ -593,8 +593,11 @@ internal fun PublicUserScreen(repo: FirebaseCommunityRepository, uid: String, on
                         }
                         if (post.text.isNotBlank()) Text(post.text, color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.padding(horizontal = 15.dp))
-                        if (post.imageUrl.isNotBlank()) AsyncImage(post.imageUrl, "Fotografía de la publicación",
-                            Modifier.fillMaxWidth().heightIn(max = 320.dp))
+                        if (post.imageUrl.isNotBlank()) PawlyRemoteImage(
+                            post.imageUrl,
+                            "Fotografía de la publicación",
+                            Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 320.dp)
+                        )
                         if (post.videoUrl.isNotBlank()) PawlyVideoPlayer(post.videoUrl,
                             Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(12.dp)))
                         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),

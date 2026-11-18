@@ -11,6 +11,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.messaging.FirebaseMessaging
 import com.pawly.app.community.FcmTokenStore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
@@ -34,6 +35,17 @@ data class PawlyExploreCollection(
     val description: String,
     val entries: Set<String>
 )
+
+/** Reads the current image field and older photo fields while existing posts migrate. */
+private fun DocumentSnapshot.communityImageUrl(): String = sequenceOf(
+    getString("imageUrl"),
+    getString("photoUrl"),
+    getString("photo"),
+    getString("image"),
+    getString("mediaUrl"),
+    (get("photos") as? List<*>)?.filterIsInstance<String>()?.firstOrNull(),
+    (get("imageUrls") as? List<*>)?.filterIsInstance<String>()?.firstOrNull()
+).firstOrNull { !it.isNullOrBlank() }?.trim().orEmpty()
 
 class FirebaseCommunityRepository private constructor(
     private val auth: FirebaseAuth,
@@ -549,7 +561,7 @@ class FirebaseCommunityRepository private constructor(
                         authorPhoto = doc.getString("authorPhoto") ?: "",
                         dogName = doc.getString("dogName") ?: "",
                         text = doc.getString("text") ?: "",
-                        imageUrl = doc.getString("imageUrl") ?: "",
+                        imageUrl = doc.communityImageUrl(),
                         videoUrl = doc.getString("videoUrl") ?: "",
                         likeCount = doc.getLong("likeCount") ?: 0,
                         commentCount = doc.getLong("commentCount") ?: 0,
@@ -600,7 +612,7 @@ class FirebaseCommunityRepository private constructor(
                         authorPhoto = doc.getString("authorPhoto") ?: "",
                         dogName = doc.getString("dogName") ?: "",
                         text = doc.getString("text") ?: "",
-                        imageUrl = doc.getString("imageUrl") ?: "",
+                        imageUrl = doc.communityImageUrl(),
                         videoUrl = doc.getString("videoUrl") ?: "",
                         likeCount = doc.getLong("likeCount") ?: 0,
                         commentCount = doc.getLong("commentCount") ?: 0,
@@ -1238,7 +1250,7 @@ class FirebaseCommunityRepository private constructor(
         check(isAdmin()) { "No tienes permisos de moderación." }
         val postRef = db.collection("posts").document(postId)
         val post = postRef.get().await()
-        val mediaUrls = listOf(post.getString("imageUrl").orEmpty(), post.getString("videoUrl").orEmpty())
+        val mediaUrls = listOf(post.communityImageUrl(), post.getString("videoUrl").orEmpty())
             .filter { it.startsWith("https://") }
         postRef.delete().await()
         val cleanupFailures = mediaUrls.mapNotNull { url ->

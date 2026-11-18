@@ -397,37 +397,27 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, openNot
     val communityTabs = listOf(CommunityPage.FEED, CommunityPage.SEARCH, CommunityPage.MESSAGES, CommunityPage.PROFILE)
     val selectedCommunityTab = if (page in communityTabs) page else CommunityPage.FEED
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Row(
-            Modifier.fillMaxWidth().statusBarsPadding().padding(start = 18.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(tr("Comunidad"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
-                Box {
-                    Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = MaterialTheme.colorScheme.primary)
-                    if (unreadNotifications > 0) {
-                        Badge(Modifier.align(Alignment.TopEnd)) { Text(unreadNotifications.coerceAtMost(99).toString()) }
+        PawlySectionNavigationHeader(
+            title = tr("Comunidad"),
+            labels = communityTabs.map { tr(it.label) },
+            selectedIndex = communityTabs.indexOf(selectedCommunityTab),
+            onSelect = { index -> page = communityTabs[index]; selectedUser = null; chat = null },
+            actions = {
+                IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
+                    Box {
+                        Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = MaterialTheme.colorScheme.primary)
+                        if (unreadNotifications > 0) {
+                            Badge(Modifier.align(Alignment.TopEnd)) { Text(unreadNotifications.coerceAtMost(99).toString()) }
+                        }
+                    }
+                }
+                if (admin) {
+                    IconButton(onClick = { page = CommunityPage.MODERATION; selectedUser = null; chat = null }) {
+                        Icon(Icons.Default.Shield, contentDescription = tr("Moderar"), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
-            if (admin) {
-                IconButton(onClick = { page = CommunityPage.MODERATION; selectedUser = null; chat = null }) {
-                    Icon(Icons.Default.Shield, contentDescription = tr("Moderar"), tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-        PrimaryTabRow(
-            selectedTabIndex = communityTabs.indexOf(selectedCommunityTab),
-            containerColor = MaterialTheme.colorScheme.background
-        ) {
-            communityTabs.forEach { tab ->
-                Tab(
-                    selected = selectedCommunityTab == tab,
-                    onClick = { page = tab; selectedUser = null; chat = null },
-                    text = { Text(tr(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                )
-            }
-        }
+        )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp)) {
                 Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {

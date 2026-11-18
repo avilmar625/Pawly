@@ -331,19 +331,12 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         val explorePages = ExplorePage.entries
-        PrimaryTabRow(
-            selectedTabIndex = explorePages.indexOf(activeExplorePage),
-            modifier = Modifier.statusBarsPadding(),
-            containerColor = MaterialTheme.colorScheme.background
-        ) {
-            explorePages.forEach { tab ->
-                Tab(
-                    selected = activeExplorePage == tab,
-                    onClick = { activeExplorePage = tab },
-                    text = { Text(tr(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                )
-            }
-        }
+        PawlySectionNavigationHeader(
+            title = tr("Explorar"),
+            labels = explorePages.map { tr(it.label) },
+            selectedIndex = explorePages.indexOf(activeExplorePage),
+            onSelect = { activeExplorePage = explorePages[it] }
+        )
         LazyColumn(
             Modifier.weight(1f),
             contentPadding = PaddingValues(20.dp),

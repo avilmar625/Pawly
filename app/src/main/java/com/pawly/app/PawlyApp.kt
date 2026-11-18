@@ -547,22 +547,16 @@ private fun PawlyMainApp(
                 }
                 if (routeTabs.isNotEmpty()) {
                     val selectedRoute = if (selected == Tab.MARKET) Tab.MORE else selected
-                    PrimaryTabRow(
-                        selectedTabIndex = routeTabs.indexOf(selectedRoute).coerceAtLeast(0),
-                        modifier = Modifier.statusBarsPadding(),
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ) {
-                        routeTabs.forEach { tab ->
-                            Tab(
-                                selected = selectedRoute == tab,
-                                onClick = {
-                                    selected = tab
-                                    if (tab != Tab.COMMUNITY) openCommunityNotifications = false
-                                },
-                                text = { Text(PawlyI18n.text(tab.label, language), maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                            )
+                    PawlySectionNavigationHeader(
+                        title = PawlyI18n.text(if (selectedRoute in petTabs) "Mi perro" else "TU ESPACIO PAWLY", language),
+                        labels = routeTabs.map { PawlyI18n.text(it.label, language) },
+                        selectedIndex = routeTabs.indexOf(selectedRoute).coerceAtLeast(0),
+                        onSelect = { index ->
+                            val tab = routeTabs[index]
+                            selected = tab
+                            if (tab != Tab.COMMUNITY) openCommunityNotifications = false
                         }
-                    }
+                    )
                 }
             }
         },
@@ -823,13 +817,7 @@ private fun PawlyMainApp(
                     showSignOut = cloudRepository != null,
                     language = language
                 )
-                Tab.MARKET -> PawlyMarketHubScreen(
-                    petName = dogName,
-                    elegantDesign = elegantDesign,
-                    storageScope = storageScope,
-                    onBack = { selected = Tab.MORE },
-                    onProfessionals = { selected = Tab.SERVICES }
-                )
+                Tab.MARKET -> PawlyMarketHubScreen(onBack = { selected = Tab.MORE })
                 Tab.SERVICES -> ProfessionalServicesScreen(
                     onBack = { selected = Tab.MORE },
                     language = language,

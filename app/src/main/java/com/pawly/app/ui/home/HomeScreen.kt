@@ -483,11 +483,8 @@ private fun HomeLearnCard(onClick: () -> Unit) {
 
 /* Shared components used by the health and care areas. */
 @Composable
-internal fun SectionHeading(title: String, subtitle: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge)
-        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+internal fun SectionHeading(title: String, subtitle: String = "") {
+    PawlySectionHeading(title = title, subtitle = subtitle)
 }
 
 @Composable

@@ -80,6 +80,7 @@ import java.util.Date
 import java.util.Locale
 import com.pawly.app.care.export.PetCarePdfExporter
 import com.google.firebase.firestore.FirebaseFirestoreException
+import com.pawly.app.care.PetCareExpensesSection
 
 @Composable
 internal fun PetCareHubScreen(
@@ -122,25 +123,18 @@ internal fun PetCareHubScreen(
                 }
             }
             val sections = if (sharedPetOwnerUid == null) {
-                listOf("Pasaporte", "Cuidados", "Compartir")
+                listOf("Pasaporte", "Cuidados", "Gastos", "Compartir")
             } else listOf("Pasaporte", "Cuidados")
-            PrimaryTabRow(
-                selectedTabIndex = sections.indexOf(section).coerceAtLeast(0),
-                containerColor = MaterialTheme.colorScheme.background
-            ) {
-                sections.forEach { item ->
-                    val label = if (item == "Pasaporte") tr("Salud") else tr(item)
-                    MaterialTab(
-                        selected = section == item,
-                        onClick = { section = item },
-                        text = { Text(label, maxLines = 1) }
-                    )
-                }
-            }
+            PawlyTabStrip(
+                labels = sections.map { if (it == "Pasaporte") tr("Salud") else tr(it) },
+                selectedIndex = sections.indexOf(section).coerceAtLeast(0),
+                onSelect = { section = sections[it] }
+            )
         }
         when (section) {
             "Pasaporte" -> PetPassportSection(petName, storageScope, petId, sharedPetOwnerUid, initialPassportType, onInitialActionConsumed)
             "Cuidados" -> PetCarePlanSection(petName, storageScope, petId, sharedPetOwnerUid, initialCareAction, onInitialActionConsumed)
+            "Gastos" -> PetCareExpensesSection(petName, storageScope)
             else -> PetSharingSection(petName = petName, petId = petId, ownerUid = storageScope, onOpenSharedPet = onOpenSharedPet)
         }
     }

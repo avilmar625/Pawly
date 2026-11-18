@@ -44,7 +44,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
         val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
         val uploadPreset = (servicePreferences.getString("cloudinary_image_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_IMAGE_UPLOAD_PRESET).trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
-            "Cloudinary no está configurado. Añade CLOUDINARY_CLOUD_NAME y CLOUDINARY_IMAGE_UPLOAD_PRESET a local.properties y vuelve a compilar."
+            "Cloudinary no está configurado. Ve a Más > Ajustes > Servicios multimedia y añade el Cloud name y el preset unsigned de imágenes."
         }
         require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
         require(folder in setOf("profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos", "diary-photos")) {
@@ -87,7 +87,7 @@ internal class CloudinaryImageUploader(private val context: Context) {
         val cloudName = (servicePreferences.getString("cloudinary_cloud_name", null) ?: BuildConfig.CLOUDINARY_CLOUD_NAME).trim()
         val uploadPreset = (servicePreferences.getString("cloudinary_video_preset", null)?.takeIf { it.isNotBlank() } ?: BuildConfig.CLOUDINARY_VIDEO_UPLOAD_PRESET).trim()
         require(cloudName.isNotBlank() && uploadPreset.isNotBlank()) {
-            "Cloudinary no está configurado. Añade CLOUDINARY_CLOUD_NAME y CLOUDINARY_VIDEO_UPLOAD_PRESET a local.properties y vuelve a compilar."
+            "Cloudinary no está configurado. Ve a Más > Ajustes > Servicios multimedia y añade el Cloud name y el preset unsigned de vídeos."
         }
         require(cloudName.matches(Regex("[A-Za-z0-9_-]+"))) { "El Cloud name de Cloudinary no es válido." }
         require(folder in setOf("post-videos", "message-videos")) { "La carpeta de vídeos solicitada no está permitida." }
