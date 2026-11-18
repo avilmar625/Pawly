@@ -1,6 +1,6 @@
 # PAWLY_MASTER.md
 
-> Documento maestro de continuidad técnica. Última auditoría documental: 2026-11-16.
+> Documento maestro de continuidad técnica. Última actualización: 2026-11-17.
 > Este documento distingue **presencia en código**, **configuración externa** y **validación real**. Una función no se considera terminada solo porque existan pantallas o clases.
 
 ## 1. Identidad y reglas del proyecto
@@ -20,37 +20,32 @@
   7. Respetar la preferencia de costes: servicios gratuitos y sin activar Firebase Blaze, Cloud Functions de pago o Workers Paid sin autorización expresa.
   8. No subir secretos, tokens, archivos de configuración privados ni credenciales al repositorio.
 
-## 2. Estado Git comprobado el 2026-11-16
+## 2. Estado Git comprobado el 2026-11-17
 
-### Rama Android de continuidad actual
+### Rama Android de continuidad
 
-- **Rama de continuidad anterior comprobada:** `cambios71-recordatorios-semanales`.
-- **HEAD base verificado:** `e88800506c925509854acc26c29a5a662414f16d` (16-11-2026). Esta rama está 204 commits por delante del commit `11af424e`; se verificó la relación con GitHub Compare antes de crear la nueva rama.
-- **Rama de trabajo actual:** `cambios72-rediseño-integral-pawly`, creada desde el HEAD de cambios71. Último commit de esta actualización: `f8e2703c6ef0747d46029bcd5fdc1e0719e85f85`.
-- cambios72 conserva la evolución completa de cambios65–71; no se ha modificado `main`.
-- **No continuar desde cambios39, cambios64, cambios65, cambios68 ni main**. La continuidad de Android queda en cambios72 y las siguientes ramas deben partir de su HEAD verificado.
-- No fusionar ramas ni PR hasta superar las validaciones y pruebas indicadas abajo.
+- **Rama de origen revisada:** `pawly-mejoras-calidad-ux-2026-11`.
+- **HEAD de origen:** `8485986` (`Share message unread state across community navigation`).
+- **Rama de mejoras:** `pawly-calidad-coherencia-2026-11`, creada desde ese HEAD para corregir estados de carga de Hoy y ampliar sus traducciones. Es una rama local hasta que se publique en GitHub.
+- Esta actualización no cambia el esquema de Firestore ni despliega reglas o servicios externos.
 
-### Rama anterior y estado de validación
+### Validación de esta actualización
 
-- `cambios66-estabilizacion-y-lint`: el workflow pasó tests Kotlin, pero Lint encontró 4 errores `NonObservableLocale` en `HomeHighlights.kt` y `PetTimelineSection.kt`; APK/AAB se omitieron. Los cuatro puntos se corrigieron en cambios67.
-- `cambios67-cronologia-y-localizacion`: Firestore Emulator y Worker pasan. El intento Android falló en compilación Kotlin por la sobrecarga incorrecta de `DateFormat.getDateInstance(locale)` en `PawlyCalendarScreen.kt`; se corrigió en cambios68 usando `DateFormat.DEFAULT` y la locale.
-- cambios68 está ejecutando validaciones nuevas sobre el HEAD `f562a37...`. **Estado actual al documentar:** Android build pendiente y Firestore validation en curso; no declarar todavía tests, Lint, APK o AAB como aprobados hasta consultar Actions.
-- El workflow de Android ejecuta tests Kotlin, Lint, APK Debug y AAB Release unsigned; el de Firestore prueba las reglas con Emulator; el de Worker comprueba tipos y validación de peticiones.
-- Los cambios siguen sin prueba manual en emulador/dispositivo Android, iPhone o con todos los servicios externos reales.
+- La revisión de esta rama es estática. No se ha verificado aquí el CI de su HEAD, ni se ha probado en emulador/dispositivo o contra Firebase/Cloudinary/Worker reales.
+- No declarar tests, Lint, APK/AAB o despliegues aprobados hasta consultar el resultado correspondiente al HEAD exacto.
 
 ### Otras ramas importantes
 
 - `cambios56-arquitectura`: hito de arquitectura y endurecimiento de seguridad.
 - `cambios57` a `cambios64-funciones-integradas-hoy`: evolución incremental hasta la base de cambios65.
-- `cambios65-hoy-cuidados-diseno`: rediseño de Hoy y cuidados; no modificar como rama de continuidad.
-- `cambios66-estabilizacion-y-lint`: primer bloque de estabilización visual/localización.
-- `cambios67-cronologia-y-localizacion`: filtros de cronología y localización; base de cambios68.
+- `pawly-mejoras-calidad-ux-2026-11`: rama de origen de esta actualización.
 - `ios-funciones`: port iOS SwiftUI divergente; debe auditarse y probarse por separado en Xcode/iPhone. No asumir paridad Android/iOS.
 - `ios` e `ios-iphone`: líneas iOS anteriores/prototipo, no sustituir por ellas el port funcional sin comparar.
 - No borrar ramas históricas como limpieza automática.
 
-## 3. Arquitectura Android actual (cambios65–72)
+> Las secciones 3 en adelante conservan notas de arquitectura e hitos históricos redactados antes de la rama actual. Úsalas como contexto, no como registro del HEAD, el estado de CI ni la continuidad vigente; esos datos se actualizan en la sección 2.
+
+## 3. Arquitectura Android (base histórica cambios65–72)
 
 Aplicación Android nativa con Kotlin, Jetpack Compose y Navigation Compose. El repositorio contiene un único módulo Gradle `:app`; todavía no existe un módulo Kotlin Multiplatform compartido.
 

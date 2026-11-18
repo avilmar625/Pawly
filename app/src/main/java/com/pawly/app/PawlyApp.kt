@@ -104,7 +104,7 @@ private fun openPawlyNotificationSettings(context: Context) {
 }
 
 internal enum class Tab(val label: String) {
-    HOME("Hoy"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Mi perro"), DIARY("Diario"), CALENDAR("Calendario"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda"), MARKET("Pawly Market")
+    HOME("Hoy"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), CALENDAR("Agenda"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda"), MARKET("Pawly Market")
 }
 
 @Composable
@@ -205,7 +205,6 @@ private fun PawlyMainApp(
     var selected by remember { mutableStateOf(Tab.HOME) }
     var previousTab by remember { mutableStateOf(Tab.HOME) }
     LaunchedEffect(selected) { if (selected != Tab.DIARY) previousTab = selected }
-    var mainNavigationExpanded by remember { mutableStateOf(false) }
     BackHandler(enabled = selected == Tab.DIARY) { selected = previousTab }
     var openCommunityNotifications by remember { mutableStateOf(false) }
     var pendingCareAction by remember { mutableStateOf<String?>(null) }
@@ -512,97 +511,64 @@ private fun PawlyMainApp(
                         Icon(Icons.Default.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     }
                 }
-            }
-        },
-        bottomBar = {
-            val navigationTabs = listOf(
-                Tab.HOME, Tab.HEALTH, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE,
-                Tab.LEARN, Tab.DIARY, Tab.CALENDAR, Tab.SERVICES, Tab.LOST, Tab.MARKET
-            )
-            fun iconForTab(tab: Tab) = when (tab) {
-                Tab.HOME -> Icons.Filled.WbSunny
-                Tab.EXPLORE -> Icons.Filled.Explore
-                Tab.LEARN -> Icons.Filled.MenuBook
-                Tab.HEALTH -> Icons.Filled.Pets
-                Tab.DIARY -> Icons.Filled.AutoStories
-                Tab.COMMUNITY -> Icons.Filled.Groups
-                Tab.CALENDAR -> Icons.Filled.CalendarMonth
-                Tab.MORE -> Icons.Filled.MoreHoriz
-                Tab.SERVICES -> Icons.Filled.WorkspacePremium
-                Tab.LOST -> Icons.Filled.ReportProblem
-                Tab.MARKET -> Icons.Filled.Storefront
-            }
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 12.dp,
-                shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)
-            ) {
-                Box(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 9.dp)
-                ) {
-                    Surface(
-                        onClick = { mainNavigationExpanded = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(17.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        tonalElevation = 1.dp
+            } else {
+                val petTabs = listOf(Tab.HOME, Tab.HEALTH, Tab.DIARY, Tab.CALENDAR)
+                val moreTabs = listOf(Tab.MORE, Tab.LEARN, Tab.SERVICES, Tab.LOST)
+                val routeTabs = when (selected) {
+                    Tab.HOME, Tab.HEALTH, Tab.DIARY, Tab.CALENDAR -> petTabs
+                    Tab.MORE, Tab.LEARN, Tab.SERVICES, Tab.LOST, Tab.MARKET -> moreTabs
+                    else -> emptyList()
+                }
+                if (routeTabs.isNotEmpty()) {
+                    val selectedRoute = if (selected == Tab.MARKET) Tab.MORE else selected
+                    PrimaryTabRow(
+                        selectedTabIndex = routeTabs.indexOf(selectedRoute).coerceAtLeast(0),
+                        containerColor = MaterialTheme.colorScheme.surface
                     ) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                                Icon(iconForTab(selected), null, tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(9.dp).size(22.dp))
-                            }
-                            Spacer(Modifier.width(11.dp))
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                Text(PawlyI18n.text("NAVEGACIÓN", language), color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
-                                Text(PawlyI18n.text(selected.label, language), style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                            }
-                            Icon(Icons.Default.ExpandLess.takeIf { mainNavigationExpanded } ?: Icons.Default.ExpandMore,
-                                contentDescription = PawlyI18n.text("Abrir menú", language), tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                    DropdownMenu(
-                        expanded = mainNavigationExpanded,
-                        onDismissRequest = { mainNavigationExpanded = false },
-                        modifier = Modifier.fillMaxWidth(.94f).heightIn(max = 520.dp)
-                    ) {
-                        Text(PawlyI18n.text("IR A UNA SECCIÓN", language), color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 1.1.sp, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        navigationTabs.forEach { tab ->
-                            val active = selected == tab ||
-                                (tab == Tab.HEALTH && selected in setOf(Tab.DIARY, Tab.CALENDAR)) ||
-                                (tab == Tab.MORE && selected in setOf(Tab.SERVICES, Tab.LOST, Tab.LEARN, Tab.MARKET))
-                            DropdownMenuItem(
-                                text = { Text(PawlyI18n.text(tab.label, language),
-                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) },
-                                leadingIcon = {
-                                    Surface(shape = RoundedCornerShape(10.dp),
-                                        color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant) {
-                                        Icon(iconForTab(tab), null,
-                                            tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(8.dp).size(19.dp))
-                                    }
-                                },
-                                trailingIcon = {
-                                    if (active) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                                },
+                        routeTabs.forEach { tab ->
+                            Tab(
+                                selected = selectedRoute == tab,
                                 onClick = {
-                                    if (tab != Tab.COMMUNITY) openCommunityNotifications = false
                                     selected = tab
-                                    mainNavigationExpanded = false
-                                }
+                                    if (tab != Tab.COMMUNITY) openCommunityNotifications = false
+                                },
+                                text = { Text(PawlyI18n.text(tab.label, language), maxLines = 1, overflow = TextOverflow.Ellipsis) }
                             )
                         }
                     }
+                }
+            }
+        },
+        bottomBar = {
+            val navigationTabs = listOf(Tab.HOME, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE)
+            val selectedSection = when (selected) {
+                Tab.HEALTH, Tab.DIARY, Tab.CALENDAR -> Tab.HOME
+                Tab.LEARN, Tab.SERVICES, Tab.LOST, Tab.MARKET -> Tab.MORE
+                else -> selected
+            }
+            fun iconForTab(tab: Tab) = when (tab) {
+                Tab.HOME -> Icons.Filled.Pets
+                Tab.COMMUNITY -> Icons.Filled.Groups
+                Tab.EXPLORE -> Icons.Filled.Explore
+                Tab.MORE -> Icons.Filled.MoreHoriz
+                else -> Icons.Filled.Pets
+            }
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
+                navigationTabs.forEach { tab ->
+                    val label = if (tab == Tab.HOME) "Mi perro" else tab.label
+                    NavigationBarItem(
+                        selected = selectedSection == tab,
+                        onClick = {
+                            selected = tab
+                            if (tab != Tab.COMMUNITY) openCommunityNotifications = false
+                        },
+                        icon = { Icon(iconForTab(tab), contentDescription = null) },
+                        label = { Text(PawlyI18n.text(label, language), maxLines = 1) },
+                        alwaysShowLabel = true
+                    )
                 }
             }
         }
@@ -648,7 +614,7 @@ private fun PawlyMainApp(
                     healthDates = healthDates.filterKeys { it.startsWith("$dogName|") }
                         .mapKeys { (key, _) -> key.removePrefix("$dogName|") },
                     calendarReminders = calendarReminders,
-                    onOpenHealthAgenda = { pendingCareSection = "Agenda"; selected = Tab.HEALTH },
+                    onOpenHealthAgenda = { selected = Tab.CALENDAR },
                     onOpenPassport = { pendingCareSection = "Pasaporte"; selected = Tab.HEALTH },
                     storageScope = storageScope
                 )
@@ -669,33 +635,15 @@ private fun PawlyMainApp(
                             petName = sharedPet.petName,
                             petId = sharedPetId,
                             storageScope = storageScope,
-                            medicineDone = medicineDone,
-                            onMedicineToggle = { medicineDone = it },
-                            dates = emptyMap(),
-                            onDateChange = { _, _ -> },
-                            elegantDesign = elegantDesign,
                             sharedPetOwnerUid = sharedPet.ownerUid,
                             onCloseSharedPet = { selectedSharedPet = null }
                         )
                     } else {
                         PetCareHubScreen(
                             petName = dogName,
-                            elegantDesign = elegantDesign,
                             petId = dogName,
                             storageScope = storageScope,
-                            medicineDone = medicineDone,
-                            onMedicineToggle = { medicineDone = it },
-                            dates = healthDates.filterKeys { it.startsWith("$dogName|") }
-                                .mapKeys { (key, _) -> key.removePrefix("$dogName|") },
-                            onDateChange = { key, value ->
-                                val fullKey = "$dogName|$key"
-                                healthDates = if (value == null) healthDates - fullKey else healthDates + (fullKey to value)
-                            },
                             onOpenSharedPet = { selectedSharedPet = it },
-                            onOpenDiary = { selected = Tab.DIARY },
-                            onOpenCalendar = { selected = Tab.CALENDAR },
-                            diaryEntries = diaryEntries,
-                            calendarReminders = calendarReminders,
                             initialSection = pendingCareSection ?: when {
                                 pendingPassportType != null -> "Pasaporte"
                                 pendingCareAction != null -> "Cuidados"
@@ -733,17 +681,11 @@ private fun PawlyMainApp(
                     petId = selectedSharedPet?.let { it.sharedPetId.removePrefix("${it.ownerUid}_") } ?: dogName
                 )
                 Tab.COMMUNITY -> CommunityScreen(
-                    elegantDesign = elegantDesign,
                     openNotifications = openCommunityNotifications
                 )
                 Tab.MORE -> MoreHubScreen(
-                    onLearn = { selected = Tab.LEARN },
-                    onDiary = { selected = Tab.DIARY },
-                    onCalendar = { selected = Tab.CALENDAR },
                     onSettings = { showSettings = true },
-                    onProfessionals = { selected = Tab.SERVICES },
                     onPawlyMarket = { selected = Tab.MARKET },
-                    onLostPet = { selected = Tab.LOST },
                     onSharePetPdf = {
                         coroutineScope.launch {
                             runCatching {
@@ -852,8 +794,7 @@ private fun PawlyMainApp(
                         }
                     },
                     showSignOut = cloudRepository != null,
-                    language = language,
-                    elegantDesign = elegantDesign
+                    language = language
                 )
                 Tab.MARKET -> PawlyMarketHubScreen(
                     petName = dogName,
@@ -864,7 +805,6 @@ private fun PawlyMainApp(
                 )
                 Tab.SERVICES -> ProfessionalServicesScreen(
                     onBack = { selected = Tab.MORE },
-                    elegantDesign = elegantDesign,
                     language = language,
                     repository = cloudRepository
                 )

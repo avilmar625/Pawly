@@ -74,10 +74,13 @@ internal fun HomeScreen(
         mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope))
     }
     var isLoadingRemotePassport by remember(dogName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
+    var passportLoadFailed by remember(dogName, storageScope) { mutableStateOf(false) }
+    var passportReloadRequest by remember(dogName, storageScope) { mutableIntStateOf(0) }
 
-    LaunchedEffect(dogName, storageScope) {
+    LaunchedEffect(dogName, storageScope, passportReloadRequest) {
         val local = com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
         passportEntries = local
+        passportLoadFailed = false
         if (!storageScope.isNullOrBlank()) {
             isLoadingRemotePassport = local.isEmpty()
             try {
@@ -95,6 +98,10 @@ internal fun HomeScreen(
                     passportEntries = merged
                     com.pawly.app.care.data.PetCareLocalStore.saveEntries(context, dogName, merged, storageScope)
                 }
+                    .onFailure {
+                        if (it is kotlinx.coroutines.CancellationException) throw it
+                        passportLoadFailed = true
+                    }
             } finally {
                 isLoadingRemotePassport = false
             }
@@ -119,6 +126,10 @@ internal fun HomeScreen(
             .parse("${entry.title} ${entry.detail}")
             ?.let { entry.date to it }
     }.sortedBy { it.first }
+        .groupBy { it.first.take(10) }
+        .toSortedMap()
+        .values
+        .map { it.last() }
     val latestWeight = parsedWeights.lastOrNull()?.second
     val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
     val weightChange = if (latestWeight != null && previousWeight != null) latestWeight - previousWeight else null
@@ -211,7 +222,7 @@ internal fun HomeScreen(
                         }
                         if (parsedWeights.size > 1) {
                             Row(Modifier.fillMaxWidth().height(46.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
-                                val recent = parsedWeights.takeLast(7).map { it.second }
+                                val recent = parsedWeights.takeLast(5).map { it.second }
                                 val min = (recent.minOrNull() ?: 0f) - .25f
                                 val max = (recent.maxOrNull() ?: 1f) + .25f
                                 recent.forEachIndexed { index, value ->
@@ -220,13 +231,21 @@ internal fun HomeScreen(
                                         .background(if (index == recent.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
                                 }
                             }
-                            Text(tr("Últimos registros guardados en el pasaporte de salud"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            Text(tr("Una medición por fecha · últimas ${minOf(parsedWeights.size, 5)} fechas"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         } else {
                             Text(tr("Añade más mediciones para ver la evolución."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
+                        if (passportLoadFailed) {
+                            Text(tr("No se pudieron actualizar los datos. Se muestran los registros guardados en este dispositivo."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        }
                     } else {
-                        Text(tr("Todavía no hay mediciones. Registra el primer peso en Mi perro → Pasaporte → Peso."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = onWeight) { Text(tr("Registrar primer peso")) }
+                        if (passportLoadFailed) {
+                            Text(tr("No se pudo cargar el pasaporte de salud. Comprueba la conexión e inténtalo de nuevo."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                            OutlinedButton(onClick = { passportReloadRequest++ }) { Text(tr("Reintentar")) }
+                        } else {
+                            Text(tr("Todavía no hay mediciones. Registra el primer peso en Mi perro → Pasaporte → Peso."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            OutlinedButton(onClick = onWeight) { Text(tr("Registrar primer peso")) }
+                        }
                     }
                 }
             }

@@ -39,6 +39,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab as MaterialTab
 import androidx.compose.material3.Switch
 import androidx.compose.runtime.*
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,12 +53,9 @@ import android.os.Build
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.unit.dp
@@ -68,7 +67,6 @@ import java.util.UUID
 import com.pawly.app.care.data.PetCareLocalStore
 import com.pawly.app.care.data.FirebasePetCareRepository
 import com.pawly.app.care.data.PetShareInvitation
-import com.pawly.app.care.data.FirebasePetProfileRepository
 import kotlinx.coroutines.launch
 import com.pawly.app.care.model.CareTask
 import com.pawly.app.care.model.CareLogEntry
@@ -87,33 +85,16 @@ internal fun PetCareHubScreen(
     petName: String,
     petId: String,
     storageScope: String? = null,
-    medicineDone: Boolean,
-    onMedicineToggle: (Boolean) -> Unit,
-    dates: Map<String, String>,
-    onDateChange: (String, String?) -> Unit,
-    elegantDesign: Boolean = false,
     sharedPetOwnerUid: String? = null,
     onOpenSharedPet: (PetShareInvitation) -> Unit = {},
     onCloseSharedPet: () -> Unit = {},
-    onOpenDiary: () -> Unit = {},
-    onOpenCalendar: () -> Unit = {},
-    diaryEntries: List<String> = emptyList(),
-    calendarReminders: List<String> = emptyList(),
     initialSection: String? = null,
     initialPassportType: String? = null,
     initialCareAction: String? = null,
     onInitialActionConsumed: () -> Unit = {}
 ) {
-    var section by remember { mutableStateOf("Todo") }
-    var sectionMenuExpanded by remember { mutableStateOf(false) }
-    var sharedPhotoUrl by remember(sharedPetOwnerUid, petId) { mutableStateOf<String?>(null) }
-    LaunchedEffect(sharedPetOwnerUid, storageScope, petId) {
-        section = if (sharedPetOwnerUid == null) "Todo" else "Pasaporte"
-        val profileOwner = sharedPetOwnerUid ?: storageScope
-        sharedPhotoUrl = if (profileOwner.isNullOrBlank()) null else runCatching {
-            FirebasePetProfileRepository(ownerUid = profileOwner).loadProfile(petId)?.photoUrl
-        }.getOrNull()
-    }
+    var section by remember { mutableStateOf("Pasaporte") }
+    LaunchedEffect(sharedPetOwnerUid) { section = "Pasaporte" }
     LaunchedEffect(initialSection, initialPassportType, initialCareAction) {
         if (!initialSection.isNullOrBlank()) {
             section = initialSection
@@ -131,120 +112,32 @@ internal fun PetCareHubScreen(
                 TextButton(onClick = onCloseSharedPet) { Text(tr("Volver a mi mascota")) }
             }
         }
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            if (elegantDesign) {
-                Box(Modifier.fillMaxWidth().height(190.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(25.dp))) {
-                    AsyncImage(
-                        model = sharedPhotoUrl ?: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=1200&h=700&fit=crop",
-                        contentDescription = "Perro en un entorno natural",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xE610251F)))))
-                    Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(tr("MI MASCOTA · BIENESTAR Y CUIDADOS"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-                        Text(petName, color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
-                        Text(tr("Su salud, sus recuerdos y su día a día."), color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(tr("SU BIENESTAR, SIEMPRE A MANO"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                            Text("El cuidado de ${petName.ifBlank { "tu mascota" }}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                            Text(tr("Agenda, salud y rutinas en un solo lugar."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        Icon(Icons.Default.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(42.dp))
-                    }
+        Column(Modifier.fillMaxWidth()) {
+            if (sharedPetOwnerUid == null) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(petName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
             val sections = if (sharedPetOwnerUid == null) {
-                listOf("Todo", "Agenda", "Pasaporte", "Cuidados", "Compartir", "Diario", "Citas")
+                listOf("Pasaporte", "Cuidados", "Compartir")
             } else listOf("Pasaporte", "Cuidados")
-            val selectedLabel = when (section) {
-                "Pasaporte" -> tr("Salud")
-                "Diario" -> tr("Diario")
-                "Citas" -> tr("Citas")
-                else -> tr(section)
-            }
-            val selectedIcon = when (section) {
-                "Todo" -> Icons.Default.Pets
-                "Agenda", "Citas" -> Icons.Default.CalendarMonth
-                "Pasaporte" -> Icons.Default.HealthAndSafety
-                "Diario" -> Icons.Default.AutoStories
-                "Cuidados", "Compartir" -> Icons.Default.People
-                else -> Icons.Default.Pets
-            }
-            Box(Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { sectionMenuExpanded = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(18.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 13.dp)
-                ) {
-                    Icon(selectedIcon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(11.dp))
-                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                        Text(tr("Estás viendo"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(selectedLabel, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    }
-                    Icon(Icons.Default.ExpandMore, contentDescription = tr("Cambiar sección"))
-                }
-                DropdownMenu(expanded = sectionMenuExpanded, onDismissRequest = { sectionMenuExpanded = false }) {
-                    sections.forEach { item ->
-                        val label = when (item) { "Pasaporte" -> tr("Salud"); "Diario" -> tr("Diario"); "Citas" -> tr("Citas"); else -> tr(item) }
-                        val icon = when (item) {
-                            "Todo" -> Icons.Default.Pets
-                            "Agenda", "Citas" -> Icons.Default.CalendarMonth
-                            "Pasaporte" -> Icons.Default.HealthAndSafety
-                            "Diario" -> Icons.Default.AutoStories
-                            "Cuidados", "Compartir" -> Icons.Default.People
-                            else -> Icons.Default.Pets
-                        }
-                        DropdownMenuItem(
-                            text = { Text(label, fontWeight = if (section == item) FontWeight.Bold else FontWeight.Normal) },
-                            leadingIcon = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                            trailingIcon = { if (section == item) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                            onClick = {
-                                sectionMenuExpanded = false
-                                when (item) { "Diario" -> onOpenDiary(); "Citas" -> onOpenCalendar(); else -> section = item }
-                            }
-                        )
-                    }
+            PrimaryTabRow(
+                selectedTabIndex = sections.indexOf(section).coerceAtLeast(0),
+                containerColor = MaterialTheme.colorScheme.background
+            ) {
+                sections.forEach { item ->
+                    val label = if (item == "Pasaporte") tr("Salud") else tr(item)
+                    MaterialTab(
+                        selected = section == item,
+                        onClick = { section = item },
+                        text = { Text(label, maxLines = 1) }
+                    )
                 }
             }
         }
         when (section) {
-            "Todo" -> PetTimelineSection(
-                petName = petName,
-                petId = petId,
-                storageScope = storageScope,
-                diaryEntries = diaryEntries,
-                calendarReminders = calendarReminders,
-                healthDates = dates,
-                onOpenHealth = { section = "Pasaporte" },
-                onOpenCare = { section = "Cuidados" },
-                onOpenDiary = onOpenDiary,
-                onOpenCalendar = onOpenCalendar
-            )
-            "Agenda" -> HealthScreen(
-                dogName = petName,
-                medicineDone = medicineDone,
-                onMedicineToggle = onMedicineToggle,
-                dates = dates,
-                onDateChange = onDateChange
-            )
             "Pasaporte" -> PetPassportSection(petName, storageScope, petId, sharedPetOwnerUid, initialPassportType, onInitialActionConsumed)
             "Cuidados" -> PetCarePlanSection(petName, storageScope, petId, sharedPetOwnerUid, initialCareAction, onInitialActionConsumed)
             else -> PetSharingSection(petName = petName, petId = petId, ownerUid = storageScope, onOpenSharedPet = onOpenSharedPet)
@@ -480,14 +373,16 @@ private fun PetPassportSection(
             val weightPoints = entries
                 .filter { it.type.equals("Peso", ignoreCase = true) }
                 .mapNotNull { entry ->
-                    val weightPattern = Regex("""\d+(?:[.,]\d+)?""")
-                    val rawValue = weightPattern.find(entry.title)?.value ?: weightPattern.find(entry.detail)?.value
-                    val kg = rawValue?.replace(",", ".")?.toFloatOrNull()
+                    val kg = com.pawly.app.care.domain.WeightMeasurementParser.parse("${entry.title} ${entry.detail}")
                     val day = runCatching { LocalDate.parse(entry.date.take(10)) }.getOrNull()
-                    if (kg != null && kg > 0f && day != null) Triple(day, kg, entry.id) else null
+                    if (kg != null && day != null) Triple(day, kg, entry.id) else null
                 }
                 .sortedBy { it.first }
-                .takeLast(12)
+                .groupBy { it.first }
+                .toSortedMap()
+                .values
+                .map { it.last() }
+                .takeLast(8)
             if (weightPoints.isNotEmpty()) {
                 val lineColor = MaterialTheme.colorScheme.primary
                 val guideColor = MaterialTheme.colorScheme.outlineVariant
@@ -501,7 +396,7 @@ private fun PetPassportSection(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(tr("Evolución del peso"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(tr("Últimas ${weightPoints.size} mediciones registradas"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(tr("Una medición por fecha"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
                                 String.format(LocalLocale.current.platformLocale, "%.1f kg", weightPoints.last().second),
@@ -519,9 +414,12 @@ private fun PetPassportSection(
                             val right = size.width - 10.dp.toPx()
                             val top = 12.dp.toPx()
                             val bottom = size.height - 12.dp.toPx()
-                            val points = values.mapIndexed { index, value ->
-                                val x = if (values.size == 1) (left + right) / 2f
-                                    else left + (right - left) * index / (values.size - 1)
+                            val firstDay = weightPoints.first().first
+                            val daySpan = java.time.temporal.ChronoUnit.DAYS.between(firstDay, weightPoints.last().first).coerceAtLeast(1)
+                            val points = weightPoints.map { (day, value, _) ->
+                                val elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(firstDay, day)
+                                val x = if (weightPoints.size == 1) (left + right) / 2f
+                                    else left + (right - left) * elapsedDays / daySpan
                                 val y = bottom - ((value - minWeight) / range) * (bottom - top)
                                 Offset(x, y)
                             }

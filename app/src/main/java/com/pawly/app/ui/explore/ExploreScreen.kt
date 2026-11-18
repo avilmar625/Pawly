@@ -78,6 +78,10 @@ private data class NearbyPlace(
     val longitude: Double
 )
 
+private enum class ExplorePage(val label: String) {
+    IDEAS("Ideas"), NEARBY("Cerca"), SAVED("Guardados"), COLLECTIONS("Colecciones")
+}
+
 private suspend fun loadNearbyPlaces(latitude: Double, longitude: Double, category: String): List<NearbyPlace> =
     withContext(Dispatchers.IO) {
         val selectors = when (category) {
@@ -146,6 +150,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     val context = LocalContext.current
     val locale = PawlyI18n.locale(LocalPawlyLanguage.current)
     val scope = rememberCoroutineScope()
+    var activeExplorePage by remember { mutableStateOf(ExplorePage.IDEAS) }
     var communityPlaces by remember { mutableStateOf(emptyList<PawlyCommunityPlace>()) }
     var communityPlacesMessage by remember { mutableStateOf<String?>(null) }
     var communityPlacesLoading by remember { mutableStateOf(false) }
@@ -324,118 +329,100 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
     )
     val visible = places.filter { (filter == "Todo" || it.category == filter) && (query.isBlank() || it.name.contains(query, true) || it.description.contains(query, true)) }
 
-    LazyColumn(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(22.dp),
-        verticalArrangement = Arrangement.spacedBy(17.dp)
-    ) {
-        item {
-            if (elegantDesign) {
-                Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(27.dp))) {
-                    AsyncImage(
-                        model = "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1200&h=700&fit=crop",
-                        contentDescription = tr("Paisaje de montaña para descubrir con tu perro"),
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                    )
-                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
-                    Column(Modifier.align(Alignment.BottomStart).padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(tr("AVENTURAS POR COMPARTIR"), color = Color.White.copy(alpha = .85f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
-                        Text(tr("El mundo es mejor cuando vais juntos."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                    }
-                }
-                Spacer(Modifier.height(2.dp))
-            }
-            PawlyPageHeader(
-                eyebrow = "Explora",
-                title = "El mundo es mejor cuando vais juntos.",
-                subtitle = "Ideas para vuestra próxima aventura."
-            )
-            Spacer(Modifier.height(8.dp))
-            PawlyMarketSection()
-            FilledTonalButton(
-                onClick = {
-                    val hasLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                    if (!hasLocation) locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                    else requestFreshLocation()
-                },
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(Icons.Filled.MyLocation, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(tr(if (currentCoordinates == null) "Usar mi ubicación" else "Actualizar ubicación"))
-            }
-            currentAddress?.let { address ->
-                Text(tr(address), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            }
-            Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(tr("Busca un lugar real"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Text(tr("Pawly abre el mapa para consultar resultados actuales; comprueba siempre las condiciones con el establecimiento."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
-                        value = mapSearchQuery,
-                        onValueChange = { mapSearchQuery = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text(tr("Ej. veterinario 24 horas, parque canino…")) },
-                        leadingIcon = { Icon(Icons.Default.Search, null) },
-                        shape = RoundedCornerShape(13.dp)
-                    )
-                    Button(
-                        onClick = {
-                            val clean = mapSearchQuery.trim()
-                            if (clean.isNotBlank()) {
-                                val point = currentCoordinates
-                                val url = if (point != null) {
-                                    "https://www.google.com/maps/search/${Uri.encode(clean)}/@${point.first},${point.second},14z"
-                                } else "https://www.google.com/maps/search/${Uri.encode(clean)}"
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                            }
-                        },
-                        enabled = mapSearchQuery.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(13.dp)
-                    ) {
-                        Icon(Icons.Default.Map, null)
-                        Spacer(Modifier.width(7.dp))
-                        Text(tr("Buscar en el mapa"))
-                    }
-                }
-            }
-            currentCoordinates?.let { (latitude, longitude) ->
-                val point = "$latitude,$longitude"
-                Text(tr("Mapa de tu zona"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                val nearbyMapMarkers = buildList {
-                    add(PawlyMapMarker(latitude, longitude, "Tu ubicación"))
-                    nearbyPlaces.take(40).forEach { place ->
-                        add(PawlyMapMarker(place.latitude, place.longitude, place.name, place.category))
-                    }
-                }
-                PawlyOpenStreetMap(
-                    modifier = Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(20.dp)),
-                    centerLatitude = latitude,
-                    centerLongitude = longitude,
-                    zoom = 12.0,
-                    markers = nearbyMapMarkers
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        val explorePages = ExplorePage.entries
+        PrimaryTabRow(
+            selectedTabIndex = explorePages.indexOf(activeExplorePage),
+            containerColor = MaterialTheme.colorScheme.background
+        ) {
+            explorePages.forEach { tab ->
+                Tab(
+                    selected = activeExplorePage == tab,
+                    onClick = { activeExplorePage = tab },
+                    text = { Text(tr(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 )
-                Text("© OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                val searches = listOf("Parques caninos" to "parques para perros", "Protectoras" to "protectoras de animales", "Veterinarios" to "veterinarios", "Urgencias veterinarias" to "urgencias veterinarias 24 horas", "Playas caninas" to "playas para perros", "Restaurantes dog-friendly" to "restaurantes que admiten perros", "Alojamientos" to "alojamientos que admiten perros", "Rutas" to "rutas de senderismo aptas para perros")
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(tr("Cerca de la ubicación obtenida"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                    searches.forEach { (label, term) ->
-                        TextButton(onClick = {
-                            val encoded = Uri.encode(term)
-                            val geo = Uri.parse("geo:$point?q=$encoded")
-                            val mapsApp = Intent(Intent.ACTION_VIEW, geo).setPackage("com.google.android.apps.maps")
-                            if (mapsApp.resolveActivity(context.packageManager) != null) context.startActivity(mapsApp)
-                            else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/$encoded/@$point,14z")))
-                        }) { Text(tr(label)) }
-                    }
-                }
             }
         }
-        item {
+        LazyColumn(
+            Modifier.weight(1f),
+            contentPadding = PaddingValues(20.dp),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
+        ) {
+            if (activeExplorePage == ExplorePage.NEARBY) item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FilledTonalButton(
+                        onClick = {
+                            val hasLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                            if (!hasLocation) locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                            else requestFreshLocation()
+                        },
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Filled.MyLocation, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(tr(if (currentCoordinates == null) "Usar mi ubicación" else "Actualizar ubicación"))
+                    }
+                    currentAddress?.let { Text(tr(it), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+                    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(tr("Busca un lugar real"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            OutlinedTextField(
+                                value = mapSearchQuery,
+                                onValueChange = { mapSearchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                placeholder = { Text(tr("Ej. veterinario 24 horas, parque canino…")) },
+                                leadingIcon = { Icon(Icons.Default.Search, null) },
+                                shape = RoundedCornerShape(13.dp)
+                            )
+                            Button(
+                                onClick = {
+                                    val clean = mapSearchQuery.trim()
+                                    if (clean.isNotBlank()) {
+                                        val point = currentCoordinates
+                                        val url = if (point != null) "https://www.google.com/maps/search/${Uri.encode(clean)}/@${point.first},${point.second},14z"
+                                        else "https://www.google.com/maps/search/${Uri.encode(clean)}"
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                    }
+                                },
+                                enabled = mapSearchQuery.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(13.dp)
+                            ) {
+                                Icon(Icons.Default.Map, null)
+                                Spacer(Modifier.width(7.dp))
+                                Text(tr("Buscar en el mapa"))
+                            }
+                        }
+                    }
+                    currentCoordinates?.let { (latitude, longitude) ->
+                        val point = "$latitude,$longitude"
+                        PawlyOpenStreetMap(
+                            modifier = Modifier.fillMaxWidth().height(230.dp).clip(RoundedCornerShape(20.dp)),
+                            centerLatitude = latitude,
+                            centerLongitude = longitude,
+                            zoom = 12.0,
+                            markers = buildList {
+                                add(PawlyMapMarker(latitude, longitude, "Tu ubicación"))
+                                nearbyPlaces.take(40).forEach { add(PawlyMapMarker(it.latitude, it.longitude, it.name, it.category)) }
+                            }
+                        )
+                        Text("© OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val searches = listOf("Parques caninos" to "parques para perros", "Protectoras" to "protectoras de animales", "Veterinarios" to "veterinarios", "Urgencias veterinarias" to "urgencias veterinarias 24 horas")
+                        searches.forEach { (label, term) ->
+                            TextButton(onClick = {
+                                val encoded = Uri.encode(term)
+                                val geo = Uri.parse("geo:$point?q=$encoded")
+                                val mapsApp = Intent(Intent.ACTION_VIEW, geo).setPackage("com.google.android.apps.maps")
+                                if (mapsApp.resolveActivity(context.packageManager) != null) context.startActivity(mapsApp)
+                                else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/$encoded/@$point,14z")))
+                            }) { Text(tr(label)) }
+                        }
+                    }
+                }
+            }
+        if (activeExplorePage == ExplorePage.IDEAS) item {
             CommunityPlacesPanel(
                 places = communityPlaces,
                 loading = communityPlacesLoading,
@@ -484,7 +471,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
             )
         }
-        item {
+        if (activeExplorePage == ExplorePage.IDEAS) item {
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
@@ -501,7 +488,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 )
             )
         }
-        item {
+        if (activeExplorePage == ExplorePage.IDEAS) item {
             PawlyDropdownSelector(
                 title = tr("Categoría"),
                 selectedLabel = tr(filter),
@@ -512,7 +499,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             )
 
         }
-        item {
+        if (activeExplorePage == ExplorePage.SAVED) item {
             Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
                 Row(Modifier.fillMaxWidth().padding(19.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -524,7 +511,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
             }
         }
-        item {
+        if (activeExplorePage == ExplorePage.COLLECTIONS) item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(tr("TUS COLECCIONES"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.2.sp)
@@ -571,39 +558,77 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
                 }
             }
         }
-        item { SectionHeading(if (currentCoordinates != null) "Lugares cercanos" else "Ideas para vuestra próxima salida", if (currentCoordinates != null) "Resultados de OpenStreetMap en un radio aproximado de 12 km" else "Activa tu ubicación para consultar lugares reales") }
-        if (currentCoordinates != null) {
-            if (placesLoading) item { Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text(tr("Buscando lugares cercanos…"), color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-            if (placesError != null) item {
-                Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(14.dp)) {
-                    Text(placesError!!, modifier = Modifier.padding(13.dp), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+        if (activeExplorePage == ExplorePage.IDEAS) {
+            item { SectionHeading("Ideas para vuestra próxima salida", "Filtra por categoría o busca una actividad") }
+            if (visible.isEmpty()) {
+                item { Text(tr("No hay resultados. Prueba con otra búsqueda."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
+            } else {
+                items(visible) { place ->
+                    PlaceCard(place = place, saved = place.name in savedPlaces, onOpen = { selectedPlace = place }, onSave = { onToggleSave(place.name) })
                 }
             }
-            if (!placesLoading && placesError == null && nearbyPlaces.isEmpty()) item {
-                Text(tr("No hay lugares cartografiados en esta categoría cerca de tu ubicación. Prueba otra categoría o amplía la búsqueda en el mapa."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp))
-            }
-            items(nearbyPlaces, key = { it.id }) { place ->
-                NearbyPlaceCard(
-                    place = place,
-                    saved = place.name in savedPlaces,
-                    onSave = { onToggleSave(place.name) },
-                    onAddToCollection = { selectedNearbyPlace = place; showCollectionPicker = true },
-                    onOpenMap = {
-                        val uri = Uri.parse("geo:${place.latitude},${place.longitude}?q=${place.latitude},${place.longitude}(${Uri.encode(place.name)})")
-                        val intent = Intent(Intent.ACTION_VIEW, uri)
-                        if (intent.resolveActivity(context.packageManager) != null) context.startActivity(intent)
-                        else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/?mlat=${place.latitude}&mlon=${place.longitude}#map=16/${place.latitude}/${place.longitude}")))
-                    }
-                )
-            }
-        } else {
-            if (visible.isEmpty()) item { Text(tr("No hay resultados. Prueba con otra búsqueda."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp)) }
-            items(visible) { place ->
-                PlaceCard(place = place, saved = place.name in savedPlaces, onOpen = { selectedPlace = place }, onSave = { onToggleSave(place.name) })
+            item {
+                Text(tr("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
         }
-        item {
-            Text(tr("Antes de salir: verifica horarios, acceso de perros, normas locales y condiciones con cada lugar."), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        if (activeExplorePage == ExplorePage.NEARBY) {
+            item {
+                SectionHeading(
+                    "Lugares cercanos",
+                    if (currentCoordinates != null) "Resultados de OpenStreetMap en un radio aproximado de 12 km" else "Activa tu ubicación para consultar lugares reales"
+                )
+            }
+            if (currentCoordinates != null) {
+                if (placesLoading) item { Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Spacer(Modifier.width(10.dp)); Text(tr("Buscando lugares cercanos…"), color = MaterialTheme.colorScheme.onSurfaceVariant) } }
+                if (placesError != null) item {
+                    Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(14.dp)) {
+                        Text(placesError!!, modifier = Modifier.padding(13.dp), color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                if (!placesLoading && placesError == null && nearbyPlaces.isEmpty()) item {
+                    Text(tr("No hay lugares cartografiados en esta categoría cerca de tu ubicación. Prueba otra categoría o amplía la búsqueda en el mapa."), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp))
+                }
+                items(nearbyPlaces, key = { it.id }) { place ->
+                    NearbyPlaceCard(
+                        place = place,
+                        saved = place.name in savedPlaces,
+                        onSave = { onToggleSave(place.name) },
+                        onAddToCollection = { selectedNearbyPlace = place; showCollectionPicker = true },
+                        onOpenMap = {
+                            val uri = Uri.parse("geo:${place.latitude},${place.longitude}?q=${place.latitude},${place.longitude}(${Uri.encode(place.name)})")
+                            val intent = Intent(Intent.ACTION_VIEW, uri)
+                            if (intent.resolveActivity(context.packageManager) != null) context.startActivity(intent)
+                            else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/?mlat=${place.latitude}&mlon=${place.longitude}#map=16/${place.latitude}/${place.longitude}")))
+                        }
+                    )
+                }
+            } else {
+                item { Text(tr("Activa tu ubicación para ver parques, playas, cafeterías y otros lugares cercanos."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
+        }
+        if (activeExplorePage == ExplorePage.SAVED) {
+            val savedIdeas = places.filter { it.name in savedPlaces }
+            val savedNearby = nearbyPlaces.filter { it.name in savedPlaces }
+            if (savedPlaces.isEmpty()) {
+                item { Text(tr("Aún no has guardado lugares. Guarda una idea para encontrarla aquí."), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            } else {
+                items(savedIdeas) { place ->
+                    PlaceCard(place = place, saved = true, onOpen = { selectedPlace = place }, onSave = { onToggleSave(place.name) })
+                }
+                items(savedNearby, key = { "saved-${it.id}" }) { place ->
+                    NearbyPlaceCard(
+                        place = place, saved = true, onSave = { onToggleSave(place.name) },
+                        onAddToCollection = { selectedNearbyPlace = place; showCollectionPicker = true },
+                        onOpenMap = {
+                            val uri = Uri.parse("geo:${place.latitude},${place.longitude}?q=${place.latitude},${place.longitude}(${Uri.encode(place.name)})")
+                            val intent = Intent(Intent.ACTION_VIEW, uri)
+                            if (intent.resolveActivity(context.packageManager) != null) context.startActivity(intent)
+                            else context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.openstreetmap.org/?mlat=${place.latitude}&mlon=${place.longitude}#map=16/${place.latitude}/${place.longitude}")))
+                        }
+                    )
+                }
+            }
+        }
         }
     }
     selectedPlace?.let { place ->

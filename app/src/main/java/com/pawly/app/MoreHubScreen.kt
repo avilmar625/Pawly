@@ -28,22 +28,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
 internal fun MoreHubScreen(
-    onLearn: () -> Unit,
-    onDiary: () -> Unit,
-    onCalendar: () -> Unit,
     onSettings: () -> Unit,
-    onProfessionals: () -> Unit,
     onPawlyMarket: () -> Unit,
-    onLostPet: () -> Unit,
     onSharePetPdf: () -> Unit,
     onSavePetPdf: () -> Unit,
     onExportBackup: () -> Unit,
@@ -54,34 +46,13 @@ internal fun MoreHubScreen(
     onTerms: () -> Unit,
     onSignOut: () -> Unit,
     showSignOut: Boolean = true,
-    language: String = "es",
-    elegantDesign: Boolean = false
+    language: String = "es"
 ) {
     fun t(value: String) = PawlyI18n.text(value, language)
     var confirmSignOut by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
-        if (elegantDesign) {
-            Box(Modifier.fillMaxWidth().height(195.dp).clip(RoundedCornerShape(27.dp))) {
-                coil3.compose.AsyncImage(model = "https://images.unsplash.com/photo-1543466835-00a7907e9de1?w=1200&h=700&fit=crop", contentDescription = t("Perro disfrutando al aire libre"), modifier = Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
-                Column(Modifier.align(Alignment.BottomStart).padding(19.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(t("TU UNIVERSO PAWLY"), color = Color.White.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.8.sp)
-                    Text(t("Todo lo vuestro,\nen un mismo lugar."), color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                }
-            }
-        } else {
-            PawlyPageHeader(
-                eyebrow = "Tu espacio Pawly",
-                title = "Todo lo vuestro, en un mismo lugar.",
-                subtitle = "Ayuda profesional, recuerdos, aprendizaje y recursos prácticos para vuestra mascota."
-            )
-        }
-        MoreSectionLabel(t("AYUDA URGENTE"))
-        MoreDestinationCard(Icons.Filled.Campaign, t("He perdido a mi mascota"), t("Acceso rápido para preparar y difundir un aviso de pérdida."), onLostPet)
-        MoreSectionLabel(t("CUIDADO Y COMUNIDAD"))
-        MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market y cuidados"), t("Productos por categorías, alimentación, higiene, gastos y ficha de emergencia."), onPawlyMarket)
-        MoreDestinationCard(Icons.Filled.WorkspacePremium, t("Servicios profesionales"), t("Adiestradores, etólogos, veterinarios, paseadores y cuidadores."), onProfessionals)
-        MoreSectionLabel(t("VUESTROS RECUERDOS Y RECURSOS"))
+        MoreSectionLabel(t("HERRAMIENTAS"))
+        MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos, cuidados, gastos y ficha de emergencia."), onPawlyMarket)
         PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
         BackupActionCard(
             title = t("Copia de seguridad y cambio de móvil"),
@@ -91,9 +62,6 @@ internal fun MoreHubScreen(
             onExport = onExportBackup,
             onImport = onImportBackup
         )
-        MoreDestinationCard(Icons.Filled.AutoStories, t("Diario de recuerdos"), t("Guarda momentos, pequeñas historias y fotografías."), onDiary)
-        MoreDestinationCard(Icons.Filled.CalendarMonth, t("Calendario y agenda"), t("Eventos de la Comunidad y recordatorios para no olvidar nada."), onCalendar)
-        MoreDestinationCard(Icons.Filled.MenuBook, t("Aprender"), t("Artículos, consejos y recursos para su bienestar."), onLearn)
         MoreSectionLabel(t("AYUDA Y CUENTA"))
         MoreDestinationCard(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend)
         MoreDestinationCard(Icons.Filled.MailOutline, t("Contacta con nosotros"), t("Envíanos una consulta, incidencia o sugerencia."), onContact)
@@ -102,7 +70,6 @@ internal fun MoreHubScreen(
         MoreDestinationCard(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy)
         MoreDestinationCard(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms)
         if (showSignOut) MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true })
-        Text(t("La Comunidad y Salud siguen accesibles desde la navegación inferior para evitar accesos duplicados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 3.dp, vertical = 4.dp))
     }
     if (confirmSignOut) {
         AlertDialog(

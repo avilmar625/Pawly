@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
@@ -50,11 +51,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class CommunityPage(val label: String) {
-    FEED("Muro"), SEARCH("Personas"), EVENTS("Eventos"), MAP("Mapa"), MESSAGES("Mensajes"), NOTIFICATIONS("Avisos"), PROFILE("Mi perfil"), MODERATION("Moderar")
+    FEED("Muro"), SEARCH("Personas"), MESSAGES("Mensajes"), NOTIFICATIONS("Avisos"), PROFILE("Perfil"), MODERATION("Moderar")
 }
 
 @Composable
-internal fun CommunityScreen(elegantDesign: Boolean = false, openNotifications: Boolean = false) {
+internal fun CommunityScreen(openNotifications: Boolean = false) {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
@@ -63,7 +64,7 @@ internal fun CommunityScreen(elegantDesign: Boolean = false, openNotifications: 
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!, elegantDesign, openNotifications)
+    else CommunityHub(repository, uid!!, openNotifications)
 }
 
 
@@ -327,7 +328,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegantDesign: Boolean = false, openNotifications: Boolean = false) {
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, openNotifications: Boolean = false) {
     var page by remember(openNotifications) { mutableStateOf(if (openNotifications) CommunityPage.NOTIFICATIONS else CommunityPage.FEED) }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
@@ -393,226 +394,38 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
         messageUnreadCounts = updatedCounts
         unreadMessages = updatedCounts.values.sum()
     }
+    val communityTabs = listOf(CommunityPage.FEED, CommunityPage.SEARCH, CommunityPage.MESSAGES, CommunityPage.PROFILE)
+    val selectedCommunityTab = if (page in communityTabs) page else CommunityPage.FEED
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (elegantDesign) {
-            Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp).height(190.dp).clip(RoundedCornerShape(26.dp))) {
-                AsyncImage(
-                    model = "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?w=1200&h=700&fit=crop",
-                    contentDescription = "Perros jugando juntos",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
-                Row(Modifier.fillMaxSize().padding(start = 19.dp, end = 8.dp, top = 15.dp, bottom = 15.dp), verticalAlignment = Alignment.Bottom) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(tr("PAWLY COMMUNITY"), color = Color.White.copy(alpha = .84f), fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
-                        Text(tr("Comunidad"), color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                        Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .86f), style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Row(Modifier.align(Alignment.TopEnd).padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
-                        Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
-                    }
-                    IconButton(onClick = { page = CommunityPage.PROFILE; selectedUser = null; chat = null }) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = tr("Mi perfil"), tint = Color.White,
-                            modifier = Modifier.size(27.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(tr("Comunidad"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
+                Box {
+                    Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = MaterialTheme.colorScheme.primary)
+                    if (unreadNotifications > 0) {
+                        Badge(Modifier.align(Alignment.TopEnd)) { Text(unreadNotifications.coerceAtMost(99).toString()) }
                     }
                 }
             }
-        } else Surface(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(26.dp),
-            color = MaterialTheme.colorScheme.primary
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 19.dp, end = 8.dp, top = 15.dp, bottom = 15.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(tr("PAWLY COMMUNITY"), color = Lime, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.7.sp, fontSize = 9.sp)
-                    Text(tr("Comunidad"), color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                    Text(tr("Aventuras que se comparten."), color = Color.White.copy(alpha = .78f), style = MaterialTheme.typography.bodySmall)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
-                        Box {
-                            Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = Color.White)
-                            if (unreadNotifications > 0) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.error,
-                                    shape = CircleShape,
-                                    modifier = Modifier.align(Alignment.TopEnd).offset(x = 5.dp, y = (-4).dp)
-                                ) {
-                                    Text(
-                                        unreadNotifications.coerceAtMost(99).toString(),
-                                        color = MaterialTheme.colorScheme.onError,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    IconButton(onClick = { page = CommunityPage.PROFILE; selectedUser = null; chat = null }) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = tr("Mi perfil"), tint = Color.White,
-                            modifier = Modifier.size(27.dp))
-                    }
+            if (admin) {
+                IconButton(onClick = { page = CommunityPage.MODERATION; selectedUser = null; chat = null }) {
+                    Icon(Icons.Default.Shield, contentDescription = tr("Moderar"), tint = MaterialTheme.colorScheme.primary)
                 }
             }
         }
-        var communityMenuExpanded by remember { mutableStateOf(false) }
-        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-            Surface(
-                onClick = { communityMenuExpanded = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(19.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                tonalElevation = 1.dp
-            ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(13.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Icon(
-                            when (page) {
-                                CommunityPage.FEED -> Icons.Default.DynamicFeed
-                                CommunityPage.SEARCH -> Icons.Default.People
-                                CommunityPage.MESSAGES -> Icons.Default.Chat
-                                CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
-                                CommunityPage.EVENTS -> Icons.Default.Event
-                                CommunityPage.MAP -> Icons.Default.Map
-                                CommunityPage.PROFILE -> Icons.Default.Person
-                                CommunityPage.MODERATION -> Icons.Default.Shield
-                            },
-                            null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(11.dp).size(23.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(tr("ESTÁS EN"), color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
-                        Text(tr(page.label), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            tr(when (page) {
-                                CommunityPage.FEED -> "Publicaciones y novedades"
-                                CommunityPage.SEARCH -> "Descubre personas y perros"
-                                CommunityPage.EVENTS -> "Quedadas y planes compartidos"
-                                CommunityPage.MAP -> "Lugares y eventos en el mapa"
-                                CommunityPage.MESSAGES -> "Conversaciones privadas"
-                                CommunityPage.NOTIFICATIONS -> "Actividad y avisos nuevos"
-                                CommunityPage.PROFILE -> "Tu perfil y tus mascotas"
-                                CommunityPage.MODERATION -> "Revisar contenido denunciado"
-                            }),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelSmall
-                        )
-                    }
-                    if (page == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
-                        Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
-                        Spacer(Modifier.width(7.dp))
-                    }
-                    if (unreadMessages > 0) {
-                        Surface(color = Color(0xFFC83D4B), shape = CircleShape) {
-                            Text(
-                                unreadMessages.coerceAtMost(99).toString(),
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                            )
-                        }
-                        Spacer(Modifier.width(7.dp))
-                    }
-                    Icon(Icons.Default.ExpandMore, null, tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-            DropdownMenu(
-                expanded = communityMenuExpanded,
-                onDismissRequest = { communityMenuExpanded = false },
-                modifier = Modifier.fillMaxWidth(.94f).heightIn(max = 520.dp)
-            ) {
-                Text(
-                    tr("EXPLORA LA COMUNIDAD"),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.1.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+        PrimaryTabRow(
+            selectedTabIndex = communityTabs.indexOf(selectedCommunityTab),
+            containerColor = MaterialTheme.colorScheme.background
+        ) {
+            communityTabs.forEach { tab ->
+                Tab(
+                    selected = selectedCommunityTab == tab,
+                    onClick = { page = tab; selectedUser = null; chat = null },
+                    text = { Text(tr(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                CommunityPage.entries.filter { it != CommunityPage.MODERATION || admin }.forEach { item ->
-                    val selected = page == item
-                    val icon = when (item) {
-                        CommunityPage.FEED -> Icons.Default.DynamicFeed
-                        CommunityPage.SEARCH -> Icons.Default.People
-                        CommunityPage.MESSAGES -> Icons.Default.Chat
-                        CommunityPage.NOTIFICATIONS -> Icons.Default.Notifications
-                        CommunityPage.EVENTS -> Icons.Default.Event
-                        CommunityPage.MAP -> Icons.Default.Map
-                        CommunityPage.PROFILE -> Icons.Default.Person
-                        CommunityPage.MODERATION -> Icons.Default.Shield
-                    }
-                    DropdownMenuItem(
-                        text = {
-                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(tr(item.label), fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                                Text(
-                                    tr(when (item) {
-                                        CommunityPage.FEED -> "Publicaciones y novedades"
-                                        CommunityPage.SEARCH -> "Descubre personas y perros"
-                                        CommunityPage.EVENTS -> "Quedadas y planes compartidos"
-                                        CommunityPage.MAP -> "Lugares y eventos en el mapa"
-                                        CommunityPage.MESSAGES -> "Conversaciones privadas"
-                                        CommunityPage.NOTIFICATIONS -> "Actividad y avisos nuevos"
-                                        CommunityPage.PROFILE -> "Tu perfil y tus mascotas"
-                                        CommunityPage.MODERATION -> "Revisar contenido denunciado"
-                                    }),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        leadingIcon = {
-                            Surface(
-                                shape = RoundedCornerShape(11.dp),
-                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-                            ) {
-                                Icon(icon, null,
-                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(9.dp).size(20.dp))
-                            }
-                        },
-                        trailingIcon = {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                if (item == CommunityPage.NOTIFICATIONS && unreadNotifications > 0) {
-                                    Badge { Text(unreadNotifications.coerceAtMost(99).toString()) }
-                                }
-                                if (item == CommunityPage.MESSAGES && unreadMessages > 0) {
-                                    Surface(color = Color(0xFFC83D4B), shape = CircleShape) {
-                                        Text(
-                                            unreadMessages.coerceAtMost(99).toString(),
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                                        )
-                                    }
-                                }
-                                if (selected) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
-                            }
-                        },
-                        onClick = { page = item; selectedUser = null; chat = null; communityMenuExpanded = false }
-                    )
-                }
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !notificationsAllowed) {
@@ -674,42 +487,6 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, elegant
                 }
             }
             page == CommunityPage.SEARCH -> PeopleSearchScreen(repo) { selectedUser = it }
-            page == CommunityPage.EVENTS -> PawlyEventsScreen(
-                repository = repo, elegantDesign = elegantDesign, followingIds = followingIds,
-                onOpenProfile = { selectedUser = it },
-                onMessage = { id ->
-                    scope.launch {
-                        runCatching {
-                            val conversationId = repo.startConversation(id)
-                            chat = PawlyConversation(id = conversationId, otherUserId = id)
-                        }.onFailure { notice = it.localizedMessage ?: "No se pudo iniciar la conversación." }
-                    }
-                },
-                onFollow = { id ->
-                    scope.launch {
-                        runCatching { repo.follow(id, id !in followingIds) }
-                            .onFailure { notice = it.localizedMessage ?: "No se pudo actualizar el seguimiento." }
-                    }
-                }
-            )
-            page == CommunityPage.MAP -> PawlyEventsScreen(
-                repository = repo, mapOnly = true, elegantDesign = elegantDesign, followingIds = followingIds,
-                onOpenProfile = { selectedUser = it },
-                onMessage = { id ->
-                    scope.launch {
-                        runCatching {
-                            val conversationId = repo.startConversation(id)
-                            chat = PawlyConversation(id = conversationId, otherUserId = id)
-                        }.onFailure { notice = it.localizedMessage ?: "No se pudo iniciar la conversación." }
-                    }
-                },
-                onFollow = { id ->
-                    scope.launch {
-                        runCatching { repo.follow(id, id !in followingIds) }
-                            .onFailure { notice = it.localizedMessage ?: "No se pudo actualizar el seguimiento." }
-                    }
-                }
-            )
             page == CommunityPage.MESSAGES -> ConversationsScreen(
                 conversations = conversationsForUnread,
                 unreadCounts = messageUnreadCounts,
