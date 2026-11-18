@@ -63,6 +63,7 @@ internal fun ProfileDialog(
     onGallery: () -> Unit,
     onCamera: () -> Unit,
     hasPhoto: Boolean,
+    photoPreview: Bitmap? = null,
     syncStatus: String = "",
     profiles: Set<String>,
     onSelectProfile: (String) -> Unit,
@@ -82,6 +83,14 @@ internal fun ProfileDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onGallery) { Icon(Icons.Filled.PhotoLibrary, contentDescription = null); Spacer(Modifier.width(5.dp)); Text(tr("Galería")) }
                     OutlinedButton(onClick = onCamera) { Icon(Icons.Filled.PhotoCamera, contentDescription = null); Spacer(Modifier.width(5.dp)); Text(tr("Cámara")) }
+                }
+                if (photoPreview != null) {
+                    Image(
+                        bitmap = photoPreview.asImageBitmap(),
+                        contentDescription = tr("Vista previa de la foto de tu mascota"),
+                        modifier = Modifier.size(72.dp).clip(RoundedCornerShape(14.dp)),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
                 }
                 Text(tr("Perfiles de perros"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 profiles.sorted().forEach { profile ->

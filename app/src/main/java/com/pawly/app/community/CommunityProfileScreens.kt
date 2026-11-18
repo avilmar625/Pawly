@@ -58,6 +58,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
     var professionalContact by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalContact.orEmpty()) }
     var professionalContactPublic by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.professionalContactPublic ?: false) }
     var avatarUri by remember { mutableStateOf<Uri?>(null) }
+    var savedAvatarUrl by remember(repo) { mutableStateOf(repo.cachedMyProfile()?.photoUrl.orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { avatarUri = it }
     val avatarCamera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
@@ -137,7 +138,16 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
-                                Avatar(profile?.photoUrl.orEmpty(), name, 76)
+                                if (avatarUri != null) {
+                                    AsyncImage(
+                                        model = avatarUri,
+                                        contentDescription = tr("Vista previa de tu foto de perfil"),
+                                        modifier = Modifier.size(76.dp).clip(CircleShape),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                } else {
+                                    Avatar(savedAvatarUrl.ifBlank { profile?.photoUrl.orEmpty() }, name, 76)
+                                }
                             }
                             Spacer(Modifier.width(13.dp))
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -169,6 +179,17 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
                                     Text(tr(label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
+                        }
+                    }
+                    if (avatarUri != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            AsyncImage(
+                                model = avatarUri,
+                                contentDescription = tr("Miniatura de la foto seleccionada"),
+                                modifier = Modifier.size(76.dp).clip(RoundedCornerShape(14.dp)),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                            Text(tr("Vista previa · la foto se subirá al guardar el perfil."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -224,7 +245,8 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
                             repo.updateProfile(name, bio, isPublic, accountType, professionalCategory, professionalLocation, professionalDescription, professionalContact, professionalContactPublic)
                             if (avatarUri != null) {
                                 val url = repo.updateProfilePhoto(avatarUri!!)
-                                profile = profile?.copy(photoUrl = url)
+                                savedAvatarUrl = url
+                                profile = (repo.cachedMyProfile() ?: profile)?.copy(photoUrl = url)
                                 avatarUri = null
                             }
                             profile = profile?.copy(
@@ -375,9 +397,26 @@ internal fun DogEditorDialog(repo: FirebaseCommunityRepository, existing: PawlyD
     var error by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri = it }
+    val cameraCapture = rememberPawlyCameraCapture(
+        onImageSelected = { uri = it },
+        onError = { error = it }
+    )
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (existing == null) "Añadir mascota" else "Editar mascota") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Photo, null); Text(if (uri != null || photoUrl.isNotBlank()) "Cambiar foto" else "Añadir foto") }
+            PawlyPhotoSourceButton(
+                onGallery = { picker.launch("image/*") },
+                onCamera = { cameraCapture() },
+                label = if (uri != null || photoUrl.isNotBlank()) "Cambiar foto" else "Añadir foto",
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (uri != null || photoUrl.isNotBlank()) {
+                AsyncImage(
+                    model = uri ?: photoUrl,
+                    contentDescription = tr("Vista previa de la foto de tu mascota"),
+                    modifier = Modifier.size(86.dp).clip(RoundedCornerShape(14.dp)),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+            }
             PawlyDropdownSelector(
                 title = tr("Tipo de mascota"),
                 selectedLabel = tr(species),

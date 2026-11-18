@@ -121,7 +121,7 @@ internal fun HomeCareTasksSection(
     var walkPhotoLocalPaths by remember { mutableStateOf(emptyList<String>()) }
     var walkError by remember { mutableStateOf<String?>(null) }
     var walkSaving by remember { mutableStateOf(false) }
-    val walkPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedUris ->
+    fun updateWalkPhotoSelection(selectedUris: List<Uri>) {
         val limitedUris = selectedUris.take(4)
         walkPhotoUris = limitedUris
         walkPhotoLocalPaths = emptyList()
@@ -145,6 +145,13 @@ internal fun HomeCareTasksSection(
             }
         }
     }
+    val walkPhotoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedUris ->
+        updateWalkPhotoSelection(selectedUris)
+    }
+    val walkCameraCapture = rememberPawlyCameraCapture(
+        onImageSelected = { uri -> updateWalkPhotoSelection(walkPhotoUris + uri) },
+        onError = { walkError = it }
+    )
 
     LaunchedEffect(petName, storageScope, repository, language) {
         val repo = repository ?: run { loading = false; return@LaunchedEffect }
@@ -547,15 +554,13 @@ internal fun HomeCareTasksSection(
                         minLines = 2,
                         maxLines = 4
                     )
-                    OutlinedButton(
-                        onClick = { walkPhotoPicker.launch("image/*") },
+                    PawlyPhotoSourceButton(
+                        onGallery = { walkPhotoPicker.launch("image/*") },
+                        onCamera = { walkCameraCapture() },
+                        label = if (walkPhotoLocalPaths.isEmpty()) tr("Añadir fotografías") else "${walkPhotoLocalPaths.size} ${tr("fotografías seleccionadas")}",
                         enabled = !walkSaving,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.PhotoLibrary, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (walkPhotoLocalPaths.isEmpty()) tr("Añadir fotografías") else "${walkPhotoLocalPaths.size} ${tr("fotografías seleccionadas")}")
-                    }
+                    )
                     if (walkPhotoLocalPaths.isNotEmpty()) {
                         Row(
                             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),

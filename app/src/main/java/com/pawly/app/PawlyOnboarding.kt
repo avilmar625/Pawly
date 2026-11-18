@@ -1,5 +1,7 @@
 package com.pawly.app
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -37,6 +43,8 @@ internal fun PawlyOnboardingDialog(
     onPetNameChange: (String) -> Unit,
     hasPhoto: Boolean,
     onPickPhoto: () -> Unit,
+    onPickCamera: () -> Unit,
+    selectedPhoto: Bitmap? = null,
     onEnableNotifications: () -> Unit,
     notificationsEnabled: Boolean = false,
     notificationStatus: String = "",
@@ -83,10 +91,23 @@ internal fun PawlyOnboardingDialog(
                     1 -> {
                         Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                         Text("Añade una foto para reconocer rápidamente su perfil. Puedes cambiarla cuando quieras.")
-                        OutlinedButton(onClick = onPickPhoto, modifier = Modifier.fillMaxWidth()) {
-                            Text(if (hasPhoto) "Cambiar foto" else "Elegir foto")
-                        }
-                        if (hasPhoto) Text("¡Foto añadida!")
+                        PawlyPhotoSourceButton(
+                            onGallery = onPickPhoto,
+                            onCamera = onPickCamera,
+                            label = if (hasPhoto) "Cambiar foto" else "Elegir foto",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (selectedPhoto != null) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Image(
+                                    bitmap = selectedPhoto.asImageBitmap(),
+                                    contentDescription = "Vista previa de la foto de tu mascota",
+                                    modifier = Modifier.size(64.dp).clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                                Text("Vista previa · podrás cambiarla más adelante", style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                            }
+                        } else if (hasPhoto) Text("¡Foto añadida!")
                     }
                     else -> {
                         Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = androidx.compose.material3.MaterialTheme.colorScheme.primary)

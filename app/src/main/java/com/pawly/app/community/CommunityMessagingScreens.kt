@@ -57,6 +57,10 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
         mediaUri = it
         mediaIsVideo = false
     }
+    val cameraCapture = rememberPawlyCameraCapture(
+        onImageSelected = { mediaUri = it; mediaIsVideo = false },
+        onError = { error = it }
+    )
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         mediaUri = it
         mediaIsVideo = true
@@ -84,12 +88,23 @@ internal fun CreatePostDialog(repo: FirebaseCommunityRepository, onDismiss: () -
                 OutlinedTextField(text, { text = it }, label = { Text(when (category) { "LOST" -> "Zona aproximada, fecha, señas y cómo localizarte"; "FOUND" -> "Lugar y fecha, aspecto y estado de la mascota"; "ADOPTION" -> "Especie, edad, tamaño, carácter, zona y requisitos"; "FOSTER" -> "Duración, zona, necesidades y apoyo ofrecido"; else -> "¿Qué queréis contar?" }) }, modifier = Modifier.fillMaxWidth(), minLines = 3)
                 OutlinedTextField(dog, { dog = it }, label = { Text(tr("Nombre de la mascota (opcional)")) }, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.AddAPhoto, null); Text(tr("Foto"))
-                    }
+                    PawlyPhotoSourceButton(
+                        onGallery = { imagePicker.launch("image/*") },
+                        onCamera = { cameraCapture() },
+                        label = if (mediaUri != null && !mediaIsVideo) "Cambiar foto" else "Foto",
+                        modifier = Modifier.weight(1f)
+                    )
                     OutlinedButton(onClick = { videoPicker.launch("video/*") }, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.Videocam, null); Text(tr("Vídeo"))
                     }
+                }
+                if (mediaUri != null && !mediaIsVideo) {
+                    AsyncImage(
+                        model = mediaUri,
+                        contentDescription = tr("Vista previa de la fotografía de la publicación"),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp, max = 220.dp).clip(RoundedCornerShape(14.dp)),
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                    )
                 }
                 if (mediaUri != null) {
                     Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -281,12 +296,17 @@ internal fun ChatScreen(
     var attachment by remember { mutableStateOf<Uri?>(null) }
     var attachmentIsVideo by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
+    var showImageSourceMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val messageListState = rememberLazyListState()
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         attachment = it
         attachmentIsVideo = false
     }
+    val cameraCapture = rememberPawlyCameraCapture(
+        onImageSelected = { attachment = it; attachmentIsVideo = false },
+        onError = { error = it }
+    )
     val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) {
         attachment = it
         attachmentIsVideo = true
@@ -354,7 +374,16 @@ internal fun ChatScreen(
         attachment?.let {
             Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(16.dp)) {
                 Row(Modifier.fillMaxWidth().padding(9.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                    Icon(if (attachmentIsVideo) Icons.Default.Videocam else Icons.Default.Image, null, modifier = Modifier.size(42.dp), tint = MaterialTheme.colorScheme.primary)
+                    if (attachmentIsVideo) {
+                        Icon(Icons.Default.Videocam, null, modifier = Modifier.size(56.dp), tint = MaterialTheme.colorScheme.primary)
+                    } else {
+                        AsyncImage(
+                            model = attachment,
+                            contentDescription = tr("Vista previa de la fotografía adjunta"),
+                            modifier = Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(if (attachmentIsVideo) "Vídeo listo" else "Fotografía lista", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         Text(if (attachmentIsVideo) "Máximo 40 MB" else "Se optimizará antes de enviarla", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -364,7 +393,13 @@ internal fun ChatScreen(
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { imagePicker.launch("image/*") }, enabled = !sending) { Icon(Icons.Default.AddAPhoto, "Adjuntar fotografía", tint = MaterialTheme.colorScheme.primary) }
+            Box {
+                IconButton(onClick = { showImageSourceMenu = true }, enabled = !sending) { Icon(Icons.Default.AddAPhoto, tr("Adjuntar fotografía"), tint = MaterialTheme.colorScheme.primary) }
+                DropdownMenu(expanded = showImageSourceMenu, onDismissRequest = { showImageSourceMenu = false }) {
+                    DropdownMenuItem(text = { Text(tr("Galería")) }, onClick = { showImageSourceMenu = false; imagePicker.launch("image/*") })
+                    DropdownMenuItem(text = { Text(tr("Cámara")) }, onClick = { showImageSourceMenu = false; cameraCapture() })
+                }
+            }
             IconButton(onClick = { videoPicker.launch("video/*") }, enabled = !sending) { Icon(Icons.Default.Videocam, "Adjuntar vídeo", tint = MaterialTheme.colorScheme.primary) }
             OutlinedTextField(draft, { draft = it.take(2000) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(22.dp), placeholder = { Text(tr("Escribe un mensaje…")) }, maxLines = 3)
             IconButton(onClick = {

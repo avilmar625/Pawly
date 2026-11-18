@@ -85,10 +85,18 @@ internal fun DiaryScreen(
     var selectedPhotos by remember { mutableStateOf<List<Uri>>(emptyList()) }
     var photoUploadBusy by remember { mutableStateOf(false) }
     var photoUploadError by remember { mutableStateOf<String?>(null) }
+    var showPhotoSourceDialog by remember { mutableStateOf(false) }
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { selectedPhotos = it.take(8) }
+    val cameraCapture = rememberPawlyCameraCapture(
+        onImageSelected = { uri ->
+            if (selectedPhotos.size < 8) selectedPhotos = selectedPhotos + uri
+            else photoUploadError = tr("Puedes adjuntar un máximo de ocho fotografías.")
+        },
+        onError = { photoUploadError = it }
+    )
     LaunchedEffect(openPhotoPickerOnEnter) {
         if (openPhotoPickerOnEnter) {
-            photoPicker.launch("image/*")
+            showPhotoSourceDialog = true
             onPhotoPickerOpened()
         }
     }
@@ -239,9 +247,13 @@ internal fun DiaryScreen(
                         enabled = canEditSharedDiary,
                         modifier = Modifier.fillMaxWidth()
                     ) { Icon(Icons.Default.CalendarMonth, null); Spacer(Modifier.width(7.dp)); Text(java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(memoryDate))) }
-                    OutlinedButton(onClick = { photoPicker.launch("image/*") }, enabled = canEditSharedDiary, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.AddPhotoAlternate, null); Spacer(Modifier.width(7.dp)); Text(tr("Añadir fotografías (hasta 8)"))
-                    }
+                    PawlyPhotoSourceButton(
+                        onGallery = { photoPicker.launch("image/*") },
+                        onCamera = { cameraCapture() },
+                        label = tr("Añadir fotografías (hasta 8)"),
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = canEditSharedDiary
+                    )
                     if (selectedPhotos.isNotEmpty()) {
                         Text(tr("${selectedPhotos.size} fotografías seleccionadas"), color = Color.White, style = MaterialTheme.typography.labelSmall)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -351,6 +363,20 @@ internal fun DiaryScreen(
         item {
             Text(if (sharedPetOwnerUid != null) "Los recuerdos pertenecen al perfil compartido y respetan sus permisos de acceso." else "Los recuerdos se guardan en tu espacio personal. Las fotografías se alojan en Cloudinary y se muestran junto a cada historia.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
+    }
+    if (showPhotoSourceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoSourceDialog = false },
+            title = { Text(tr("Añadir fotografías")) },
+            text = { Text(tr("Elige desde dónde quieres añadir las fotos del recuerdo.")) },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { showPhotoSourceDialog = false; photoPicker.launch("image/*") }) { Text(tr("Galería")) }
+                    TextButton(onClick = { showPhotoSourceDialog = false; cameraCapture() }) { Text(tr("Cámara")) }
+                }
+            },
+            dismissButton = { TextButton(onClick = { showPhotoSourceDialog = false }) { Text(tr("Cancelar")) } }
+        )
     }
 }
 

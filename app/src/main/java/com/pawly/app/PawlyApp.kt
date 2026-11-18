@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.sp
 
 
 private const val PAWLY_CARE_CHANNEL_ID = "pawly_care_reminders"
+private const val PAWLY_TEST_CHANNEL_ID = "pawly_test_notifications"
 
 /** Creates the reminders channel and checks the real app + channel permission state. */
 private fun arePawlyNotificationsEnabled(context: Context): Boolean {
@@ -88,6 +89,31 @@ private fun arePawlyNotificationsEnabled(context: Context): Boolean {
             ).apply { description = "Avisos locales de cuidados que has programado" }
         )
         if (manager.getNotificationChannel(PAWLY_CARE_CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE) return false
+    }
+    if (Build.VERSION.SDK_INT >= 33 &&
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    ) return false
+    return NotificationManagerCompat.from(context).areNotificationsEnabled()
+}
+
+private fun ensurePawlyTestNotificationChannel(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(
+                PAWLY_TEST_CHANNEL_ID,
+                "Prueba de notificaciones",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = "Avisos de prueba que envías para comprobar las notificaciones de Pawly" }
+        )
+    }
+}
+
+private fun arePawlyTestNotificationsEnabled(context: Context): Boolean {
+    ensurePawlyTestNotificationChannel(context)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(PAWLY_TEST_CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE) return false
     }
     if (Build.VERSION.SDK_INT >= 33 &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -523,6 +549,7 @@ private fun PawlyMainApp(
                     val selectedRoute = if (selected == Tab.MARKET) Tab.MORE else selected
                     PrimaryTabRow(
                         selectedTabIndex = routeTabs.indexOf(selectedRoute).coerceAtLeast(0),
+                        modifier = Modifier.statusBarsPadding(),
                         containerColor = MaterialTheme.colorScheme.surface
                     ) {
                         routeTabs.forEach { tab ->
@@ -827,6 +854,8 @@ private fun PawlyMainApp(
             onPetNameChange = { dogName = it },
             hasPhoto = dogPhoto != null,
             onPickPhoto = { galleryPicker.launch("image/*") },
+            onPickCamera = { cameraCapture.launch(null) },
+            selectedPhoto = dogPhoto,
             onEnableNotifications = {
                 notificationsEnabled = arePawlyNotificationsEnabled(context)
                 if (notificationsEnabled) {
@@ -850,16 +879,24 @@ private fun PawlyMainApp(
             notificationsEnabled = notificationsEnabled,
             notificationStatus = notificationStatus,
             onTestNotifications = {
-                if (arePawlyNotificationsEnabled(context)) {
-                    val testNotification = NotificationCompat.Builder(context, PAWLY_CARE_CHANNEL_ID)
+                if (arePawlyTestNotificationsEnabled(context)) {
+                    val testNotification = NotificationCompat.Builder(context, PAWLY_TEST_CHANNEL_ID)
                         .setSmallIcon(R.drawable.ic_notification_paw)
                         .setContentTitle("¡Pawly está listo!")
                         .setContentText("Las notificaciones funcionan. Aquí recibirás tus recordatorios.")
                         .setAutoCancel(true)
+                        .setDefaults(NotificationCompat.DEFAULT_ALL)
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .setCategory(NotificationCompat.CATEGORY_REMINDER)
                         .build()
-                    NotificationManagerCompat.from(context).notify(73001, testNotification)
-                    notificationStatus = "Aviso de prueba enviado. Comprueba el panel de notificaciones de tu móvil."
+                    val notificationManager = NotificationManagerCompat.from(context)
+                    preferences.getInt("last_test_notification_id", -1)
+                        .takeIf { it >= 0 }
+                        ?.let { notificationManager.cancel(it) }
+                    val notificationId = (System.currentTimeMillis() and 0x7fffffff).toInt()
+                    preferences.edit().putInt("last_test_notification_id", notificationId).apply()
+                    notificationManager.notify(notificationId, testNotification)
+                    notificationStatus = "Aviso de prueba enviado al canal de prueba. Revisa el panel de notificaciones; Android puede mostrarlo sin sonido si ha silenciado avisos recientes."
                 } else {
                     notificationsEnabled = false
                     notificationStatus = "Las notificaciones están bloqueadas. Revisa los ajustes de Android."
@@ -914,6 +951,7 @@ private fun PawlyMainApp(
             onGallery = { galleryPicker.launch("image/*") },
             onCamera = { cameraCapture.launch(null) },
             hasPhoto = dogPhoto != null,
+            photoPreview = dogPhoto,
             syncStatus = profileSyncStatus,
             profiles = dogProfiles,
             onSelectProfile = { dogName = it; homePetCloudReady = true; showProfileEditor = false },

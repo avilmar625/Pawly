@@ -85,6 +85,10 @@ internal fun LostPetHelpScreen(
     var alertRadius by remember { mutableStateOf(10) }
     var subscriptionSaved by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { photo = it }
+    val cameraCapture = rememberPawlyCameraCapture(
+        onImageSelected = { photo = it },
+        onError = { error = it }
+    )
     fun t(value: String) = PawlyI18n.text(value, language)
     fun requestApproximateLocation() {
         val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -203,9 +207,12 @@ internal fun LostPetHelpScreen(
         OutlinedTextField(lastSeen, { lastSeen = it }, label = { Text(t("Última vez vista")) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text(tr("Fecha, hora y lugar aproximados")) })
         OutlinedTextField(description, { description = it }, label = { Text(t("Descripción y señas")) }, modifier = Modifier.fillMaxWidth(), minLines = 3, placeholder = { Text(tr("Color, tamaño, collar, microchip (no publiques el número completo), comportamiento…")) })
         OutlinedTextField(contact, { contact = it }, label = { Text(t("Teléfono o forma de contacto (opcional)")) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-        OutlinedButton(onClick = { picker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
-            Icon(Icons.Default.CameraAlt, null); Text("  ${t("Añadir fotografía")}")
-        }
+        PawlyPhotoSourceButton(
+            onGallery = { picker.launch("image/*") },
+            onCamera = { cameraCapture() },
+            label = if (photo == null) t("Añadir fotografía") else "Cambiar fotografía",
+            modifier = Modifier.fillMaxWidth()
+        )
         photo?.let { AsyncImage(model = it, contentDescription = "Fotografía seleccionada", modifier = Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(18.dp))) }
         OutlinedButton(
             onClick = {

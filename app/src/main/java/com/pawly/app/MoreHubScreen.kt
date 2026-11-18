@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,25 +52,44 @@ internal fun MoreHubScreen(
 ) {
     fun t(value: String) = PawlyI18n.text(value, language)
     var confirmSignOut by remember { mutableStateOf(false) }
+    var showTools by remember { mutableStateOf(false) }
+    var showLegal by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
-        MoreSectionLabel(t("HERRAMIENTAS"))
-        MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos, cuidados, gastos y ficha de emergencia."), onPawlyMarket)
-        PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
-        BackupActionCard(
-            title = t("Copia de seguridad y cambio de móvil"),
-            description = t("Exporta salud, rutinas, diario, agenda y foto de perfil a un archivo JSON que puedes guardar y restaurar cuando quieras."),
-            exportLabel = t("Crear copia"),
-            importLabel = t("Restaurar copia"),
-            onExport = onExportBackup,
-            onImport = onImportBackup
-        )
+        MoreSectionLabel(t("TU ESPACIO"))
+        MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings)
         MoreSectionLabel(t("AYUDA Y CUENTA"))
         MoreDestinationCard(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend)
         MoreDestinationCard(Icons.Filled.MailOutline, t("Contacta con nosotros"), t("Envíanos una consulta, incidencia o sugerencia."), onContact)
-        MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings)
-        MoreSectionLabel(t("INFORMACIÓN LEGAL"))
-        MoreDestinationCard(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy)
-        MoreDestinationCard(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms)
+        MoreDisclosureCard(
+            icon = Icons.Filled.FileDownload,
+            title = t("Más funciones"),
+            description = t("Pawly Market, ficha PDF y copias de seguridad"),
+            expanded = showTools,
+            onClick = { showTools = !showTools }
+        )
+        if (showTools) {
+            MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos, cuidados, gastos y ficha de emergencia."), onPawlyMarket)
+            PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
+            BackupActionCard(
+                title = t("Copia de seguridad y cambio de móvil"),
+                description = t("Exporta salud, rutinas, diario, agenda y foto de perfil a un archivo JSON que puedes guardar y restaurar cuando quieras."),
+                exportLabel = t("Crear copia"),
+                importLabel = t("Restaurar copia"),
+                onExport = onExportBackup,
+                onImport = onImportBackup
+            )
+        }
+        MoreDisclosureCard(
+            icon = Icons.Filled.Policy,
+            title = t("Información legal"),
+            description = t("Privacidad y condiciones de uso"),
+            expanded = showLegal,
+            onClick = { showLegal = !showLegal }
+        )
+        if (showLegal) {
+            MoreDestinationCard(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy)
+            MoreDestinationCard(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms)
+        }
         if (showSignOut) MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true })
     }
     if (confirmSignOut) {
@@ -79,6 +100,22 @@ internal fun MoreHubScreen(
             confirmButton = { TextButton(onClick = { confirmSignOut = false; onSignOut() }) { Text(t("Cerrar sesión"), color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton(onClick = { confirmSignOut = false }) { Text(t("Cancelar")) } }
         )
+    }
+}
+
+@Composable
+private fun MoreDisclosureCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, description: String, expanded: Boolean, onClick: () -> Unit) {
+    Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(11.dp).size(23.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+            Icon(if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 

@@ -384,8 +384,7 @@ private fun PetPassportSection(
                 .map { it.last() }
                 .takeLast(8)
             if (weightPoints.isNotEmpty()) {
-                val lineColor = MaterialTheme.colorScheme.primary
-                val guideColor = MaterialTheme.colorScheme.outlineVariant
+                val chartColor = MaterialTheme.colorScheme.primary
                 val surfaceColor = MaterialTheme.colorScheme.surface
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -400,7 +399,7 @@ private fun PetPassportSection(
                             }
                             Text(
                                 String.format(LocalLocale.current.platformLocale, "%.1f kg", weightPoints.last().second),
-                                color = lineColor,
+                                color = chartColor,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold
                             )
@@ -408,33 +407,45 @@ private fun PetPassportSection(
                         val values = weightPoints.map { it.second }
                         val minWeight = values.minOrNull() ?: 0f
                         val maxWeight = values.maxOrNull() ?: minWeight
-                        val range = (maxWeight - minWeight).coerceAtLeast(1f)
-                        Canvas(Modifier.fillMaxWidth().height(118.dp)) {
-                            val left = 10.dp.toPx()
-                            val right = size.width - 10.dp.toPx()
-                            val top = 12.dp.toPx()
-                            val bottom = size.height - 12.dp.toPx()
-                            val firstDay = weightPoints.first().first
-                            val daySpan = java.time.temporal.ChronoUnit.DAYS.between(firstDay, weightPoints.last().first).coerceAtLeast(1)
-                            val points = weightPoints.map { (day, value, _) ->
-                                val elapsedDays = java.time.temporal.ChronoUnit.DAYS.between(firstDay, day)
-                                val x = if (weightPoints.size == 1) (left + right) / 2f
-                                    else left + (right - left) * elapsedDays / daySpan
-                                val y = bottom - ((value - minWeight) / range) * (bottom - top)
-                                Offset(x, y)
+                        val range = (maxWeight - minWeight).coerceAtLeast(.1f)
+                        Row(
+                            Modifier.fillMaxWidth().height(112.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            weightPoints.forEachIndexed { index, (day, value, _) ->
+                                val valueFraction = if (maxWeight == minWeight) .62f
+                                    else ((value - minWeight) / range).coerceIn(0f, 1f)
+                                val heightFraction = .2f + .8f * valueFraction
+                                Column(
+                                    Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Bottom
+                                ) {
+                                    Text(
+                                        String.format(LocalLocale.current.platformLocale, "%.1f", value),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.BottomCenter) {
+                                        Box(
+                                            Modifier.fillMaxWidth(.68f)
+                                                .fillMaxHeight(heightFraction)
+                                                .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp))
+                                                .background(if (index == weightPoints.lastIndex) chartColor else chartColor.copy(alpha = .35f))
+                                        )
+                                    }
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        day.format(java.time.format.DateTimeFormatter.ofPattern("d/M")),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
                             }
-                            drawLine(guideColor, Offset(left, bottom), Offset(right, bottom), strokeWidth = 1.dp.toPx())
-                            points.zipWithNext().forEach { (a, b) ->
-                                drawLine(lineColor, a, b, strokeWidth = 3.dp.toPx())
-                            }
-                            points.forEach { point ->
-                                drawCircle(surfaceColor, radius = 6.dp.toPx(), center = point)
-                                drawCircle(lineColor, radius = 4.dp.toPx(), center = point)
-                            }
-                        }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(weightPoints.first().first.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (weightPoints.size > 1) Text(weightPoints.last().first.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text(tr("La gráfica utiliza únicamente registros de tipo Peso con fecha y valor numérico. No representa un objetivo veterinario."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

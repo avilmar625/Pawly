@@ -13,13 +13,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,7 +41,8 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
     var activeFilter by remember { mutableStateOf("ALL") }
     var keyword by remember { mutableStateOf("") }
     var sortOrder by remember { mutableStateOf("recent") }
-    var showMoreFilters by remember { mutableStateOf(false) }
+    var showFilterMenu by remember { mutableStateOf(false) }
+    var showSortMenu by remember { mutableStateOf(false) }
     val filterOptions = listOf(
         "ALL" to "Todo",
         "FOLLOWING" to "Siguiendo",
@@ -95,69 +92,68 @@ internal fun FeedScreen(posts: List<PawlyPost>, followingIds: Set<String>, error
             }
         }
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Row(
-                        Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(
+                    value = keyword,
+                    onValueChange = { keyword = it.take(80) },
+                    modifier = Modifier.weight(1f).heightIn(min = 50.dp, max = 58.dp),
+                    singleLine = true,
+                    placeholder = { Text(tr("Buscar en Comunidad…"), maxLines = 1) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (keyword.isNotBlank()) {
+                            IconButton(onClick = { keyword = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = tr("Borrar búsqueda"))
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(14.dp)
+                )
+                Box {
+                    OutlinedButton(
+                        onClick = { showFilterMenu = true },
+                        contentPadding = PaddingValues(horizontal = 9.dp, vertical = 10.dp)
                     ) {
+                        Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(17.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(tr(filterOptions.firstOrNull { it.first == activeFilter }?.second ?: "Todo"), maxLines = 1)
+                    }
+                    DropdownMenu(expanded = showFilterMenu, onDismissRequest = { showFilterMenu = false }) {
                         filterOptions.forEach { (value, label) ->
-                            FilterChip(
-                                selected = activeFilter == value,
-                                onClick = { activeFilter = value },
-                                label = { Text(tr(label), maxLines = 1) }
+                            DropdownMenuItem(
+                                text = { Text(tr(label)) },
+                                onClick = { activeFilter = value; showFilterMenu = false },
+                                leadingIcon = if (activeFilter == value) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null
                             )
                         }
                     }
-                    TextButton(onClick = { showMoreFilters = !showMoreFilters }) {
-                        Icon(Icons.Default.Tune, null, modifier = Modifier.size(17.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(tr(if (showMoreFilters) "Menos" else "Filtros"))
+                }
+                Box {
+                    IconButton(onClick = { showSortMenu = true }) {
+                        Icon(Icons.Default.Sort, contentDescription = tr("Ordenar publicaciones"), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
+                        listOf(
+                            "recent" to "Más recientes",
+                            "oldest" to "Más antiguas",
+                            "likes" to "Más populares",
+                            "comments" to "Más comentadas"
+                        ).forEach { (value, label) ->
+                            DropdownMenuItem(
+                                text = { Text(tr(label)) },
+                                onClick = { sortOrder = value; showSortMenu = false },
+                                leadingIcon = if (sortOrder == value) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null
+                            )
+                        }
                     }
                 }
-                if (showMoreFilters) {
-                    OutlinedTextField(
-                        value = keyword,
-                        onValueChange = { keyword = it.take(80) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        placeholder = { Text(tr("Buscar publicaciones…")) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (keyword.isNotBlank()) {
-                                IconButton(onClick = { keyword = "" }) {
-                                    Icon(Icons.Default.Close, contentDescription = tr("Borrar búsqueda"))
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(13.dp)
-                    )
-                    val sortOptions = listOf(
-                        "recent" to tr("Más recientes"),
-                        "oldest" to tr("Más antiguas"),
-                        "likes" to tr("Más populares"),
-                        "comments" to tr("Más comentadas")
-                    )
-                    PawlyDropdownSelector(
-                        title = tr("Ordenar"),
-                        selectedLabel = sortOptions.firstOrNull { it.first == sortOrder }?.second ?: tr("Más recientes"),
-                        options = sortOptions,
-                        selectedValue = sortOrder,
-                        onSelected = { sortOrder = it },
-                        leadingIcon = Icons.Default.Sort
-                    )
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(tr("Publicaciones"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        visiblePosts.size.toString(),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium
-                    )
-                }
             }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                tr("${visiblePosts.size} publicaciones"),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium
+            )
         }
         if (error != null) item { Text(error, color = MaterialTheme.colorScheme.error) }
         if (visiblePosts.isEmpty() && error == null) item {

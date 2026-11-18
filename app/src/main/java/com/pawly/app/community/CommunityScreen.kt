@@ -398,7 +398,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, openNot
     val selectedCommunityTab = if (page in communityTabs) page else CommunityPage.FEED
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 18.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
+            Modifier.fillMaxWidth().statusBarsPadding().padding(start = 18.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(tr("Comunidad"), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

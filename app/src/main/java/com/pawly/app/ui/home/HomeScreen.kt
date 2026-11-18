@@ -30,9 +30,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import java.text.DateFormat
-import java.util.Date
-import java.util.Locale
 
 @Composable
 internal fun HomeScreen(
@@ -68,8 +65,6 @@ internal fun HomeScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val language = LocalPawlyLanguage.current
     val locale = PawlyI18n.locale(language)
-    val dateLabel = DateFormat.getDateInstance(DateFormat.FULL, locale)
-        .format(Date()).replaceFirstChar { it.uppercase(locale) }
     var passportEntries by remember(dogName, storageScope) {
         mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope))
     }
@@ -148,27 +143,15 @@ internal fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(dateLabel.uppercase(locale), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(tr("¡Qué bien tenerte por aquí!"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                }
-                Surface(onClick = onNotifications, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.NotificationsNone, contentDescription = tr("Notificaciones"), tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Spacer(Modifier.width(8.dp))
-                Surface(onClick = onSettings, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Settings, contentDescription = tr("Ajustes"), tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-            }
+            HomePetHeader(
+                name = dogName,
+                photo = dogPhoto,
+                photoUrl = dogPhotoUrl,
+                onEditProfile = onEditProfile,
+                onNotifications = onNotifications,
+                onSettings = onSettings
+            )
         }
-        item { HomePetHero(dogName, dogPhoto, dogPhotoUrl, onEditProfile, elegantDesign) }
         item {
             HomeCareTasksSection(
                 petName = dogName,
@@ -289,78 +272,67 @@ internal fun HomeScreen(
 }
 
 @Composable
-private fun HomePetHero(name: String, photo: Bitmap?, photoUrl: String?, onEdit: () -> Unit, elegantDesign: Boolean) {
-    PawlyCard(
-        modifier = Modifier.fillMaxWidth(),
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentPadding = 16.dp
+private fun HomePetHeader(
+    name: String,
+    photo: Bitmap?,
+    photoUrl: String?,
+    onEditProfile: () -> Unit,
+    onNotifications: () -> Unit,
+    onSettings: () -> Unit
+) {
+    var useDefaultPhoto by remember(photoUrl) { mutableStateOf(photoUrl.isNullOrBlank()) }
+    var defaultPhotoUnavailable by remember(photoUrl) { mutableStateOf(false) }
+    val customPhotoUrl = photoUrl?.takeIf { it.startsWith("https://") }
+    val displayedPhotoUrl = if (useDefaultPhoto) PAWLY_DEFAULT_DOG_PHOTO_URL else customPhotoUrl
+
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
-            Modifier.fillMaxWidth(),
+            Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable(onClick = onEditProfile).padding(vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
-                Modifier.size(76.dp).clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surface),
+                Modifier.size(50.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 when {
                     photo != null -> Image(
-                        photo.asImageBitmap(),
+                        bitmap = photo.asImageBitmap(),
                         contentDescription = tr("Foto de $name"),
                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop
                     )
-                    photoUrl?.startsWith("https://") == true -> AsyncImage(
-                        model = photoUrl,
-                        contentDescription = tr("Foto de $name"),
+                    displayedPhotoUrl != null && !defaultPhotoUnavailable -> AsyncImage(
+                        model = displayedPhotoUrl,
+                        contentDescription = tr("Foto de ${name.ifBlank { "tu mascota" }}"),
                         modifier = Modifier.fillMaxSize().clip(CircleShape),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        onError = {
+                            if (!useDefaultPhoto) useDefaultPhoto = true else defaultPhotoUnavailable = true
+                        }
                     )
-                    else -> Icon(
-                        Icons.Filled.Pets,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(34.dp)
-                    )
+                    else -> Icon(Icons.Filled.Pets, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
                 }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    tr("HOY CON VOSOTROS"),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .72f),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 1.15.sp
-                )
-                Text(
-                    name.ifBlank { tr("Tu mascota") },
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    tr("Un día más para compartir aventuras."),
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .82f),
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                Text(name.ifBlank { tr("Tu mascota") }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(tr("Editar perfil"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
             }
-            Surface(
-                onClick = onEdit,
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = .88f),
-                contentColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(
-                    Icons.Filled.Edit,
-                    contentDescription = tr("Editar perfil de mascota"),
-                    modifier = Modifier.padding(12.dp).size(19.dp)
-                )
+        }
+        Surface(onClick = onNotifications, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.NotificationsNone, contentDescription = tr("Notificaciones"), tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Surface(onClick = onSettings, shape = CircleShape, color = MaterialTheme.colorScheme.surface,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Box(Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+                Icon(Icons.Filled.Settings, contentDescription = tr("Ajustes"), tint = MaterialTheme.colorScheme.primary)
             }
         }
     }

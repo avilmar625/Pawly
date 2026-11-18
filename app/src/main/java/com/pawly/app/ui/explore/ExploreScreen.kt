@@ -333,6 +333,7 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
         val explorePages = ExplorePage.entries
         PrimaryTabRow(
             selectedTabIndex = explorePages.indexOf(activeExplorePage),
+            modifier = Modifier.statusBarsPadding(),
             containerColor = MaterialTheme.colorScheme.background
         ) {
             explorePages.forEach { tab ->
@@ -823,6 +824,7 @@ private fun CommunityPlacesPanel(
     var selectedLongitude by remember { mutableStateOf<Double?>(null) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var recommendationFilter by remember { mutableStateOf("Todos") }
+    var showRecommendations by remember { mutableStateOf(false) }
     val categories = listOf("Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro")
     val recommendationCategories = listOf("Todos", "Playa", "Parque", "Ruta", "Restaurante", "Alojamiento", "Veterinario", "Otro")
     val visibleRecommendations = places.filter { recommendationFilter == "Todos" || it.category.equals(recommendationFilter, ignoreCase = true) }
@@ -840,7 +842,14 @@ private fun CommunityPlacesPanel(
                     Spacer(Modifier.width(5.dp))
                     Text(tr("Aportar"))
                 }
+                IconButton(onClick = { showRecommendations = !showRecommendations }) {
+                    Icon(
+                        if (showRecommendations) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = tr(if (showRecommendations) "Contraer recomendaciones" else "Mostrar recomendaciones")
+                    )
+                }
             }
+            if (showRecommendations) {
             Text(tr("Las propuestas se revisan antes de aparecer públicamente. Puedes denunciar un lugar si detectas información incorrecta."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (places.isNotEmpty()) {
@@ -916,6 +925,13 @@ private fun CommunityPlacesPanel(
                         }
                     }
                 }
+            }
+            } else {
+                Text(
+                    tr(if (places.isEmpty()) "La lista está contraída. Aporta un lugar o despliega para ver más." else "${places.size} lugares compartidos · despliega para explorar"),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall) }
         }
