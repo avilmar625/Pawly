@@ -142,7 +142,7 @@ internal fun LostPetHelpScreen(
         ) {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 Icon(Icons.Default.Pets, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(30.dp))
-                Text(t("He perdido a mi mascota"), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
+                Text(t("He perdido mi mascota"), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onErrorContainer, fontWeight = FontWeight.Bold)
                 Text(t("Ayuda a encontrarla") + ". Publicaremos un aviso en la categoría de animales perdidos de Comunidad para que otras personas puedan difundirlo.", color = MaterialTheme.colorScheme.onErrorContainer)
             }
         }

@@ -3,6 +3,7 @@ package com.pawly.app
 import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
@@ -373,11 +374,6 @@ private fun PetPassportSection(
                     if (kg != null && day != null) Triple(day, kg, entry.id) else null
                 }
                 .sortedBy { it.first }
-                .groupBy { it.first }
-                .toSortedMap()
-                .values
-                .map { it.last() }
-                .takeLast(8)
             if (weightPoints.isNotEmpty()) {
                 val chartColor = MaterialTheme.colorScheme.primary
                 val surfaceColor = MaterialTheme.colorScheme.surface
@@ -390,7 +386,7 @@ private fun PetPassportSection(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(tr("Evolución del peso"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(tr("Una medición por fecha"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(tr("Todas las mediciones"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
                                 String.format(LocalLocale.current.platformLocale, "%.1f kg", weightPoints.last().second),
@@ -404,7 +400,7 @@ private fun PetPassportSection(
                         val maxWeight = values.maxOrNull() ?: minWeight
                         val range = (maxWeight - minWeight).coerceAtLeast(.1f)
                         Row(
-                            Modifier.fillMaxWidth().height(112.dp),
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).height(112.dp),
                             horizontalArrangement = Arrangement.spacedBy(7.dp),
                             verticalAlignment = Alignment.Bottom
                         ) {
@@ -413,7 +409,7 @@ private fun PetPassportSection(
                                     else ((value - minWeight) / range).coerceIn(0f, 1f)
                                 val heightFraction = .2f + .8f * valueFraction
                                 Column(
-                                    Modifier.weight(1f),
+                                    Modifier.width(42.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Bottom
                                 ) {

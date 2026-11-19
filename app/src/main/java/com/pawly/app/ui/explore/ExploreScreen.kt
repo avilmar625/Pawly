@@ -824,14 +824,18 @@ private fun CommunityPlacesPanel(
         .sortedBy { it.name.lowercase() }
     Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Column(Modifier.fillMaxWidth().padding(15.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(tr("RECOMENDACIONES DE LA COMUNIDAD"), color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.1.sp)
                     Text(tr("Lugares que otros miembros comparten"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
-                FilledTonalButton(onClick = { dialog = true }, enabled = enabled && !loading) {
-                    Icon(Icons.Default.AddLocationAlt, null)
+                FilledTonalButton(
+                    onClick = { dialog = true },
+                    enabled = enabled && !loading,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Icon(Icons.Default.AddLocationAlt, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(5.dp))
                     Text(tr("Aportar"))
                 }
@@ -958,7 +962,7 @@ private fun CommunityPlacesPanel(
             onDismissRequest = { dialog = false },
             title = { Text(tr(if (editingPlaceId == null) "Compartir un lugar" else "Editar recomendación")) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(tr("Cuéntanos dónde está y por qué merece la pena visitarlo con mascota."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(name, { name = it.take(80) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text(tr("Nombre del lugar")) })
                     Box {
@@ -974,7 +978,7 @@ private fun CommunityPlacesPanel(
                     Text(tr("Marca el punto exacto en el mapa"), fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
                     Text(tr("Toca el mapa donde se encuentra el lugar. También puedes introducir las coordenadas manualmente."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                     PawlyOpenStreetMap(
-                        modifier = Modifier.fillMaxWidth().height(205.dp).clip(RoundedCornerShape(16.dp)),
+                        modifier = Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(16.dp)),
                         centerLatitude = selectedLatitude ?: 36.7213,
                         centerLongitude = selectedLongitude ?: -4.4214,
                         zoom = if (selectedLatitude != null) 15.0 else 11.0,

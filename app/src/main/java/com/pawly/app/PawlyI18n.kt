@@ -590,6 +590,14 @@ internal object PawlyI18n {
     )
 
     private fun dynamicText(value: String, language: String): String? {
+        val recentWeightCount = Regex("^Últimas (\\d+) mediciones$").matchEntire(value)?.groupValues?.get(1)
+        if (recentWeightCount != null) return when (language) {
+            "en" -> "Last $recentWeightCount measurements"
+            "ca" -> "Les últimes $recentWeightCount mesures"
+            "fr" -> "$recentWeightCount dernières mesures"
+            "eu" -> "Azken $recentWeightCount neurketak"
+            else -> null
+        }
         val healthPrefix = "Vacunas, revisiones y cuidados de "
         val healthSuffix = " en un solo lugar."
         if (value.startsWith(healthPrefix) && value.endsWith(healthSuffix)) {
@@ -901,11 +909,50 @@ internal object PawlyI18n {
         )
     )
 
+    private val compactUi = mapOf(
+        "ca" to mapOf(
+            "Gastos por categoría" to "Despeses per categoria", "Mes anterior" to "Mes anterior", "Mes siguiente" to "Mes següent",
+            "Total del mes" to "Total del mes", "Sin gastos este mes" to "Sense despeses aquest mes", "Sin gastos en esta categoría" to "Sense despeses en aquesta categoria", "Filtrar por categoría" to "Filtra per categoria",
+            "Registros de peso" to "Registres de pes", "Todas las mediciones" to "Totes les mesures", "Fotos" to "Fotos", "SOPORTE Y CUENTA" to "SUPORT I COMPTE", "Soporte" to "Suport",
+            "Contacto y avisos de mascotas perdidas" to "Contacte i avisos de mascotes perdudes", "He perdido mi mascota" to "He perdut la meva mascota",
+            "Difunde un aviso para encontrar a tu mascota." to "Difon un avís per trobar la teva mascota.", "Añadir gasto" to "Afegeix una despesa",
+            "Correo de verificación enviado. Revisa tu bandeja de entrada." to "Correu de verificació enviat. Revisa la safata d'entrada.",
+            "La cuenta se creó, pero no se pudo enviar el correo. Podrás reenviarlo desde Comunidad." to "El compte s'ha creat, però no s'ha pogut enviar el correu. El pots reenviar des de Comunitat."
+        ),
+        "fr" to mapOf(
+            "Gastos por categoría" to "Dépenses par catégorie", "Mes anterior" to "Mois précédent", "Mes siguiente" to "Mois suivant",
+            "Total del mes" to "Total du mois", "Sin gastos este mes" to "Aucune dépense ce mois-ci", "Sin gastos en esta categoría" to "Aucune dépense dans cette catégorie", "Filtrar por categoría" to "Filtrer par catégorie",
+            "Registros de peso" to "Mesures de poids", "Todas las mediciones" to "Toutes les mesures", "Fotos" to "Photos", "SOPORTE Y CUENTA" to "ASSISTANCE ET COMPTE", "Soporte" to "Assistance",
+            "Contacto y avisos de mascotas perdidas" to "Contact et alertes d’animaux perdus", "He perdido mi mascota" to "J’ai perdu mon animal",
+            "Difunde un aviso para encontrar a tu mascota." to "Diffusez une alerte pour retrouver votre animal.", "Añadir gasto" to "Ajouter une dépense",
+            "Correo de verificación enviado. Revisa tu bandeja de entrada." to "E-mail de vérification envoyé. Vérifiez votre boîte de réception.",
+            "La cuenta se creó, pero no se pudo enviar el correo. Podrás reenviarlo desde Comunidad." to "Le compte a été créé, mais l’e-mail n’a pas pu être envoyé. Vous pourrez le renvoyer depuis la communauté."
+        ),
+        "en" to mapOf(
+            "Gastos por categoría" to "Spending by category", "Mes anterior" to "Previous month", "Mes siguiente" to "Next month",
+            "Total del mes" to "Monthly total", "Sin gastos este mes" to "No expenses this month", "Sin gastos en esta categoría" to "No expenses in this category", "Filtrar por categoría" to "Filter by category",
+            "Registros de peso" to "Weight records", "Todas las mediciones" to "All measurements", "Fotos" to "Photos", "SOPORTE Y CUENTA" to "SUPPORT AND ACCOUNT", "Soporte" to "Support",
+            "Contacto y avisos de mascotas perdidas" to "Contact and lost pet alerts", "He perdido mi mascota" to "I've lost my pet",
+            "Difunde un aviso para encontrar a tu mascota." to "Share an alert to help find your pet.", "Añadir gasto" to "Add expense",
+            "Correo de verificación enviado. Revisa tu bandeja de entrada." to "Verification email sent. Check your inbox.",
+            "La cuenta se creó, pero no se pudo enviar el correo. Podrás reenviarlo desde Comunidad." to "Your account was created, but we couldn't send the email. You can resend it from Community."
+        ),
+        "eu" to mapOf(
+            "Gastos por categoría" to "Kategoriako gastuak", "Mes anterior" to "Aurreko hilabetea", "Mes siguiente" to "Hurrengo hilabetea",
+            "Total del mes" to "Hilabeteko guztira", "Sin gastos este mes" to "Hilabete honetan gasturik ez", "Sin gastos en esta categoría" to "Ez dago gasturik kategoria honetan", "Filtrar por categoría" to "Iragazi kategoriaren arabera",
+            "Registros de peso" to "Pisuko erregistroak", "Todas las mediciones" to "Neurketa guztiak", "Fotos" to "Argazkiak", "SOPORTE Y CUENTA" to "LAGUNTZA ETA KONTUA", "Soporte" to "Laguntza",
+            "Contacto y avisos de mascotas perdidas" to "Kontaktua eta galdutako animalien alertak", "He perdido mi mascota" to "Nire maskota galdu dut",
+            "Difunde un aviso para encontrar a tu mascota." to "Zabaldu alerta bat zure maskota aurkitzeko.", "Añadir gasto" to "Gehitu gastua",
+            "Correo de verificación enviado. Revisa tu bandeja de entrada." to "Egiaztapen-mezua bidali da. Begiratu sarrera-ontzia.",
+            "La cuenta se creó, pero no se pudo enviar el correo. Podrás reenviarlo desde Comunidad." to "Kontua sortu da, baina ezin izan da mezua bidali. Komunitatetik berriro bidal dezakezu."
+        )
+    )
+
     fun text(value: String, language: String): String = when (language) {
-        "eu" -> passportTranslations["eu"]?.get(value) ?: euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: dynamicText(value, language) ?: value
-        "ca" -> passportTranslations["ca"]?.get(value) ?: ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: homeCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "fr" -> passportTranslations["fr"]?.get(value) ?: fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: homeFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
-        "en" -> passportTranslations["en"]?.get(value) ?: en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: homeEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "eu" -> passportTranslations["eu"]?.get(value) ?: euUi[value] ?: eventTranslations["eu"]?.get(value) ?: featureUi["eu"]?.get(value) ?: compactUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "ca" -> passportTranslations["ca"]?.get(value) ?: ca[value] ?: caExtra[value] ?: caUi[value] ?: miscCa[value] ?: careCa[value] ?: homeCa[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: compactUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "fr" -> passportTranslations["fr"]?.get(value) ?: fr[value] ?: frExtra[value] ?: frUi[value] ?: miscFr[value] ?: careFr[value] ?: homeFr[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: compactUi[language]?.get(value) ?: dynamicText(value, language) ?: value
+        "en" -> passportTranslations["en"]?.get(value) ?: en[value] ?: enExtra[value] ?: enUi[value] ?: miscEn[value] ?: careEn[value] ?: homeEn[value] ?: accountExtra[language]?.get(value) ?: eventTranslations[language]?.get(value) ?: featureUi[language]?.get(value) ?: compactUi[language]?.get(value) ?: dynamicText(value, language) ?: value
         "de" -> passportTranslations["de"]?.get(value) ?: de[value] ?: passportTranslations["en"]?.get(value) ?: text(value, "en")
         "pt" -> passportTranslations["pt"]?.get(value) ?: pt[value] ?: passportTranslations["en"]?.get(value) ?: text(value, "en")
         else -> value

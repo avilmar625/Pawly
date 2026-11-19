@@ -130,7 +130,7 @@ private fun openPawlyNotificationSettings(context: Context) {
 }
 
 internal enum class Tab(val label: String) {
-    HOME("Hoy"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), CALENDAR("Agenda"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("Ayuda"), MARKET("Pawly Market")
+    HOME("Hoy"), EXPLORE("Explorar"), LEARN("Aprender"), HEALTH("Salud"), DIARY("Diario"), CALENDAR("Agenda"), COMMUNITY("Comunidad"), MORE("Más"), SERVICES("Profesionales"), LOST("He perdido mi mascota"), MARKET("Pawly Market")
 }
 
 @Composable
@@ -146,6 +146,8 @@ internal fun PawlyApp(
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     var localMode by remember { mutableStateOf(false) }
     var signedIn by remember(repository) { mutableStateOf(repository?.currentUid != null) }
+    var authFlowInProgress by remember(repository) { mutableStateOf(false) }
+    val currentAuthFlowInProgress by rememberUpdatedState(authFlowInProgress)
 
     if (localMode) {
         PawlyMainApp(
@@ -167,7 +169,7 @@ internal fun PawlyApp(
     DisposableEffect(repository) {
         val auth = FirebaseAuth.getInstance()
         val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
-            signedIn = firebaseAuth.currentUser != null
+            if (!currentAuthFlowInProgress) signedIn = firebaseAuth.currentUser != null
         }
         auth.addAuthStateListener(listener)
         onDispose { auth.removeAuthStateListener(listener) }
@@ -187,8 +189,9 @@ internal fun PawlyApp(
     } else {
         CommunityAuthPanel(
             repo = repository,
-            onAuthenticated = { signedIn = repository.currentUid != null },
-            onContinueOffline = { localMode = true }
+            onAuthenticated = { authFlowInProgress = false; signedIn = repository.currentUid != null },
+            onContinueOffline = { localMode = true },
+            onAuthFlowChanged = { authFlowInProgress = it }
         )
     }
 }
@@ -528,25 +531,21 @@ private fun PawlyMainApp(
                         IconButton(onClick = { selected = previousTab }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = PawlyI18n.text("Volver", language), tint = MaterialTheme.colorScheme.primary)
                         }
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                            Text(PawlyI18n.text("DIARIO DE RECUERDOS", language), style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
-                            Text(PawlyI18n.text("Diario de", language) + " $dogName", style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        }
+                        Text(PawlyI18n.text("Diario", language), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Icon(Icons.Default.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                     }
                 }
             } else {
                 val petTabs = listOf(Tab.HOME, Tab.HEALTH, Tab.DIARY, Tab.CALENDAR)
-                val moreTabs = listOf(Tab.MORE, Tab.LEARN, Tab.SERVICES, Tab.LOST)
+                val moreTabs = listOf(Tab.MORE, Tab.LEARN, Tab.SERVICES)
                 val routeTabs = when (selected) {
                     Tab.HOME, Tab.HEALTH, Tab.DIARY, Tab.CALENDAR -> petTabs
                     Tab.MORE, Tab.LEARN, Tab.SERVICES, Tab.LOST, Tab.MARKET -> moreTabs
                     else -> emptyList()
                 }
                 if (routeTabs.isNotEmpty()) {
-                    val selectedRoute = if (selected == Tab.MARKET) Tab.MORE else selected
+                    val selectedRoute = if (selected == Tab.MARKET || selected == Tab.LOST) Tab.MORE else selected
                     PawlySectionNavigationHeader(
                         title = PawlyI18n.text(if (selectedRoute in petTabs) "Mi perro" else "TU ESPACIO PAWLY", language),
                         labels = routeTabs.map { PawlyI18n.text(it.label, language) },
@@ -619,8 +618,6 @@ private fun PawlyMainApp(
                     onAbout = { showAbout = true },
                     onSettings = { showSettings = true },
                     onEditProfile = { profileDraft = dogName; showProfileEditor = true },
-                    diaryCount = diaryEntries.size,
-                    diaryEntries = diaryEntries,
                     dogPhoto = dogPhoto,
                     dogPhotoUrl = dogPhotoUrl,
                     elegantDesign = elegantDesign,
@@ -682,7 +679,6 @@ private fun PawlyMainApp(
                 }
                 Tab.DIARY -> DiaryScreen(
                     dogName = selectedSharedPet?.petName ?: dogName,
-                    elegantDesign = elegantDesign,
                     entries = diaryEntries,
                     onEntriesChange = { diaryEntries = it },
                     repository = cloudRepository,
@@ -801,6 +797,7 @@ private fun PawlyMainApp(
                                 context.startActivity(Intent.createChooser(fallback, PawlyI18n.text("Contacta con nosotros", language)))
                             }
                     },
+                    onLostPet = { selected = Tab.LOST },
                     onPrivacy = {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/avilmar625/Pawly/blob/cambios53/docs/PRIVACY_POLICY_DRAFT.md")))
                     },

@@ -43,8 +43,6 @@ internal fun HomeScreen(
     onAbout: () -> Unit,
     onSettings: () -> Unit = onAbout,
     onEditProfile: () -> Unit,
-    diaryCount: Int,
-    diaryEntries: List<String> = emptyList(),
     dogPhoto: Bitmap?,
     dogPhotoUrl: String? = null,
     elegantDesign: Boolean = false,
@@ -106,7 +104,6 @@ internal fun HomeScreen(
     }
 
     val weightEntries = passportEntries.filter { it.type.equals("Peso", true) }
-    val today = java.time.LocalDate.now()
     val nextUpcomingItem = remember(passportEntries, healthDates, calendarReminders) {
         findNextHomeUpcomingItem(
             passportEntries = passportEntries,
@@ -114,17 +111,11 @@ internal fun HomeScreen(
             calendarReminders = calendarReminders
         )
     }
-    val diaryAnniversary = remember(diaryEntries, today) { findDiaryAnniversary(diaryEntries, today) }
-
     val parsedWeights = weightEntries.mapNotNull { entry ->
         com.pawly.app.care.domain.WeightMeasurementParser
             .parse("${entry.title} ${entry.detail}")
             ?.let { entry.date to it }
     }.sortedBy { it.first }
-        .groupBy { it.first.take(10) }
-        .toSortedMap()
-        .values
-        .map { it.last() }
     val latestWeight = parsedWeights.lastOrNull()?.second
     val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
     val weightChange = if (latestWeight != null && previousWeight != null) latestWeight - previousWeight else null
@@ -214,7 +205,7 @@ internal fun HomeScreen(
                                         .background(if (index == recent.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
                                 }
                             }
-                            Text(tr("Una medición por fecha · últimas ${minOf(parsedWeights.size, 5)} fechas"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+                            Text(tr("Últimas ${minOf(parsedWeights.size, 5)} mediciones"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         } else {
                             Text(tr("Añade más mediciones para ver la evolución."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
@@ -231,27 +222,6 @@ internal fun HomeScreen(
                         }
                     }
                 }
-            }
-        }
-        item {
-            Surface(onClick = onDiary, shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.AutoStories, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(24.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(tr("Diario de recuerdos"), fontWeight = FontWeight.Bold)
-                        Text(tr(if (diaryCount == 0) "Guarda vuestra primera aventura." else "$diaryCount recuerdos guardados"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    }
-                    Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-        if (diaryAnniversary != null) {
-            item {
-                HomeAnniversaryCard(anniversary = diaryAnniversary, onClick = onDiary)
             }
         }
         item {

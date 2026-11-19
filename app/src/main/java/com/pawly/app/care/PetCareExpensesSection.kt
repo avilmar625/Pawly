@@ -1,6 +1,7 @@
 package com.pawly.app.care
 
 import android.content.Context
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,8 +15,12 @@ import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
@@ -34,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,108 +68,186 @@ internal fun PetCareExpensesSection(petName: String, storageScope: String?) {
         val pet = petName.trim().lowercase().replace(Regex("[^a-z0-9]"), "_")
         context.getSharedPreferences("pawly_phase3_${account}_$pet", Context.MODE_PRIVATE)
     }
-    var kind by remember { mutableStateOf("Alimentación") }
+    val kinds = listOf("Alimentación", "Higiene", "Gasto veterinario", "Accesorios", "Otros")
+    var kind by remember { mutableStateOf(kinds.first()) }
+    var categoryFilter by remember { mutableStateOf("Todos") }
+    var selectedMonth by remember { mutableStateOf(java.time.YearMonth.now()) }
+    var showEntryForm by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("") }
     var detail by remember { mutableStateOf("") }
     var amount by remember { mutableStateOf("") }
     var feedback by remember { mutableStateOf<String?>(null) }
     var entries by remember(preferences) { mutableStateOf(loadExpenses(preferences)) }
 
+    val monthEntries = remember(entries, selectedMonth) {
+        entries.filter { entry ->
+            runCatching {
+                java.time.YearMonth.from(
+                    java.time.Instant.ofEpochMilli(entry.date)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDate()
+                ) == selectedMonth
+            }.getOrDefault(false)
+        }
+    }
+    val categoryTotals = remember(monthEntries) {
+        monthEntries.filter { it.amount > 0.0 }
+            .groupBy { it.kind }
+            .mapValues { (_, categoryEntries) -> categoryEntries.sumOf { it.amount } }
+            .entries
+            .sortedByDescending { it.value }
+    }
+    val maxCategoryTotal = categoryTotals.maxOfOrNull { it.value } ?: 0.0
+    val monthlyTotal = monthEntries.sumOf { it.amount }
+    val visibleEntries = remember(monthEntries, categoryFilter) {
+        if (categoryFilter == "Todos") monthEntries
+        else monthEntries.filter { it.kind == categoryFilter }
+    }
+    val monthLabel = selectedMonth.atDay(1).format(
+        java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.getDefault())
+    )
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            PawlySectionHeading(
-                title = "Gastos de $petName",
-                subtitle = "Apunta compras y cuidados para consultar cuánto llevas registrado. Estos datos se guardan en este dispositivo."
-            )
+            PawlySectionHeading(title = "Gastos de $petName")
         }
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(tr("Gastos por categoría"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { selectedMonth = selectedMonth.minusMonths(1) }, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Filled.ChevronLeft, contentDescription = tr("Mes anterior"))
+                        }
+                        Text(monthLabel, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontWeight = FontWeight.SemiBold)
+                        IconButton(onClick = { selectedMonth = selectedMonth.plusMonths(1) }, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Filled.ChevronRight, contentDescription = tr("Mes siguiente"))
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("Total del mes"), modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text("%.2f €".format(monthlyTotal), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    }
+                    if (categoryTotals.isEmpty()) {
+                        Text(tr("Sin gastos este mes"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    } else {
+                        categoryTotals.forEach { (category, total) ->
+                            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(tr(category), modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                                    Text("%.2f €".format(total), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                                }
+                                Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) {
+                                    Box(
+                                        Modifier.fillMaxWidth((total / maxCategoryTotal).toFloat().coerceIn(0f, 1f))
+                                            .fillMaxHeight()
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(MaterialTheme.colorScheme.primary)
+                                    )
+                                }
+                            }
+                        }
+                    }
                     PawlyDropdownSelector(
-                        title = "Tipo de gasto",
-                        selectedLabel = tr(kind),
-                        options = listOf("Alimentación", "Higiene", "Gasto veterinario", "Accesorios", "Otros").map { it to tr(it) },
-                        selectedValue = kind,
-                        onSelected = { kind = it },
+                        title = tr("Filtrar por categoría"),
+                        selectedLabel = tr(categoryFilter),
+                        options = (listOf("Todos") + kinds).map { it to tr(it) },
+                        selectedValue = categoryFilter,
+                        onSelected = { categoryFilter = it },
                         leadingIcon = Icons.Default.ReceiptLong
                     )
-                    OutlinedTextField(
-                        value = title,
-                        onValueChange = { title = it.take(80) },
-                        label = { Text(tr("Concepto")) },
-                        placeholder = { Text(tr("Pienso, baño, consulta…")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = detail,
-                        onValueChange = { detail = it.take(160) },
-                        label = { Text(tr("Detalle (opcional)")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = amount,
-                        onValueChange = { amount = it.filter { char -> char.isDigit() || char == '.' || char == ',' }.take(12) },
-                        label = { Text(tr("Coste en € (opcional)")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    Button(
-                        onClick = {
-                            if (title.isBlank()) {
-                                feedback = tr("Añade un concepto para guardar el registro.")
-                            } else {
-                                val entry = PetCareExpense(
-                                    id = java.util.UUID.randomUUID().toString(),
-                                    kind = kind,
-                                    title = title.trim(),
-                                    detail = detail.trim(),
-                                    amount = amount.replace(',', '.').toDoubleOrNull() ?: 0.0,
-                                    date = System.currentTimeMillis()
-                                )
-                                entries = listOf(entry) + entries
-                                saveExpenses(preferences, entries)
-                                title = ""
-                                detail = ""
-                                amount = ""
-                                feedback = tr("Registro guardado en este dispositivo.")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(tr("Guardar gasto"))
-                    }
                 }
             }
         }
         item {
-            val total = entries.sumOf { it.amount }
-            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(18.dp)) {
-                Row(Modifier.fillMaxWidth().padding(15.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Text(tr("Total registrado"), style = MaterialTheme.typography.labelMedium)
-                        Text("%.2f €".format(total), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(tr("Añadir gasto"), modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+                        TextButton(onClick = { showEntryForm = !showEntryForm }) {
+                            Icon(if (showEntryForm) Icons.Filled.ExpandLess else Icons.Filled.Add, contentDescription = null)
+                            Spacer(Modifier.width(4.dp))
+                            Text(tr(if (showEntryForm) "Cerrar" else "Añadir"))
+                        }
                     }
-                    Text(tr("${entries.size} registros"), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (showEntryForm) {
+                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            PawlyDropdownSelector(
+                                title = tr("Tipo de gasto"),
+                                selectedLabel = tr(kind),
+                                options = kinds.map { it to tr(it) },
+                                selectedValue = kind,
+                                onSelected = { kind = it },
+                                leadingIcon = Icons.Default.ReceiptLong
+                            )
+                            OutlinedTextField(
+                                value = title,
+                                onValueChange = { title = it.take(80) },
+                                label = { Text(tr("Concepto")) },
+                                placeholder = { Text(tr("Pienso, baño, consulta…")) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = detail,
+                                onValueChange = { detail = it.take(160) },
+                                label = { Text(tr("Detalle (opcional)")) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = amount,
+                                onValueChange = { amount = it.filter { char -> char.isDigit() || char == '.' || char == ',' }.take(12) },
+                                label = { Text(tr("Coste en € (opcional)")) },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            Button(
+                                onClick = {
+                                    if (title.isBlank()) {
+                                        feedback = tr("Añade un concepto para guardar el registro.")
+                                    } else {
+                                        val entry = PetCareExpense(
+                                            id = java.util.UUID.randomUUID().toString(),
+                                            kind = kind,
+                                            title = title.trim(),
+                                            detail = detail.trim(),
+                                            amount = amount.replace(',', '.').toDoubleOrNull() ?: 0.0,
+                                            date = System.currentTimeMillis()
+                                        )
+                                        entries = listOf(entry) + entries
+                                        saveExpenses(preferences, entries)
+                                        title = ""
+                                        detail = ""
+                                        amount = ""
+                                        showEntryForm = false
+                                        feedback = tr("Registro guardado en este dispositivo.")
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text(tr("Guardar gasto"))
+                            }
+                        }
+                    }
                 }
             }
         }
         if (feedback != null) item {
             Text(feedback!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
         }
-        if (entries.isEmpty()) item {
-            Text(tr("Todavía no hay gastos guardados."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        if (visibleEntries.isEmpty() && monthEntries.isNotEmpty()) item {
+            Text(tr("Sin gastos en esta categoría"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
-        items(entries, key = { it.id }) { entry ->
-            Card(shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Row(Modifier.fillMaxWidth().padding(start = 13.dp, top = 10.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        items(visibleEntries, key = { it.id }) { entry ->
+            Card(shape = RoundedCornerShape(15.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(entry.title, fontWeight = FontWeight.SemiBold)
                         Text(
@@ -185,7 +269,6 @@ internal fun PetCareExpensesSection(petName: String, storageScope: String?) {
         }
     }
 }
-
 private fun loadExpenses(preferences: android.content.SharedPreferences): List<PetCareExpense> = runCatching {
     val array = JSONArray(preferences.getString("care_expense_entries", "[]"))
     (0 until array.length()).mapNotNull { index ->

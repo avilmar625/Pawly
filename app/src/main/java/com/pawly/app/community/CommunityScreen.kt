@@ -98,7 +98,12 @@ internal fun FirebaseSetupPanel(onContinueOffline: () -> Unit) {
 
 
 @Composable
-internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticated: () -> Unit, onContinueOffline: () -> Unit) {
+internal fun CommunityAuthPanel(
+    repo: FirebaseCommunityRepository,
+    onAuthenticated: () -> Unit,
+    onContinueOffline: () -> Unit,
+    onAuthFlowChanged: (Boolean) -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -160,13 +165,24 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
         if (error != null) Text(error!!, color = MaterialTheme.colorScheme.error)
         Button(onClick = {
             busy = true; error = null
+            onAuthFlowChanged(true)
             scope.launch {
                 try {
                     val configuredRepo = repo
                     if (configuredRepo == null) {
                         error = "El acceso a la comunidad no está disponible en esta instalación. Puedes continuar usando el resto de Pawly."
                     } else {
-                        if (register) configuredRepo.register(email, password, username) else configuredRepo.signIn(email, password)
+                        if (register) {
+                            val emailSent = configuredRepo.register(email, password, username)
+                            val message = if (emailSent) {
+                                tr("Correo de verificación enviado. Revisa tu bandeja de entrada.")
+                            } else {
+                                tr("La cuenta se creó, pero no se pudo enviar el correo. Podrás reenviarlo desde Comunidad.")
+                            }
+                            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+                        } else {
+                            configuredRepo.signIn(email, password)
+                        }
                         onAuthenticated()
                     }
                 } catch (e: Exception) {
@@ -180,7 +196,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                     } else {
                         error = message
                     }
-                } finally { busy = false }
+                } finally { busy = false; onAuthFlowChanged(false) }
             }
         }, enabled = !busy && email.contains("@") && password.length >= 6 && (!register || username.length >= 3), modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
             if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
@@ -194,6 +210,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                         error = "Falta la configuración OAuth de Google. Descarga de nuevo google-services.json después de activar Google en Firebase y colócalo en app/."
                     } else {
                         busy = true
+                        onAuthFlowChanged(true)
                         scope.launch {
                             try {
                                 // Este botón explícito utiliza el flujo Sign in with Google.
@@ -292,6 +309,7 @@ internal fun CommunityAuthPanel(repo: FirebaseCommunityRepository, onAuthenticat
                                 }
                             } finally {
                                 busy = false
+                                onAuthFlowChanged(false)
                             }
                         }
                     }

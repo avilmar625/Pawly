@@ -64,7 +64,6 @@ internal fun DiaryScreen(
     dogName: String,
     entries: List<String>,
     onEntriesChange: (List<String>) -> Unit,
-    elegantDesign: Boolean = false,
     sharedPetOwnerUid: String? = null,
     petId: String? = null,
     repository: FirebaseCommunityRepository? = null,
@@ -183,28 +182,13 @@ internal fun DiaryScreen(
     }
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(22.dp),
-        verticalArrangement = Arrangement.spacedBy(17.dp)
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Box(Modifier.fillMaxWidth().height(if (elegantDesign) 138.dp else 118.dp).clip(RoundedCornerShape(22.dp))) {
-                AsyncImage(
-                    model = "https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1100&h=500&fit=crop",
-                    contentDescription = "Perro disfrutando de un paseo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                )
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, PawlyPhotoScrim))))
-                Column(Modifier.align(Alignment.BottomStart).padding(15.dp)) {
-                    Text(tr("DIARIO DE $dogName"), color = Color.White.copy(alpha = .9f), fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-                }
-            }
-        }
-        item {
-            Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primary) {
-                Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primary) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Text(tr("UN RECUERDO NUEVO"), color = MaterialTheme.colorScheme.tertiaryContainer, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = memoryTitle,
                         onValueChange = { memoryTitle = it.take(80) },
@@ -233,23 +217,29 @@ internal fun DiaryScreen(
                         onSelected = { memoryCategory = it },
                         enabled = canEditSharedDiary
                     )
-                    OutlinedButton(
-                        onClick = {
-                            val initial = Calendar.getInstance().apply { timeInMillis = memoryDate }
-                            DatePickerDialog(context, { _, year, month, day ->
-                                memoryDate = Calendar.getInstance().apply { set(year, month, day, 12, 0, 0) }.timeInMillis
-                            }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).show()
-                        },
-                        enabled = canEditSharedDiary,
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Icon(Icons.Default.CalendarMonth, null); Spacer(Modifier.width(7.dp)); Text(java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(memoryDate))) }
-                    PawlyPhotoSourceButton(
-                        onGallery = { photoPicker.launch("image/*") },
-                        onCamera = { cameraCapture() },
-                        label = tr("Añadir fotografías (hasta 8)"),
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = canEditSharedDiary
-                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = {
+                                val initial = Calendar.getInstance().apply { timeInMillis = memoryDate }
+                                DatePickerDialog(context, { _, year, month, day ->
+                                    memoryDate = Calendar.getInstance().apply { set(year, month, day, 12, 0, 0) }.timeInMillis
+                                }, initial.get(Calendar.YEAR), initial.get(Calendar.MONTH), initial.get(Calendar.DAY_OF_MONTH)).show()
+                            },
+                            enabled = canEditSharedDiary,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.CalendarMonth, null)
+                            Spacer(Modifier.width(5.dp))
+                            Text(java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM).format(java.util.Date(memoryDate)), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        PawlyPhotoSourceButton(
+                            onGallery = { photoPicker.launch("image/*") },
+                            onCamera = { cameraCapture() },
+                            label = "Fotos",
+                            modifier = Modifier.weight(1f),
+                            enabled = canEditSharedDiary
+                        )
+                    }
                     if (selectedPhotos.isNotEmpty()) {
                         Text(tr("${selectedPhotos.size} fotografías seleccionadas"), color = Color.White, style = MaterialTheme.typography.labelSmall)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -298,7 +288,6 @@ internal fun DiaryScreen(
             }
         }
         if (diarySyncMessage != null) item { Text(diarySyncMessage!!, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium) }
-        item { SectionHeading("Pequeñas grandes historias", "Organiza vuestra historia por categorías, fechas y fotografías.") }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -325,7 +314,7 @@ internal fun DiaryScreen(
         if (filteredEntries.isEmpty()) {
             item {
                 Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
-                    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Filled.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(34.dp))
                         Text(tr("Aquí empieza vuestra historia"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Text(tr("Guarda el primer recuerdo y vuelve a él cuando quieras."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -336,7 +325,7 @@ internal fun DiaryScreen(
         items(filteredEntries) { entry ->
             val record = remember(entry) { parseDiaryRecord(entry) }
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Text(tr("🐾"), fontSize = 22.sp) }
                         Spacer(Modifier.width(10.dp))

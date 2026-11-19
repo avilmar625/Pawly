@@ -30,6 +30,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -44,6 +46,7 @@ internal fun MoreHubScreen(
     onImportBackup: () -> Unit,
     onInviteFriend: () -> Unit,
     onContact: () -> Unit,
+    onLostPet: () -> Unit = {},
     onPrivacy: () -> Unit,
     onTerms: () -> Unit,
     onSignOut: () -> Unit,
@@ -54,12 +57,23 @@ internal fun MoreHubScreen(
     var confirmSignOut by remember { mutableStateOf(false) }
     var showTools by remember { mutableStateOf(false) }
     var showLegal by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+    var showSupport by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         MoreSectionLabel(t("TU ESPACIO"))
         MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings)
-        MoreSectionLabel(t("AYUDA Y CUENTA"))
-        MoreDestinationCard(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend)
-        MoreDestinationCard(Icons.Filled.MailOutline, t("Contacta con nosotros"), t("Envíanos una consulta, incidencia o sugerencia."), onContact)
+        MoreSectionLabel(t("SOPORTE Y CUENTA"))
+        MoreDisclosureCard(
+            icon = Icons.Filled.Help,
+            title = t("Soporte"),
+            description = t("Contacto y avisos de mascotas perdidas"),
+            expanded = showSupport,
+            onClick = { showSupport = !showSupport }
+        )
+        if (showSupport) MoreNestedGroup {
+            MoreNestedDestination(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend)
+            MoreNestedDestination(Icons.Filled.MailOutline, t("Contacta con nosotros"), t("Envíanos una consulta, incidencia o sugerencia."), onContact)
+            MoreNestedDestination(Icons.Filled.Pets, t("He perdido mi mascota"), t("Difunde un aviso para encontrar a tu mascota."), onLostPet)
+        }
         MoreDisclosureCard(
             icon = Icons.Filled.FileDownload,
             title = t("Más funciones"),
@@ -67,8 +81,8 @@ internal fun MoreHubScreen(
             expanded = showTools,
             onClick = { showTools = !showTools }
         )
-        if (showTools) {
-            MoreDestinationCard(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos y accesorios para tu mascota."), onPawlyMarket)
+        if (showTools) MoreNestedGroup {
+            MoreNestedDestination(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos y accesorios para tu mascota."), onPawlyMarket)
             PdfActionCard(t("Ficha completa y PDF"), t("Incluye el perfil, el pasaporte sanitario y las rutinas de cuidado."), t("Guardar en el móvil"), t("Compartir PDF"), onSavePetPdf, onSharePetPdf)
             BackupActionCard(
                 title = t("Copia de seguridad y cambio de móvil"),
@@ -86,9 +100,9 @@ internal fun MoreHubScreen(
             expanded = showLegal,
             onClick = { showLegal = !showLegal }
         )
-        if (showLegal) {
-            MoreDestinationCard(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy)
-            MoreDestinationCard(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms)
+        if (showLegal) MoreNestedGroup {
+            MoreNestedDestination(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy)
+            MoreNestedDestination(Icons.Filled.Gavel, t("Términos y condiciones"), t("Consulta las condiciones de uso en preparación."), onTerms)
         }
         if (showSignOut) MoreDestinationCard(Icons.Filled.Logout, t("Cerrar sesión"), t("Salir de tu cuenta de Pawly en este dispositivo."), { confirmSignOut = true })
     }
@@ -106,7 +120,7 @@ internal fun MoreHubScreen(
 @Composable
 private fun MoreDisclosureCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, description: String, expanded: Boolean, onClick: () -> Unit) {
     Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(11.dp).size(23.dp))
             }
@@ -122,6 +136,54 @@ private fun MoreDisclosureCard(icon: androidx.compose.ui.graphics.vector.ImageVe
 @Composable
 private fun MoreSectionLabel(label: String) {
     Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+}
+
+@Composable
+private fun MoreNestedGroup(content: @Composable ColumnScope.() -> Unit) {
+    val connectorColor = MaterialTheme.colorScheme.outlineVariant
+    Column(
+        Modifier.fillMaxWidth()
+            .padding(start = 12.dp)
+            .drawBehind {
+                drawLine(
+                    color = connectorColor,
+                    start = Offset.Zero,
+                    end = Offset(0f, size.height),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
+            .padding(start = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+        content = content
+    )
+}
+
+@Composable
+private fun MoreNestedDestination(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(15.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 11.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(description, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            }
+            Icon(Icons.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(17.dp))
+        }
+    }
 }
 
 @Composable
@@ -185,7 +247,7 @@ private fun BackupActionCard(
 @Composable
 private fun MoreDestinationCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, description: String, onClick: () -> Unit) {
     Surface(onClick = onClick, shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(11.dp).size(23.dp))
             }

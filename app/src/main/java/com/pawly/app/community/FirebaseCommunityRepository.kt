@@ -17,6 +17,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -105,7 +106,7 @@ class FirebaseCommunityRepository private constructor(
         }.getOrNull()
     }
 
-    suspend fun register(email: String, password: String, username: String) {
+    suspend fun register(email: String, password: String, username: String): Boolean {
         val cleanName = CommunityInputRules.validateUsername(username)
         val cleanEmail = CommunityInputRules.validateEmail(email)
         CommunityInputRules.validatePassword(password)
@@ -190,7 +191,14 @@ class FirebaseCommunityRepository private constructor(
 
         // Email delivery is best-effort. A mail-provider/network failure must not
         // delete a valid account after the Firestore batch has already succeeded.
-        runCatching { result.user?.sendEmailVerification()?.await() }
+        return try {
+            result.user?.sendEmailVerification()?.await()
+            result.user != null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            false
+        }
     }
 
         suspend fun signIn(email: String, password: String) {
