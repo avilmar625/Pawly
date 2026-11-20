@@ -705,8 +705,8 @@ struct PawlyProfessionalDirectoryView: View {
 struct PawlyLostPetView: View {
  @EnvironmentObject private var session:PawlySession
  @EnvironmentObject private var pets:PawlyPetStore
- @Environment(\.dismiss) private var dismiss
  @StateObject private var community=PawlyCommunityStore()
+ @StateObject private var locationProvider=PawlyLocationProvider()
  @State private var name=""
  @State private var area=""
  @State private var lastSeen=""
@@ -715,37 +715,190 @@ struct PawlyLostPetView: View {
  @State private var photoItem:PhotosPickerItem?
  @State private var photoData:Data?
  @State private var busy=false
+ @State private var geocoding=false
+ @State private var savingSubscription=false
  @State private var status:String?
+ @State private var error:String?
+ @State private var receiveNearbyAlerts=false
+ @State private var alertRadius=10
+ @State private var subscriptionLocation:CLLocationCoordinate2D?
+ @State private var lostLocation:CLLocationCoordinate2D?
+ @State private var subscriptionSaved=false
+ @Environment(\.dismiss) private var dismiss
+
  var body:some View {
   NavigationStack {
    Form {
     Section("Datos del aviso") {
-     if let pet=pets.selectedPet { Button(pet.name){name=pet.name}.foregroundStyle(PawlyColors.primary) }
+     if let pet=pets.selectedPet {
+      Button(pet.name){name=pet.name}.foregroundStyle(PawlyColors.primary)
+     }
      TextField("Nombre de la mascota",text:$name)
      TextField("Zona donde se perdió",text:$area)
      TextField("Cuándo se vio por última vez",text:$lastSeen)
-     TextField("Teléfono o contacto",text:$contact).keyboardType(.phonePad)
+     TextField("Teléfono o contacto (opcional)",text:$contact).keyboardType(.phonePad)
      TextField("Rasgos y otra información útil",text:$details,axis:.vertical).lineLimit(3...7)
-     PhotosPicker(selection:$photoItem,matching:.images){Label(photoData == nil ? "Añadir foto":"Cambiar foto",systemImage:"photo")}
-     if let photoData,let image=UIImage(data:photoData){Image(uiImage:image).resizable().scaledToFill().frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))}
+     PhotosPicker(selection:$photoItem,matching:.images) {
+      Label(photoData == nil ? "Añadir foto":"Cambiar foto",systemImage:"photo")
+     }
+     if let photoData,let image=UIImage(data:photoData) {
+      Image(uiImage:image).resizable().scaledToFill()
+       .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))
+     }
     }
-    Section { Button { Task { await publish() } } label:{HStack{Spacer();if busy{ProgressView()};Text(busy ? "Publicando aviso…":"Publicar aviso en Comunidad");Spacer()}}.disabled(busy || name.trimmingCharacters(in:.whitespaces).isEmpty || area.trimmingCharacters(in:.whitespaces).isEmpty || contact.trimmingCharacters(in:.whitespaces).isEmpty) }
-    if let status { Section { Text(status).font(.caption).foregroundStyle(.secondary) } }
-    Section { Text("El aviso será visible como publicación de mascota perdida en Comunidad. Comparte también el cartel localmente y contacta con refugios y veterinarios de tu zona.").font(.caption).foregroundStyle(.secondary) }
-   }.navigationTitle("Mascota perdida").navigationBarTitleDisplayMode(.inline)
-    .onChange(of:photoItem){item in guard let item else{return};Task{photoData=try? await item.loadTransferable(type:Data.self)}}
+    Section("Ubicación aproximada del aviso") {
+     Text("La zona del aviso se localiza a partir de la dirección o barrio que escribas. Pawly redondea la posición a una celda de aproximadamente 1 km antes de guardarla.")
+      .font(.caption).foregroundStyle(.secondary)
+     Button {
+      Task { await resolveLostLocation() }
+     } label: {
+      HStack {
+       if geocoding { ProgressView() }
+       Label(lostLocation == nil ? "Localizar la zona del aviso":"Zona localizada",systemImage:"mappin.and.ellipse")
+      }
+     }.disabled(geocoding || area.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+     if let lostLocation {
+      Text(String(format:"Ubicación aproximada: %.2f, %.2f",lostLocation.latitude,lostLocation.longitude))
+       .font(.caption).foregroundStyle(.secondary)
+     }
+    }
+    Section("Alertas de mascotas perdidas cerca de ti") {
+     Toggle("Quiero recibir avisos de mi zona",isOn:$receiveNearbyAlerts)
+      .onChange(of:receiveNearbyAlerts){_ in subscriptionSaved=false}
+     Picker("Radio de recepción",selection:$alertRadius) {
+      ForEach([5,10,20,30,50,100],id:\.self){Text("\($0) km").tag($0)}
+     }
+     Text("Solo se enviarán alertas si otra persona también ha activado esta función y el aviso está dentro del radio. Tu posición exacta no se comparte.")
+      .font(.caption).foregroundStyle(.secondary)
+     Button {
+      locationProvider.request()
+     } label: {
+      Label(subscriptionLocation == nil ? "Usar mi ubicación aproximada":"Actualizar mi ubicación aproximada",
+            systemImage:"location.circle")
+     }
+     if let locationMessage=locationProvider.message {
+      Text(locationMessage).font(.caption).foregroundStyle(.secondary)
+     }
+     if subscriptionLocation != nil {
+      Text("Ubicación de recepción disponible (se guarda redondeada a ~1 km).")
+       .font(.caption).foregroundStyle(PawlyColors.primary)
+     }
+     Button {
+      Task { await saveSubscription() }
+     } label: {
+      HStack {
+       if savingSubscription { ProgressView() }
+       Text(subscriptionSaved ? "Preferencias guardadas":"Guardar preferencias de alertas")
+      }
+     }.disabled(savingSubscription || subscriptionLocation == nil)
+    }
+    Section {
+     Button {
+      Task { await publish() }
+     } label: {
+      HStack { Spacer();if busy{ProgressView()};Text(busy ? "Publicando aviso…":"Publicar aviso en Comunidad");Spacer() }
+     }
+     .disabled(busy || name.trimmingCharacters(in:.whitespaces).isEmpty ||
+               area.trimmingCharacters(in:.whitespaces).isEmpty ||
+               details.trimmingCharacters(in:.whitespaces).isEmpty)
+    }
+    if let status { Section { Text(status).font(.caption).foregroundStyle(PawlyColors.primary) } }
+    if let error { Section { Text(error).font(.caption).foregroundStyle(.red) } }
+    Section {
+     Text("El aviso queda publicado en Comunidad. Las notificaciones por proximidad requieren que el servicio Cloudflare esté desplegado y que las personas cercanas hayan dado su consentimiento.")
+      .font(.caption).foregroundStyle(.secondary)
+    }
+   }
+   .navigationTitle("Mascota perdida")
+   .navigationBarTitleDisplayMode(.inline)
+   .toolbar {
+    ToolbarItem(placement:.topBarTrailing) {
+     Button("Cerrar") { dismiss() }
+    }
+   }
+   .onChange(of:photoItem){item in
+    guard let item else{return}
+    Task { photoData=try? await item.loadTransferable(type:Data.self) }
+   }
+   .onChange(of:locationProvider.location?.coordinate.latitude){_ in
+    if let location=locationProvider.location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
+   }
+   .task { await loadSubscription() }
   }
  }
+
+ @MainActor private func loadSubscription() async {
+  do {
+   if let saved=try await community.loadLostPetSubscription() {
+    receiveNearbyAlerts=saved.enabled
+    alertRadius=saved.radiusKm
+    subscriptionLocation=CLLocationCoordinate2D(latitude:saved.latitude,longitude:saved.longitude)
+    subscriptionSaved=true
+   }
+  } catch { error=error.localizedDescription }
+ }
+
+ @MainActor private func saveSubscription() async {
+  guard let coordinate=subscriptionLocation else {
+   error="Permite el acceso a la ubicación para guardar las alertas."
+   return
+  }
+  savingSubscription=true
+  defer { savingSubscription=false }
+  do {
+   try await community.saveLostPetSubscription(
+    enabled:receiveNearbyAlerts,radiusKm:alertRadius,
+    latitude:coordinate.latitude,longitude:coordinate.longitude
+   )
+   subscriptionSaved=true
+   error=nil
+   status="Preferencias de alertas guardadas."
+  } catch { error=error.localizedDescription }
+ }
+
+ @MainActor private func resolveLostLocation() async {
+  geocoding=true
+  defer { geocoding=false }
+  do {
+   let results=try await CLGeocoder().geocodeAddressString(area)
+   guard let coordinate=results.first?.location?.coordinate else {
+    error="No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto."
+    return
+   }
+   lostLocation=coordinate
+   error=nil
+  } catch { error=error.localizedDescription }
+ }
+
  @MainActor private func publish() async {
-  guard let uid=session.user?.uid else{status="Inicia sesión para publicar el aviso.";return}
-  busy=true;defer{busy=false}
+  guard let uid=session.user?.uid else {
+   error="Inicia sesión para publicar el aviso."
+   return
+  }
+  busy=true
+  defer { busy=false }
+  status=nil
+  error=nil
   do {
    var imageURL=""
-   if let photoData { imageURL=try await PawlyCloudinaryUploader().uploadImage(photoData,folder:"post-photos",ownerUID:uid) }
-   let message="MASCOTA PERDIDA · \(name)\nZona: \(area)\nÚltima vez vista: \(lastSeen.isEmpty ? "No indicada":lastSeen)\nContacto: \(contact)\n\n\(details)"
-   try await community.publish(text:message,petName:name,category:"LOST",imageURL:imageURL)
-   status="Aviso publicado en Comunidad.";dismiss()
-  } catch { status="No se pudo publicar: \(error.localizedDescription)" }
+   if let photoData {
+    imageURL=try await PawlyCloudinaryUploader().uploadImage(photoData,folder:"post-photos",ownerUID:uid)
+   }
+   let message="MASCOTA PERDIDA · \(name)\nZona: \(area)\nÚltima vez vista: \(lastSeen.isEmpty ? "No indicada":lastSeen)\nContacto: \(contact.isEmpty ? "No indicado":contact)\n\n\(details)"
+   let postID=try await community.publish(text:message,petName:name,category:"LOST",imageURL:imageURL)
+   guard let lostLocation else {
+    status="La publicación se ha creado, pero no se han enviado alertas por proximidad porque falta localizar la zona del aviso."
+    return
+   }
+   do {
+    let delivered=try await community.publishLostPetAlert(postID:postID,dogName:name,coordinate:lostLocation)
+    status=delivered > 0
+      ? "Aviso publicado. Se han entregado \(delivered) notificaciones push a dispositivos cercanos."
+      : "Aviso publicado y zona registrada. No había dispositivos cercanos habilitados para recibir alertas."
+   } catch {
+    status="La publicación y la zona aproximada se han guardado en Pawly, pero no se pudo completar el envío de avisos: \(error.localizedDescription)"
+   }
+  } catch { error="No se pudo publicar: \(error.localizedDescription)" }
  }
 }
 
