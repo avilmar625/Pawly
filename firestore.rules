@@ -279,8 +279,10 @@ service cloud.firestore {
         allow list: if false;
         allow create, update: if owner(uid)
           && documentId == 'home'
-          && request.resource.data.keys().hasOnly(['dogName', 'dogProfiles', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['dogName', 'dogProfiles', 'selectedPetId', 'updatedAt'])
           && request.resource.data.keys().hasAll(['dogName', 'dogProfiles', 'updatedAt'])
+          && (!('selectedPetId' in request.resource.data)
+            || (request.resource.data.selectedPetId is string && request.resource.data.selectedPetId.size() <= 128))
           && request.resource.data.dogName is string
           && request.resource.data.dogName.size() > 0
           && request.resource.data.dogName.size() <= 40
