@@ -64,6 +64,7 @@ struct HomeView: View {
                             Button(role:.destructive) { petToDelete=pet;showDelete=true } label:{Label("Eliminar perfil",systemImage:"trash")}
                         }
                     }
+                    PawlyHomeCareSection(pet:pet)
                     } else {
                         PawlyEmptyState(icon:"pawprint",title:"Tu historia empieza aquí",detail:"Añade el perfil de tu mascota para organizar sus cuidados y recuerdos.")
                     }
