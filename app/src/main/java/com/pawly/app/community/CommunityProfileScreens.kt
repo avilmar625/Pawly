@@ -118,12 +118,6 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
-            PawlyPageHeader(
-                title = "Mi perfil",
-                subtitle = "Tu presentación, tus mascotas y cómo te encuentra la comunidad."
-            )
-        }
-        item {
             Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(24.dp), tonalElevation = 1.dp,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
