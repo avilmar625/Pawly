@@ -199,7 +199,6 @@ final class PawlyPetStore: ObservableObject {
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             photoURL: photoURL, species: species)
         if let owner = original.ownerUID {
-            guard owner == uid else { throw PawlyStoreError.noSharedAccess }
             let root = db.collection("sharedPets").document("\(owner)_\(original.id)")
             let member = try await root.collection("members").document(uid).getDocument()
             guard member.get("role") as? String == "owner" || member.get("role") as? String == "editor" else {
@@ -211,7 +210,7 @@ final class PawlyPetStore: ObservableObject {
             batch.setData([
                 "petId": updated.id,
                 "name": clean,
-                "photoUrl": photoURL.isEmpty ? NSNull() : photoURL as Any,
+                "photoUrl": photoURL.isEmpty ? (NSNull() as Any) : (photoURL as Any),
                 "updatedAt": FieldValue.serverTimestamp()
             ], forDocument: profile, merge: true)
             try await batch.commit()
