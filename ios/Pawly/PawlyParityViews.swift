@@ -93,12 +93,20 @@ struct PawlyProfileEditorView:View {
  @State private var bio=""
  @State private var isPublic=true
  @State private var photoURL=""
+ @State private var accountType="personal"
+ @State private var professionalCategory="Veterinario"
+ @State private var professionalLocation=""
+ @State private var professionalDescription=""
+ @State private var professionalContact=""
+ @State private var professionalContactPublic=false
  @State private var imageItem:PhotosPickerItem?
  @State private var followers=0
  @State private var following=0
  @State private var busy=false
  @State private var message:String?
  @State private var hasError=false
+ private let professionalCategories=["Veterinario","Urgencias veterinarias","Adiestramiento","Peluquería canina","Guardería para mascotas","Fisioterapia","Nutrición animal","Tienda de mascotas","Protección animal","Otro"]
+
  var body:some View {
   Form {
    Section("Tu identidad") {
@@ -112,32 +120,114 @@ struct PawlyProfileEditorView:View {
     TextField("Biografía",text:$bio,axis:.vertical).lineLimit(3...6)
     Toggle("Perfil público",isOn:$isPublic)
    }
-   Section("Comunidad"){LabeledContent("Seguidores",value:"\(followers)");LabeledContent("Siguiendo",value:"\(following)");Text("El nombre de usuario es tu identificador y no se cambia desde esta pantalla.").font(.caption).foregroundStyle(.secondary)}
-   if let message{Section{Text(message).foregroundStyle(hasError ? .red:PawlyColors.primary)}}
-   Section{Button{Task{await save()}}label:{HStack{Spacer();if busy{ProgressView()};Text(busy ? "Guardando…":"Guardar perfil");Spacer()}}.disabled(busy || displayName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)}
-  }.navigationTitle("Mi perfil").task{await load()}.onChange(of:imageItem){item in guard let item else{return};Task{do{
-   guard let data=try await item.loadTransferable(type:Data.self),let uid=session.user?.uid else{return}
-   photoURL=try await PawlyCloudinaryUploader().uploadImage(data,folder:"profile-photos",ownerUID:uid)
-   message="Fotografía subida. Guarda el perfil para aplicar el cambio.";hasError=false
-  }catch{message=error.localizedDescription;hasError=true}}}
+   Section("Tipo de cuenta") {
+    Picker("Cuenta",selection:$accountType) {
+     Text("Personal").tag("personal")
+     Text("Profesional").tag("professional")
+    }.pickerStyle(.segmented)
+    if accountType == "professional" {
+     Picker("Actividad profesional",selection:$professionalCategory) {
+      ForEach(professionalCategories,id:\.self) { Text($0) }
+     }
+     TextField("Ciudad o zona",text:$professionalLocation)
+     TextField("Descripción de tus servicios",text:$professionalDescription,axis:.vertical).lineLimit(3...6)
+     TextField("Teléfono, correo o web de contacto",text:$professionalContact)
+      .textInputAutocapitalization(.never).autocorrectionDisabled()
+     Toggle("Mostrar contacto en mi perfil público",isOn:$professionalContactPublic)
+     Text("El contacto se guarda en privado. Solo se muestra cuando el perfil es público y activas esta opción.")
+      .font(.caption).foregroundStyle(.secondary)
+    }
+   }
+   Section("Comunidad") {
+    LabeledContent("Seguidores",value:"\(followers)")
+    LabeledContent("Siguiendo",value:"\(following)")
+    Text("El nombre de usuario es tu identificador y no se cambia desde esta pantalla.")
+     .font(.caption).foregroundStyle(.secondary)
+   }
+   if let message { Section { Text(message).foregroundStyle(hasError ? .red:PawlyColors.primary) } }
+   Section {
+    Button { Task { await save() } } label: {
+     HStack { Spacer(); if busy { ProgressView() }; Text(busy ? "Guardando…":"Guardar perfil"); Spacer() }
+    }
+    .disabled(busy || displayName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ||
+      (accountType == "professional" && professionalCategory.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty))
+   }
+  }
+  .navigationTitle("Mi perfil")
+  .task { await load() }
+  .onChange(of:imageItem) { item in
+   guard let item else { return }
+   Task {
+    do {
+     guard let data=try await item.loadTransferable(type:Data.self),let uid=session.user?.uid else{return}
+     photoURL=try await PawlyCloudinaryUploader().uploadImage(data,folder:"profile-photos",ownerUID:uid)
+     message="Fotografía subida. Guarda el perfil para aplicar el cambio.";hasError=false
+    } catch { message=error.localizedDescription;hasError=true }
+   }
+  }
  }
- @MainActor private func load()async{
+
+ @MainActor private func load() async {
   guard let uid=session.user?.uid else{return}
-  do{let doc=try await Firestore.firestore().collection("users").document(uid).getDocument();let d=doc.data() ?? [:]
-   displayName=d["displayName"] as? String ?? session.user?.displayName ?? "";bio=d["bio"] as? String ?? ""
-   isPublic=d["isPublic"] as? Bool ?? true;photoURL=d["photoUrl"] as? String ?? ""
-   followers=d["followersCount"] as? Int ?? 0;following=d["followingCount"] as? Int ?? 0
-  }catch{message=error.localizedDescription;hasError=true}
+  do {
+   let userRef=Firestore.firestore().collection("users").document(uid)
+   let doc=try await userRef.getDocument()
+   let d=doc.data() ?? [:]
+   displayName=d["displayName"] as? String ?? session.user?.displayName ?? ""
+   bio=d["bio"] as? String ?? ""
+   isPublic=d["isPublic"] as? Bool ?? true
+   photoURL=d["photoUrl"] as? String ?? ""
+   followers=d["followersCount"] as? Int ?? 0
+   following=d["followingCount"] as? Int ?? 0
+   accountType=d["accountType"] as? String ?? "personal"
+   professionalCategory=d["professionalCategory"] as? String ?? "Veterinario"
+   professionalLocation=d["professionalLocation"] as? String ?? ""
+   professionalDescription=d["professionalDescription"] as? String ?? ""
+   professionalContactPublic=d["professionalContactPublic"] as? Bool ?? false
+   let privateDoc=try await userRef.collection("privateData").document("professionalContact").getDocument()
+   professionalContact=privateDoc.get("value") as? String ?? ""
+  } catch { message=error.localizedDescription;hasError=true }
  }
- @MainActor private func save()async{
-  guard let user=session.user else{return};busy=true;defer{busy=false}
-  do{let name=displayName.trimmingCharacters(in:.whitespacesAndNewlines)
-   try await Firestore.firestore().collection("users").document(user.uid).updateData(["displayName":name,"bio":String(bio.prefix(500)),"isPublic":isPublic,"photoUrl":photoURL])
-   let change=user.createProfileChangeRequest();change.displayName=name;try await change.commitChanges()
-   message="Perfil actualizado.";hasError=false
-  }catch{message=error.localizedDescription;hasError=true}
+
+ @MainActor private func save() async {
+  guard let user=session.user else{return}
+  busy=true;defer{busy=false}
+  do {
+   let name=displayName.trimmingCharacters(in:.whitespacesAndNewlines)
+   let professional=accountType == "professional"
+   let category=professional ? String(professionalCategory.trimmingCharacters(in:.whitespacesAndNewlines).prefix(60)) : ""
+   let location=professional ? String(professionalLocation.trimmingCharacters(in:.whitespacesAndNewlines).prefix(100)) : ""
+   let description=professional ? String(professionalDescription.trimmingCharacters(in:.whitespacesAndNewlines).prefix(500)) : ""
+   let privateContact=professional ? String(professionalContact.trimmingCharacters(in:.whitespacesAndNewlines).prefix(120)) : ""
+   let showContact=professional && professionalContactPublic && isPublic && !privateContact.isEmpty
+   let userRef=Firestore.firestore().collection("users").document(user.uid)
+   try await userRef.updateData([
+    "displayName":name,
+    "bio":String(bio.prefix(500)),
+    "isPublic":isPublic,
+    "photoUrl":photoURL,
+    "accountType":accountType,
+    "professionalCategory":category,
+    "professionalLocation":location,
+    "professionalDescription":description,
+    "professionalContactPublic":showContact,
+    "professionalPublicContact":""
+   ])
+   let contactRef=userRef.collection("privateData").document("professionalContact")
+   if privateContact.isEmpty {
+    try? await contactRef.delete()
+   } else {
+    try await contactRef.setData(["value":privateContact])
+   }
+   let change=user.createProfileChangeRequest()
+   change.displayName=name
+   try await change.commitChanges()
+   message=professional ? "Perfil profesional actualizado." : "Perfil actualizado."
+   hasError=false
+  } catch { message=error.localizedDescription;hasError=true }
  }
 }
+
 struct PawlyAvatarPlaceholder:View{
  var body:some View{Image(systemName:"person.fill").font(.system(size:30)).foregroundStyle(PawlyColors.primary).frame(maxWidth:.infinity,maxHeight:.infinity).background(PawlyColors.mint,in:Circle())}
 }
@@ -496,6 +586,20 @@ struct PawlyProfessionalDirectoryView: View {
    }
    .filter { wanted.isEmpty || $0.category.localizedCaseInsensitiveContains(wanted) || wanted.contains($0.category.lowercased()) }
    .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+   for index in pawlyProfessionals.indices where pawlyProfessionals[index].contact.isEmpty {
+    let profile= snapshot.documents.first(where: { $0.documentID == pawlyProfessionals[index].id })
+    guard profile?.get("professionalContactPublic") as? Bool == true else { continue }
+    let privateDoc=try await Firestore.firestore().collection("users").document(pawlyProfessionals[index].id)
+     .collection("privateData").document("professionalContact").getDocument()
+    let contact=privateDoc.get("value") as? String ?? ""
+    if !contact.isEmpty {
+     pawlyProfessionals[index]=PawlyProfessionalProfile(
+      id:pawlyProfessionals[index].id,displayName:pawlyProfessionals[index].displayName,
+      category:pawlyProfessionals[index].category,location:pawlyProfessionals[index].location,
+      description:pawlyProfessionals[index].description,contact:contact
+     )
+    }
+   }
   } catch {
    message = "No se pudieron cargar los perfiles de Pawly: \(error.localizedDescription)"
   }
