@@ -375,6 +375,7 @@ private fun PetPassportSection(
                 }
                 .sortedBy { it.first }
             if (weightPoints.isNotEmpty()) {
+                val recentWeightPoints = weightPoints.takeLast(6)
                 val chartColor = MaterialTheme.colorScheme.primary
                 val surfaceColor = MaterialTheme.colorScheme.surface
                 Card(
@@ -389,13 +390,12 @@ private fun PetPassportSection(
                                 Text(tr("Últimas ${recentWeightPoints.size} mediciones · ${weightPoints.size} en total"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
-                                String.format(LocalLocale.current.platformLocale, "%.1f kg", weightPoints.last().second),
+                                String.format(LocalLocale.current.platformLocale, "%.1f kg", recentWeightPoints.last().second),
                                 color = chartColor,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.ExtraBold
                             )
                         }
-                        val recentWeightPoints = weightPoints.takeLast(6)
                         val values = recentWeightPoints.map { it.second }
                         val minWeight = values.minOrNull() ?: 0f
                         val maxWeight = values.maxOrNull() ?: minWeight
