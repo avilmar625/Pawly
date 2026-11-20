@@ -29,6 +29,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Pawly/Info.plist
         CODE_SIGN_ENTITLEMENTS: Pawly/Pawly.entitlements
+        APS_ENVIRONMENT: development
         GOOGLE_CLIENT_ID: ""
         GOOGLE_REVERSED_CLIENT_ID: ""
         PAWLY_BACKEND_URL: ""
@@ -46,6 +47,9 @@ targets:
         INFOPLIST_KEY_CLOUDINARY_IMAGE_UPLOAD_PRESET: "$(CLOUDINARY_IMAGE_UPLOAD_PRESET)"
         INFOPLIST_KEY_CLOUDINARY_VIDEO_UPLOAD_PRESET: "$(CLOUDINARY_VIDEO_UPLOAD_PRESET)"
         CODE_SIGN_STYLE: Automatic
+      configs:
+        Release:
+          APS_ENVIRONMENT: production
     dependencies:
       - package: Firebase
         product: FirebaseCore
