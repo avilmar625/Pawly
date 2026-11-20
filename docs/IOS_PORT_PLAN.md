@@ -18,7 +18,9 @@ La aplicación iOS es nativa en SwiftUI y comparte Firebase/Firestore y Cloudina
 - Explorar con MapKit y favoritos guardados en Firestore mediante transacciones, conservando caché local.
 - Perfil profesional con categorías, ubicación, descripción y contacto privado que solo se muestra con consentimiento explícito.
 - Directorio de profesionales de Pawly combinado con resultados de Apple Maps.
-- Comunidad con publicaciones de imagen/vídeo, comentarios, reacciones, búsqueda de usuarios, mensajería e indicadores de lectura.
+- Comunidad con publicaciones de imagen/vídeo, comentarios, reacciones, búsqueda por nombre/usuario, mensajería e indicadores de lectura.
+- Lugares propuestos por la comunidad: listado de aprobados, envío limitado a una propuesta diaria, edición/retirada de propuestas propias y revisión previa.
+- Centro de moderación protegido por claim `admin`: revisión de propuestas y denuncias, restricción de perfiles y retirada de eventos, lugares y publicaciones con limpieza multimedia cuando los recursos están indexados y el Worker está configurado.
 - Denuncias, bloqueo en ambos sentidos, lista de usuarios bloqueados y desbloqueo.
 - Eventos y quedadas: creación con fecha/hora, categoría y lugar, marcar/desmarcar interés, abrir ubicación en Mapas, denunciar y consulta paginada de asistentes para quien organiza.
 - Mascotas perdidas: publicación en Comunidad, localización de la zona del aviso, suscripción voluntaria a avisos por proximidad con radio de 5–100 km y envío de notificaciones a través del Worker. La ubicación se redondea a una celda aproximada de 1 km.
@@ -34,8 +36,11 @@ La aplicación iOS es nativa en SwiftUI y comparte Firebase/Firestore y Cloudina
 - **Eliminación integral de cuenta:** la app registra una solicitud, pero el Worker aún no ejecuta la cascada de borrado de Firebase Authentication, subcolecciones Firestore, contenido compartido y recursos Cloudinary. No afirmar que la solicitud haya borrado la cuenta.
 - **Navegación al pulsar un push:** iOS muestra las notificaciones, pero todavía no enruta automáticamente al post, conversación o evento relacionado.
 - **Diario:** el editor iOS permite crear y eliminar recuerdos con fotografías; aún no iguala todas las herramientas multimedia y de edición de Android.
+- **Búsqueda por teléfono:** no está portada. Android usa Firebase Phone Number Verification (PNV), cuya guía oficial actual documenta el SDK de Android y describe el servicio como facturado. No se ha sustituido por SMS en iOS para no introducir cargos sin decisión explícita. La búsqueda por nombre y usuario sí está disponible.
+- **Eliminación de mascotas compartidas:** iOS bloquea la eliminación de un perfil que ya está compartido para evitar dejar miembros con un perfil huérfano. Hace falta una pantalla completa para revocar miembros y cerrar el espacio compartido antes de habilitar ese borrado.
 - **Bloqueo y contadores:** filtrado, denuncias, listado y desbloqueo están disponibles. La corrección de algunos contadores de seguidores requiere una operación confiable de backend o ajustes coordinados de reglas.
 - **Restauración de copias:** los registros de auditoría de cuidados se incluyen en el archivo, pero no se recrean para no suplantar su autoría. Se restaura contenido recuperable de la cuenta y mascotas que administra el propietario; no se sobrescriben mascotas compartidas de terceros.
+- **Moderación de publicaciones y medios antiguos:** la retirada multimedia utiliza el índice `cloudinaryAssets`. Los recursos anteriores a la creación del índice pueden requerir limpieza manual; si no están indexados o el Worker no está configurado, la app conserva la publicación y muestra el error en vez de dar el borrado por hecho.
 - **Localización:** está disponible el selector de idioma, pero la traducción integral de todas las pantallas aún está pendiente.
 - **Pruebas funcionales en dispositivo:** el simulador no puede validar APNs real, OAuth de Google, permisos del sistema, subida de Cloudinary y todos los flujos Firebase. Debe hacerse una prueba en iPhone tras configurar las cuentas.
 - **Pruebas automatizadas:** falta una suite Swift de integración que cubra autenticación, reglas, compartición, comunidad, notificaciones y restauración.
