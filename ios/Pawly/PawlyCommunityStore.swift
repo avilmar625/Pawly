@@ -27,7 +27,12 @@ struct PawlyFeedComment: Identifiable {
     var id:String; var authorId:String; var authorName:String; var text:String; var createdAt:Date?
 }
 struct PawlyChat: Identifiable {
-    var id:String; var otherUserID:String; var otherUserName:String; var lastMessage:String; var updatedAt:Date?
+    var id:String
+    var otherUserID:String
+    var otherUserName:String
+    var lastMessage:String
+    var updatedAt:Date?
+    var unreadCount:Int = 0
 }
 struct PawlyChatMessage: Identifiable {
     var id:String; var senderID:String; var text:String; var imageURL:String; var videoURL:String; var readBy:[String]; var createdAt:Date?
@@ -37,6 +42,9 @@ struct PawlyChatMessage: Identifiable {
 final class PawlyCommunityStore: ObservableObject {
     @Published var posts:[PawlyFeedPost]=[]
     @Published var chats:[PawlyChat]=[]
+    @Published var unreadMessageCounts:[String:Int]=[:]
+    @Published var unreadMessageCount=0
+    @Published var unreadNotificationCount=0
     @Published var statusMessage:String?
     private let db=Firestore.firestore()
     private let auth=Auth.auth()
@@ -46,6 +54,7 @@ final class PawlyCommunityStore: ObservableObject {
     private var chatsListener:ListenerRegistration?
     private var blockedChatsListener:ListenerRegistration?
     private var blockedByChatsListener:ListenerRegistration?
+    private var notificationListener:ListenerRegistration?
     private var messageListener:ListenerRegistration?
     private var cachedFeed:[PawlyFeedPost]=[]
     private var blockedFeedIDs:Set<String>=[]
@@ -479,7 +488,68 @@ final class PawlyCommunityStore: ObservableObject {
     }
     private func refreshVisibleChats() {
         let hiddenIDs = blockedChatIDs.union(blockedByChatIDs)
-        chats = cachedChats.filter { !hiddenIDs.contains($0.otherUserID) }
+        let visibleChats = cachedChats.filter { !hiddenIDs.contains($0.otherUserID) }
+        let visibleIDs = Set(visibleChats.map(\.id))
+        unreadMessageCounts = unreadMessageCounts.filter { visibleIDs.contains($0.key) }
+        unreadMessageCount = unreadMessageCounts.values.reduce(0, +)
+        chats = visibleChats.map { chat in
+            var updated = chat
+            updated.unreadCount = unreadMessageCounts[chat.id] ?? 0
+            return updated
+        }
+    }
+
+    func refreshUnreadMessageCounts() async {
+        guard let uid else {
+            unreadMessageCounts = [:]
+            unreadMessageCount = 0
+            refreshVisibleChats()
+            return
+        }
+        let hiddenIDs = blockedChatIDs.union(blockedByChatIDs)
+        var updatedCounts:[String:Int] = [:]
+        for chat in cachedChats where !hiddenIDs.contains(chat.otherUserID) {
+            do {
+                let docs = try await db.collection("conversations").document(chat.id)
+                    .collection("messages")
+                    .whereField("senderId", isEqualTo: chat.otherUserID)
+                    .order(by: "createdAt", descending: true)
+                    .limit(to: 100)
+                    .getDocuments()
+                updatedCounts[chat.id] = docs.documents.filter { document in
+                    let readBy = document.get("readBy") as? [String] ?? []
+                    return !readBy.contains(uid)
+                }.count
+            } catch {
+                updatedCounts[chat.id] = unreadMessageCounts[chat.id] ?? 0
+                statusMessage = error.localizedDescription
+            }
+        }
+        unreadMessageCounts = updatedCounts
+        unreadMessageCount = updatedCounts.values.reduce(0, +)
+        refreshVisibleChats()
+    }
+
+    func listenNotifications() {
+        guard let uid else { return }
+        notificationListener?.remove()
+        notificationListener = db.collection("users").document(uid)
+            .collection("notifications")
+            .whereField("read", isEqualTo: false)
+            .limit(to: 60)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                if let error {
+                    self.statusMessage = error.localizedDescription
+                    return
+                }
+                self.unreadNotificationCount = snapshot?.documents.count ?? 0
+            }
+    }
+
+    func stopNotifications() {
+        notificationListener?.remove()
+        notificationListener = nil
     }
 
     func listenChats() {
@@ -505,6 +575,7 @@ final class PawlyCommunityStore: ObservableObject {
                 ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast)
             }
             self.refreshVisibleChats()
+            Task { await self.refreshUnreadMessageCounts() }
         }
         blockedChatsListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
             guard let self else { return }
@@ -559,6 +630,7 @@ final class PawlyCommunityStore: ObservableObject {
                 for d in unread[chunk..<min(chunk+400,unread.count)] { batch.updateData(["readBy":FieldValue.arrayUnion([uid])],forDocument:d.reference) }
                 try await batch.commit()
             }
+            await refreshUnreadMessageCounts()
         } catch { statusMessage=error.localizedDescription }
     }
     func stopChats() {
@@ -568,6 +640,7 @@ final class PawlyCommunityStore: ObservableObject {
         chatsListener = nil
         blockedChatsListener = nil
         blockedByChatsListener = nil
+        stopNotifications()
     }
     func stopMessages(){messageListener?.remove();messageListener=nil}
 }

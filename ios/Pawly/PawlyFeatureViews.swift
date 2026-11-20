@@ -1017,8 +1017,34 @@ struct CommunityView:View {
                     HStack(spacing:8){
                         VStack(alignment:.leading,spacing:3){Text("La comunidad").font(.title2.bold());Text("Historias y aventuras Pawly").font(.caption).foregroundStyle(PawlyColors.muted)}
                         Spacer(minLength:4)
-                        Button{notifications=true} label:{Image(systemName:"bell").font(.headline).foregroundStyle(PawlyColors.primary).padding(11).background(PawlyColors.mint,in:Circle())}.accessibilityLabel("Avisos de Comunidad")
-                        Button{inbox=true} label:{Image(systemName:"bubble.left.and.bubble.right").font(.headline).foregroundStyle(PawlyColors.primary).padding(11).background(PawlyColors.mint,in:Circle())}.accessibilityLabel("Mensajes")
+                        Button{notifications=true} label:{
+                            ZStack(alignment:.topTrailing) {
+                                Image(systemName:"bell").font(.headline).foregroundStyle(PawlyColors.primary)
+                                    .padding(11).background(PawlyColors.mint,in:Circle())
+                                if store.unreadNotificationCount > 0 {
+                                    Text(store.unreadNotificationCount > 99 ? "99+" : "\(store.unreadNotificationCount)")
+                                        .font(.system(size:9,weight:.bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal,4).padding(.vertical,2)
+                                        .background(Color.red,in:Capsule())
+                                        .offset(x:4,y:-4)
+                                }
+                            }
+                        }.accessibilityLabel("Avisos de Comunidad, \(store.unreadNotificationCount) sin leer")
+                        Button{inbox=true} label:{
+                            ZStack(alignment:.topTrailing) {
+                                Image(systemName:"bubble.left.and.bubble.right").font(.headline).foregroundStyle(PawlyColors.primary)
+                                    .padding(11).background(PawlyColors.mint,in:Circle())
+                                if store.unreadMessageCount > 0 {
+                                    Text(store.unreadMessageCount > 99 ? "99+" : "\(store.unreadMessageCount)")
+                                        .font(.system(size:9,weight:.bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal,4).padding(.vertical,2)
+                                        .background(Color.red,in:Capsule())
+                                        .offset(x:4,y:-4)
+                                }
+                            }
+                        }.accessibilityLabel("Mensajes, \(store.unreadMessageCount) sin leer")
                         Button{people=true} label:{Image(systemName:"magnifyingglass").font(.headline).foregroundStyle(PawlyColors.primary).padding(11).background(PawlyColors.mint,in:Circle())}.accessibilityLabel("Buscar personas")
                         Button{composerCategory="LOST";composer=true} label:{Image(systemName:"pawprint.slash.fill").font(.headline).foregroundStyle(.red).padding(11).background(.red.opacity(0.1),in:Circle())}.accessibilityLabel("Avisar de mascota perdida")
                         Button{composerCategory="STORY";composer=true} label:{Image(systemName:"plus").font(.headline).foregroundStyle(.white).padding(11).background(PawlyColors.primary,in:Circle())}.accessibilityLabel("Crear publicación")
@@ -1032,11 +1058,16 @@ struct CommunityView:View {
             }.background(PawlyColors.canvas).navigationBarHidden(true)
                 .onAppear {
                     store.listenFeed()
+                    store.listenChats()
+                    store.listenNotifications()
                     if let destination = pushRouter.destination {
                         Task { await handlePushDestination(destination) }
                     }
                 }
-                .onDisappear{store.stopFeed()}
+                .onDisappear{
+                    store.stopFeed()
+                    store.stopChats()
+                }
                 .onChange(of:pushRouter.destination?.id) { _ in
                     guard let destination=pushRouter.destination else{return}
                     Task { await handlePushDestination(destination) }
@@ -1044,7 +1075,9 @@ struct CommunityView:View {
                 .sheet(isPresented:$composer){PostComposerSheet(petName:pets.selectedPet?.name ?? "", initialCategory:composerCategory){text,category,imageURL,videoURL in try await store.publish(text:text,petName:pets.selectedPet?.name ?? "",category:category,imageURL:imageURL,videoURL:videoURL)}}
                 .sheet(item:$comments){post in CommentsView(store:store,post:post,highlightedCommentID:highlightedCommentID)}
                 .sheet(isPresented:$people){PeopleSearchSheet(store:store)}
-                .sheet(isPresented:$inbox){MessagesView()}
+                .sheet(isPresented:$inbox,onDismiss:{
+                    Task { await store.refreshUnreadMessageCounts() }
+                }){MessagesView()}
                 .sheet(isPresented:$notifications){PawlyNotificationsView()}
         }
     }
@@ -1349,6 +1382,7 @@ struct MessagesView:View {
             List {
                 if store.chats.isEmpty{Text("Tu bandeja está vacía. Inicia una conversación con otra persona de Pawly.").foregroundStyle(.secondary)}
                 ForEach(store.chats) { chat in
+                    let unread=store.unreadMessageCounts[chat.id] ?? chat.unreadCount
                     Button {
                         selected = chat
                     } label: {
@@ -1357,17 +1391,39 @@ struct MessagesView:View {
                                 .font(.largeTitle)
                                 .foregroundStyle(PawlyColors.primary)
                             VStack(alignment:.leading,spacing:4) {
-                                Text(chat.otherUserName)
-                                    .font(.headline)
-                                    .foregroundStyle(PawlyColors.ink)
-                                Text(chat.lastMessage.isEmpty ? "Iniciar conversación" : chat.lastMessage)
-                                    .font(.caption)
-                                    .foregroundStyle(PawlyColors.muted)
-                                    .lineLimit(1)
+                                HStack {
+                                    Text(chat.otherUserName)
+                                        .font(.headline.weight(unread > 0 ? .bold : .regular))
+                                        .foregroundStyle(PawlyColors.ink)
+                                    Spacer()
+                                    if let updatedAt=chat.updatedAt {
+                                        Text(updatedAt.formatted(date:.omitted,time:.shortened))
+                                            .font(.caption2)
+                                            .foregroundStyle(unread > 0 ? PawlyColors.primary : PawlyColors.muted)
+                                    }
+                                }
+                                HStack(spacing:8) {
+                                    Text(chat.lastMessage.isEmpty ? "Iniciar conversación" : chat.lastMessage)
+                                        .font(.caption)
+                                        .fontWeight(unread > 0 ? .bold : .regular)
+                                        .foregroundStyle(PawlyColors.muted)
+                                        .lineLimit(1)
+                                    Spacer(minLength:4)
+                                    if unread > 0 {
+                                        Text(unread > 99 ? "99+" : "\(unread)")
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal,7).padding(.vertical,3)
+                                            .background(Color.red,in:Capsule())
+                                    }
+                                }
                             }
                         }
                         .padding(.vertical,4)
+                        .padding(.horizontal,unread > 0 ? 5 : 0)
+                        .background(unread > 0 ? PawlyColors.mint.opacity(0.45) : Color.clear,in:RoundedRectangle(cornerRadius:12))
                     }
+                    .buttonStyle(.plain)
                 }
             }.navigationTitle("Mensajes").toolbar{ToolbarItem(placement:.topBarTrailing){Button{newChat=true} label:{Image(systemName:"square.and.pencil")}}}
                 .onAppear{store.listenChats()}.onDisappear{store.stopChats()}
@@ -1411,6 +1467,7 @@ struct ChatView:View {
                     }
                     .onChange(of:messages.count) { _ in
                         if let last=messages.last { proxy.scrollTo(last.id,anchor:.bottom) }
+                        Task { await store.markRead(conversationID:chat.id) }
                     }
                 }
                 if let error { Text(error).font(.caption).foregroundStyle(.red) }
