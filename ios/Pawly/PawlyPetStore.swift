@@ -17,7 +17,16 @@ struct PawlyPassportEntry: Identifiable {
     var id: String; var type: String; var title: String; var detail: String; var date: String
 }
 struct PawlyCareTask: Identifiable {
-    var id: String; var title: String; var responsible: String; var frequency: String; var completed: Bool
+    var id: String
+    var title: String
+    var responsible: String
+    var frequency: String
+    var completed: Bool
+    var dose: String = ""
+    var time: String = ""
+    var completedOn: String = ""
+    var action: String = "Otro"
+    var daysOfWeek: [Int]? = nil
 }
 struct PawlyDiaryEntry: Identifiable {
     var id: String; var text: String; var title: String; var category: String; var photos: [String]; var date: Date?; var position: Int; var updatedAt: Date?
@@ -149,14 +158,46 @@ final class PawlyPetStore: ObservableObject {
         let snapshot = try await tasksRoot(pet).getDocuments()
         return snapshot.documents.compactMap { d in
             guard let title = d.get("title") as? String else { return nil }
-            return PawlyCareTask(id: d.documentID, title: title, responsible: d.get("responsible") as? String ?? "",
-                                 frequency: d.get("frequency") as? String ?? "", completed: d.get("completed") as? Bool ?? false)
+            return PawlyCareTask(
+                id: d.documentID,
+                title: title,
+                responsible: d.get("responsible") as? String ?? "",
+                frequency: d.get("frequency") as? String ?? "",
+                completed: d.get("completed") as? Bool ?? false,
+                dose: d.get("dose") as? String ?? "",
+                time: d.get("time") as? String ?? "",
+                completedOn: d.get("completedOn") as? String ?? "",
+                action: d.get("action") as? String ?? "Otro",
+                daysOfWeek: d.get("daysOfWeek") as? [Int]
+            )
         }
     }
     func saveTask(_ t: PawlyCareTask, pet: PawlyPet) async throws {
-        guard !t.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, t.title.count <= 120,
-              t.responsible.count <= 80, t.frequency.count <= 80 else { throw PawlyStoreError.invalidTask }
-        try await tasksRoot(pet).document(t.id).setData(["id":t.id,"title":t.title,"responsible":t.responsible,"frequency":t.frequency,"completed":t.completed])
+        let allowedActions = ["Paseo", "Comida", "Medicación", "Higiene", "Otro"]
+        guard !t.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              t.title.count <= 120,
+              t.responsible.count <= 80,
+              t.frequency.count <= 80,
+              t.dose.count <= 80,
+              t.time.count <= 5,
+              t.completedOn.count <= 10,
+              allowedActions.contains(t.action),
+              (t.daysOfWeek == nil || (t.frequency == "Semanal" && (t.daysOfWeek?.count ?? 0) <= 7 && Set(t.daysOfWeek ?? []).isSubset(of: Set(1...7))))
+        else { throw PawlyStoreError.invalidTask }
+
+        var data: [String: Any] = [
+            "id": t.id,
+            "title": t.title,
+            "responsible": t.responsible,
+            "frequency": t.frequency,
+            "completed": t.completed,
+            "dose": t.dose,
+            "time": t.time,
+            "completedOn": t.completedOn,
+            "action": t.action
+        ]
+        if let days = t.daysOfWeek { data["daysOfWeek"] = days }
+        try await tasksRoot(pet).document(t.id).setData(data)
     }
     func deleteTask(_ id: String, pet: PawlyPet) async throws { try await tasksRoot(pet).document(id).delete() }
 
