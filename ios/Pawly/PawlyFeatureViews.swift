@@ -981,11 +981,20 @@ struct DiaryView:View {
             guard let raw=String(data:data,encoding:.utf8) else{throw PawlyMediaError.invalidImage}
             try await pets.addDiaryEntry(raw,pet:pet)
             title="";note="";category="Paseos";selectedPhotos=[];await load()
-        } catch {error=error.localizedDescription}
+        } catch let saveError {
+            self.error = saveError.localizedDescription
+        }
     }
     private func remove(_ entry:PawlyDiaryEntry) {
         guard let pet=pets.selectedPet else{return}
-        Task { do{try await pets.deleteDiaryEntry(entry.id,pet:pet);await load()}catch{error=error.localizedDescription} }
+        Task { @MainActor in
+            do {
+                try await pets.deleteDiaryEntry(entry.id,pet:pet)
+                await load()
+            } catch let deleteError {
+                self.error = deleteError.localizedDescription
+            }
+        }
     }
 }
 
@@ -1339,7 +1348,27 @@ struct MessagesView:View {
         NavigationStack {
             List {
                 if store.chats.isEmpty{Text("Tu bandeja está vacía. Inicia una conversación con otra persona de Pawly.").foregroundStyle(.secondary)}
-                ForEach(store.chats){chat in Button{selected=chat}label{HStack(spacing:12){Image(systemName:"person.crop.circle.fill").font(.largeTitle).foregroundStyle(PawlyColors.primary);VStack(alignment:.leading,spacing:4){Text(chat.otherUserName).font(.headline).foregroundStyle(PawlyColors.ink);Text(chat.lastMessage.isEmpty ? "Iniciar conversación":chat.lastMessage).font(.caption).foregroundStyle(PawlyColors.muted).lineLimit(1)}}.padding(.vertical,4)}}
+                ForEach(store.chats) { chat in
+                    Button {
+                        selected = chat
+                    } label: {
+                        HStack(spacing:12) {
+                            Image(systemName:"person.crop.circle.fill")
+                                .font(.largeTitle)
+                                .foregroundStyle(PawlyColors.primary)
+                            VStack(alignment:.leading,spacing:4) {
+                                Text(chat.otherUserName)
+                                    .font(.headline)
+                                    .foregroundStyle(PawlyColors.ink)
+                                Text(chat.lastMessage.isEmpty ? "Iniciar conversación" : chat.lastMessage)
+                                    .font(.caption)
+                                    .foregroundStyle(PawlyColors.muted)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .padding(.vertical,4)
+                    }
+                }
             }.navigationTitle("Mensajes").toolbar{ToolbarItem(placement:.topBarTrailing){Button{newChat=true} label:{Image(systemName:"square.and.pencil")}}}
                 .onAppear{store.listenChats()}.onDisappear{store.stopChats()}
                 .sheet(isPresented:$newChat){NewChatSheet{username in try await store.startConversation(username:username);store.listenChats()}}

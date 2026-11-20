@@ -489,13 +489,21 @@ final class PawlyCommunityStore: ObservableObject {
         blockedByChatsListener?.remove()
         chatsListener=db.collection("conversations").whereField("participants",arrayContains:uid).addSnapshotListener { [weak self] snap,error in
             guard let self else{return};if let error{self.statusMessage=error.localizedDescription;return}
-            self.cachedChats=snap?.documents.compactMap { d in
-                let x=d.data(),p=x["participants"] as? [String] ?? []
-                guard let other=p.first(where:{$0 != uid}) else{return nil}
+            self.cachedChats = (snap?.documents.compactMap { d -> PawlyChat? in
+                let x=d.data()
+                let participants=x["participants"] as? [String] ?? []
+                guard let other=participants.first(where: { $0 != uid }) else { return nil }
                 let names=x["participantNames"] as? [String:String] ?? [:]
-                return PawlyChat(id:d.documentID,otherUserID:other,otherUserName:names[other] ?? "Usuario Pawly",
-                    lastMessage:x["lastMessage"] as? String ?? "",updatedAt:(x["updatedAt"] as? Timestamp)?.dateValue())
-            }.sorted{($0.updatedAt ?? .distantPast)>($1.updatedAt ?? .distantPast)}
+                return PawlyChat(
+                    id:d.documentID,
+                    otherUserID:other,
+                    otherUserName:names[other] ?? "Usuario Pawly",
+                    lastMessage:x["lastMessage"] as? String ?? "",
+                    updatedAt:(x["updatedAt"] as? Timestamp)?.dateValue()
+                )
+            } ?? []).sorted {
+                ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast)
+            }
             self.refreshVisibleChats()
         }
         blockedChatsListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in

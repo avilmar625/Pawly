@@ -378,25 +378,17 @@ private struct PawlyCommunityPlaceForm: View {
                     Text("La propuesta se enviará a revisión. Se requiere una ubicación concreta del lugar; no se utiliza ni se guarda tu posición personal.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-            }
-            .navigationTitle(existing == nil ? "Proponer un lugar" : "Editar propuesta")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancelar") { dismiss() }.disabled(saving)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Enviando…" : "Enviar") {
-                        Task {
-                            guard let coordinate else {
-                                error = "Localiza primero la dirección para fijar el lugar en el mapa."
-                                return
-                            }
-                            saving = true
-                            defer { saving = false }
-                            do {
-                                try await onSave(name, category, location, description, coordinate)
-                                dismiss()
-                            } catch { self.error = error.localizedDescription }
+                Section {
+                    Button("Cancelar") { dismiss() }
+                        .disabled(saving)
+                    Button {
+                        Task { await saveProposal() }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if saving { ProgressView() }
+                            Text(saving ? "Enviando…" : "Enviar propuesta")
+                            Spacer()
                         }
                     }
                     .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 ||
@@ -404,6 +396,22 @@ private struct PawlyCommunityPlaceForm: View {
                               description.trimmingCharacters(in: .whitespacesAndNewlines).count < 10)
                 }
             }
+            .navigationTitle(existing == nil ? "Proponer un lugar" : "Editar propuesta")
+        }
+    }
+
+    @MainActor private func saveProposal() async {
+        guard let coordinate else {
+            error = "Localiza primero la dirección para fijar el lugar en el mapa."
+            return
+        }
+        saving = true
+        defer { saving = false }
+        do {
+            try await onSave(name, category, location, description, coordinate)
+            dismiss()
+        } catch let saveError {
+            self.error = saveError.localizedDescription
         }
     }
 
@@ -418,6 +426,8 @@ private struct PawlyCommunityPlaceForm: View {
             }
             coordinate = result
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let geocodingError {
+            self.error = geocodingError.localizedDescription
+        }
     }
 }
