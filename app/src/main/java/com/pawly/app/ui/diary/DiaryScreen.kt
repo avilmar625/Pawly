@@ -75,7 +75,10 @@ internal fun DiaryScreen(
     val diarySaveErrorText = tr("No se pudo guardar el recuerdo.")
     var note by remember { mutableStateOf("") }
     var memoryTitle by remember { mutableStateOf("") }
-    var newMemoryExpanded by remember { mutableStateOf(true) }
+    val diaryPreferenceScope = "${sharedPetOwnerUid ?: "personal"}_${petId ?: dogName}_$dogName"
+        .replace(Regex("[^A-Za-z0-9_-]"), "_")
+    val (newMemoryExpanded, toggleNewMemoryExpanded) =
+        rememberPawlySectionExpanded("diary_new_memory_$diaryPreferenceScope")
     var memoryCategory by remember { mutableStateOf("Paseos") }
     var diaryFilter by remember { mutableStateOf("Todos") }
     var newestFirst by remember { mutableStateOf(true) }
@@ -189,19 +192,35 @@ internal fun DiaryScreen(
         item {
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.78f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
             ) {
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)) {
+                            Icon(
+                                Icons.Default.AutoStories,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(9.dp).size(21.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(tr("UN RECUERDO NUEVO"), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                            if (!newMemoryExpanded) {
-                                Text(tr("Guarda los momentos especiales de vuestra historia."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                            }
+                            Text(
+                                tr("UN RECUERDO NUEVO").lowercase().replaceFirstChar { it.titlecase() },
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                tr("Guarda los momentos especiales de vuestra historia."),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.82f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                         TextButton(
-                            onClick = { newMemoryExpanded = !newMemoryExpanded },
+                            onClick = toggleNewMemoryExpanded,
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Icon(

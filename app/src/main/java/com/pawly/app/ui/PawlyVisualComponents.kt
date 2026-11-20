@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
@@ -25,6 +30,32 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+
+
+/**
+ * Remembers whether a Pawly section was expanded, including across navigation
+ * and app restarts. Keys should include a pet/account scope when the state is
+ * specific to a pet.
+ */
+@Composable
+internal fun rememberPawlySectionExpanded(
+    key: String,
+    defaultExpanded: Boolean = true
+): Pair<Boolean, () -> Unit> {
+    val context = LocalContext.current
+    val preferences = remember(context) {
+        context.getSharedPreferences("pawly_ui_sections", android.content.Context.MODE_PRIVATE)
+    }
+    var expanded by remember(preferences, key) {
+        mutableStateOf(preferences.getBoolean(key, defaultExpanded))
+    }
+    val toggle: () -> Unit = {
+        val next = !expanded
+        expanded = next
+        preferences.edit().putBoolean(key, next).apply()
+    }
+    return expanded to toggle
+}
 
 /**
  * Shared page introduction for Pawly's primary destinations.

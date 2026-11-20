@@ -56,9 +56,9 @@ internal fun MoreHubScreen(
 ) {
     fun t(value: String) = PawlyI18n.text(value, language)
     var confirmSignOut by remember { mutableStateOf(false) }
-    var showTools by remember { mutableStateOf(false) }
-    var showLegal by remember { mutableStateOf(false) }
-    var showSupport by remember { mutableStateOf(false) }
+    val (showTools, toggleTools) = rememberPawlySectionExpanded("more_tools", defaultExpanded = false)
+    val (showLegal, toggleLegal) = rememberPawlySectionExpanded("more_legal", defaultExpanded = false)
+    val (showSupport, toggleSupport) = rememberPawlySectionExpanded("more_support", defaultExpanded = false)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         MoreSectionLabel(t("TU ESPACIO"))
         MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings)
@@ -69,7 +69,7 @@ internal fun MoreHubScreen(
             title = t("Soporte"),
             description = t("Contacto y avisos de mascotas perdidas"),
             expanded = showSupport,
-            onClick = { showSupport = !showSupport }
+            onClick = toggleSupport
         )
         if (showSupport) MoreNestedGroup {
             MoreNestedDestination(Icons.Filled.PersonAddAlt1, t("Invita a un amigo"), t("Comparte Pawly con otras personas amantes de los animales."), onInviteFriend)
@@ -81,7 +81,7 @@ internal fun MoreHubScreen(
             title = t("Más funciones"),
             description = t("Pawly Market, ficha PDF y copias de seguridad"),
             expanded = showTools,
-            onClick = { showTools = !showTools }
+            onClick = toggleTools
         )
         if (showTools) MoreNestedGroup {
             MoreNestedDestination(Icons.Filled.ShoppingBag, t("Pawly Market"), t("Productos y accesorios para tu mascota."), onPawlyMarket)
@@ -100,7 +100,7 @@ internal fun MoreHubScreen(
             title = t("Información legal"),
             description = t("Privacidad y condiciones de uso"),
             expanded = showLegal,
-            onClick = { showLegal = !showLegal }
+            onClick = toggleLegal
         )
         if (showLegal) MoreNestedGroup {
             MoreNestedDestination(Icons.Filled.Policy, t("Política de privacidad"), t("Consulta el borrador de privacidad de Pawly."), onPrivacy)

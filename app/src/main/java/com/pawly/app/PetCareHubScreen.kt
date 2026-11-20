@@ -1,6 +1,7 @@
 package com.pawly.app
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.AutoStories
@@ -152,6 +154,13 @@ private fun PetPassportSection(
 ) {
     val context = LocalContext.current
     val localStorageScope = if (sharedPetOwnerUid != null) "${storageScope.orEmpty()}_shared_$sharedPetOwnerUid" else storageScope
+    val sectionPreferenceScope = "health_${localStorageScope ?: "local"}_${petId}_$petName"
+        .replace(Regex("[^A-Za-z0-9_-]"), "_")
+    val (passportInfoExpanded, togglePassportInfo) = rememberPawlySectionExpanded("${sectionPreferenceScope}_passport")
+    val (upcomingExpanded, toggleUpcoming) = rememberPawlySectionExpanded("${sectionPreferenceScope}_upcoming")
+    val (emergencyExpanded, toggleEmergency) = rememberPawlySectionExpanded("${sectionPreferenceScope}_emergency")
+    val (weightExpanded, toggleWeight) = rememberPawlySectionExpanded("${sectionPreferenceScope}_weight")
+    val (historyExpanded, toggleHistory) = rememberPawlySectionExpanded("${sectionPreferenceScope}_history")
     var entries by remember(petName, localStorageScope, petId) { mutableStateOf(PetCareLocalStore.loadEntries(context, petName, localStorageScope)) }
     val cloudOwnerUid = sharedPetOwnerUid ?: storageScope
     // La mascota propia usa la ruta privada users/{uid}/petCare/{petId}.
@@ -275,6 +284,14 @@ private fun PetPassportSection(
     var reminderEnabled by remember { mutableStateOf(false) }
     var reminderTime by remember { mutableStateOf("09:00") }
     val types = listOf("Vacuna", "Desparasitación", "Medicación", "Visita veterinaria", "Alergia", "Intervención", "Peso", "Microchip", "Seguro", "Veterinario habitual", "Contacto de emergencia", "Otro")
+    var historyCategory by remember(petId, localStorageScope) { mutableStateOf("Todos") }
+    val historyCategories = remember(entries) {
+        listOf("Todos") + entries.map { it.type }.distinct().sorted()
+    }
+    val filteredHistoryEntries = remember(entries, historyCategory) {
+        entries.filter { historyCategory == "Todos" || it.type == historyCategory }
+            .sortedByDescending { it.date }
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -282,49 +299,43 @@ private fun PetPassportSection(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Pets, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text(tr("Pasaporte sanitario"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    }
-                    Text(tr("Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria."), style = MaterialTheme.typography.bodyMedium)
-                    Text(syncMessage, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-                    if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
-                }
+            PassportCollapsibleSectionCard(
+                title = "Pasaporte sanitario",
+                subtitle = "Historial de vacunas, tratamientos y visitas. Añade siempre datos confirmados por tu clínica veterinaria.",
+                expanded = passportInfoExpanded,
+                onToggle = togglePassportInfo,
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Text(syncMessage, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                if (cloudLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
             }
         }
         item {
             val agendaEntries = PassportEntrySchedule.agenda(entries)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f))
+            PassportCollapsibleSectionCard(
+                title = "Próximas actuaciones",
+                subtitle = "${agendaEntries.size} próximas actuaciones",
+                expanded = upcomingExpanded,
+                onToggle = toggleUpcoming,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f)
             ) {
-                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text(tr("Próximas actuaciones"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    }
-                    if (agendaEntries.isEmpty()) {
-                        Text(tr("No hay próximas actuaciones registradas."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        agendaEntries.forEach { upcoming ->
-                            val due = PassportEntrySchedule.dueDate(upcoming)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(upcoming.title, fontWeight = FontWeight.SemiBold)
-                                    Text("${upcoming.type} · ${due?.toString() ?: tr("Fecha por definir")}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                                val state = PassportEntrySchedule.status(upcoming)
-                                Text(
-                                    tr(if (state == PassportEntryStates.VENCIDO) "Vencido" else "Pendiente"),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = if (state == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
+                if (agendaEntries.isEmpty()) {
+                    Text(tr("No hay próximas actuaciones registradas."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    agendaEntries.forEach { upcoming ->
+                        val due = PassportEntrySchedule.dueDate(upcoming)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(upcoming.title, fontWeight = FontWeight.SemiBold)
+                                Text("${upcoming.type} · ${due?.toString() ?: tr("Fecha por definir")}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                            val state = PassportEntrySchedule.status(upcoming)
+                            Text(
+                                tr(if (state == PassportEntryStates.VENCIDO) "Vencido" else "Pendiente"),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (state == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -333,36 +344,38 @@ private fun PetPassportSection(
         item {
             val emergencyTypes = setOf("Microchip", "Alergia", "Seguro", "Veterinario habitual", "Contacto de emergencia")
             val emergencyEntries = entries.filter { it.type in emergencyTypes }
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text(tr("Ficha de emergencia"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    if (emergencyEntries.isEmpty()) {
-                        Text(tr("Añade microchip, alergias, seguro y veterinario habitual para tener los datos importantes a mano."), style = MaterialTheme.typography.bodySmall)
-                    } else {
-                        emergencyEntries.forEach { entry ->
-                            Text("${entry.type}: ${entry.detail.ifBlank { entry.title }}", style = MaterialTheme.typography.bodySmall)
-                        }
+            PassportCollapsibleSectionCard(
+                title = "Ficha de emergencia",
+                subtitle = "${emergencyEntries.size} datos importantes",
+                expanded = emergencyExpanded,
+                onToggle = toggleEmergency,
+                containerColor = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                if (emergencyEntries.isEmpty()) {
+                    Text(tr("Añade microchip, alergias, seguro y veterinario habitual para tener los datos importantes a mano."), style = MaterialTheme.typography.bodySmall)
+                } else {
+                    emergencyEntries.forEach { entry ->
+                        Text("${entry.type}: ${entry.detail.ifBlank { entry.title }}", style = MaterialTheme.typography.bodySmall)
                     }
-                    OutlinedButton(
-                        onClick = {
-                            val message = buildString {
-                                append("Ficha de emergencia de $petName\n")
-                                if (emergencyEntries.isEmpty()) {
-                                    append("Todavía no hay datos de emergencia registrados en Pawly.\n")
-                                } else {
-                                    emergencyEntries.forEach { append("${it.type}: ${it.detail.ifBlank { it.title }}\n") }
-                                }
-                            }
-                            val send = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "Ficha de emergencia de $petName")
-                                putExtra(Intent.EXTRA_TEXT, message)
-                            }
-                            runCatching { context.startActivity(Intent.createChooser(send, "Compartir ficha de emergencia")) }
-                        },
-                        enabled = true
-                    ) { Text(tr("Compartir ficha con veterinario o persona de confianza")) }
                 }
+                OutlinedButton(
+                    onClick = {
+                        val message = buildString {
+                            append("Ficha de emergencia de $petName\n")
+                            if (emergencyEntries.isEmpty()) {
+                                append("Todavía no hay datos de emergencia registrados en Pawly.\n")
+                            } else {
+                                emergencyEntries.forEach { append("${it.type}: ${it.detail.ifBlank { it.title }}\n") }
+                            }
+                        }
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Ficha de emergencia de $petName")
+                            putExtra(Intent.EXTRA_TEXT, message)
+                        }
+                        runCatching { context.startActivity(Intent.createChooser(send, "Compartir ficha de emergencia")) }
+                    }
+                ) { Text(tr("Compartir ficha con veterinario o persona de confianza")) }
             }
         }
         item {
@@ -377,78 +390,82 @@ private fun PetPassportSection(
             if (weightPoints.isNotEmpty()) {
                 val recentWeightPoints = weightPoints.takeLast(6)
                 val chartColor = MaterialTheme.colorScheme.primary
-                val surfaceColor = MaterialTheme.colorScheme.surface
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(containerColor = surfaceColor)
+                PassportCollapsibleSectionCard(
+                    title = "Evolución del peso",
+                    subtitle = "Últimas ${recentWeightPoints.size} mediciones · ${weightPoints.size} en total",
+                    expanded = weightExpanded,
+                    onToggle = toggleWeight,
+                    containerColor = MaterialTheme.colorScheme.surface
                 ) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(tr("Evolución del peso"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(tr("Últimas ${recentWeightPoints.size} mediciones · ${weightPoints.size} en total"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            Text(
-                                String.format(LocalLocale.current.platformLocale, "%.1f kg", recentWeightPoints.last().second),
-                                color = chartColor,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                        val values = recentWeightPoints.map { it.second }
-                        val minWeight = values.minOrNull() ?: 0f
-                        val maxWeight = values.maxOrNull() ?: minWeight
-                        val range = (maxWeight - minWeight).coerceAtLeast(.1f)
-                        Row(
-                            Modifier.fillMaxWidth().height(112.dp),
-                            horizontalArrangement = Arrangement.spacedBy(7.dp),
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            recentWeightPoints.forEachIndexed { index, (day, value, _) ->
-                                val valueFraction = if (maxWeight == minWeight) .62f
-                                    else ((value - minWeight) / range).coerceIn(0f, 1f)
-                                val heightFraction = .2f + .8f * valueFraction
-                                Column(
-                                    Modifier.weight(1f),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Bottom
-                                ) {
-                                    Text(
-                                        String.format(LocalLocale.current.platformLocale, "%.1f", value),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                    Spacer(Modifier.height(4.dp))
-                                    Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.BottomCenter) {
-                                        Box(
-                                            Modifier.fillMaxWidth(.68f)
-                                                .fillMaxHeight(heightFraction)
-                                                .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp))
-                                                .background(if (index == recentWeightPoints.lastIndex) chartColor else chartColor.copy(alpha = .35f))
-                                        )
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    Text(
-                                        day.format(java.time.format.DateTimeFormatter.ofPattern("d/M")),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Text(
+                            String.format(LocalLocale.current.platformLocale, "%.1f kg", recentWeightPoints.last().second),
+                            color = chartColor,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                    val values = recentWeightPoints.map { it.second }
+                    val minWeight = values.minOrNull() ?: 0f
+                    val maxWeight = values.maxOrNull() ?: minWeight
+                    val range = (maxWeight - minWeight).coerceAtLeast(.1f)
+                    Row(
+                        Modifier.fillMaxWidth().height(112.dp),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        recentWeightPoints.forEachIndexed { index, (day, value, _) ->
+                            val valueFraction = if (maxWeight == minWeight) .62f
+                                else ((value - minWeight) / range).coerceIn(0f, 1f)
+                            val heightFraction = .2f + .8f * valueFraction
+                            Column(
+                                Modifier.weight(1f),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Bottom
+                            ) {
+                                Text(
+                                    String.format(LocalLocale.current.platformLocale, "%.1f", value),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.BottomCenter) {
+                                    Box(
+                                        Modifier.fillMaxWidth(.68f)
+                                            .fillMaxHeight(heightFraction)
+                                            .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp))
+                                            .background(if (index == recentWeightPoints.lastIndex) chartColor else chartColor.copy(alpha = .35f))
                                     )
                                 }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    day.format(java.time.format.DateTimeFormatter.ofPattern("d/M")),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
                             }
                         }
-                        Text(tr("La gráfica utiliza únicamente registros de tipo Peso con fecha y valor numérico. No representa un objetivo veterinario."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    Text(tr("La gráfica utiliza únicamente registros de tipo Peso con fecha y valor numérico. No representa un objetivo veterinario."), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
+                Column(
+                    Modifier.weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable(onClick = toggleHistory)
+                        .padding(vertical = 6.dp)
+                ) {
                     Text(tr("Historial"), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(tr("${entries.size} registros"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        tr(if (historyCategory == "Todos") "${entries.size} registros" else "${filteredHistoryEntries.size} de ${entries.size} registros"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Button(onClick = {
@@ -462,77 +479,108 @@ private fun PetPassportSection(
                             .onFailure { syncMessage = "No se pudo preparar el PDF" }
                     }) { Text(tr("Compartir PDF")) }
                 }
-            }
-        }
-        if (entries.isEmpty()) {
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.Favorite, null, modifier = Modifier.size(34.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text(tr("El historial empieza aquí"), fontWeight = FontWeight.SemiBold)
-                        Text(tr("Registra su primera vacuna, revisión o tratamiento para tenerlo todo localizado."), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                IconButton(onClick = toggleHistory) {
+                    Icon(
+                        if (historyExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = tr(if (historyExpanded) "Ocultar sección" else "Mostrar sección"),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
-        items(entries.sortedByDescending { it.date }, key = { it.id }) { entry ->
-            Card(modifier = Modifier.fillMaxWidth().clickable(enabled = canEdit) {
-                editingEntry = entry
-                selectedType = entry.type
-                title = entry.title
-                detail = entry.detail
-                date = entry.date
-                product = entry.product
-                dose = entry.dose
-                frequency = entry.frequency
-                clinic = entry.clinic
-                nextDoseDate = entry.nextDoseDate
-                entryStatus = entry.status
-                reminderEnabled = entry.reminderEnabled
-                reminderTime = entry.reminderTime
-                if (entry.type.equals("Peso", true)) {
-                    weightKg = com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.title)
-                        ?: com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.detail)
-                        ?: lastRecordedWeight ?: 10f
-                }
-                showAdd = true
-            }) {
-                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
-                    Icon(Icons.Default.HealthAndSafety, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(entry.title, fontWeight = FontWeight.SemiBold)
-                        Text(entry.type + " · " + entry.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                        if (entry.product.isNotBlank()) Text(tr("Producto") + ": " + entry.product, style = MaterialTheme.typography.bodySmall)
-                        if (entry.dose.isNotBlank() || entry.frequency.isNotBlank()) Text(listOf(entry.dose, entry.frequency).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
-                        if (entry.clinic.isNotBlank()) Text(tr("Clínica") + ": " + entry.clinic, style = MaterialTheme.typography.bodySmall)
-                        if (entry.nextDoseDate.isNotBlank()) Text(tr("Próxima dosis") + ": " + entry.nextDoseDate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-                        if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        val recordState = entry.status
-                        Text(
-                            tr(when (recordState) {
-                                PassportEntryStates.PENDIENTE -> "Pendiente"
-                                PassportEntryStates.VENCIDO -> "Vencido"
-                                else -> "Realizado"
-                            }),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (recordState == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+        if (historyExpanded) {
+            if (entries.isNotEmpty()) item {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    historyCategories.forEach { category ->
+                        FilterChip(
+                            selected = historyCategory == category,
+                            onClick = { historyCategory = category },
+                            label = { Text(tr(category)) }
                         )
-                        if (canEdit) Text(tr("Toca para editar"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
                     }
-                    IconButton(onClick = {
-                        entries = entries.filterNot { it.id == entry.id }
-                        CareReminderScheduler.cancel(context, petName, entry.title, reminderKey = "passport-${entry.id}")
-                        PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
-                        cloudRepository?.let { repo ->
-                            coroutineScope.launch {
-                                runCatching { repo.deletePassportEntry(petId, entry.id) }
-                                    .onSuccess { syncMessage = "Cambios sincronizados" }
-                                    .onFailure { syncMessage = "No se pudo sincronizar la eliminación; conserva la copia local" }
-                            }
+                }
+            }
+            if (entries.isEmpty()) {
+                item {
+                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Favorite, null, modifier = Modifier.size(34.dp), tint = MaterialTheme.colorScheme.primary)
+                            Text(tr("El historial empieza aquí"), fontWeight = FontWeight.SemiBold)
+                            Text(tr("Registra su primera vacuna, revisión o tratamiento para tenerlo todo localizado."), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    }, enabled = canEdit) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Eliminar registro")) }
+                    }
+                }
+            }
+            if (entries.isNotEmpty() && filteredHistoryEntries.isEmpty()) item {
+                Text(
+                    tr("No hay registros de esta categoría."),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
+                )
+            }
+            items(filteredHistoryEntries, key = { it.id }) { entry ->
+                Card(modifier = Modifier.fillMaxWidth().clickable(enabled = canEdit) {
+                    editingEntry = entry
+                    selectedType = entry.type
+                    title = entry.title
+                    detail = entry.detail
+                    date = entry.date
+                    product = entry.product
+                    dose = entry.dose
+                    frequency = entry.frequency
+                    clinic = entry.clinic
+                    nextDoseDate = entry.nextDoseDate
+                    entryStatus = entry.status
+                    reminderEnabled = entry.reminderEnabled
+                    reminderTime = entry.reminderTime
+                    if (entry.type.equals("Peso", true)) {
+                        weightKg = com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.title)
+                            ?: com.pawly.app.care.domain.WeightMeasurementParser.parse(entry.detail)
+                            ?: lastRecordedWeight ?: 10f
+                    }
+                    showAdd = true
+                }) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
+                        Icon(Icons.Default.HealthAndSafety, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(entry.title, fontWeight = FontWeight.SemiBold)
+                            Text(entry.type + " · " + entry.date, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                            if (entry.product.isNotBlank()) Text(tr("Producto") + ": " + entry.product, style = MaterialTheme.typography.bodySmall)
+                            if (entry.dose.isNotBlank() || entry.frequency.isNotBlank()) Text(listOf(entry.dose, entry.frequency).filter { it.isNotBlank() }.joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+                            if (entry.clinic.isNotBlank()) Text(tr("Clínica") + ": " + entry.clinic, style = MaterialTheme.typography.bodySmall)
+                            if (entry.nextDoseDate.isNotBlank()) Text(tr("Próxima dosis") + ": " + entry.nextDoseDate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            if (entry.detail.isNotBlank()) Text(entry.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            val recordState = entry.status
+                            Text(
+                                tr(when (recordState) {
+                                    PassportEntryStates.PENDIENTE -> "Pendiente"
+                                    PassportEntryStates.VENCIDO -> "Vencido"
+                                    else -> "Realizado"
+                                }),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (recordState == PassportEntryStates.VENCIDO) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (canEdit) Text(tr("Toca para editar"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                        IconButton(onClick = {
+                            entries = entries.filterNot { it.id == entry.id }
+                            CareReminderScheduler.cancel(context, petName, entry.title, reminderKey = "passport-${entry.id}")
+                            PetCareLocalStore.saveEntries(context, petName, entries, localStorageScope)
+                            cloudRepository?.let { repo ->
+                                coroutineScope.launch {
+                                    runCatching { repo.deletePassportEntry(petId, entry.id) }
+                                        .onSuccess { syncMessage = "Cambios sincronizados" }
+                                        .onFailure { syncMessage = "No se pudo sincronizar la eliminación; conserva la copia local" }
+                                }
+                            }
+                        }, enabled = canEdit) { Icon(Icons.Default.DeleteOutline, contentDescription = tr("Eliminar registro")) }
+                    }
                 }
             }
         }
@@ -1165,5 +1213,52 @@ private fun Throwable.toCareSyncMessage(): String {
             "Firestore necesita una configuración adicional (posiblemente un índice). Revisa la consola de Firebase."
         else -> localizedMessage?.takeIf { it.isNotBlank() }?.let { "No se pudo sincronizar: $it" }
             ?: "No se pudo sincronizar con Firebase. Se conserva la copia local."
+    }
+}
+
+
+@Composable
+private fun PassportCollapsibleSectionCard(
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    containerColor: androidx.compose.ui.graphics.Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onToggle)
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(tr(title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(tr(subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = tr(if (expanded) "Ocultar sección" else "Mostrar sección"),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    content = content
+                )
+            }
+        }
     }
 }

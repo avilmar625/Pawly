@@ -533,7 +533,7 @@ private fun PawlyMainApp(
                 if (routeTabs.isNotEmpty()) {
                     val selectedRoute = if (selected == Tab.MARKET || selected == Tab.LOST) Tab.MORE else selected
                     PawlySectionNavigationHeader(
-                        title = PawlyI18n.text(if (selectedRoute in petTabs) "Mi perro" else "TU ESPACIO PAWLY", language),
+                        title = PawlyI18n.text(if (selectedRoute in petTabs) "Mi perro" else "Tu espacio Pawly", language),
                         labels = routeTabs.map { PawlyI18n.text(it.label, language) },
                         selectedIndex = routeTabs.indexOf(selectedRoute).coerceAtLeast(0),
                         onSelect = { index ->
