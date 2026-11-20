@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import FirebaseFirestore
 
 struct PawlyCloudinaryUploader {
     private var cloudName: String { Bundle.main.object(forInfoDictionaryKey:"CLOUDINARY_CLOUD_NAME") as? String ?? "" }
@@ -53,7 +54,22 @@ struct PawlyCloudinaryUploader {
             throw PawlyMediaError.uploadFailed(message?["message"] as? String ?? "Cloudinary rechazó el archivo.")
         }
         let json=try JSONSerialization.jsonObject(with:responseData) as? [String:Any]
-        guard let url=json?["secure_url"] as? String,url.hasPrefix("https://") else { throw PawlyMediaError.invalidResponse }
+        guard
+            let url=json?["secure_url"] as? String,
+            url.hasPrefix("https://"),
+            let publicID=json?["public_id"] as? String,
+            publicID.hasPrefix("pawly/\(folder)/\(ownerUID)/")
+        else { throw PawlyMediaError.invalidResponse }
+
+        // Index every upload by owner and Cloudinary public ID. The trusted
+        // account-deletion service uses this index to remove the remote asset.
+        try await Firestore.firestore().collection("cloudinaryAssets").document(UUID().uuidString).setData([
+            "uid": ownerUID,
+            "publicId": publicID,
+            "resourceType": resource,
+            "secureUrl": url,
+            "createdAt": FieldValue.serverTimestamp()
+        ])
         return url
     }
 }
