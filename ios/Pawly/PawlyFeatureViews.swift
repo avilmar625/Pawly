@@ -257,6 +257,11 @@ struct CareView:View {
                             }
                         }
                         Section {
+                            NavigationLink { PawlyCareLogsView() } label: {
+                                Label("Historial de cuidados", systemImage: "list.bullet.clipboard")
+                            }
+                        }
+                        Section {
                             HStack {Text("Rutinas de cuidado").font(.headline);Spacer();Button {showTask=true} label:{Image(systemName:"plus.circle.fill").font(.title2)} }
                             if tasks.isEmpty {Text("Añade alimentación, paseos, medicación o revisiones.").foregroundStyle(.secondary)}
                             ForEach(tasks){task in
