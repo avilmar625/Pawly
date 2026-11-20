@@ -8,37 +8,67 @@ import UIKit
 
 struct PawlyMoreHubView: View {
  @EnvironmentObject private var session:PawlySession
+ private var preferenceScope:String { Auth.auth().currentUser?.uid ?? "guest" }
+ private func sectionKey(_ name:String)->String { "pawly.more.\(preferenceScope).\(name)" }
+
  var body:some View {
   NavigationStack {
    List {
-    Section { HStack(spacing:12) { PawlyAvatarPlaceholder().frame(width:50,height:50); VStack(alignment:.leading){Text(session.user?.displayName ?? "Mi Pawly").font(.headline);Text(session.user?.email ?? "").font(.caption).foregroundStyle(.secondary)} }.padding(.vertical,6) }
-    Section("Tu día a día") {
-     NavigationLink { DiaryView() } label:{Label("Diario de recuerdos",systemImage:"book.closed.fill")}
-     NavigationLink { PawlyLearningHubView() } label:{Label("Aprender y descubrir",systemImage:"graduationcap.fill")}
-     NavigationLink { PawlyCalendarView() } label:{Label("Calendario de cuidados",systemImage:"calendar")}
-     NavigationLink { PawlyEventsView() } label:{Label("Eventos y quedadas",systemImage:"calendar.badge.plus")}
-     NavigationLink { PawlyCommunityPlacesView() } label:{Label("Lugares de la comunidad",systemImage:"map.pin.and.ellipse")}
-     NavigationLink { PawlyRemindersView() } label:{Label("Agenda y recordatorios",systemImage:"calendar.badge.clock")}
-     NavigationLink { PawlyExpensesView() } label:{Label("Gastos de mi mascota",systemImage:"receipt")}
-     NavigationLink { MessagesView() } label:{Label("Mensajes privados",systemImage:"bubble.left.and.bubble.right.fill")}
-     NavigationLink { PawlyProfessionalDirectoryView() } label:{Label("Profesionales",systemImage:"stethoscope")}
-     NavigationLink { PawlyMarketView() } label:{Label("Pawly Market",systemImage:"bag.fill")}
-     NavigationLink { PawlyLostPetView() } label:{Label("He perdido mi mascota",systemImage:"pawprint")}
+    Section {
+     HStack(spacing:12) {
+      PawlyAvatarPlaceholder().frame(width:50,height:50)
+      VStack(alignment:.leading,spacing:3) {
+       Text("Tu espacio Pawly").font(.headline).foregroundStyle(PawlyColors.ink)
+       Text(session.user?.displayName ?? session.user?.email ?? "Tu compañero y todos vuestros recursos")
+        .font(.caption).foregroundStyle(.secondary)
+      }
+     }.padding(.vertical,6)
     }
-    Section("Personas y mascotas") {
-     NavigationLink { PawlyProfileEditorView() } label:{Label("Mi perfil público",systemImage:"person.crop.circle")}
-     NavigationLink { PetSharingSheet() } label:{Label("Compartir mascotas",systemImage:"person.2.badge.plus")}
-     NavigationLink { AccountView() } label:{Label("Cuenta y privacidad",systemImage:"person.badge.key.fill")}
-     NavigationLink { PawlyBlockedUsersView() } label:{Label("Usuarios bloqueados",systemImage:"hand.raised")}
-     NavigationLink { PawlyBackupView() } label:{Label("Copias de seguridad",systemImage:"externaldrive")}
+    Section {
+     PawlyPersistentDisclosureGroup(
+      title:"Tu día a día", subtitle:"Diario, agenda, eventos y recursos", icon:"pawprint.fill",
+      storageKey:sectionKey("daily"), defaultExpanded:true
+     ) {
+      NavigationLink { DiaryView() } label:{Label("Diario de recuerdos",systemImage:"book.closed.fill")}
+      NavigationLink { PawlyLearningHubView() } label:{Label("Aprender y descubrir",systemImage:"graduationcap.fill")}
+      NavigationLink { PawlyCalendarView() } label:{Label("Calendario de cuidados",systemImage:"calendar")}
+      NavigationLink { PawlyEventsView() } label:{Label("Eventos y quedadas",systemImage:"calendar.badge.plus")}
+      NavigationLink { PawlyCommunityPlacesView() } label:{Label("Lugares de la comunidad",systemImage:"map.pin.and.ellipse")}
+      NavigationLink { PawlyRemindersView() } label:{Label("Agenda y recordatorios",systemImage:"calendar.badge.clock")}
+      NavigationLink { PawlyExpensesView() } label:{Label("Gastos de mi mascota",systemImage:"receipt")}
+      NavigationLink { MessagesView() } label:{Label("Mensajes privados",systemImage:"bubble.left.and.bubble.right.fill")}
+      NavigationLink { PawlyProfessionalDirectoryView() } label:{Label("Profesionales",systemImage:"stethoscope")}
+      NavigationLink { PawlyMarketView() } label:{Label("Pawly Market",systemImage:"bag.fill")}
+      NavigationLink { PawlyLostPetView() } label:{Label("He perdido mi mascota",systemImage:"pawprint")}
+     }.id(sectionKey("daily"))
     }
-    Section("Aplicación") {
-     NavigationLink { PawlySettingsView() } label:{Label("Ajustes y apariencia",systemImage:"slider.horizontal.3")}
-     NavigationLink { PawlyAboutView() } label:{Label("Acerca de Pawly",systemImage:"pawprint")}
-     NavigationLink { PawlyModerationView() } label:{Label("Centro de moderación",systemImage:"shield.lefthalf.filled")}
+    Section {
+     PawlyPersistentDisclosureGroup(
+      title:"Personas y mascotas", subtitle:"Perfiles, compartición y privacidad", icon:"person.2.fill",
+      storageKey:sectionKey("people"), defaultExpanded:false
+     ) {
+      NavigationLink { PawlyProfileEditorView() } label:{Label("Mi perfil público",systemImage:"person.crop.circle")}
+      NavigationLink { PetSharingSheet() } label:{Label("Compartir mascotas",systemImage:"person.2.badge.plus")}
+      NavigationLink { AccountView() } label:{Label("Cuenta y privacidad",systemImage:"person.badge.key.fill")}
+      NavigationLink { PawlyBlockedUsersView() } label:{Label("Usuarios bloqueados",systemImage:"hand.raised")}
+      NavigationLink { PawlyBackupView() } label:{Label("Copias de seguridad",systemImage:"externaldrive")}
+     }.id(sectionKey("people"))
     }
-    Section { Button(role:.destructive){try? session.signOut()} label:{Label("Cerrar sesión",systemImage:"rectangle.portrait.and.arrow.right")} }
-   }.navigationTitle("Más")
+    Section {
+     PawlyPersistentDisclosureGroup(
+      title:"Aplicación", subtitle:"Apariencia, información y administración", icon:"slider.horizontal.3",
+      storageKey:sectionKey("app"), defaultExpanded:false
+     ) {
+      NavigationLink { PawlySettingsView() } label:{Label("Ajustes y apariencia",systemImage:"slider.horizontal.3")}
+      NavigationLink { PawlyAboutView() } label:{Label("Acerca de Pawly",systemImage:"pawprint")}
+      NavigationLink { PawlyModerationView() } label:{Label("Centro de moderación",systemImage:"shield.lefthalf.filled")}
+     }.id(sectionKey("app"))
+    }
+    Section {
+     Button(role:.destructive){try? session.signOut()} label:{Label("Cerrar sesión",systemImage:"rectangle.portrait.and.arrow.right")}
+    }
+   }
+   .navigationTitle("Tu espacio Pawly")
   }
  }
 }
