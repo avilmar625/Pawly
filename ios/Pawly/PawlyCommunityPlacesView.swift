@@ -354,7 +354,7 @@ private struct PawlyCommunityPlaceForm: View {
                         }
                     }
                     TextField("Dirección o municipio", text: $location)
-                        .onChange(of: location) { coordinate = nil }
+                        .onChange(of: location, perform: { _ in coordinate = nil })
                     TextField("Qué lo hace recomendable", text: $description, axis: .vertical)
                         .lineLimit(3...6)
                         .onChange(of: description) { description = String($0.prefix(500)) }
