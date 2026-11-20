@@ -237,11 +237,27 @@ struct CareView:View {
                 return $0.date > $1.date
             }
     }
+    private func passportDueDate(_ entry:PawlyPassportEntry)->Date? {
+        guard !entry.nextDoseDate.isEmpty else { return nil }
+        let formatter=DateFormatter()
+        formatter.locale=Locale(identifier:"en_US_POSIX")
+        formatter.timeZone=Calendar.current.timeZone
+        formatter.dateFormat="yyyy-MM-dd"
+        return formatter.date(from:entry.nextDoseDate)
+    }
+    private func computedPassportStatus(_ entry:PawlyPassportEntry)->String {
+        if entry.status == "VENCIDO" { return "VENCIDO" }
+        if let due=passportDueDate(entry) {
+            return Calendar.current.startOfDay(for:due) < Calendar.current.startOfDay(for:Date())
+                ? "VENCIDO" : "PENDIENTE"
+        }
+        return entry.status == "PENDIENTE" ? "PENDIENTE" : "REALIZADO"
+    }
     private var upcomingEntries:[PawlyPassportEntry] {
-        passport.filter { !$0.nextDoseDate.isEmpty || ["PENDIENTE","VENCIDO"].contains($0.status) }
+        passport.filter { computedPassportStatus($0) != "REALIZADO" }
             .sorted {
-                let a=$0.nextDoseDate.isEmpty ? $0.date : $0.nextDoseDate
-                let b=$1.nextDoseDate.isEmpty ? $1.date : $1.nextDoseDate
+                let a=passportDueDate($0) ?? Date.distantFuture
+                let b=passportDueDate($1) ?? Date.distantFuture
                 if a == b { return $0.createdAtOrder > $1.createdAtOrder }
                 return a < b
             }
@@ -342,8 +358,8 @@ struct CareView:View {
                                                     .font(.caption).foregroundStyle(.secondary)
                                             }
                                             Spacer()
-                                            Text(statusLabel(entry.status)).font(.caption2.weight(.bold))
-                                                .foregroundStyle(entry.status == "VENCIDO" ? .red:PawlyColors.primary)
+                                            Text(statusLabel(computedPassportStatus(entry))).font(.caption2.weight(.bold))
+                                                .foregroundStyle(computedPassportStatus(entry) == "VENCIDO" ? .red:PawlyColors.primary)
                                         }
                                     }
                                 }.id(sectionKey("upcoming"))
@@ -547,10 +563,28 @@ struct CareView:View {
             catch{self.error=error.localizedDescription}
         }
     }
+    private func parseWeight(_ entry:PawlyPassportEntry)->Double? {
+        let raw="\(entry.title) \(entry.detail)"
+        let range=NSRange(raw.startIndex...,in:raw)
+        let unitPattern=try! NSRegularExpression(pattern:"(?<![\\d.,])(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*kg\\b",options:[.caseInsensitive])
+        var captured:String?
+        if let match=unitPattern.firstMatch(in:raw,range:range),
+           let valueRange=Range(match.range(at:1),in:raw) {
+            captured=String(raw[valueRange])
+        } else {
+            let standalone=try! NSRegularExpression(pattern:"^\\s*(?:peso\\s*[:=-]?\\s*)?(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*$",options:[.caseInsensitive])
+            if let match=standalone.firstMatch(in:raw,range:range),
+               let valueRange=Range(match.range(at:1),in:raw) {
+                captured=String(raw[valueRange])
+            }
+        }
+        guard let captured,let value=Double(captured.replacingOccurrences(of:",",with:".")),
+              (0.1...150).contains(value) else { return nil }
+        return value
+    }
     private var weightEntries:[(PawlyPassportEntry,Double)] {
         passport.filter{$0.type.localizedCaseInsensitiveContains("peso")}.compactMap{entry in
-            let raw=entry.title.lowercased().replacingOccurrences(of:"peso",with:"").replacingOccurrences(of:"kg",with:"").replacingOccurrences(of:":",with:"").trimmingCharacters(in:.whitespacesAndNewlines).replacingOccurrences(of:",",with:".")
-            guard let value=Double(raw),value>0,value<=150 else{return nil}
+            guard let value=parseWeight(entry) else{return nil}
             return(entry,value)
         }.sorted {
             if $0.0.date == $1.0.date { return $0.0.createdAtOrder > $1.0.createdAtOrder }
@@ -587,7 +621,7 @@ struct PassportEntrySheet:View {
                 Section("Registro sanitario") {
                     TextField(type == "Peso" ? "Peso (ej. 12,5 kg)" : "Título",text:$title)
                         .keyboardType(type == "Peso" ? .decimalPad : .default)
-                    Picker("Tipo",selection:$type){ForEach(["Vacuna","Revisión","Tratamiento","Desparasitación","Alergia","Peso","Microchip","Otro"],id:\.self){Text($0)}}
+                    Picker("Tipo",selection:$type){ForEach(["Vacuna","Desparasitación","Medicación","Visita veterinaria","Revisión","Tratamiento","Alergia","Intervención","Peso","Microchip","Seguro","Veterinario habitual","Contacto de emergencia","Otro"],id:\.self){Text($0)}}
                     DatePicker("Fecha del registro",selection:$date,displayedComponents:.date)
                     Picker("Estado",selection:$status) {
                         Text("Pendiente").tag("PENDIENTE")
