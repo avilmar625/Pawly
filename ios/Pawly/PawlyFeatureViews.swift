@@ -345,16 +345,55 @@ struct CareTaskSheet:View {
     @State private var title=""
     @State private var responsible=""
     @State private var frequency="Diaria"
+    @State private var dose=""
+    @State private var time="09:00"
+    @State private var completedOn=""
+    @State private var action="Otro"
+    private let actions=["Paseo","Comida","Medicación","Higiene","Otro"]
+
     var body:some View {
         NavigationStack {
             Form {
-                TextField("Tarea",text:$title);TextField("Responsable",text:$responsible)
-                Picker("Frecuencia",selection:$frequency){ForEach(["Diaria","Semanal","Mensual","Cada 3 meses","Cada 6 meses","Anual","Cuando sea necesario"],id:\.self){Text($0)}}
-            }.navigationTitle("Nueva rutina").toolbar{
-                ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}
-                ToolbarItem(placement:.confirmationAction){Button("Guardar"){
-                    Task{await onSave(PawlyCareTask(id:UUID().uuidString,title:title,responsible:responsible,frequency:frequency,completed:false));dismiss()}
-                }.disabled(title.trimmingCharacters(in:.whitespaces).isEmpty)}
+                Section("Rutina") {
+                    TextField("Tarea",text:$title)
+                    TextField("Responsable",text:$responsible)
+                    Picker("Tipo de cuidado",selection:$action) {
+                        ForEach(actions,id:\.self) { Text($0) }
+                    }
+                    Picker("Frecuencia",selection:$frequency) {
+                        ForEach(["Diaria","Semanal","Mensual","Cada 3 meses","Cada 6 meses","Anual","Cuando sea necesario"],id:\.self) { Text($0) }
+                    }
+                }
+                Section("Detalles") {
+                    TextField("Dosis o indicaciones (opcional)",text:$dose)
+                    TextField("Hora (HH:mm)",text:$time)
+                        .keyboardType(.numbersAndPunctuation)
+                    TextField("Realizada el (AAAA-MM-DD, opcional)",text:$completedOn)
+                        .keyboardType(.numbersAndPunctuation)
+                }
+            }
+            .navigationTitle("Nueva rutina")
+            .toolbar {
+                ToolbarItem(placement:.cancellationAction) { Button("Cancelar") { dismiss() } }
+                ToolbarItem(placement:.confirmationAction) {
+                    Button("Guardar") {
+                        Task {
+                            await onSave(PawlyCareTask(
+                                id:UUID().uuidString,
+                                title:title.trimmingCharacters(in:.whitespacesAndNewlines),
+                                responsible:responsible.trimmingCharacters(in:.whitespacesAndNewlines),
+                                frequency:frequency,
+                                completed:false,
+                                dose:dose.trimmingCharacters(in:.whitespacesAndNewlines),
+                                time:time,
+                                completedOn:completedOn.trimmingCharacters(in:.whitespacesAndNewlines),
+                                action:action
+                            ))
+                            dismiss()
+                        }
+                    }
+                    .disabled(title.trimmingCharacters(in:.whitespaces).isEmpty || dose.count > 80 || completedOn.count > 10 || time.count > 5)
+                }
             }
         }
     }
