@@ -122,6 +122,34 @@ struct PawlyLocalReminder: Identifiable, Codable {
             if let error { Task { @MainActor in self?.statusMessage = "No se pudo sincronizar el aviso: \(error.localizedDescription)" } }
         }
     }
+
+    func upsert(_ item: PawlyLocalReminder) {
+        reminders.removeAll { $0.id == item.id }
+        reminders.append(item)
+        reminders.sort { $0.date < $1.date }
+        persist()
+        center.removePendingNotificationRequests(withIdentifiers: [item.id])
+        schedule(item)
+        guard let agendaPath, let uid = Auth.auth().currentUser?.uid else { return }
+        let values: [String: Any] = [
+            "id": item.id,
+            "title": item.title,
+            "date": Int64(item.date.timeIntervalSince1970 * 1000),
+            "category": item.category,
+            "createdBy": uid,
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+        db.collection(agendaPath).document(item.id).setData(values) { [weak self] error in
+            if let error {
+                Task { @MainActor in self?.statusMessage = "No se pudo sincronizar el recordatorio: \(error.localizedDescription)" }
+            }
+        }
+    }
+
+    func remove(id: String) {
+        guard let item = reminders.first(where: { $0.id == id }) else { return }
+        remove(item)
+    }
     func toggle(_ item: PawlyLocalReminder) {
         guard let index = reminders.firstIndex(where: { $0.id == item.id }) else { return }
         reminders[index].completed.toggle()
