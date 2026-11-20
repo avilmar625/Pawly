@@ -50,6 +50,17 @@ struct PawlyLocalReminder: Identifiable, Codable {
         guard uid != activeUID else { return }
         center.removeAllPendingNotificationRequests(); activeUID = uid; loadStored(); rescheduleAll()
     }
+    func exportBackupData() -> Data? {
+        try? JSONEncoder().encode(reminders)
+    }
+
+    func importBackupData(_ data: Data) throws {
+        let values = try JSONDecoder().decode([PawlyLocalReminder].self, from: data)
+        guard values.count <= 500 else { throw PawlyReminderBackupError.tooMany }
+        reminders = values
+        persist()
+        rescheduleAll()
+    }
     func listenAgenda(ownerUID: String, petID: String, petName: String) {
         let path = "sharedPets/\(ownerUID)_\(petID)/agenda"
         guard path != agendaPath else { return }
@@ -197,4 +208,9 @@ struct PawlyReminderForm: View {
             }
         }
     }
+}
+
+enum PawlyReminderBackupError: LocalizedError {
+    case tooMany
+    var errorDescription: String? { "La copia contiene demasiados recordatorios locales." }
 }
