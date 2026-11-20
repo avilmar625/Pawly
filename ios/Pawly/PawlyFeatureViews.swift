@@ -222,6 +222,14 @@ struct PetFormSheet:View {
 }
 
 struct CareView:View {
+    private let startWithNewEntry: Bool
+    private let initialEntryType: String?
+
+    init(startWithNewEntry: Bool = false, initialEntryType: String? = nil) {
+        self.startWithNewEntry = startWithNewEntry
+        self.initialEntryType = initialEntryType
+    }
+
     @EnvironmentObject private var pets:PawlyPetStore
     @State private var passport:[PawlyPassportEntry]=[]
     @State private var tasks:[PawlyCareTask]=[]
@@ -484,8 +492,12 @@ struct CareView:View {
                     PetPicker()
                 }
             }
-            .task(id:pets.selectedPetID) { historyCategory="Todos"; await load() }
-            .sheet(isPresented:$showEntry){PassportEntrySheet{entry in await save(entry)}}
+            .task(id:pets.selectedPetID) {
+                historyCategory="Todos"
+                await load()
+                if startWithNewEntry { showEntry = true }
+            }
+            .sheet(isPresented:$showEntry){PassportEntrySheet(initialType: initialEntryType){entry in await save(entry)}}
             .sheet(isPresented:$showTask){CareTaskSheet{task in await save(task)}}
             .sheet(isPresented:$showShare){PetSharingSheet()}
             .sheet(isPresented:$showDiary){DiaryView()}
@@ -612,7 +624,12 @@ struct PassportEntrySheet:View {
     @Environment(\.dismiss) private var dismiss
     var onSave:(PawlyPassportEntry) async->Void
     @State private var title=""
-    @State private var type="Vacuna"
+    @State private var type:String
+
+    init(initialType: String? = nil, onSave: @escaping (PawlyPassportEntry) async -> Void) {
+        self.onSave = onSave
+        _type = State(initialValue: initialType ?? "Vacuna")
+    }
     @State private var detail=""
     @State private var product=""
     @State private var dose=""

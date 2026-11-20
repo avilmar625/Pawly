@@ -23,6 +23,8 @@ struct PawlyHomeCareSection: View {
     @State private var showHealth = false
     @State private var showDiary = false
     @State private var showCareHistory = false
+    @State private var showQuickCareLog = false
+    @State private var quickCareAction = "Paseo"
     @State private var error: String?
 
     private var scope: String {
@@ -157,6 +159,27 @@ struct PawlyHomeCareSection: View {
             }
             .id("pawly.home.\(scope).today")
 
+            HStack(spacing: 8) {
+                quickAction("Paseo", icon: "figure.walk") {
+                    quickCareAction = "Paseo"
+                    showQuickCareLog = true
+                }
+                quickAction("Peso", icon: "scalemass") {
+                    showHealth = true
+                }
+                quickAction("Foto", icon: "camera.fill") {
+                    showDiary = true
+                }
+                quickAction("Comida", icon: "fork.knife") {
+                    if let task = dueTasks.first(where: { $0.action == "Comida" }) {
+                        requestToggle(task, checked: !isCompleteToday(task))
+                    } else {
+                        quickCareAction = "Comida"
+                        showQuickCareLog = true
+                    }
+                }
+            }
+
             if let upcoming = nextUpcoming {
                 Button { showHealth = true } label: {
                     HStack(spacing: 12) {
@@ -248,6 +271,38 @@ struct PawlyHomeCareSection: View {
                         if !latestLog.note.isEmpty {
                             Text(latestLog.note).font(.caption).foregroundStyle(.secondary)
                         }
+                        if !latestLog.description.isEmpty {
+                            Text(latestLog.description).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if !latestLog.walker.isEmpty {
+                            Label(latestLog.walker, systemImage: "figure.walk")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let distance = latestLog.distanceKm {
+                            Label(String(format: "%.2f km", distance), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        if !latestLog.mapURL.isEmpty, let url = URL(string: latestLog.mapURL) {
+                            Link(destination: url) {
+                                Label("Ver mapa", systemImage: "map")
+                                    .font(.caption.weight(.semibold))
+                            }
+                        }
+                        if !latestLog.photoURLs.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 7) {
+                                    ForEach(latestLog.photoURLs.prefix(4), id: \.self) { url in
+                                        AsyncImage(url: URL(string: url)) { image in
+                                            image.resizable().scaledToFill()
+                                        } placeholder: {
+                                            PawlyAnniversaryPlaceholder()
+                                        }
+                                        .frame(width: 58, height: 58)
+                                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                                    }
+                                }
+                            }
+                        }
                         Button("Abrir historial de cuidados") { showCareHistory = true }
                             .font(.caption.weight(.semibold))
                     }
@@ -260,9 +315,32 @@ struct PawlyHomeCareSection: View {
             }
         }
         .task(id: scope) { await load() }
-        .sheet(isPresented: $showHealth) { CareView().environmentObject(pets) }
+        .sheet(isPresented: $showHealth) { CareView(startWithNewEntry: true, initialEntryType: "Peso").environmentObject(pets) }
         .sheet(isPresented: $showDiary) { DiaryView().environmentObject(pets) }
         .sheet(isPresented: $showCareHistory) { PawlyCareLogsView().environmentObject(pets) }
+        .sheet(isPresented: $showQuickCareLog) {
+            PawlyCareLogForm(petName: pet.name, initialAction: quickCareAction) { title, action, note, distance, description, walker, photos in
+                var photoURLs: [String] = []
+                if let uid = Auth.auth().currentUser?.uid {
+                    for item in photos {
+                        guard let data = try await item.loadTransferable(type: Data.self) else { continue }
+                        let url = try await PawlyCloudinaryUploader().uploadImage(data, folder: "pet-photos", ownerUID: uid)
+                        photoURLs.append(url)
+                    }
+                }
+                try await pets.logCareAction(
+                    pet: pet,
+                    taskTitle: title,
+                    action: action,
+                    note: note,
+                    distanceKm: distance,
+                    description: description,
+                    walker: walker,
+                    photoURLs: photoURLs
+                )
+                await load()
+            }
+        }
         .alert(
             "Puede que esta medicación ya se haya administrado",
             isPresented: Binding(
@@ -288,6 +366,28 @@ struct PawlyHomeCareSection: View {
                 Text("Comprueba la pauta antes de duplicar el registro.")
             }
         }
+    }
+
+    private func quickAction(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(PawlyColors.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(PawlyColors.ink.opacity(0.07)))
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(PawlyColors.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var progressMessage: String {

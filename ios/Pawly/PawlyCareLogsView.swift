@@ -134,13 +134,26 @@ struct PawlyCareLogsView: View {
     }
 }
 
-private struct PawlyCareLogForm: View {
+struct PawlyCareLogForm: View {
     @Environment(\.dismiss) private var dismiss
     let petName: String
+    let initialAction: String
     var onSave: (String, String, String, Double?, String, String, [PhotosPickerItem]) async throws -> Void
 
-    @State private var title = ""
-    @State private var action = "Paseo"
+    @State private var title: String
+    @State private var action: String
+
+    init(
+        petName: String,
+        initialAction: String = "Paseo",
+        onSave: @escaping (String, String, String, Double?, String, String, [PhotosPickerItem]) async throws -> Void
+    ) {
+        self.petName = petName
+        self.initialAction = initialAction
+        self.onSave = onSave
+        _title = State(initialValue: initialAction)
+        _action = State(initialValue: initialAction)
+    }
     @State private var note = ""
     @State private var distance = ""
     @State private var description = ""
