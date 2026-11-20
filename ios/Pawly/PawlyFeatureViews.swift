@@ -349,7 +349,9 @@ struct CareTaskSheet:View {
     @State private var time="09:00"
     @State private var completedOn=""
     @State private var action="Otro"
+    @State private var selectedDays:Set<Int> = [1,2,3,4,5,6,7]
     private let actions=["Paseo","Comida","Medicación","Higiene","Otro"]
+    private let weekdays=["L","M","X","J","V","S","D"]
 
     var body:some View {
         NavigationStack {
@@ -362,6 +364,25 @@ struct CareTaskSheet:View {
                     }
                     Picker("Frecuencia",selection:$frequency) {
                         ForEach(["Diaria","Semanal","Mensual","Cada 3 meses","Cada 6 meses","Anual","Cuando sea necesario"],id:\.self) { Text($0) }
+                    }
+                    if frequency == "Semanal" {
+                        HStack(spacing: 5) {
+                            ForEach(1...7, id: \.self) { day in
+                                Button {
+                                    if selectedDays.contains(day) { selectedDays.remove(day) }
+                                    else { selectedDays.insert(day) }
+                                } label: {
+                                    Text(weekdays[day - 1])
+                                        .font(.caption.weight(.semibold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 9)
+                                        .background(selectedDays.contains(day) ? PawlyColors.primary : PawlyColors.mint,
+                                                    in: Circle())
+                                        .foregroundStyle(selectedDays.contains(day) ? .white : PawlyColors.ink)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                        Text("Selecciona los días de la semana.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
                 Section("Detalles") {
@@ -387,12 +408,13 @@ struct CareTaskSheet:View {
                                 dose:dose.trimmingCharacters(in:.whitespacesAndNewlines),
                                 time:time,
                                 completedOn:completedOn.trimmingCharacters(in:.whitespacesAndNewlines),
-                                action:action
+                                action:action,
+                                daysOfWeek: frequency == "Semanal" ? selectedDays.sorted() : nil
                             ))
                             dismiss()
                         }
                     }
-                    .disabled(title.trimmingCharacters(in:.whitespaces).isEmpty || dose.count > 80 || completedOn.count > 10 || time.count > 5)
+                    .disabled(title.trimmingCharacters(in:.whitespaces).isEmpty || dose.count > 80 || completedOn.count > 10 || time.count > 5 || (frequency == "Semanal" && selectedDays.isEmpty))
                 }
             }
         }
