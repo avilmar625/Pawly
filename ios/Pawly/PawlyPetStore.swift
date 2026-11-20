@@ -204,9 +204,12 @@ final class PawlyPetStore: ObservableObject {
             guard member.get("role") as? String == "owner" || member.get("role") as? String == "editor" else {
                 throw PawlyStoreError.noSharedAccess
             }
+            let role = member.get("role") as? String ?? ""
             let profile = root.collection("profile").document("current")
             let batch = db.batch()
-            batch.updateData(["name": clean, "updatedAt": FieldValue.serverTimestamp()], forDocument: root)
+            if role == "owner" {
+                batch.updateData(["name": clean, "updatedAt": FieldValue.serverTimestamp()], forDocument: root)
+            }
             batch.setData([
                 "petId": updated.id,
                 "name": clean,
