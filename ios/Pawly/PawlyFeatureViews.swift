@@ -343,12 +343,15 @@ struct CareView:View {
                             }.id(sectionKey("history"))
                         }
 
-                        if !upcomingEntries.isEmpty {
-                            Section {
-                                PawlyPersistentDisclosureGroup(
-                                    title:"Próximas actuaciones",subtitle:"\(upcomingEntries.count) fechas y cuidados previstos",
-                                    icon:"calendar.badge.clock",storageKey:sectionKey("upcoming"),defaultExpanded:true
-                                ) {
+                        Section {
+                            PawlyPersistentDisclosureGroup(
+                                title:"Próximas actuaciones",subtitle:"\(upcomingEntries.count) fechas y cuidados previstos",
+                                icon:"calendar.badge.clock",storageKey:sectionKey("upcoming"),defaultExpanded:true
+                            ) {
+                                if upcomingEntries.isEmpty {
+                                    Text("No hay próximas actuaciones registradas.")
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                } else {
                                     ForEach(upcomingEntries) { entry in
                                         HStack(alignment:.top,spacing:10) {
                                             Image(systemName:"calendar").foregroundStyle(PawlyColors.primary).frame(width:22)
@@ -362,24 +365,27 @@ struct CareView:View {
                                                 .foregroundStyle(computedPassportStatus(entry) == "VENCIDO" ? .red:PawlyColors.primary)
                                         }
                                     }
-                                }.id(sectionKey("upcoming"))
-                            }
+                                }
+                            }.id(sectionKey("upcoming"))
                         }
 
-                        if !emergencyEntries.isEmpty {
-                            Section {
-                                PawlyPersistentDisclosureGroup(
-                                    title:"Ficha de emergencia",subtitle:"\(emergencyEntries.count) datos importantes",
-                                    icon:"cross.case.fill",storageKey:sectionKey("emergency"),defaultExpanded:true
-                                ) {
+                        Section {
+                            PawlyPersistentDisclosureGroup(
+                                title:"Ficha de emergencia",subtitle:"\(emergencyEntries.count) datos importantes",
+                                icon:"cross.case.fill",storageKey:sectionKey("emergency"),defaultExpanded:true
+                            ) {
+                                if emergencyEntries.isEmpty {
+                                    Text("Añade microchip, alergias, seguro y veterinario habitual para tener los datos importantes a mano.")
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                } else {
                                     ForEach(emergencyEntries) { entry in
                                         LabeledContent(entry.type,value:entry.detail.isEmpty ? entry.title : entry.detail)
                                     }
-                                    ShareLink(item:emergencyShareText) {
-                                        Label("Compartir ficha",systemImage:"square.and.arrow.up")
-                                    }
-                                }.id(sectionKey("emergency"))
-                            }
+                                }
+                                ShareLink(item:emergencyShareText) {
+                                    Label("Compartir ficha",systemImage:"square.and.arrow.up")
+                                }
+                            }.id(sectionKey("emergency"))
                         }
 
                         if !weightEntries.isEmpty {
