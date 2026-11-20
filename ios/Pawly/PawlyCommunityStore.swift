@@ -582,12 +582,14 @@ final class PawlyCommunityStore: ObservableObject {
             if let error { self.statusMessage = error.localizedDescription; return }
             self.blockedChatIDs = Set(snap?.documents.map { $0.documentID } ?? [])
             self.refreshVisibleChats()
+            Task { await self.refreshUnreadMessageCounts() }
         }
         blockedByChatsListener = db.collection("users").document(uid).collection("blockedBy").addSnapshotListener { [weak self] snap,error in
             guard let self else { return }
             if let error { self.statusMessage = error.localizedDescription; return }
             self.blockedByChatIDs = Set(snap?.documents.map { $0.documentID } ?? [])
             self.refreshVisibleChats()
+            Task { await self.refreshUnreadMessageCounts() }
         }
     }
     func listenMessages(conversationID:String,onUpdate:@escaping([PawlyChatMessage])->Void) {

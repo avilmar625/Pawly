@@ -11,7 +11,7 @@ La aplicación iOS es nativa en SwiftUI y comparte Firebase/Firestore y Cloudina
 - Próximas actuaciones y ficha de emergencia accesibles desde Salud.
 - Avisos locales para próximas dosis y revisiones cuando el usuario activa «Recordarme».
 - Registro de peso a partir de las entradas del tipo Peso, conservando el orden de creación cuando varias mediciones comparten fecha.
-- Inicio con progreso diario de rutinas, próxima actuación, recuerdo de aniversario y último cuidado registrado.
+- Inicio con progreso diario de rutinas, próximas actuaciones, recuerdo de aniversario, último cuidado registrado y accesos rápidos para paseo, peso, foto y comida.
 - Rutinas de cuidado con responsable, frecuencia, dosis, hora, fecha, acción y selección de días semanales.
 - Historial de cuidados con autor, acción, distancia, notas y hasta cuatro fotografías.
 - Diario sincronizado por mascota con título, texto, categoría, fecha, filtro por categoría, orden cronológico y hasta ocho fotografías por recuerdo; editor plegable con estado persistente.
