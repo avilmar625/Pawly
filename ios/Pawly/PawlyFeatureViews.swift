@@ -330,11 +330,6 @@ struct CareView:View {
         } catch { self.error=error.localizedDescription }
     }
 
-    private func healthReminderDate(healthDate: String = "", time: String) -> Date? {
-        let dateValue = healthDate.isEmpty ? "" : healthDate
-        return healthReminderDate(nextDoseDate: dateValue, time: time)
-    }
-
     private func healthReminderDate(nextDoseDate: String, time: String) -> Date? {
         let dateFormatter=DateFormatter()
         dateFormatter.locale=Locale(identifier:"en_US_POSIX")
