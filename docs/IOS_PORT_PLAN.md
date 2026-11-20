@@ -1,36 +1,39 @@
 # Estado del port iOS
 
-La app iOS nativa vive en `ios/` y se desarrolla en ramas de trabajo basadas en `codex/streamlined-navigation-2026-11`. Comparte Firebase/Firestore y Cloudinary con Android; la interfaz está implementada en SwiftUI.
+La aplicación iOS es nativa en SwiftUI y comparte Firebase/Firestore y Cloudinary con Android. Esta rama parte del port iOS y conserva intactas las ramas de Android y del port original.
 
-## Funcionalidad disponible
+## Funcionalidad implementada en iOS
 
-- Inicio de sesión por correo y Google, registro, recuperación y verificación de correo.
-- Perfiles de mascotas, selección, edición, fotografías y acceso compartido mediante invitaciones.
-- Pasaporte sanitario, rutinas de cuidado y agenda sincronizada con Firestore.
-- Diario sincronizado por mascota, con un editor más sencillo que el de Android.
-- Comunidad: publicaciones, fotos/vídeos, comentarios, reacciones, búsqueda de usuarios y mensajería con indicadores de lectura.
-- Avisos de actividad en Firestore para «me gusta», comentarios y nuevos seguidores; envío push al Worker configurado.
-- Bloqueo en ambos sentidos, denuncias y filtrado de usuarios bloqueados en el muro, búsqueda y chats.
-- Explorar con MapKit, búsqueda de lugares y favoritos sincronizados mediante `users/{uid}/exploreCollections/ios-favourites`.
-- Guías, noticias RSS, Pawly Market y exportación PDF.
-- Notificaciones locales y registro de APNs cuando el usuario ha autorizado avisos.
+- Autenticación por correo y Google; creación de perfiles y reserva de nombre compatibles con las reglas de Firestore.
+- Perfiles de mascotas, selección sincronizada, edición transaccional de perfiles propios, mascotas compartidas e invitaciones.
+- Pasaporte sanitario con vacunas, tratamientos, clínicas, dosis, estado, próxima fecha y recordatorio.
+- Registro de peso a partir de las entradas de tipo Peso.
+- Rutinas con responsable, frecuencia, dosis, hora, fecha, acción y selección de días semanales.
+- Historial de cuidados con autor, acción, distancia, notas y hasta cuatro fotografías.
+- Diario sincronizado por mascota, con editor multimedia más sencillo que el de Android.
+- Calendario mensual que reúne agenda, próximas dosis, rutinas y recuerdos.
+- Gastos sincronizados por mascota, con totales mensuales y desglose por categorías.
+- Copias versionadas de perfil, mascotas propias, pasaporte, rutinas, agenda, diario, gastos, favoritos y recordatorios locales.
+- Explorar con MapKit y favoritos sincronizados en Firestore, conservando caché local.
+- Perfil profesional, categorías, ubicación, descripción y contacto privado con publicación voluntaria.
+- Directorio que combina perfiles profesionales de Pawly y resultados de Apple Maps.
+- Comunidad: publicaciones, imágenes/vídeos, comentarios, reacciones, búsqueda, mensajería, lectura, bloqueo, denuncias y gestión de usuarios bloqueados.
+- Avisos de actividad en Firestore y llamada al Worker para notificaciones push cuando `PAWLY_BACKEND_URL` está configurada.
+- Índice de propiedad de las subidas Cloudinary para identificar archivos de cada cuenta.
+- Agenda con recordatorios locales y registro APNs/FCM.
+- Guías, noticias RSS, Pawly Market, avisos de mascota perdida como publicación de Comunidad y exportación PDF.
 
-## Pendiente para alcanzar paridad con Android
+## Pendiente o condicionado a servicios externos
 
-- Salud: pasaporte ampliado con producto, dosis, frecuencia, clínica, estado, próxima dosis y avisos; el gráfico de peso se obtiene de los registros tipo Peso.
-- Agenda: calendario mensual que reúne agenda, próximas dosis, rutinas y recuerdos.
-- Gastos: registro sincronizado y resumen mensual por mascota.
-- Copias de seguridad: exportación/restauración versionada de los perfiles, datos sanitarios, rutinas, agenda, diario, gastos y favoritos. Los registros de actividad no se reescriben al restaurar para no suplantar su autoría; fotos y vídeos conservan sus referencias de Cloudinary.
-- Explorar: los favoritos se sincronizan con la cuenta en Firestore y se mantienen en caché local.
-- Profesionales: alta de cuenta profesional, categorías, ubicación, descripción y contacto privado con opción explícita de publicación; el directorio consulta perfiles de Pawly y Apple Maps.
-- Diario: faltan campos y herramientas multimedia del editor Android.
-- Rutinas: el editor incluye dosis, hora, fecha, tipo de acción y selector de días semanales.
-- Bloqueos: el filtrado en ambos sentidos está implementado, pero falta una pantalla completa para gestionar la lista y desbloquear usuarios. Además, las reglas actuales no autorizan al cliente a corregir el contador de seguidores cuando bloquea a alguien que ya le seguía; requiere una operación confiable de backend o un ajuste específico de reglas.
-- Avisos push: iOS registra tokens APNs/FCM, guarda avisos en Firestore y llama al endpoint `/v1/activity-notifications` del Worker cuando `PAWLY_BACKEND_URL` está configurada. El Worker de Cloudflare todavía debe desplegarse y configurarse (véase `backend/cloudflare-worker/README.md`). Los avisos aún no tienen navegación profunda al tocarlos.
-- Eliminación de cuenta: la app registra una solicitud, pero el borrado real de Authentication, subcolecciones Firestore y recursos Cloudinary aún requiere un backend desplegado.
-- La localización todavía está parcialmente traducida.
-- El entitlement APNs del proyecto está configurado para desarrollo; la distribución necesitará el entitlement de producción y perfiles de firma adecuados.
-- No existe todavía una suite automatizada de pruebas Swift que cubra los flujos de autenticación, reglas de Firestore, compartición y comunidad.
+- **Activación real de servicios:** registrar `com.pawly.ios` en Firebase, instalar el `GoogleService-Info.plist` local, configurar OAuth, Cloudinary, APNs y desplegar el Worker. Véase `docs/IOS_SETUP.md`.
+- **Push real:** depende de que el propietario despliegue el Worker de Cloudflare y suba una clave APNs a Firebase. Sin eso, los avisos permanecen en Firestore y no se entregan al dispositivo.
+- **Eliminación integral de cuenta:** por ahora se registra una solicitud. Falta el endpoint fiable que elimine Authentication, subcolecciones Firestore, conversaciones, referencias compartidas y recursos Cloudinary. No presentar la eliminación como completada.
+- **Diario:** el editor iOS ya sincroniza texto y fotografías, pero aún no reproduce todas las herramientas multimedia y de edición de Android.
+- **Bloqueo y contadores:** el filtrado en ambos sentidos, la lista y el desbloqueo están disponibles. Las reglas actuales no permiten que el cliente ajuste el contador de seguidores del otro perfil en todos los casos al bloquear; ese contador necesita una reparación confiable de backend.
+- **Restauración de copias:** los registros de actividad de cuidados se exportan para consulta pero no se recrean, para no cambiar su autoría. Los medios conservan referencias Cloudinary; los recursos antiguos que no tengan índice pueden requerir limpieza manual.
+- **Localización:** el idioma se puede seleccionar, pero la traducción integral aún está pendiente.
+- **Pruebas en dispositivo:** el simulador no puede validar por sí solo APNs, Google OAuth, subida real a Cloudinary, permisos ni la interacción completa con Firebase.
+- **Pruebas automatizadas:** falta una suite Swift de integración que cubra los flujos reales de autenticación, reglas, compartición, comunidad y restauración.
 
 ## Abrir y compilar
 
@@ -42,6 +45,6 @@ xcodebuild -resolvePackageDependencies -project Pawly.xcodeproj -scheme Pawly
 xcodebuild -project Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
 
-Añade localmente el `GoogleService-Info.plist` de la app iOS registrada en Firebase a `ios/Pawly/`. No se debe versionar configuración privada de Firebase. Define los valores OAuth de Google y Cloudinary en la configuración de compilación del target.
+Añade localmente `ios/Pawly/GoogleService-Info.plist`; no se versiona. Define los valores OAuth, Cloudinary y `PAWLY_BACKEND_URL` en `ios/project.yml`. No incluyas claves privadas ni API secrets en la app.
 
-La CI de GitHub compila el simulador en macOS en las ramas de trabajo. Las funciones que requieren APNs, credenciales de Firebase y Cloudinary deben probarse además en un dispositivo configurado.
+La CI compila el simulador en macOS. La compilación correcta no sustituye la prueba en un iPhone con Firebase, APNs y Cloudinary configurados.
