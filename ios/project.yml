@@ -25,7 +25,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.pawly.ios
         PRODUCT_NAME: Pawly
         SWIFT_VERSION: 5.0
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Pawly/Info.plist
         CODE_SIGN_ENTITLEMENTS: Pawly/Pawly.entitlements
