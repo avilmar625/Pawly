@@ -47,6 +47,53 @@ final class PawlyCommunityStore: ObservableObject {
         guard uid != nil else { throw PawlyCommunityError.notSignedIn }
         guard isVerified else { throw PawlyCommunityError.verifyEmail }
     }
+    private func createActivityNotification(
+        targetUID: String,
+        type: String,
+        relatedID: String = "",
+        sourceEventID: String = ""
+    ) async {
+        guard let actorUID = uid, !targetUID.isEmpty, targetUID != actorUID else { return }
+
+        let message: String
+        let notificationID: String
+        switch type {
+        case "LIKE":
+            message = "Le ha gustado tu publicación."
+            notificationID = "LIKE-\(actorUID)-\(relatedID)"
+        case "COMMENT":
+            message = "Ha comentado tu publicación."
+            notificationID = "COMMENT-\(actorUID)-\(sourceEventID)"
+        case "FOLLOW":
+            message = "Ha empezado a seguirte."
+            notificationID = "FOLLOW-\(actorUID)-\(targetUID)"
+        default:
+            return
+        }
+
+        do {
+            let actor = try await db.collection("users").document(actorUID).getDocument()
+            let actorName = actor.get("displayName") as? String
+                ?? actor.get("username") as? String
+                ?? "Usuario Pawly"
+            let notification = db.collection("users").document(targetUID)
+                .collection("notifications").document(notificationID)
+            try await notification.setData([
+                "actorId": actorUID,
+                "actorName": String(actorName.prefix(80)),
+                "type": type,
+                "message": message,
+                "relatedId": String(relatedID.prefix(128)),
+                "sourceEventId": String(sourceEventID.prefix(128)),
+                "createdAt": FieldValue.serverTimestamp(),
+                "read": false
+            ])
+        } catch {
+            // The interaction is already committed. Notification failure must not
+            // make a successful like, comment or follow appear to have failed.
+            statusMessage = "La interacción se ha guardado, pero no se pudo generar el aviso."
+        }
+    }
     private func refreshVisibleFeed() {
         let hiddenIDs = blockedFeedIDs.union(blockedByFeedIDs)
         posts = cachedFeed.filter { !hiddenIDs.contains($0.authorId) }
@@ -109,10 +156,22 @@ final class PawlyCommunityStore: ObservableObject {
         ])
     }
     func toggleLike(_ post:PawlyFeedPost) async throws {
-        try requireVerified(); guard let uid else{throw PawlyCommunityError.notSignedIn}
-        let ref=db.collection("posts").document(post.id)
-        if post.likedByMe { try await ref.updateData(["likedBy":FieldValue.arrayRemove([uid]),"likeCount":FieldValue.increment(Int64(-1))]) }
-        else { try await ref.updateData(["likedBy":FieldValue.arrayUnion([uid]),"likeCount":FieldValue.increment(Int64(1))]) }
+        try requireVerified()
+        guard let uid else { throw PawlyCommunityError.notSignedIn }
+        let ref = db.collection("posts").document(post.id)
+        if post.likedByMe {
+            try await ref.updateData([
+                "likedBy": FieldValue.arrayRemove([uid]),
+                "likeCount": FieldValue.increment(Int64(-1))
+            ])
+        } else {
+            try await ref.updateData([
+                "likedBy": FieldValue.arrayUnion([uid]),
+                "likeCount": FieldValue.increment(Int64(1))
+            ])
+            await createActivityNotification(targetUID: post.authorId, type: "LIKE",
+                                             relatedID: post.id, sourceEventID: post.id)
+        }
     }
     func listenComments(postID:String,onUpdate:@escaping([PawlyFeedComment])->Void)->ListenerRegistration {
         db.collection("posts").document(postID).collection("comments").order(by:"createdAt").limit(to:100).addSnapshotListener { snap,_ in
@@ -120,13 +179,32 @@ final class PawlyCommunityStore: ObservableObject {
         }
     }
     func addComment(postID:String,text:String) async throws {
-        try requireVerified(); let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
-        guard !clean.isEmpty,clean.count<=1000,let uid else{throw PawlyCommunityError.invalidComment}
-        let profile=try await db.collection("users").document(uid).getDocument()
-        let post=db.collection("posts").document(postID), comment=post.collection("comments").document(), batch=db.batch()
-        batch.setData(["authorId":uid,"authorName":profile.get("displayName") as? String ?? "Usuario Pawly","text":clean,"createdAt":FieldValue.serverTimestamp()],forDocument:comment)
-        batch.updateData(["commentCount":FieldValue.increment(Int64(1)),"lastCommentId":comment.documentID],forDocument:post)
+        try requireVerified()
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean.count <= 1000, let uid else {
+            throw PawlyCommunityError.invalidComment
+        }
+        let profile = try await db.collection("users").document(uid).getDocument()
+        let post = db.collection("posts").document(postID)
+        let postSnapshot = try await post.getDocument()
+        guard let postAuthorID = postSnapshot.get("authorId") as? String else {
+            throw PawlyCommunityError.userNotFound
+        }
+        let comment = post.collection("comments").document()
+        let batch = db.batch()
+        batch.setData([
+            "authorId": uid,
+            "authorName": profile.get("displayName") as? String ?? "Usuario Pawly",
+            "text": clean,
+            "createdAt": FieldValue.serverTimestamp()
+        ], forDocument: comment)
+        batch.updateData([
+            "commentCount": FieldValue.increment(Int64(1)),
+            "lastCommentId": comment.documentID
+        ], forDocument: post)
         try await batch.commit()
+        await createActivityNotification(targetUID: postAuthorID, type: "COMMENT",
+                                         relatedID: postID, sourceEventID: comment.documentID)
     }
     func searchUsers(_ query:String) async throws -> [PawlyPublicUser] {
         guard let me=uid else{throw PawlyCommunityError.notSignedIn}
@@ -177,6 +255,9 @@ final class PawlyCommunityStore: ObservableObject {
             batch.updateData(["followersCount":FieldValue.increment(Int64(-1))],forDocument:theirProfile)
         }
         try await batch.commit()
+        if shouldFollow {
+            await createActivityNotification(targetUID: user.id, type: "FOLLOW")
+        }
     }
     func blockUser(_ user:PawlyPublicUser) async throws {
         try requireVerified()
