@@ -154,7 +154,7 @@ struct PawlyExploreView:View{
  @State private var area=""
  @State private var category="Veterinarios"
  @State private var results:[PawlyPlaceResult]=[]
- @State private var saved=PawlySavedPlace.load()
+ @StateObject private var savedStore = PawlySavedPlacesStore()
  @State private var region=MKCoordinateRegion(center:CLLocationCoordinate2D(latitude:40.4168,longitude:-3.7038),span:MKCoordinateSpan(latitudeDelta:0.12,longitudeDelta:0.12))
  @State private var isSearching=false
  @State private var error:String?
@@ -176,13 +176,13 @@ struct PawlyExploreView:View{
     if let locationMessage=locationProvider.message{Text(locationMessage).font(.caption).foregroundStyle(.secondary).padding(.horizontal)}
     List(results){p in VStack(alignment:.leading,spacing:6){
      HStack{VStack(alignment:.leading,spacing:3){Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)}
-      Spacer();Button{toggleSaved(p)}label:{Image(systemName:saved.contains(where:{$0.id==p.id}) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain)}
+      Spacer();Button{savedStore.toggle(PawlySavedPlace(id:p.id,name:p.name,subtitle:p.subtitle,latitude:p.coordinate.latitude,longitude:p.coordinate.longitude,phone:p.phone))}label:{Image(systemName:savedStore.places.contains(where:{$0.id==p.id}) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain)}
      HStack{if let phone=p.phone,!phone.isEmpty,let tel=URL(string:"tel:\(phone.filter{$0.isNumber || $0=="+"})"){Link("Llamar",destination:tel)}
       Spacer();Button("Cómo llegar"){p.mapItem.openInMaps(launchOptions:[MKLaunchOptionsDirectionsModeKey:MKLaunchOptionsDirectionsModeDriving])}
      }.font(.caption.weight(.semibold))
     }.padding(.vertical,4)}
     if results.isEmpty && !isSearching{VStack(spacing:8){Image(systemName:"map").font(.largeTitle).foregroundStyle(PawlyColors.primary);Text("Explora cerca de ti").font(.headline);Text("Elige una categoría y una zona para encontrar servicios y lugares pet-friendly.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)}.padding(25).frame(maxWidth:.infinity)}
-   }.navigationTitle("Explorar")
+   }.navigationTitle("Explorar").task { await savedStore.load() }
   }
  }
  @MainActor private func search()async{
@@ -196,28 +196,106 @@ struct PawlyExploreView:View{
    if results.isEmpty{error="No se han encontrado resultados. Prueba con otra zona o término."}
   }catch{self.error=error.localizedDescription}
  }
- private func toggleSaved(_ p:PawlyPlaceResult){
-  if let i=saved.firstIndex(where:{$0.id==p.id}){saved.remove(at:i)}
-  else{saved.append(PawlySavedPlace(id:p.id,name:p.name,subtitle:p.subtitle,latitude:p.coordinate.latitude,longitude:p.coordinate.longitude,phone:p.phone))}
-  if let data=try? JSONEncoder().encode(saved){UserDefaults.standard.set(data,forKey:"pawly.savedPlaces.v2")}
- }
 }
 struct PawlySavedPlace:Identifiable,Codable{
  let id:String;let name:String;let subtitle:String;let latitude:Double;let longitude:Double;let phone:String?
  static func load()->[PawlySavedPlace]{guard let data=UserDefaults.standard.data(forKey:"pawly.savedPlaces.v2"),let values=try? JSONDecoder().decode([PawlySavedPlace].self,from:data)else{return []};return values}
 }
+@MainActor
+final class PawlySavedPlacesStore: ObservableObject {
+    @Published private(set) var places: [PawlySavedPlace] = []
+    @Published var message: String?
+    private let db = Firestore.firestore()
+    private var document: DocumentReference? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        return db.collection("users").document(uid).collection("exploreCollections").document("ios-favourites")
+    }
+
+    func load() async {
+        let local = PawlySavedPlace.load()
+        guard let document else { places = local; return }
+        do {
+            let snapshot = try await document.getDocument()
+            if snapshot.exists, let raw = snapshot.get("entries") as? [String] {
+                places = raw.compactMap { value in
+                    guard let data = value.data(using: .utf8) else { return nil }
+                    return try? JSONDecoder().decode(PawlySavedPlace.self, from: data)
+                }
+                persistLocal()
+            } else {
+                places = local
+                try await save()
+            }
+        } catch {
+            places = local
+            message = "No se pudieron sincronizar los favoritos: \(error.localizedDescription)"
+        }
+    }
+
+    func toggle(_ place: PawlySavedPlace) {
+        if places.contains(where: { $0.id == place.id }) {
+            places.removeAll { $0.id == place.id }
+        } else {
+            places.append(place)
+        }
+        Task { try? await save() }
+    }
+
+    func remove(_ place: PawlySavedPlace) {
+        places.removeAll { $0.id == place.id }
+        Task { try? await save() }
+    }
+
+    private func persistLocal() {
+        if let data = try? JSONEncoder().encode(places) {
+            UserDefaults.standard.set(data, forKey: "pawly.savedPlaces.v2")
+        }
+    }
+
+    private func save() async throws {
+        guard let document else { persistLocal(); return }
+        guard places.count <= 100 else {
+            throw PawlyExploreError.tooManySavedPlaces
+        }
+        let encoded = try places.map { place -> String in
+            let data = try JSONEncoder().encode(place)
+            guard let value = String(data: data, encoding: .utf8) else {
+                throw PawlyExploreError.encodingFailed
+            }
+            return value
+        }
+        try await document.setData([
+            "name": "Lugares favoritos",
+            "description": "Sitios guardados desde Explorar en iOS",
+            "entries": encoded,
+            "updatedAt": FieldValue.serverTimestamp()
+        ])
+        persistLocal()
+        message = nil
+    }
+}
+
+enum PawlyExploreError: LocalizedError {
+    case tooManySavedPlaces
+    case encodingFailed
+    var errorDescription: String? {
+        switch self {
+        case .tooManySavedPlaces: return "Puedes guardar hasta 100 lugares."
+        case .encodingFailed: return "No se pudo preparar la lista de lugares."
+        }
+    }
+}
 struct PawlySavedPlacesView:View{
- @State private var places=PawlySavedPlace.load()
+ @StateObject private var store = PawlySavedPlacesStore()
  var body:some View{
   List{
    if places.isEmpty{Text("Guarda lugares desde Explorar para tenerlos a mano.").foregroundStyle(.secondary)}
-   ForEach(places){p in VStack(alignment:.leading,spacing:6){
+   ForEach(store.places){p in VStack(alignment:.leading,spacing:6){
     Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)
     HStack{Button("Cómo llegar"){let item=MKMapItem(placemark:MKPlacemark(coordinate:CLLocationCoordinate2D(latitude:p.latitude,longitude:p.longitude)));item.name=p.name;item.openInMaps(launchOptions:[MKLaunchOptionsDirectionsModeKey:MKLaunchOptionsDirectionsModeDriving])};Spacer();if let phone=p.phone,!phone.isEmpty,let url=URL(string:"tel:\(phone.filter{$0.isNumber || $0=="+"})"){Link("Llamar",destination:url)}}
-   }.padding(.vertical,4).swipeActions{Button(role:.destructive){places.removeAll{$0.id==p.id};persist()}label:{Label("Eliminar",systemImage:"trash")}}}
-  }.navigationTitle("Lugares favoritos")
+   }.padding(.vertical,4).swipeActions{Button(role:.destructive){store.remove(p)}label:{Label("Eliminar",systemImage:"trash")}}}
+  }.navigationTitle("Lugares favoritos").task { await store.load() }
  }
- private func persist(){if let data=try? JSONEncoder().encode(places){UserDefaults.standard.set(data,forKey:"pawly.savedPlaces.v2")}}
 }
 @MainActor final class PawlyLocationProvider:NSObject,ObservableObject,CLLocationManagerDelegate{
  private let manager=CLLocationManager()
@@ -327,12 +405,34 @@ struct PawlyMarketView: View {
  }
 }
 
+struct PawlyProfessionalProfile: Identifiable {
+ let id: String
+ let displayName: String
+ let category: String
+ let location: String
+ let description: String
+ let contact: String
+ var contactURL: URL? {
+  let value = contact.trimmingCharacters(in:.whitespacesAndNewlines)
+  guard !value.isEmpty else { return nil }
+  if value.contains("@"), let url = URL(string:"mailto:\(value)") { return url }
+  if value.range(of:"^[+0-9() .-]+$",options:.regularExpression) != nil {
+   let digits = value.filter { $0.isNumber || $0 == "+" }
+   return URL(string:"tel:\(digits)")
+  }
+  if let url = URL(string:value), ["https","http"].contains(url.scheme?.lowercased() ?? "") { return url }
+  return nil
+ }
+}
+
 struct PawlyProfessionalDirectoryView: View {
  @State private var category="Veterinario"
  @State private var query=""
  @State private var area=""
  @State private var results:[MKMapItem]=[]
+ @State private var pawlyProfessionals:[PawlyProfessionalProfile]=[]
  @State private var busy=false
+ @State private var loadingPawly=false
  @State private var message:String?
  private let categories=["Veterinario","Urgencias veterinarias","Adiestramiento","Peluquería canina","Guardería para mascotas","Fisioterapia","Nutrición animal","Tiendas de mascotas"]
  var body:some View {
@@ -346,16 +446,61 @@ struct PawlyProfessionalDirectoryView: View {
       Button { Task { await search() } } label:{HStack{Spacer();if busy{ProgressView()};Label("Buscar en Mapas",systemImage:"magnifyingglass");Spacer()}}.disabled(busy)
      }
      if let message { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
-     Section("Resultados") {
+     Section("Profesionales de Pawly") {
+      if loadingPawly { ProgressView("Buscando profesionales de Pawly…") }
+      else if pawlyProfessionals.isEmpty { Text("Todavía no hay perfiles profesionales públicos de esta categoría.").font(.caption).foregroundStyle(.secondary) }
+      ForEach(pawlyProfessionals) { professional in
+       VStack(alignment:.leading,spacing:5) {
+        Text(professional.displayName).font(.headline)
+        Text([professional.category,professional.location].filter { !$0.isEmpty }.joined(separator:" · "))
+         .font(.caption).foregroundStyle(.secondary)
+        if !professional.description.isEmpty { Text(professional.description).font(.subheadline) }
+        if !professional.contact.isEmpty {
+         Link(destination: professional.contactURL ?? URL(string:"https://pawly.app")!) {
+          Label(professional.contact,systemImage:"paperplane")
+         }.font(.caption.weight(.semibold))
+        }
+       }.padding(.vertical,4)
+      }
+     }
+     Section("Resultados de Apple Maps") {
       if results.isEmpty && !busy { Text("Busca un servicio para ver opciones de Apple Maps.").font(.caption).foregroundStyle(.secondary) }
       ForEach(Array(results.enumerated()),id:\.offset) { _,item in
        Button { item.openInMaps() } label:{VStack(alignment:.leading,spacing:4){Text(item.name ?? "Profesional").font(.headline).foregroundStyle(.primary);Text(item.placemark.title ?? item.placemark.locality ?? "Dirección no disponible").font(.caption).foregroundStyle(.secondary);Label("Abrir en Mapas",systemImage:"arrow.up.right").font(.caption.weight(.semibold)).foregroundStyle(PawlyColors.primary)}}.padding(.vertical,4)
       }
      }
     }
-   }.navigationTitle("Profesionales")
+   }.navigationTitle("Profesionales").task { await loadPawlyProfessionals() }
   }
  }
+ @MainActor private func loadPawlyProfessionals() async {
+  guard Auth.auth().currentUser != nil else { return }
+  loadingPawly = true
+  defer { loadingPawly = false }
+  do {
+   let snapshot = try await Firestore.firestore().collection("users")
+    .whereField("isPublic",isEqualTo:true).limit(to:100).getDocuments()
+   let wanted = category.lowercased()
+   pawlyProfessionals = snapshot.documents.compactMap { document in
+    let data = document.data()
+    guard data["accountType"] as? String == "professional" else { return nil }
+    let category = data["professionalCategory"] as? String ?? ""
+    let location = data["professionalLocation"] as? String ?? ""
+    let description = data["professionalDescription"] as? String ?? ""
+    let displayName = data["displayName"] as? String ?? data["username"] as? String ?? "Profesional"
+    let publicContact = data["professionalPublicContact"] as? String ?? ""
+    return PawlyProfessionalProfile(
+     id: document.documentID, displayName: displayName, category: category,
+     location: location, description: description, contact: publicContact
+    )
+   }
+   .filter { wanted.isEmpty || $0.category.localizedCaseInsensitiveContains(wanted) || wanted.contains($0.category.lowercased()) }
+   .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+  } catch {
+   message = "No se pudieron cargar los perfiles de Pawly: \(error.localizedDescription)"
+  }
+ }
+
  @MainActor private func search() async {
   busy=true;message=nil;defer{busy=false}
   let term=query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? category:query
