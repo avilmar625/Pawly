@@ -17,7 +17,8 @@ struct PawlyTabView: View {
         }
         .tint(PawlyColors.primary)
         .environmentObject(pets)
-        .task { await pets.loadPets() }
+        .task { await pets.loadPets(); pets.startListening() }
+        .onDisappear { pets.stopListening() }
     }
 }
 
@@ -321,19 +322,68 @@ struct PassportEntrySheet:View {
     @State private var title=""
     @State private var type="Vacuna"
     @State private var detail=""
+    @State private var product=""
+    @State private var dose=""
+    @State private var frequency=""
+    @State private var clinic=""
+    @State private var nextDose=Calendar.current.date(byAdding:.month,value:12,to:Date()) ?? Date()
     @State private var date=Date()
+    @State private var status="REALIZADO"
+    @State private var reminderEnabled=false
+    @State private var reminderTime=Calendar.current.date(from:DateComponents(hour:9,minute:0)) ?? Date()
+    private var dateFormatter:DateFormatter {
+        let formatter=DateFormatter();formatter.locale=Locale(identifier:"en_US_POSIX");formatter.dateFormat="yyyy-MM-dd";return formatter
+    }
+    private var timeFormatter:DateFormatter {
+        let formatter=DateFormatter();formatter.locale=Locale(identifier:"en_US_POSIX");formatter.dateFormat="HH:mm";return formatter
+    }
     var body:some View {
         NavigationStack {
             Form {
-                TextField("Título",text:$title)
-                Picker("Tipo",selection:$type){ForEach(["Vacuna","Revisión","Tratamiento","Desparasitación","Alergia","Peso","Microchip","Otro"],id:\.self){Text($0)}}
-                DatePicker("Fecha",selection:$date,displayedComponents:.date)
-                TextField("Detalles, clínica, dosis…",text:$detail,axis:.vertical).lineLimit(3...6)
-            }.navigationTitle("Nuevo registro").toolbar{
-                ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}
-                ToolbarItem(placement:.confirmationAction){Button("Guardar"){
-                    Task{let f=DateFormatter();f.dateFormat="yyyy-MM-dd";await onSave(PawlyPassportEntry(id:UUID().uuidString,type:type,title:title,detail:detail,date:f.string(from:date)));dismiss()}
-                }.disabled(title.trimmingCharacters(in:.whitespaces).isEmpty)}
+                Section("Registro sanitario") {
+                    TextField(type == "Peso" ? "Peso (ej. 12,5 kg)" : "Título",text:$title)
+                        .keyboardType(type == "Peso" ? .decimalPad : .default)
+                    Picker("Tipo",selection:$type){ForEach(["Vacuna","Revisión","Tratamiento","Desparasitación","Alergia","Peso","Microchip","Otro"],id:\.self){Text($0)}}
+                    DatePicker("Fecha del registro",selection:$date,displayedComponents:.date)
+                    Picker("Estado",selection:$status) {
+                        Text("Pendiente").tag("PENDIENTE")
+                        Text("Realizado").tag("REALIZADO")
+                        Text("Vencido").tag("VENCIDO")
+                    }
+                    TextField("Detalles",text:$detail,axis:.vertical).lineLimit(3...5)
+                }
+                Section("Tratamiento y clínica") {
+                    TextField("Producto o vacuna",text:$product)
+                    TextField("Dosis",text:$dose)
+                    TextField("Frecuencia o pauta",text:$frequency)
+                    TextField("Clínica veterinaria",text:$clinic)
+                }
+                Section("Próxima dosis o revisión") {
+                    DatePicker("Próxima fecha",selection:$nextDose,displayedComponents:.date)
+                    Toggle("Recordarme",isOn:$reminderEnabled)
+                    if reminderEnabled {
+                        DatePicker("Hora del aviso",selection:$reminderTime,displayedComponents:.hourAndMinute)
+                    }
+                }
+            }
+            .navigationTitle("Nuevo registro")
+            .toolbar {
+                ToolbarItem(placement:.cancellationAction) { Button("Cancelar") { dismiss() } }
+                ToolbarItem(placement:.confirmationAction) {
+                    Button("Guardar") {
+                        Task {
+                            await onSave(PawlyPassportEntry(
+                                id:UUID().uuidString,type:type,title:title.trimmingCharacters(in:.whitespacesAndNewlines),
+                                detail:detail.trimmingCharacters(in:.whitespacesAndNewlines),date:dateFormatter.string(from:date),
+                                product:String(product.prefix(120)),dose:String(dose.prefix(120)),
+                                frequency:String(frequency.prefix(120)),clinic:String(clinic.prefix(120)),
+                                nextDoseDate:dateFormatter.string(from:nextDose),status:status,
+                                reminderEnabled:reminderEnabled,reminderTime:timeFormatter.string(from:reminderTime)
+                            ))
+                            dismiss()
+                        }
+                    }.disabled(title.trimmingCharacters(in:.whitespaces).isEmpty)
+                }
             }
         }
     }
