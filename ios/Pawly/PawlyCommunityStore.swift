@@ -73,9 +73,9 @@ final class PawlyCommunityStore: ObservableObject {
 
         do {
             let actor = try await db.collection("users").document(actorUID).getDocument()
-            let actorName = actor.get("displayName") as? String
-                ?? actor.get("username") as? String
-                ?? "Usuario Pawly"
+            let displayName = actor.get("displayName") as? String ?? ""
+            let username = actor.get("username") as? String ?? ""
+            let actorName = displayName.isEmpty ? (username.isEmpty ? "Usuario Pawly" : username) : displayName
             let notification = db.collection("users").document(targetUID)
                 .collection("notifications").document(notificationID)
             try await notification.setData([
