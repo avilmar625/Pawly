@@ -30,27 +30,39 @@ final class PawlyCommunityStore: ObservableObject {
     private let auth=Auth.auth()
     private var feedListener:ListenerRegistration?
     private var blockedFeedListener:ListenerRegistration?
+    private var blockedByFeedListener:ListenerRegistration?
     private var chatsListener:ListenerRegistration?
     private var blockedChatsListener:ListenerRegistration?
+    private var blockedByChatsListener:ListenerRegistration?
     private var messageListener:ListenerRegistration?
     private var cachedFeed:[PawlyFeedPost]=[]
     private var blockedFeedIDs:Set<String>=[]
+    private var blockedByFeedIDs:Set<String>=[]
     private var cachedChats:[PawlyChat]=[]
     private var blockedChatIDs:Set<String>=[]
+    private var blockedByChatIDs:Set<String>=[]
     var uid:String? { auth.currentUser?.uid }
     var isVerified:Bool { auth.currentUser?.isEmailVerified == true }
     func requireVerified() throws {
         guard uid != nil else { throw PawlyCommunityError.notSignedIn }
         guard isVerified else { throw PawlyCommunityError.verifyEmail }
     }
+    private func refreshVisibleFeed() {
+        let hiddenIDs = blockedFeedIDs.union(blockedByFeedIDs)
+        posts = cachedFeed.filter { !hiddenIDs.contains($0.authorId) }
+    }
+
     func listenFeed() {
         guard let uid else { return }
-        feedListener?.remove();blockedFeedListener?.remove()
-        feedListener=db.collection("posts").order(by:"createdAt",descending:true).limit(to:50).addSnapshotListener { [weak self] snap,error in
-            guard let self else{return}
-            if let error { self.statusMessage=error.localizedDescription; return }
-            self.cachedFeed=snap?.documents.compactMap { d in
-                let x=d.data(), likes=x["likedBy"] as? [String] ?? []
+        feedListener?.remove()
+        blockedFeedListener?.remove()
+        blockedByFeedListener?.remove()
+
+        feedListener = db.collection("posts").order(by:"createdAt",descending:true).limit(to:50).addSnapshotListener { [weak self] snap,error in
+            guard let self else { return }
+            if let error { self.statusMessage = error.localizedDescription; return }
+            self.cachedFeed = snap?.documents.compactMap { d in
+                let x = d.data(), likes = x["likedBy"] as? [String] ?? []
                 return PawlyFeedPost(id:d.documentID,authorId:x["authorId"] as? String ?? "",
                     authorName:x["authorName"] as? String ?? "Usuario Pawly",authorPhoto:x["authorPhoto"] as? String ?? "",
                     petName:x["dogName"] as? String ?? "",text:x["text"] as? String ?? "",
@@ -59,16 +71,30 @@ final class PawlyCommunityStore: ObservableObject {
                     commentCount:x["commentCount"] as? Int ?? 0,likedByMe:likes.contains(uid),
                     createdAt:(x["createdAt"] as? Timestamp)?.dateValue())
             } ?? []
-            self.posts=self.cachedFeed.filter{!self.blockedFeedIDs.contains($0.authorId)}
+            self.refreshVisibleFeed()
         }
-        blockedFeedListener=db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
-            guard let self else{return}
-            if let error { self.statusMessage=error.localizedDescription;return }
-            self.blockedFeedIDs=Set(snap?.documents.map{$0.documentID} ?? [])
-            self.posts=self.cachedFeed.filter{!self.blockedFeedIDs.contains($0.authorId)}
+        blockedFeedListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
+            guard let self else { return }
+            if let error { self.statusMessage = error.localizedDescription; return }
+            self.blockedFeedIDs = Set(snap?.documents.map { $0.documentID } ?? [])
+            self.refreshVisibleFeed()
+        }
+        blockedByFeedListener = db.collection("users").document(uid).collection("blockedBy").addSnapshotListener { [weak self] snap,error in
+            guard let self else { return }
+            if let error { self.statusMessage = error.localizedDescription; return }
+            self.blockedByFeedIDs = Set(snap?.documents.map { $0.documentID } ?? [])
+            self.refreshVisibleFeed()
         }
     }
-    func stopFeed(){feedListener?.remove();blockedFeedListener?.remove();feedListener=nil;blockedFeedListener=nil}
+
+    func stopFeed() {
+        feedListener?.remove()
+        blockedFeedListener?.remove()
+        blockedByFeedListener?.remove()
+        feedListener = nil
+        blockedFeedListener = nil
+        blockedByFeedListener = nil
+    }
     func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "") async throws {
         try requireVerified()
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
@@ -108,8 +134,10 @@ final class PawlyCommunityStore: ObservableObject {
         guard clean.count>=2 else{return []}
         let docs=try await db.collection("users").whereField("isPublic",isEqualTo:true).order(by:"usernameLower")
             .start(at:[clean]).end(at:[clean+"\u{f8ff}"]).limit(to:20).getDocuments()
-        let blocked=try await db.collection("users").document(me).collection("blocked").getDocuments()
-        let blockedIDs=Set(blocked.documents.map{$0.documentID})
+        let blockedDocs = try await db.collection("users").document(me).collection("blocked").getDocuments()
+        let blockedByDocs = try await db.collection("users").document(me).collection("blockedBy").getDocuments()
+        let blockedIDs = Set(blockedDocs.documents.map { $0.documentID })
+            .union(blockedByDocs.documents.map { $0.documentID })
         var results:[PawlyPublicUser]=[]
         for d in docs.documents where d.documentID != me && !blockedIDs.contains(d.documentID) {
             let x=d.data(), following=try await db.collection("users").document(me).collection("following").document(d.documentID).getDocument()
@@ -135,26 +163,92 @@ final class PawlyCommunityStore: ObservableObject {
         if shouldFollow {
             batch.setData(["uid":user.id,"createdAt":FieldValue.serverTimestamp()],forDocument:myFollowing)
             batch.setData(["uid":me,"createdAt":FieldValue.serverTimestamp()],forDocument:theirFollower)
-            batch.updateData(["followingCount":FieldValue.increment(Int64(1))],forDocument:myProfile)
+            batch.updateData([
+                "followingCount":FieldValue.increment(Int64(1)),
+                "lastFollowingChangeUid":user.id
+            ],forDocument:myProfile)
             batch.updateData(["followersCount":FieldValue.increment(Int64(1))],forDocument:theirProfile)
         } else {
             batch.deleteDocument(myFollowing);batch.deleteDocument(theirFollower)
-            batch.updateData(["followingCount":FieldValue.increment(Int64(-1))],forDocument:myProfile)
+            batch.updateData([
+                "followingCount":FieldValue.increment(Int64(-1)),
+                "lastFollowingChangeUid":user.id
+            ],forDocument:myProfile)
             batch.updateData(["followersCount":FieldValue.increment(Int64(-1))],forDocument:theirProfile)
         }
         try await batch.commit()
     }
     func blockUser(_ user:PawlyPublicUser) async throws {
-        guard let me=uid,me != user.id else{throw PawlyCommunityError.notParticipant}
-        try await db.collection("users").document(me).collection("blocked").document(user.id)
-            .setData(["uid":user.id,"createdAt":FieldValue.serverTimestamp()])
+        try requireVerified()
+        guard let me = uid, me != user.id else { throw PawlyCommunityError.notParticipant }
+
+        let meRef = db.collection("users").document(me)
+        let otherRef = db.collection("users").document(user.id)
+        let myFollowing = meRef.collection("following").document(user.id)
+        let theirFollowing = otherRef.collection("following").document(me)
+        let myFollower = meRef.collection("followers").document(user.id)
+        let theirFollower = otherRef.collection("followers").document(me)
+        let myBlocked = meRef.collection("blocked").document(user.id)
+        let theirBlockedBy = otherRef.collection("blockedBy").document(me)
+
+        // Read relationship state first, then apply the privacy change and remove
+        // both sides of any follow relationship in one atomic batch.
+        let relationshipDocs = try await [
+            myFollowing.getDocument(),
+            theirFollowing.getDocument()
+        ]
+        let iFollow = relationshipDocs[0].exists
+        let theyFollow = relationshipDocs[1].exists
+
+        let batch = db.batch()
+        batch.setData([
+            "uid": user.id,
+            "username": user.username,
+            "displayName": user.displayName,
+            "createdAt": FieldValue.serverTimestamp()
+        ], forDocument: myBlocked)
+        batch.setData([
+            "uid": me,
+            "createdAt": FieldValue.serverTimestamp()
+        ], forDocument: theirBlockedBy)
+
+        if iFollow {
+            batch.deleteDocument(myFollowing)
+            batch.deleteDocument(theirFollower)
+            batch.updateData([
+                "followingCount": FieldValue.increment(Int64(-1)),
+                "lastFollowingChangeUid": user.id
+            ], forDocument: meRef)
+            batch.updateData(["followersCount": FieldValue.increment(Int64(-1))], forDocument: otherRef)
+        }
+        if theyFollow {
+            batch.deleteDocument(theirFollowing)
+            batch.deleteDocument(myFollower)
+            batch.updateData(["followersCount": FieldValue.increment(Int64(-1))], forDocument: meRef)
+            batch.updateData([
+                "followingCount": FieldValue.increment(Int64(-1)),
+                "lastFollowingChangeUid": me
+            ], forDocument: otherRef)
+        }
+        try await batch.commit()
+    }
+
+    func unblockUser(_ userID: String) async throws {
+        guard let me = uid, me != userID else { throw PawlyCommunityError.notParticipant }
+        let batch = db.batch()
+        batch.deleteDocument(db.collection("users").document(me).collection("blocked").document(userID))
+        batch.deleteDocument(db.collection("users").document(userID).collection("blockedBy").document(me))
+        try await batch.commit()
     }
     func reportUser(_ user:PawlyPublicUser,reason:String) async throws {
         try requireVerified()
         guard let me=uid else{throw PawlyCommunityError.notSignedIn}
         let clean=reason.trimmingCharacters(in:.whitespacesAndNewlines)
         guard !clean.isEmpty,clean.count<=500 else{throw PawlyCommunityError.invalidComment}
-        try await db.collection("reports").addDocument(data:["reporterId":me,"targetId":user.id,"targetType":"user","reason":clean,"createdAt":FieldValue.serverTimestamp()])
+        try await db.collection("reports").addDocument(data:[
+            "reporterId":me,"targetId":user.id,"targetType":"user",
+            "reason":clean,"status":"open","createdAt":FieldValue.serverTimestamp()
+        ])
     }
 
     func startConversation(username:String) async throws -> String {
@@ -176,9 +270,16 @@ final class PawlyCommunityStore: ObservableObject {
         }
         return cid
     }
+    private func refreshVisibleChats() {
+        let hiddenIDs = blockedChatIDs.union(blockedByChatIDs)
+        chats = cachedChats.filter { !hiddenIDs.contains($0.otherUserID) }
+    }
+
     func listenChats() {
-        guard let uid else{return}
-        chatsListener?.remove();blockedChatsListener?.remove()
+        guard let uid else { return }
+        chatsListener?.remove()
+        blockedChatsListener?.remove()
+        blockedByChatsListener?.remove()
         chatsListener=db.collection("conversations").whereField("participants",arrayContains:uid).addSnapshotListener { [weak self] snap,error in
             guard let self else{return};if let error{self.statusMessage=error.localizedDescription;return}
             self.cachedChats=snap?.documents.compactMap { d in
@@ -188,12 +289,19 @@ final class PawlyCommunityStore: ObservableObject {
                 return PawlyChat(id:d.documentID,otherUserID:other,otherUserName:names[other] ?? "Usuario Pawly",
                     lastMessage:x["lastMessage"] as? String ?? "",updatedAt:(x["updatedAt"] as? Timestamp)?.dateValue())
             }.sorted{($0.updatedAt ?? .distantPast)>($1.updatedAt ?? .distantPast)}
-            self.chats=self.cachedChats.filter{!self.blockedChatIDs.contains($0.otherUserID)}
+            self.refreshVisibleChats()
         }
-        blockedChatsListener=db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
-            guard let self else{return};if let error{self.statusMessage=error.localizedDescription;return}
-            self.blockedChatIDs=Set(snap?.documents.map{$0.documentID} ?? [])
-            self.chats=self.cachedChats.filter{!self.blockedChatIDs.contains($0.otherUserID)}
+        blockedChatsListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
+            guard let self else { return }
+            if let error { self.statusMessage = error.localizedDescription; return }
+            self.blockedChatIDs = Set(snap?.documents.map { $0.documentID } ?? [])
+            self.refreshVisibleChats()
+        }
+        blockedByChatsListener = db.collection("users").document(uid).collection("blockedBy").addSnapshotListener { [weak self] snap,error in
+            guard let self else { return }
+            if let error { self.statusMessage = error.localizedDescription; return }
+            self.blockedByChatIDs = Set(snap?.documents.map { $0.documentID } ?? [])
+            self.refreshVisibleChats()
         }
     }
     func listenMessages(conversationID:String,onUpdate:@escaping([PawlyChatMessage])->Void) {
@@ -238,7 +346,14 @@ final class PawlyCommunityStore: ObservableObject {
             }
         } catch { statusMessage=error.localizedDescription }
     }
-    func stopChats(){chatsListener?.remove();blockedChatsListener?.remove();chatsListener=nil;blockedChatsListener=nil}
+    func stopChats() {
+        chatsListener?.remove()
+        blockedChatsListener?.remove()
+        blockedByChatsListener?.remove()
+        chatsListener = nil
+        blockedChatsListener = nil
+        blockedByChatsListener = nil
+    }
     func stopMessages(){messageListener?.remove();messageListener=nil}
 }
 private extension String { var nilIfEmpty:String? { isEmpty ? nil : self } }
