@@ -674,17 +674,21 @@ struct PawlyProfessionalDirectoryView: View {
    }
    .filter { wanted.isEmpty || $0.category.localizedCaseInsensitiveContains(wanted) || wanted.contains($0.category.lowercased()) }
    .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
-   for index in pawlyProfessionals.indices where pawlyProfessionals[index].contact.isEmpty {
-    let profile= snapshot.documents.first(where: { $0.documentID == pawlyProfessionals[index].id })
+   let professionalIDs = pawlyProfessionals.indices.filter { pawlyProfessionals[$0].contact.isEmpty }
+   for index in professionalIDs {
+    let profile = snapshot.documents.first(where: { $0.documentID == pawlyProfessionals[index].id })
     guard profile?.get("professionalContactPublic") as? Bool == true else { continue }
-    let privateDoc=try await Firestore.firestore().collection("users").document(pawlyProfessionals[index].id)
+    let privateDoc = try await Firestore.firestore().collection("users").document(pawlyProfessionals[index].id)
      .collection("privateData").document("professionalContact").getDocument()
-    let contact=privateDoc.get("value") as? String ?? ""
+    let contact = privateDoc.get("value") as? String ?? ""
     if !contact.isEmpty {
-     pawlyProfessionals[index]=PawlyProfessionalProfile(
-      id:pawlyProfessionals[index].id,displayName:pawlyProfessionals[index].displayName,
-      category:pawlyProfessionals[index].category,location:pawlyProfessionals[index].location,
-      description:pawlyProfessionals[index].description,contact:contact
+     pawlyProfessionals[index] = PawlyProfessionalProfile(
+      id: pawlyProfessionals[index].id,
+      displayName: pawlyProfessionals[index].displayName,
+      category: pawlyProfessionals[index].category,
+      location: pawlyProfessionals[index].location,
+      description: pawlyProfessionals[index].description,
+      contact: contact
      )
     }
    }
