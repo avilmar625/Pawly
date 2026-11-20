@@ -9,24 +9,24 @@ La app iOS nativa vive en `ios/` y se desarrolla en ramas de trabajo basadas en 
 - Pasaporte sanitario, rutinas de cuidado y agenda sincronizada con Firestore.
 - Diario sincronizado por mascota, con un editor más sencillo que el de Android.
 - Comunidad: publicaciones, fotos/vídeos, comentarios, reacciones, búsqueda de usuarios y mensajería con indicadores de lectura.
-- Avisos de actividad en Firestore para «me gusta», comentarios y nuevos seguidores.
+- Avisos de actividad en Firestore para «me gusta», comentarios y nuevos seguidores; envío push al Worker configurado.
 - Bloqueo en ambos sentidos, denuncias y filtrado de usuarios bloqueados en el muro, búsqueda y chats.
-- Explorar con MapKit, búsqueda de lugares y favoritos locales.
+- Explorar con MapKit, búsqueda de lugares y favoritos sincronizados mediante `users/{uid}/exploreCollections/ios-favourites`.
 - Guías, noticias RSS, Pawly Market y exportación PDF.
 - Notificaciones locales y registro de APNs cuando el usuario ha autorizado avisos.
 
 ## Pendiente para alcanzar paridad con Android
 
-- Salud: falta el historial completo de peso y mediciones.
-- Agenda: falta el calendario mensual que reúne agenda, salud y recuerdos.
-- Gastos: falta el registro de gastos y su resumen mensual por mascota.
-- Copias de seguridad: falta exportar y restaurar integralmente perfiles, mascotas, recuerdos y datos asociados.
-- Explorar: los favoritos siguen siendo locales; no se sincronizan como las colecciones de Android.
-- Profesionales: iOS busca en Apple Maps, pero todavía no muestra los perfiles profesionales publicados en Comunidad.
+- Salud: pasaporte ampliado con producto, dosis, frecuencia, clínica, estado, próxima dosis y avisos; el gráfico de peso se obtiene de los registros tipo Peso.
+- Agenda: calendario mensual que reúne agenda, próximas dosis, rutinas y recuerdos.
+- Gastos: registro sincronizado y resumen mensual por mascota.
+- Copias de seguridad: exportación/restauración versionada de los perfiles, datos sanitarios, rutinas, agenda, diario, gastos y favoritos. Los registros de actividad no se reescriben al restaurar para no suplantar su autoría; fotos y vídeos conservan sus referencias de Cloudinary.
+- Explorar: los favoritos se sincronizan con la cuenta en Firestore y se mantienen en caché local.
+- Profesionales: alta de cuenta profesional, categorías, ubicación, descripción y contacto privado con opción explícita de publicación; el directorio consulta perfiles de Pawly y Apple Maps.
 - Diario: faltan campos y herramientas multimedia del editor Android.
-- Rutinas: el modelo de Firestore ya incluye dosis, hora, fecha y tipo de acción; falta completar la interfaz de planificación semanal con días concretos.
+- Rutinas: el editor incluye dosis, hora, fecha, tipo de acción y selector de días semanales.
 - Bloqueos: el filtrado en ambos sentidos está implementado, pero falta una pantalla completa para gestionar la lista y desbloquear usuarios. Además, las reglas actuales no autorizan al cliente a corregir el contador de seguidores cuando bloquea a alguien que ya le seguía; requiere una operación confiable de backend o un ajuste específico de reglas.
-- Avisos push: iOS puede registrar tokens APNs/FCM y guardar avisos de actividad en Firestore, pero el Worker de Cloudflare que envía push todavía no está desplegado (véase `backend/cloudflare-worker/README.md`). Los avisos tampoco tienen aún navegación profunda al tocar la notificación.
+- Avisos push: iOS registra tokens APNs/FCM, guarda avisos en Firestore y llama al endpoint `/v1/activity-notifications` del Worker cuando `PAWLY_BACKEND_URL` está configurada. El Worker de Cloudflare todavía debe desplegarse y configurarse (véase `backend/cloudflare-worker/README.md`). Los avisos aún no tienen navegación profunda al tocarlos.
 - Eliminación de cuenta: la app registra una solicitud, pero el borrado real de Authentication, subcolecciones Firestore y recursos Cloudinary aún requiere un backend desplegado.
 - La localización todavía está parcialmente traducida.
 - El entitlement APNs del proyecto está configurado para desarrollo; la distribución necesitará el entitlement de producción y perfiles de firma adecuados.
