@@ -6,12 +6,15 @@ La aplicación iOS es nativa en SwiftUI y comparte Firebase/Firestore y Cloudina
 
 - Autenticación con correo/contraseña y Google, registro, reserva de nombre, recuperación de contraseña y verificación por correo.
 - Perfiles de mascotas, selección sincronizada, edición, fotografías e invitaciones para compartir.
-- Pasaporte sanitario con producto, dosis, frecuencia, clínica, estado, próxima dosis y hora de aviso.
+- Pasaporte sanitario con producto, dosis, frecuencia, clínica, estado, próxima dosis y hora de aviso; historial filtrable por tipo de registro.
+- Secciones plegables y persistentes en Salud, Diario y Más, con preferencias separadas por usuario y mascota.
+- Próximas actuaciones y ficha de emergencia accesibles desde Salud.
 - Avisos locales para próximas dosis y revisiones cuando el usuario activa «Recordarme».
-- Registro de peso a partir de las entradas del tipo Peso.
+- Registro de peso a partir de las entradas del tipo Peso, conservando el orden de creación cuando varias mediciones comparten fecha.
+- Inicio con progreso diario de rutinas, próxima actuación, recuerdo de aniversario y último cuidado registrado.
 - Rutinas de cuidado con responsable, frecuencia, dosis, hora, fecha, acción y selección de días semanales.
 - Historial de cuidados con autor, acción, distancia, notas y hasta cuatro fotografías.
-- Diario sincronizado por mascota con título, texto, categoría, fecha y hasta cuatro fotografías por recuerdo.
+- Diario sincronizado por mascota con título, texto, categoría, fecha, filtro por categoría, orden cronológico y hasta ocho fotografías por recuerdo; editor plegable con estado persistente.
 - Calendario mensual que reúne agenda, próximas dosis, rutinas y recuerdos.
 - Gastos por mascota con resumen mensual y desglose por categorías. La implementación iOS se sincroniza mediante Firestore; la pantalla Android actual continúa siendo local.
 - Copias de seguridad JSON versionadas con perfiles, mascotas, pasaporte, rutinas, agenda, diario, gastos, colecciones de Explorar, ajustes profesionales y recordatorios locales.

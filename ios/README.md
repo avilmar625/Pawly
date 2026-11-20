@@ -1,11 +1,11 @@
 # Pawly para iOS
 
-Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. El trabajo se desarrolla en `codex/ios-port-2026-11`, con base en `codex/streamlined-navigation-2026-11`. El cliente iOS es SwiftUI nativo y vive en `ios/`; el código Android sigue en sus carpetas actuales.
+Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. El trabajo se desarrolla en `codex/ios-auth-push-hardening-2026-11`, manteniendo separadas las ramas nativas de Android e iOS. El cliente iOS es SwiftUI nativo y vive en `ios/`; el código Android sigue en sus carpetas actuales.
 
 ## Funciones iOS incorporadas
 - Acceso, registro, verificación y recuperación de contraseña con Firebase; inicio de sesión Google.
 - Perfiles multi-mascota y selector persistente; invitaciones a compartir con roles editor/lector.
-- Pasaporte sanitario, rutinas, diario sincronizado y exportación PDF.
+- Pasaporte sanitario filtrable, rutinas, diario sincronizado con editor plegable/filtros y hasta ocho fotografías, y exportación PDF.
 - Comunidad con muro, categorías, multimedia, likes, comentarios, búsqueda de personas, seguimiento, bloqueo y denuncias.
 - Mensajería en tiempo real con fotos/vídeos y confirmación de lectura.
 - Perfil público editable: nombre, biografía, foto y privacidad.

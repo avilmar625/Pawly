@@ -37,7 +37,9 @@ struct PawlyHomeCareSection: View {
         return formatter.string(from: Date())
     }
     private var dueTasks: [PawlyCareTask] {
-        tasks.filter(isDueToday).sorted {
+        tasks.filter {
+            isDueToday($0) && ($0.frequency != "Puntual" || !$0.completed || $0.completedOn == todayKey)
+        }.sorted {
             let firstTime = $0.time.isEmpty ? "99:99" : $0.time
             let secondTime = $1.time.isEmpty ? "99:99" : $1.time
             return firstTime == secondTime ? $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending : firstTime < secondTime

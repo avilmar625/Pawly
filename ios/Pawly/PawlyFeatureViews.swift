@@ -538,7 +538,11 @@ struct CareView:View {
         Task {
             var updated=task
             updated.completed.toggle()
-            updated.completedOn=updated.completed ? DateFormatter.localizedString(from:Date(),dateStyle:.short,timeStyle:.none) : ""
+            let dayFormatter=DateFormatter()
+            dayFormatter.locale=Locale(identifier:"en_US_POSIX")
+            dayFormatter.timeZone=Calendar.current.timeZone
+            dayFormatter.dateFormat="yyyy-MM-dd"
+            updated.completedOn=updated.completed ? dayFormatter.string(from:Date()) : ""
             do{try await pets.saveTask(updated,pet:pet);await load()}
             catch{self.error=error.localizedDescription}
         }
