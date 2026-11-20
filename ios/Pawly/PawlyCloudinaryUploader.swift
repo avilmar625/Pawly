@@ -36,8 +36,14 @@ struct PawlyCloudinaryUploader {
             body.append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".data(using:.utf8)!)
             body.append("\(value)\r\n".data(using:.utf8)!)
         }
+        let assetFolder = "pawly/\(folder)/\(ownerUID)"
+        let publicID = "\(assetFolder)/\(UUID().uuidString)"
         field("upload_preset",preset)
-        field("folder","pawly/\(folder)/\(ownerUID)")
+        // Set the media-library folder and public ID separately. This works
+        // with Cloudinary dynamic folders, where "folder" alone does not
+        // guarantee that the public ID includes the folder path.
+        field("asset_folder",assetFolder)
+        field("public_id",publicID)
         body.append("--\(boundary)\r\n".data(using:.utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(filename)\"\r\n".data(using:.utf8)!)
         body.append("Content-Type: \(mime)\r\n\r\n".data(using:.utf8)!)
