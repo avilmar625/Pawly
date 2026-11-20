@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseAuth
+import PhotosUI
 
 private struct PawlyHomeUpcomingItem {
     let title: String
