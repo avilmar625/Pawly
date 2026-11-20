@@ -307,9 +307,55 @@ struct CareView:View {
         do{async let p=pets.loadPassport(pet);async let t=pets.loadTasks(pet);passport=try await p;tasks=try await t;error=nil}
         catch{self.error=error.localizedDescription}
     }
-    private func save(_ entry:PawlyPassportEntry) async {guard let pet=pets.selectedPet else{return};do{try await pets.savePassport(entry,pet:pet);await load()}catch{self.error=error.localizedDescription}}
+    private func save(_ entry:PawlyPassportEntry) async {
+        guard let pet=pets.selectedPet else{return}
+        do {
+            try await pets.savePassport(entry,pet:pet)
+            let reminderID = "health-\(pet.id)-\(entry.id)"
+            if entry.reminderEnabled,
+               let reminderDate = healthReminderDate(nextDoseDate: entry.nextDoseDate, time: entry.reminderTime),
+               reminderDate > Date() {
+                PawlyReminderStore.shared.upsert(PawlyLocalReminder(
+                    id: reminderID,
+                    title: "Salud · \(entry.title)",
+                    petName: pet.name,
+                    date: reminderDate,
+                    notes: entry.product.isEmpty ? "Próxima dosis o revisión" : entry.product,
+                    category: "Veterinario"
+                ))
+            } else {
+                PawlyReminderStore.shared.remove(id: reminderID)
+            }
+            await load()
+        } catch { self.error=error.localizedDescription }
+    }
+
+    private func healthReminderDate(healthDate: String = "", time: String) -> Date? {
+        let dateValue = healthDate.isEmpty ? "" : healthDate
+        return healthReminderDate(nextDoseDate: dateValue, time: time)
+    }
+
+    private func healthReminderDate(nextDoseDate: String, time: String) -> Date? {
+        let dateFormatter=DateFormatter()
+        dateFormatter.locale=Locale(identifier:"en_US_POSIX")
+        dateFormatter.timeZone=TimeZone.current
+        dateFormatter.dateFormat="yyyy-MM-dd"
+        guard let day=dateFormatter.date(from:nextDoseDate) else { return nil }
+        let timeParts=time.split(separator:":").compactMap { Int($0) }
+        guard timeParts.count==2,(0...23).contains(timeParts[0]),(0...59).contains(timeParts[1]) else { return nil }
+        return Calendar.current.date(bySettingHour:timeParts[0],minute:timeParts[1],second:0,of:day)
+    }
     private func save(_ task:PawlyCareTask) async {guard let pet=pets.selectedPet else{return};do{try await pets.saveTask(task,pet:pet);await load()}catch{self.error=error.localizedDescription}}
-    private func removeEntry(_ e:PawlyPassportEntry){guard let p=pets.selectedPet else{return};Task{do{try await pets.deletePassport(e.id,pet:p);await load()}catch { self.error = error.localizedDescription }}}
+    private func removeEntry(_ e:PawlyPassportEntry){
+        guard let pet=pets.selectedPet else{return}
+        Task {
+            do {
+                try await pets.deletePassport(e.id,pet:pet)
+                PawlyReminderStore.shared.remove(id:"health-\(pet.id)-\(e.id)")
+                await load()
+            } catch { self.error = error.localizedDescription }
+        }
+    }
     private func removeTask(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{do{try await pets.deleteTask(t.id,pet:p);await load()}catch { self.error = error.localizedDescription }}}
     private func toggle(_ t:PawlyCareTask){guard let p=pets.selectedPet else{return};Task{var x=t;x.completed.toggle();do{try await pets.saveTask(x,pet:p);await load()}catch { self.error = error.localizedDescription }}}
     private var weightEntries:[(PawlyPassportEntry,Double)] {
