@@ -6,7 +6,7 @@ import FirebaseFirestore
 @MainActor
 enum PawlyBackupManager {
     private static let format = "pawly-ios-backup"
-    private static let version = 1
+    private static let version = 2
     private static let maximumBytes = 25 * 1024 * 1024
 
     static func exportBackup() async throws -> URL {
@@ -53,8 +53,8 @@ enum PawlyBackupManager {
             pets.append(item)
         }
 
-        let favoritesRef = userRef.collection("exploreCollections").document("ios-favourites")
-        let favorites = try await favoritesRef.getDocument()
+        let exploreCollections = try await exportCollection(userRef.collection("exploreCollections"))
+        let privateContact = try await userRef.collection("privateData").document("professionalContact").getDocument()
         let reminderData = PawlyReminderStore.shared.exportBackupData()?.base64EncodedString() ?? ""
         let savedPlacesData = try? JSONEncoder().encode(PawlySavedPlace.load())
 
@@ -64,8 +64,9 @@ enum PawlyBackupManager {
             "exportedAt": Int64(Date().timeIntervalSince1970 * 1000),
             "uid": uid,
             "profile": jsonSafe(profile),
+            "privateProfessionalContact": privateContact.get("value") as? String ?? "",
             "pets": pets,
-            "favoriteCollection": favorites.exists ? jsonSafe(favorites.data() ?? [:]) : [:],
+            "exploreCollections": exploreCollections,
             "localRemindersBase64": reminderData,
             "localSavedPlacesBase64": savedPlacesData?.base64EncodedString() ?? ""
         ]
@@ -95,8 +96,19 @@ enum PawlyBackupManager {
         if let rawProfile = payload["profile"] as? [String: Any] {
             let decoded = restoreValue(rawProfile) as? [String: Any] ?? [:]
             var allowed: [String: Any] = [:]
-            for key in ["displayName", "bio", "photoUrl", "isPublic", "dogProfiles"] {
+            for key in [
+                "displayName", "bio", "photoUrl", "isPublic", "dogProfiles",
+                "accountType", "professionalCategory", "professionalLocation",
+                "professionalDescription", "professionalContactPublic", "professionalPublicContact"
+            ] {
                 if let value = decoded[key] { allowed[key] = value }
+            }
+            if let contact = payload["privateProfessionalContact"] as? String, !contact.isEmpty {
+                try await userRef.collection("privateData").document("professionalContact").setData([
+                    "value": String(contact.prefix(120))
+                ])
+            } else {
+                try? await userRef.collection("privateData").document("professionalContact").delete()
             }
             if !allowed.isEmpty { try await userRef.updateData(allowed) }
         }
@@ -141,15 +153,10 @@ enum PawlyBackupManager {
             }
         }
 
-        if let favoriteCollection = payload["favoriteCollection"] as? [String: Any],
-           let entries = favoriteCollection["entries"] as? [String] {
-            try await userRef.collection("exploreCollections").document("ios-favourites").setData([
-                "name": "Lugares favoritos",
-                "description": "Sitios guardados desde Explorar en iOS",
-                "entries": Array(entries.prefix(100)),
-                "updatedAt": FieldValue.serverTimestamp()
-            ])
-        }
+        restoredDocuments += try await restoreExploreCollections(
+            payload["exploreCollections"],
+            to: userRef.collection("exploreCollections")
+        )
 
         if let encoded = payload["localRemindersBase64"] as? String,
            let reminderData = Data(base64Encoded: encoded), !reminderData.isEmpty {
@@ -221,6 +228,29 @@ enum PawlyBackupManager {
             writes.append((collection.document(id), [
                 "id": id, "text": String(text.prefix(12_000)),
                 "position": position, "updatedAt": FieldValue.serverTimestamp()
+            ]))
+        }
+        try await commit(writes)
+        return writes.count
+    }
+
+    private static func restoreExploreCollections(_ raw: Any?, to collection: CollectionReference) async throws -> Int {
+        let records = raw as? [[String: Any]] ?? []
+        var writes: [(DocumentReference, [String: Any])] = []
+        for record in records {
+            guard let id = record["id"] as? String,
+                  let rawData = record["data"] as? [String: Any],
+                  let fields = restoreValue(rawData) as? [String: Any],
+                  let name = fields["name"] as? String,
+                  let entries = fields["entries"] as? [String]
+            else { continue }
+            let cleanName = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(32))
+            guard !cleanName.isEmpty else { continue }
+            writes.append((collection.document(id), [
+                "name": cleanName,
+                "description": String((fields["description"] as? String ?? "").prefix(120)),
+                "entries": Array(entries.prefix(100)),
+                "updatedAt": FieldValue.serverTimestamp()
             ]))
         }
         try await commit(writes)
