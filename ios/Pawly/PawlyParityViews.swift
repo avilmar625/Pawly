@@ -841,7 +841,7 @@ struct PawlyLostPetView: View {
     subscriptionLocation=CLLocationCoordinate2D(latitude:saved.latitude,longitude:saved.longitude)
     subscriptionSaved=true
    }
-  } catch { error=error.localizedDescription }
+  } catch let loadError { self.error=loadError.localizedDescription }
  }
 
  @MainActor private func saveSubscription() async {
@@ -859,7 +859,7 @@ struct PawlyLostPetView: View {
    subscriptionSaved=true
    error=nil
    status="Preferencias de alertas guardadas."
-  } catch { error=error.localizedDescription }
+  } catch let saveError { self.error=saveError.localizedDescription }
  }
 
  @MainActor private func resolveLostLocation() async {
@@ -873,7 +873,7 @@ struct PawlyLostPetView: View {
    }
    lostLocation=coordinate
    error=nil
-  } catch { error=error.localizedDescription }
+  } catch let geocodingError { self.error=geocodingError.localizedDescription }
  }
 
  @MainActor private func publish() async {
@@ -904,7 +904,7 @@ struct PawlyLostPetView: View {
    } catch {
     status="La publicación y la zona aproximada se han guardado en Pawly, pero no se pudo completar el envío de avisos: \(error.localizedDescription)"
    }
-  } catch { error="No se pudo publicar: \(error.localizedDescription)" }
+  } catch let publishError { self.error="No se pudo publicar: \(publishError.localizedDescription)" }
  }
 }
 
