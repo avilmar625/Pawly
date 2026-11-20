@@ -3,15 +3,18 @@ package com.pawly.app.care
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -209,7 +213,7 @@ internal fun PetCareExpensesSection(petName: String, storageScope: String?) {
                             Button(
                                 onClick = {
                                     if (title.isBlank()) {
-                                        feedback = tr("Añade un concepto para guardar el registro.")
+                                        feedback = "Añade un concepto para guardar el registro."
                                     } else {
                                         val entry = PetCareExpense(
                                             id = java.util.UUID.randomUUID().toString(),
@@ -225,7 +229,7 @@ internal fun PetCareExpensesSection(petName: String, storageScope: String?) {
                                         detail = ""
                                         amount = ""
                                         showEntryForm = false
-                                        feedback = tr("Registro guardado en este dispositivo.")
+                                        feedback = "Registro guardado en este dispositivo."
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -260,7 +264,7 @@ internal fun PetCareExpensesSection(petName: String, storageScope: String?) {
                     IconButton(onClick = {
                         entries = entries.filterNot { it.id == entry.id }
                         saveExpenses(preferences, entries)
-                        feedback = tr("Gasto eliminado.")
+                        feedback = "Gasto eliminado."
                     }) {
                         Icon(Icons.Default.DeleteOutline, contentDescription = tr("Eliminar gasto"), tint = MaterialTheme.colorScheme.error)
                     }

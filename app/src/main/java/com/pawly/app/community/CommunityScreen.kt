@@ -175,9 +175,9 @@ internal fun CommunityAuthPanel(
                         if (register) {
                             val emailSent = configuredRepo.register(email, password, username)
                             val message = if (emailSent) {
-                                tr("Correo de verificación enviado. Revisa tu bandeja de entrada.")
+                                "Correo de verificación enviado. Revisa tu bandeja de entrada."
                             } else {
-                                tr("La cuenta se creó, pero no se pudo enviar el correo. Podrás reenviarlo desde Comunidad.")
+                                "La cuenta se creó, pero no se pudo enviar el correo. Podrás reenviarlo desde Comunidad."
                             }
                             android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
                         } else {
