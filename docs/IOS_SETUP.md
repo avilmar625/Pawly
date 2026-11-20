@@ -113,6 +113,10 @@ Si también vas a usar desde el Worker el borrado de recursos Cloudinary, config
 
 Documentación oficial: [Secretos de Cloudflare Workers](https://developers.cloudflare.com/workers/configuration/secrets/) y [Variables de entorno](https://developers.cloudflare.com/workers/configuration/environment-variables/).
 
+## Búsqueda por teléfono: limitación de plataforma
+
+La versión Android utiliza Firebase Phone Number Verification (PNV) para verificar la SIM y enviar al Worker un token firmado. La documentación oficial que acompaña al proyecto presenta actualmente la instalación de PNV para Android y advierte de que el servicio es facturado. iOS conserva la búsqueda de personas por nombre y usuario, pero no se ha reemplazado PNV por verificación SMS: eso sería otro flujo y podría generar costes por mensaje. No actives el proveedor Phone Auth para búsqueda por agenda sin decidir antes ese coste y el consentimiento requerido.
+
 ## 5. Qué sigue sin poder darse por terminado
 
 - El Worker debe desplegarse en tu cuenta; los secretos no se pueden crear desde este repositorio.
