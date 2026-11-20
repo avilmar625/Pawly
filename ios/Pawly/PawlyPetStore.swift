@@ -89,14 +89,19 @@ final class PawlyPetStore: ObservableObject {
                 let owned = self.decodeOwnedPets(snapshot.data()?["dogProfiles"] as? [[String: Any]] ?? [])
                 self.pets = owned + currentShared
                 if !self.applyingRemoteSelection,
-                   let selectedName = try? await self.db.collection("users").document(uid)
-                    .collection("privateData").document("home").getDocument().get("dogName") as? String,
-                   let matching = self.pets.first(where: { $0.name == selectedName }) {
-                    self.applyingRemoteSelection = true
-                    self.selectedPetID = matching.id
-                    self.applyingRemoteSelection = false
-                } else if !self.pets.contains(where: { $0.id == self.selectedPetID }) {
-                    self.selectedPetID = self.pets.first?.id
+                   let home = try? await self.db.collection("users").document(uid)
+                    .collection("privateData").document("home").getDocument() {
+                    let selectedID = home.get("selectedPetId") as? String
+                    let selectedName = home.get("dogName") as? String
+                    let matching = selectedID.flatMap { id in self.pets.first(where: { $0.id == id }) }
+                        ?? selectedName.flatMap { name in self.pets.first(where: { $0.name == name }) }
+                    if let matching {
+                        self.applyingRemoteSelection = true
+                        self.selectedPetID = matching.id
+                        self.applyingRemoteSelection = false
+                    } else if !self.pets.contains(where: { $0.id == self.selectedPetID }) {
+                        self.selectedPetID = self.pets.first?.id
+                    }
                 }
             }
         }
@@ -146,6 +151,7 @@ final class PawlyPetStore: ObservableObject {
         db.collection("users").document(uid).collection("privateData").document("home").setData([
             "dogName": pet.name,
             "dogProfiles": names,
+            "selectedPetId": pet.id,
             "updatedAt": FieldValue.serverTimestamp()
         ], merge: true) { [weak self] error in
             if let error { Task { @MainActor in self?.errorMessage = "No se pudo sincronizar la mascota seleccionada: \(error.localizedDescription)" } }
