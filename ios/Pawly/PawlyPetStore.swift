@@ -73,15 +73,26 @@ final class PawlyPetStore: ObservableObject {
     private let db = Firestore.firestore()
     private var uid: String? { Auth.auth().currentUser?.uid }
     private var petListener: ListenerRegistration?
+    private var homeListener: ListenerRegistration?
+    private var invitationListener: ListenerRegistration?
+    private var sharedProfileListeners: [String: ListenerRegistration] = [:]
+    private var isListening = false
     private var applyingRemoteSelection = false
     var selectedPet: PawlyPet? { pets.first(where: { $0.id == selectedPetID }) ?? pets.first }
 
     init() { selectedPetID = UserDefaults.standard.string(forKey: "pawly.selectedPetID") }
 
-    deinit { petListener?.remove() }
+    deinit {
+        petListener?.remove()
+        homeListener?.remove()
+        invitationListener?.remove()
+        sharedProfileListeners.values.forEach { $0.remove() }
+    }
 
     func startListening() {
         guard let uid else { return }
+        isListening = true
+
         petListener?.remove()
         petListener = db.collection("users").document(uid).addSnapshotListener { [weak self] snapshot, error in
             guard let self, let snapshot, error == nil else { return }
@@ -89,28 +100,98 @@ final class PawlyPetStore: ObservableObject {
                 let currentShared = self.pets.filter { $0.ownerUID != nil }
                 let owned = self.decodeOwnedPets(snapshot.data()?["dogProfiles"] as? [[String: Any]] ?? [])
                 self.pets = owned + currentShared
-                if !self.applyingRemoteSelection,
-                   let home = try? await self.db.collection("users").document(uid)
-                    .collection("privateData").document("home").getDocument() {
-                    let selectedID = home.get("selectedPetId") as? String
-                    let selectedName = home.get("dogName") as? String
-                    let matching = selectedID.flatMap { id in self.pets.first(where: { $0.id == id }) }
-                        ?? selectedName.flatMap { name in self.pets.first(where: { $0.name == name }) }
-                    if let matching {
-                        self.applyingRemoteSelection = true
-                        self.selectedPetID = matching.id
-                        self.applyingRemoteSelection = false
-                    } else if !self.pets.contains(where: { $0.id == self.selectedPetID }) {
-                        self.selectedPetID = self.pets.first?.id
+                self.syncSharedProfileListeners(uid: uid)
+            }
+        }
+
+        homeListener?.remove()
+        homeListener = db.collection("users").document(uid)
+            .collection("privateData").document("home")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self, let snapshot, error == nil else { return }
+                Task { @MainActor in self.applyRemoteSelection(snapshot: snapshot) }
+            }
+
+        invitationListener?.remove()
+        if Auth.auth().currentUser?.isEmailVerified == true {
+            invitationListener = db.collection("petInvitations")
+                .whereField("inviteeUid", isEqualTo: uid)
+                .whereField("status", isEqualTo: "accepted")
+                .addSnapshotListener { [weak self] _, error in
+                    guard let self, error == nil else { return }
+                    Task { @MainActor in
+                        await self.loadPets()
+                        self.syncSharedProfileListeners(uid: uid)
                     }
                 }
-            }
+        }
+        syncSharedProfileListeners(uid: uid)
+    }
+
+    private func applyRemoteSelection(snapshot: DocumentSnapshot?) {
+        guard !applyingRemoteSelection, let snapshot, snapshot.exists else { return }
+        let selectedID = snapshot.get("selectedPetId") as? String
+        let selectedName = snapshot.get("dogName") as? String
+        let matching = selectedID.flatMap { id in pets.first(where: { $0.id == id }) }
+            ?? selectedName.flatMap { name in pets.first(where: { $0.name == name }) }
+        if let matching {
+            applyingRemoteSelection = true
+            selectedPetID = matching.id
+            applyingRemoteSelection = false
+        } else if !pets.contains(where: { $0.id == selectedPetID }) {
+            selectedPetID = pets.first?.id
+        }
+    }
+
+    private func syncSharedProfileListeners(uid: String) {
+        guard isListening else { return }
+        let sharedPets = pets.filter { $0.ownerUID != nil || $0.isShared }
+        let desiredKeys = Set(sharedPets.map { "\($0.ownerUID ?? uid)_\($0.id)" })
+
+        for key in Array(sharedProfileListeners.keys) where !desiredKeys.contains(key) {
+            sharedProfileListeners[key]?.remove()
+            sharedProfileListeners[key] = nil
+        }
+
+        for pet in sharedPets {
+            let ownerUID = pet.ownerUID ?? uid
+            let key = "\(ownerUID)_\(pet.id)"
+            guard sharedProfileListeners[key] == nil else { continue }
+            sharedProfileListeners[key] = db.collection("sharedPets").document(key)
+                .collection("profile").document("current")
+                .addSnapshotListener { [weak self] snapshot, error in
+                    guard let self, let snapshot, error == nil, snapshot.exists else { return }
+                    Task { @MainActor in
+                        guard let index = self.pets.firstIndex(where: {
+                            $0.id == pet.id && $0.ownerUID == pet.ownerUID
+                        }) else { return }
+                        let current = self.pets[index]
+                        self.pets[index] = PawlyPet(
+                            id: current.id,
+                            name: snapshot.get("name") as? String ?? current.name,
+                            breed: current.breed,
+                            age: current.age,
+                            description: current.description,
+                            photoURL: snapshot.get("photoUrl") as? String ?? current.photoURL,
+                            species: current.species,
+                            ownerUID: current.ownerUID,
+                            isShared: current.isShared
+                        )
+                    }
+                }
         }
     }
 
     func stopListening() {
+        isListening = false
         petListener?.remove()
         petListener = nil
+        homeListener?.remove()
+        homeListener = nil
+        invitationListener?.remove()
+        invitationListener = nil
+        sharedProfileListeners.values.forEach { $0.remove() }
+        sharedProfileListeners.removeAll()
     }
 
     private func decodeOwnedPets(_ raw: [[String: Any]]) -> [PawlyPet] {
@@ -182,6 +263,9 @@ final class PawlyPetStore: ObservableObject {
                 }
             }
             pets=ownedPets+sharedPets
+            if isListening {
+                syncSharedProfileListeners(uid: uid)
+            }
 
             // Older builds may already have created the owner's sharedPet root
             // without setting the isShared marker in dogProfiles. Detect that
