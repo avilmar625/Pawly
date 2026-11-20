@@ -14,7 +14,19 @@ struct PawlyPet: Identifiable, Hashable {
     var ownerUID: String? = nil
 }
 struct PawlyPassportEntry: Identifiable {
-    var id: String; var type: String; var title: String; var detail: String; var date: String
+    var id: String
+    var type: String
+    var title: String
+    var detail: String
+    var date: String
+    var product: String = ""
+    var dose: String = ""
+    var frequency: String = ""
+    var clinic: String = ""
+    var nextDoseDate: String = ""
+    var status: String = "REALIZADO"
+    var reminderEnabled: Bool = false
+    var reminderTime: String = "09:00"
 }
 struct PawlyCareTask: Identifiable {
     var id: String
@@ -45,9 +57,86 @@ final class PawlyPetStore: ObservableObject {
     @Published var errorMessage: String?
     private let db = Firestore.firestore()
     private var uid: String? { Auth.auth().currentUser?.uid }
+    private var petListener: ListenerRegistration?
+    private var applyingRemoteSelection = false
     var selectedPet: PawlyPet? { pets.first(where: { $0.id == selectedPetID }) ?? pets.first }
 
     init() { selectedPetID = UserDefaults.standard.string(forKey: "pawly.selectedPetID") }
+
+    deinit { petListener?.remove() }
+
+    func startListening() {
+        guard let uid else { return }
+        petListener?.remove()
+        petListener = db.collection("users").document(uid).addSnapshotListener { [weak self] snapshot, error in
+            guard let self, let snapshot, error == nil else { return }
+            Task { @MainActor in
+                let currentShared = self.pets.filter { $0.ownerUID != nil }
+                let owned = self.decodeOwnedPets(snapshot.data()?["dogProfiles"] as? [[String: Any]] ?? [])
+                self.pets = owned + currentShared
+                if !self.applyingRemoteSelection,
+                   let selectedName = try? await self.db.collection("users").document(uid)
+                    .collection("privateData").document("home").getDocument().get("dogName") as? String,
+                   let matching = self.pets.first(where: { $0.name == selectedName }) {
+                    self.applyingRemoteSelection = true
+                    self.selectedPetID = matching.id
+                    self.applyingRemoteSelection = false
+                } else if !self.pets.contains(where: { $0.id == self.selectedPetID }) {
+                    self.selectedPetID = self.pets.first?.id
+                }
+            }
+        }
+    }
+
+    func stopListening() {
+        petListener?.remove()
+        petListener = nil
+    }
+
+    private func decodeOwnedPets(_ raw: [[String: Any]]) -> [PawlyPet] {
+        raw.compactMap { item -> PawlyPet? in
+            guard let id = item["id"] as? String, let name = item["name"] as? String else { return nil }
+            return PawlyPet(id:id,name:name,breed:item["breed"] as? String ?? "",
+                age:item["age"] as? String ?? "",description:item["description"] as? String ?? "",
+                photoURL:item["photoUrl"] as? String ?? "",species:item["species"] as? String ?? "Perro")
+        }
+    }
+
+    private func updateOwnedPetProfiles(
+        _ transform: @escaping ([[String: Any]]) throws -> [[String: Any]]
+    ) async throws {
+        guard let uid else { throw PawlyStoreError.notSignedIn }
+        let userRef = db.collection("users").document(uid)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            db.runTransaction({ transaction, errorPointer -> Any? in
+                do {
+                    let snapshot = try transaction.getDocument(userRef)
+                    let current = snapshot.data()?["dogProfiles"] as? [[String: Any]] ?? []
+                    transaction.updateData(["dogProfiles": try transform(current)], forDocument: userRef)
+                    return nil
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+            }, completion: { _, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: ()) }
+            })
+        }
+    }
+
+    private func persistSelectedPet(_ pet: PawlyPet) {
+        guard let uid, !applyingRemoteSelection else { return }
+        selectedPetID = pet.id
+        let names = pets.map { $0.name }
+        db.collection("users").document(uid).collection("privateData").document("home").setData([
+            "dogName": pet.name,
+            "dogProfiles": names,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true) { [weak self] error in
+            if let error { Task { @MainActor in self?.errorMessage = "No se pudo sincronizar la mascota seleccionada: \(error.localizedDescription)" } }
+        }
+    }
 
     func loadPets() async {
         guard let uid else { return }
@@ -55,13 +144,7 @@ final class PawlyPetStore: ObservableObject {
         defer { isLoading = false }
         do {
             let snapshot = try await db.collection("users").document(uid).getDocument()
-            let raw = snapshot.data()?["dogProfiles"] as? [[String: Any]] ?? []
-            let ownedPets = raw.compactMap { item -> PawlyPet? in
-                guard let id = item["id"] as? String, let name = item["name"] as? String else { return nil }
-                return PawlyPet(id:id,name:name,breed:item["breed"] as? String ?? "",
-                    age:item["age"] as? String ?? "",description:item["description"] as? String ?? "",
-                    photoURL:item["photoUrl"] as? String ?? "",species:item["species"] as? String ?? "Perro")
-            }
+            let ownedPets = decodeOwnedPets(snapshot.data()?["dogProfiles"] as? [[String: Any]] ?? [])
             var sharedPets:[PawlyPet]=[]
             if Auth.auth().currentUser?.isEmailVerified == true {
                 let accepted=try await db.collection("petInvitations").whereField("inviteeUid",isEqualTo:uid)
@@ -77,14 +160,20 @@ final class PawlyPetStore: ObservableObject {
                 }
             }
             pets=ownedPets+sharedPets
-            if !pets.contains(where: { $0.id == selectedPetID && $0.ownerUID == nil }) &&
-               !pets.contains(where: { $0.id == selectedPetID && $0.ownerUID != nil }) {
-                selectedPetID=pets.first?.id
+            let home = try? await db.collection("users").document(uid).collection("privateData").document("home").getDocument()
+            let selectedName = home?.get("dogName") as? String
+            let remoteSelection = selectedName.flatMap { name in pets.first(where: { $0.name == name }) }
+            if let remoteSelection {
+                applyingRemoteSelection = true
+                selectedPetID = remoteSelection.id
+                applyingRemoteSelection = false
+            } else if !pets.contains(where: { $0.id == selectedPetID }) {
+                selectedPetID = pets.first?.id
             }
             errorMessage = nil
         } catch { errorMessage = error.localizedDescription }
     }
-    func select(_ pet: PawlyPet) { selectedPetID = pet.id }
+    func select(_ pet: PawlyPet) { persistSelectedPet(pet) }
 
     func savePet(name: String, breed: String, age: String, species: String, description: String, photoURL: String = "") async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
@@ -93,15 +182,15 @@ final class PawlyPetStore: ObservableObject {
         let pet = PawlyPet(id: UUID().uuidString, name: clean, breed: breed.trimmingCharacters(in: .whitespacesAndNewlines),
                            age: age.trimmingCharacters(in: .whitespacesAndNewlines), description: description.trimmingCharacters(in: .whitespacesAndNewlines),
                            photoURL: photoURL, species: species)
-        var updatedOwned = pets.filter { $0.ownerUID == nil }
-        updatedOwned.append(pet)
-        try await db.collection("users").document(uid).updateData(["dogProfiles": updatedOwned.map(encode)])
+        try await updateOwnedPetProfiles { current in
+            current.filter { ($0["id"] as? String) != pet.id } + [encode(pet)]
+        }
+        let updatedOwned = pets.filter { $0.ownerUID == nil && $0.id != pet.id } + [pet]
         pets = updatedOwned + pets.filter { $0.ownerUID != nil }
-        selectedPetID = pet.id
+        persistSelectedPet(pet)
     }
     func updatePet(_ original: PawlyPet, name: String, breed: String, age: String, species: String, description: String, photoURL: String) async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
-        guard original.ownerUID == nil else { throw PawlyStoreError.noSharedAccess }
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean.count <= 40 else { throw PawlyStoreError.invalidPetName }
         let updated = PawlyPet(id: original.id, name: clean,
@@ -109,11 +198,37 @@ final class PawlyPetStore: ObservableObject {
             age: age.trimmingCharacters(in: .whitespacesAndNewlines),
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             photoURL: photoURL, species: species)
-        var owned = pets.filter { $0.ownerUID == nil }
-        guard let index = owned.firstIndex(where: { $0.id == original.id }) else { throw PawlyStoreError.petNotFound }
-        owned[index] = updated
-        try await db.collection("users").document(uid).updateData(["dogProfiles": owned.map(encode)])
-        pets = owned + pets.filter { $0.ownerUID != nil }
+        if let owner = original.ownerUID {
+            guard owner == uid else { throw PawlyStoreError.noSharedAccess }
+            let root = db.collection("sharedPets").document("\(owner)_\(original.id)")
+            let member = try await root.collection("members").document(uid).getDocument()
+            guard member.get("role") as? String == "owner" || member.get("role") as? String == "editor" else {
+                throw PawlyStoreError.noSharedAccess
+            }
+            let profile = root.collection("profile").document("current")
+            let batch = db.batch()
+            batch.updateData(["name": clean, "updatedAt": FieldValue.serverTimestamp()], forDocument: root)
+            batch.setData([
+                "petId": updated.id,
+                "name": clean,
+                "photoUrl": photoURL.isEmpty ? NSNull() : photoURL as Any,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], forDocument: profile, merge: true)
+            try await batch.commit()
+            pets = pets.map { $0.id == original.id && $0.ownerUID == owner ? updated : $0 }
+        } else {
+            try await updateOwnedPetProfiles { current in
+                guard let index = current.firstIndex(where: { ($0["id"] as? String) == original.id }) else {
+                    throw PawlyStoreError.petNotFound
+                }
+                var value = current[index]
+                value.merge(encode(updated)) { _, new in new }
+                current[index] = value
+                return current
+            }
+            let owned = pets.filter { $0.ownerUID == nil }.map { $0.id == original.id ? updated : $0 }
+            pets = owned + pets.filter { $0.ownerUID != nil }
+        }
     }
 
     private func encode(_ pet: PawlyPet) -> [String: Any] {
@@ -123,10 +238,10 @@ final class PawlyPetStore: ObservableObject {
     func deletePet(_ pet: PawlyPet) async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
         guard pet.ownerUID == nil else { throw PawlyStoreError.noSharedAccess }
+        try await updateOwnedPetProfiles { current in current.filter { ($0["id"] as? String) != pet.id } }
         let updatedOwned = pets.filter { $0.ownerUID == nil && $0.id != pet.id }
-        try await db.collection("users").document(uid).updateData(["dogProfiles": updatedOwned.map(encode)])
         pets = updatedOwned + pets.filter { $0.ownerUID != nil }
-        if selectedPetID == pet.id { selectedPetID = pets.first?.id }
+        if selectedPetID == pet.id, let next = pets.first { persistSelectedPet(next) }
     }
 
     private func passportRoot(_ pet:PawlyPet) throws -> CollectionReference {
@@ -143,14 +258,41 @@ final class PawlyPetStore: ObservableObject {
         let snapshot = try await passportRoot(pet).getDocuments()
         return snapshot.documents.compactMap { d in
             guard let title = d.get("title") as? String else { return nil }
-            return PawlyPassportEntry(id: d.documentID, type: d.get("type") as? String ?? "Otro",
-                                      title: title, detail: d.get("detail") as? String ?? "", date: d.get("date") as? String ?? "")
+            return PawlyPassportEntry(
+                id: d.documentID,
+                type: d.get("type") as? String ?? "Otro",
+                title: title,
+                detail: d.get("detail") as? String ?? "",
+                date: d.get("date") as? String ?? "",
+                product: d.get("product") as? String ?? "",
+                dose: d.get("dose") as? String ?? "",
+                frequency: d.get("frequency") as? String ?? "",
+                clinic: d.get("clinic") as? String ?? "",
+                nextDoseDate: d.get("nextDoseDate") as? String ?? "",
+                status: d.get("status") as? String ?? "REALIZADO",
+                reminderEnabled: d.get("reminderEnabled") as? Bool ?? false,
+                reminderTime: d.get("reminderTime") as? String ?? "09:00"
+            )
         }.sorted { $0.date > $1.date }
     }
     func savePassport(_ e: PawlyPassportEntry, pet: PawlyPet) async throws {
-        guard !e.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, e.title.count <= 120,
-              e.detail.count <= 1200, e.type.count <= 40, e.date.count <= 40 else { throw PawlyStoreError.invalidEntry }
-        try await passportRoot(pet).document(e.id).setData(["id":e.id,"type":e.type,"title":e.title,"detail":e.detail,"date":e.date])
+        guard !e.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              e.title.count <= 120, e.detail.count <= 1200, e.type.count <= 40, e.date.count <= 40,
+              e.product.count <= 120, e.dose.count <= 120, e.frequency.count <= 120, e.clinic.count <= 120,
+              e.nextDoseDate.isEmpty || e.nextDoseDate.range(of: "^\\d{4}-\\d{2}-\\d{2}$", options: .regularExpression) != nil,
+              ["PENDIENTE", "REALIZADO", "VENCIDO"].contains(e.status),
+              e.reminderTime.range(of: "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", options: .regularExpression) != nil
+        else { throw PawlyStoreError.invalidEntry }
+        let ref = passportRoot(pet).document(e.id)
+        let existing = try await ref.getDocument()
+        let order = existing.get("createdAtOrder") as? Int ?? Int(Date().timeIntervalSince1970 * 1_000)
+        try await ref.setData([
+            "id":e.id,"type":e.type,"title":e.title,"detail":e.detail,"date":e.date,
+            "product":e.product,"dose":e.dose,"frequency":e.frequency,"clinic":e.clinic,
+            "nextDoseDate":e.nextDoseDate,"status":e.status,
+            "reminderEnabled":e.reminderEnabled,"reminderTime":e.reminderTime,
+            "createdAtOrder":order
+        ])
     }
     func deletePassport(_ id: String, pet: PawlyPet) async throws { try await passportRoot(pet).document(id).delete() }
 
@@ -224,6 +366,8 @@ final class PawlyPetStore: ObservableObject {
                            "createdAt":FieldValue.serverTimestamp(),"updatedAt":FieldValue.serverTimestamp()], forDocument:root)
             batch.setData(["uid":uid,"role":"owner","displayName":name,"username":username,
                            "joinedAt":FieldValue.serverTimestamp()], forDocument:root.collection("members").document(uid))
+            batch.setData(["petId":pet.id,"name":pet.name,"photoUrl":pet.photoURL.isEmpty ? NSNull() : pet.photoURL as Any,
+                           "updatedAt":FieldValue.serverTimestamp()], forDocument:root.collection("profile").document("current"))
             try await batch.commit()
         } else {
             let member = try await root.collection("members").document(uid).getDocument()
