@@ -744,6 +744,7 @@ struct PawlyLostPetView: View {
  @StateObject private var community=PawlyCommunityStore()
  @StateObject private var locationProvider=PawlyLocationProvider()
  @State private var name=""
+ @State private var breed=""
  @State private var area=""
  @State private var lastSeen=""
  @State private var contact=""
@@ -773,6 +774,7 @@ struct PawlyLostPetView: View {
       Button(pet.name){name=pet.name}.foregroundStyle(PawlyColors.primary)
      }
      TextField("Nombre de la mascota",text:$name)
+     TextField("Especie o raza (opcional)",text:$breed)
      TextField("Zona donde se perdió",text:$area)
      TextField("Cuándo se vio por última vez",text:$lastSeen)
      TextField("Teléfono o contacto (opcional)",text:$contact).keyboardType(.phonePad)
@@ -887,6 +889,12 @@ struct PawlyLostPetView: View {
     guard let item else{return}
     Task { photoData=try? await item.loadTransferable(type:Data.self);posterURL=nil }
    }
+   .onChange(of:name){_ in posterURL=nil}
+   .onChange(of:breed){_ in posterURL=nil}
+   .onChange(of:area){_ in posterURL=nil}
+   .onChange(of:lastSeen){_ in posterURL=nil}
+   .onChange(of:details){_ in posterURL=nil}
+   .onChange(of:contact){_ in posterURL=nil}
    .onChange(of:locationProvider.location?.coordinate.latitude){_ in
     if let location=locationProvider.location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
    }
@@ -906,7 +914,7 @@ struct PawlyLostPetView: View {
   do {
    let poster=PawlyLostPetPoster(
     name:name,
-    breed:details.isEmpty ? "" : "",
+    breed:breed,
     area:area,
     lastSeen:lastSeen,
     description:details,
