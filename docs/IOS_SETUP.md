@@ -44,7 +44,7 @@ En Cloudinary Console → Settings → Upload → Upload presets:
 - Reutiliza los presets de Android si ya aceptan los tipos de archivo y carpetas que necesita iOS, o crea uno para imágenes y otro para vídeos.
 - Ambos presets deben ser **Unsigned** (el cliente iOS no contiene el API Secret).
 - Restringe los formatos aceptados y los tamaños. El cliente comprime imágenes y aplica límites propios, pero el preset debe imponer también límites en el servidor.
-- Comprueba que una subida de prueba devuelve un `public_id` que empieza por `pawly/{carpeta}/{uid}/`. El índice de propiedad de Firestore valida ese prefijo.
+- iOS envía `asset_folder` y un `public_id` explícito con el formato `pawly/{carpeta}/{uid}/{uuid}`; no dependas del nombre automático de Cloudinary. Comprueba que una subida de prueba devuelve ese prefijo. El índice de propiedad de Firestore valida ese prefijo.
 
 Copia estos datos en los ajustes de `ios/project.yml`:
 
