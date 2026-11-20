@@ -289,7 +289,7 @@ struct PawlySavedPlacesView:View{
  @StateObject private var store = PawlySavedPlacesStore()
  var body:some View{
   List{
-   if places.isEmpty{Text("Guarda lugares desde Explorar para tenerlos a mano.").foregroundStyle(.secondary)}
+   if store.places.isEmpty{Text("Guarda lugares desde Explorar para tenerlos a mano.").foregroundStyle(.secondary)}
    ForEach(store.places){p in VStack(alignment:.leading,spacing:6){
     Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)
     HStack{Button("Cómo llegar"){let item=MKMapItem(placemark:MKPlacemark(coordinate:CLLocationCoordinate2D(latitude:p.latitude,longitude:p.longitude)));item.name=p.name;item.openInMaps(launchOptions:[MKLaunchOptionsDirectionsModeKey:MKLaunchOptionsDirectionsModeDriving])};Spacer();if let phone=p.phone,!phone.isEmpty,let url=URL(string:"tel:\(phone.filter{$0.isNumber || $0=="+"})"){Link("Llamar",destination:url)}}
