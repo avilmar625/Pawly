@@ -45,3 +45,6 @@ CI compila el simulador; Firebase/Google/Cloudinary/APNs reales y las pruebas co
 - Cloudinary unsigned no ofrece privacidad de archivos ni cifrado E2E.
 - Explorar usa MapKit; los resultados dependen de Apple Maps y de la zona.
 - El idioma preferido queda guardado, pero no se ha traducido todavía todo el contenido.
+
+
+La versión iOS incluye un cartel JPG de mascota perdida que se genera localmente y se comparte desde el dispositivo.
