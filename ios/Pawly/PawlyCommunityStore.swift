@@ -115,6 +115,36 @@ final class PawlyCommunityStore: ObservableObject {
         posts = cachedFeed.filter { !hiddenIDs.contains($0.authorId) }
     }
 
+    func loadPost(_ id:String) async throws -> PawlyFeedPost? {
+        guard !id.isEmpty,id.count <= 128,let currentUID=uid else { return nil }
+        let document=try await db.collection("posts").document(id).getDocument()
+        guard document.exists,let data=document.data() else { return nil }
+        let authorID=data["authorId"] as? String ?? ""
+        guard !authorID.isEmpty else { return nil }
+        async let blockedByMe=db.collection("users").document(currentUID).collection("blocked").document(authorID).getDocument()
+        async let blockedAuthor=db.collection("users").document(authorID).collection("blocked").document(currentUID).getDocument()
+        let (blocked,blockedBack)=try await (blockedByMe,blockedAuthor)
+        guard !blocked.exists && !blockedBack.exists,
+              !blockedFeedIDs.contains(authorID),
+              !blockedByFeedIDs.contains(authorID) else { return nil }
+        let likes=data["likedBy"] as? [String] ?? []
+        return PawlyFeedPost(
+            id:document.documentID,
+            authorId:authorID,
+            authorName:data["authorName"] as? String ?? "Usuario Pawly",
+            authorPhoto:data["authorPhoto"] as? String ?? "",
+            petName:data["dogName"] as? String ?? "",
+            text:data["text"] as? String ?? "",
+            imageURL:data["imageUrl"] as? String ?? "",
+            videoURL:data["videoUrl"] as? String ?? "",
+            category:data["category"] as? String ?? "STORY",
+            likeCount:data["likeCount"] as? Int ?? 0,
+            commentCount:data["commentCount"] as? Int ?? 0,
+            likedByMe:likes.contains(currentUID),
+            createdAt:(data["createdAt"] as? Timestamp)?.dateValue()
+        )
+    }
+
     func listenFeed() {
         guard let uid else { return }
         feedListener?.remove()

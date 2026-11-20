@@ -4,19 +4,27 @@ import PhotosUI
 import UIKit
 import AVKit
 import FirebaseAuth
+import Combine
 
 struct PawlyTabView: View {
     @StateObject private var pets = PawlyPetStore()
+    @StateObject private var pushRouter = PawlyPushRouter.shared
+    @State private var selectedTab = 0
+
     var body: some View {
-        TabView {
-            HomeView().tabItem { Label("Inicio", systemImage: "house.fill") }
-            PawlyExploreView().tabItem { Label("Explorar", systemImage: "map.fill") }
-            CareView().tabItem { Label("Salud", systemImage: "cross.case.fill") }
-            CommunityView().tabItem { Label("Comunidad", systemImage: "person.3.fill") }
-            PawlyMoreHubView().tabItem { Label("Más", systemImage: "square.grid.2x2.fill") }
+        TabView(selection: $selectedTab) {
+            HomeView().tabItem { Label("Inicio", systemImage: "house.fill") }.tag(0)
+            PawlyExploreView().tabItem { Label("Explorar", systemImage: "map.fill") }.tag(1)
+            CareView().tabItem { Label("Salud", systemImage: "cross.case.fill") }.tag(2)
+            CommunityView().tabItem { Label("Comunidad", systemImage: "person.3.fill") }.tag(3)
+            PawlyMoreHubView().tabItem { Label("Más", systemImage: "square.grid.2x2.fill") }.tag(4)
         }
         .tint(PawlyColors.primary)
         .environmentObject(pets)
+        .environmentObject(pushRouter)
+        .onReceive(pushRouter.$destination.compactMap { $0 }) { _ in
+            selectedTab = 3
+        }
         .task { await pets.loadPets(); pets.startListening() }
         .onDisappear { pets.stopListening() }
     }
@@ -984,12 +992,15 @@ struct DiaryView:View {
 struct CommunityView:View {
     @StateObject private var store=PawlyCommunityStore()
     @EnvironmentObject private var pets:PawlyPetStore
+    @EnvironmentObject private var pushRouter:PawlyPushRouter
     @State private var composer=false
     @State private var composerCategory="STORY"
     @State private var people=false
     @State private var inbox=false
     @State private var notifications=false
     @State private var comments:PawlyFeedPost?
+    @State private var highlightedCommentID:String?
+    @State private var lastHandledPushID:String?
     var body:some View {
         NavigationStack {
             ScrollView {
@@ -1010,13 +1021,53 @@ struct CommunityView:View {
                     }
                 }.padding(15)
             }.background(PawlyColors.canvas).navigationBarHidden(true)
-                .onAppear{store.listenFeed()}.onDisappear{store.stopFeed()}
+                .onAppear {
+                    store.listenFeed()
+                    if let destination = pushRouter.destination {
+                        Task { await handlePushDestination(destination) }
+                    }
+                }
+                .onDisappear{store.stopFeed()}
+                .onChange(of:pushRouter.destination?.id) { _ in
+                    guard let destination=pushRouter.destination else{return}
+                    Task { await handlePushDestination(destination) }
+                }
                 .sheet(isPresented:$composer){PostComposerSheet(petName:pets.selectedPet?.name ?? "", initialCategory:composerCategory){text,category,imageURL,videoURL in try await store.publish(text:text,petName:pets.selectedPet?.name ?? "",category:category,imageURL:imageURL,videoURL:videoURL)}}
-                .sheet(item:$comments){post in CommentsView(store:store,post:post)}
+                .sheet(item:$comments){post in CommentsView(store:store,post:post,highlightedCommentID:highlightedCommentID)}
                 .sheet(isPresented:$people){PeopleSearchSheet(store:store)}
                 .sheet(isPresented:$inbox){MessagesView()}
                 .sheet(isPresented:$notifications){PawlyNotificationsView()}
         }
+    }
+
+    @MainActor private func handlePushDestination(_ destination:PawlyPushDestination) async {
+        guard lastHandledPushID != destination.id else{return}
+        lastHandledPushID=destination.id
+        switch destination.type {
+        case "FOLLOW":
+            notifications=true
+        case "LIKE","COMMENT","LOST_PET":
+            guard !destination.relatedID.isEmpty else {
+                notifications=true
+                pushRouter.consume(destination.id)
+                return
+            }
+            do {
+                if let post=try await store.loadPost(destination.relatedID) {
+                    highlightedCommentID=destination.type == "COMMENT" ? destination.sourceEventID : nil
+                    comments=post
+                } else {
+                    notifications=true
+                    store.statusMessage="La publicación ya no está disponible."
+                }
+            } catch {
+                notifications=true
+                store.statusMessage=error.localizedDescription
+            }
+        default:
+            notifications=true
+        }
+        pushRouter.consume(destination.id)
     }
 }
 
@@ -1233,6 +1284,7 @@ struct CommentsView:View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var store:PawlyCommunityStore
     let post:PawlyFeedPost
+    var highlightedCommentID:String? = nil
     @State private var comments:[PawlyFeedComment]=[]
     @State private var draft=""
     @State private var listener:ListenerRegistration?
@@ -1240,7 +1292,37 @@ struct CommentsView:View {
     var body:some View {
         NavigationStack {
             VStack {
-                List(comments){c in VStack(alignment:.leading,spacing:4){Text(c.authorName).font(.caption.bold()).foregroundStyle(PawlyColors.primary);Text(c.text)}}
+                List {
+                    Section {
+                        VStack(alignment:.leading,spacing:8) {
+                            HStack(spacing:8) {
+                                Text(post.authorName).font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            if !post.text.isEmpty { Text(post.text).font(.body) }
+                            if !post.imageURL.isEmpty,let url=URL(string:post.imageURL) {
+                                AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{ProgressView()}
+                                    .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:12))
+                            }
+                            if !post.videoURL.isEmpty,let url=URL(string:post.videoURL) {
+                                VideoPlayer(player:AVPlayer(url:url)).frame(height:190).clipShape(RoundedRectangle(cornerRadius:12))
+                            }
+                        }.padding(.vertical,5)
+                    } header: { Text("Publicación") }
+                    Section("Comentarios") {
+                        ForEach(comments){c in
+                            VStack(alignment:.leading,spacing:4){
+                                Text(c.authorName).font(.caption.bold()).foregroundStyle(PawlyColors.primary)
+                                Text(c.text)
+                            }
+                            .padding(8)
+                            .background(c.id == highlightedCommentID ? PawlyColors.mint : Color.clear,in:RoundedRectangle(cornerRadius:10))
+                            .id(c.id)
+                        }
+                    }
+                }
                 HStack{TextField("Escribe un comentario",text:$draft).textFieldStyle(.roundedBorder);Button("Enviar"){let v=draft;Task{do{try await store.addComment(postID:post.id,text:v);draft=""}catch { self.error = error.localizedDescription }}}.disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty)}.padding()
                 if let error{Text(error).font(.caption).foregroundStyle(.red)}
             }.navigationTitle("Comentarios").toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
