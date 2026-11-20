@@ -89,9 +89,7 @@ final class PawlyCommunityStore: ObservableObject {
                 "read": false
             ])
         } catch {
-            // The interaction is already committed. Notification failure must not
-            // make a successful like, comment or follow appear to have failed.
-            statusMessage = "La interacción se ha guardado, pero no se pudo generar el aviso."
+            // The interaction is already committed. A notification failure is best-effort.
         }
     }
     private func refreshVisibleFeed() {
