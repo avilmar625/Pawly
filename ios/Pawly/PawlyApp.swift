@@ -1,3 +1,4 @@
+// iOS parity build checkpoint for the expanded native feature set.
 import SwiftUI
 import FirebaseCore
 
