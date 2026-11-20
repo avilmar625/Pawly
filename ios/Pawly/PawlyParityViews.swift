@@ -16,6 +16,7 @@ struct PawlyMoreHubView: View {
      NavigationLink { DiaryView() } label:{Label("Diario de recuerdos",systemImage:"book.closed.fill")}
      NavigationLink { PawlyLearningHubView() } label:{Label("Aprender y descubrir",systemImage:"graduationcap.fill")}
      NavigationLink { PawlyCalendarView() } label:{Label("Calendario de cuidados",systemImage:"calendar")}
+     NavigationLink { PawlyEventsView() } label:{Label("Eventos y quedadas",systemImage:"calendar.badge.plus")}
      NavigationLink { PawlyRemindersView() } label:{Label("Agenda y recordatorios",systemImage:"calendar.badge.clock")}
      NavigationLink { PawlyExpensesView() } label:{Label("Gastos de mi mascota",systemImage:"receipt")}
      NavigationLink { MessagesView() } label:{Label("Mensajes privados",systemImage:"bubble.left.and.bubble.right.fill")}
