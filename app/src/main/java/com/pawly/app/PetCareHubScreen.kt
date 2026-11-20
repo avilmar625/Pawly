@@ -386,7 +386,7 @@ private fun PetPassportSection(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
                                 Text(tr("Evolución del peso"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                Text(tr("Últimos registros · ${weightPoints.size} en total"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(tr("Últimas ${recentWeightPoints.size} mediciones · ${weightPoints.size} en total"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                             Text(
                                 String.format(LocalLocale.current.platformLocale, "%.1f kg", weightPoints.last().second),
@@ -395,21 +395,22 @@ private fun PetPassportSection(
                                 fontWeight = FontWeight.ExtraBold
                             )
                         }
-                        val values = weightPoints.map { it.second }
+                        val recentWeightPoints = weightPoints.takeLast(6)
+                        val values = recentWeightPoints.map { it.second }
                         val minWeight = values.minOrNull() ?: 0f
                         val maxWeight = values.maxOrNull() ?: minWeight
                         val range = (maxWeight - minWeight).coerceAtLeast(.1f)
                         Row(
-                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).height(112.dp),
+                            Modifier.fillMaxWidth().height(112.dp),
                             horizontalArrangement = Arrangement.spacedBy(7.dp),
                             verticalAlignment = Alignment.Bottom
                         ) {
-                            weightPoints.takeLast(8).forEachIndexed { index, (day, value, _) ->
+                            recentWeightPoints.forEachIndexed { index, (day, value, _) ->
                                 val valueFraction = if (maxWeight == minWeight) .62f
                                     else ((value - minWeight) / range).coerceIn(0f, 1f)
                                 val heightFraction = .2f + .8f * valueFraction
                                 Column(
-                                    Modifier.width(42.dp),
+                                    Modifier.weight(1f),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Bottom
                                 ) {
@@ -425,7 +426,7 @@ private fun PetPassportSection(
                                             Modifier.fillMaxWidth(.68f)
                                                 .fillMaxHeight(heightFraction)
                                                 .clip(RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp))
-                                                .background(if (index == weightPoints.lastIndex) chartColor else chartColor.copy(alpha = .35f))
+                                                .background(if (index == recentWeightPoints.lastIndex) chartColor else chartColor.copy(alpha = .35f))
                                         )
                                     }
                                     Spacer(Modifier.height(4.dp))
