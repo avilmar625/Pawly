@@ -10,6 +10,10 @@ final class PawlyAppDelegate:NSObject,UIApplicationDelegate,UNUserNotificationCe
  func application(_ application:UIApplication,didFinishLaunchingWithOptions launchOptions:[UIApplication.LaunchOptionsKey:Any]? = nil)->Bool{
   if FirebaseApp.app()==nil,Bundle.main.url(forResource:"GoogleService-Info",withExtension:"plist") != nil{FirebaseApp.configure()}
   UNUserNotificationCenter.current().delegate=self;Messaging.messaging().delegate=self
+  UNUserNotificationCenter.current().getNotificationSettings { settings in
+   guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else{return}
+   DispatchQueue.main.async { application.registerForRemoteNotifications() }
+  }
   authHandle=Auth.auth().addStateDidChangeListener{_,user in guard let user else{return};Messaging.messaging().token{token,_ in if let token{Self.save(token:token,uid:user.uid)}}}
   return true
  }
