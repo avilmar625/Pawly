@@ -21,6 +21,7 @@ struct PawlyHomeCareSection: View {
     @State private var confirmationTask: PawlyCareTask?
     @State private var duplicateMedicationLog: PawlyCareLogEntry?
     @State private var showHealth = false
+    @State private var showWeightEntry = false
     @State private var showDiary = false
     @State private var showCareHistory = false
     @State private var showQuickCareLog = false
@@ -165,7 +166,7 @@ struct PawlyHomeCareSection: View {
                     showQuickCareLog = true
                 }
                 quickAction("Peso", icon: "scalemass") {
-                    showHealth = true
+                    showWeightEntry = true
                 }
                 quickAction("Foto", icon: "camera.fill") {
                     showDiary = true
@@ -315,7 +316,10 @@ struct PawlyHomeCareSection: View {
             }
         }
         .task(id: scope) { await load() }
-        .sheet(isPresented: $showHealth) { CareView(startWithNewEntry: true, initialEntryType: "Peso").environmentObject(pets) }
+        .sheet(isPresented: $showHealth) { CareView().environmentObject(pets) }
+        .sheet(isPresented: $showWeightEntry) {
+            CareView(startWithNewEntry: true, initialEntryType: "Peso").environmentObject(pets)
+        }
         .sheet(isPresented: $showDiary) { DiaryView().environmentObject(pets) }
         .sheet(isPresented: $showCareHistory) { PawlyCareLogsView().environmentObject(pets) }
         .sheet(isPresented: $showQuickCareLog) {
