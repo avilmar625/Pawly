@@ -61,7 +61,8 @@ internal fun HomeScreen(
     storageScope: String? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    
+    val language = LocalPawlyLanguage.current
+    val locale = PawlyI18n.locale(language)
     var passportEntries by remember(dogName, storageScope) {
         mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope))
     }
@@ -95,15 +96,6 @@ internal fun HomeScreen(
             calendarReminders = calendarReminders
         )
     }
-    val parsedWeights = weightEntries.mapNotNull { entry ->
-        com.pawly.app.care.domain.WeightMeasurementParser
-            .parse("${entry.title} ${entry.detail}")
-            ?.let { entry.date to it }
-    }.sortedBy { it.first }
-    val latestWeight = parsedWeights.lastOrNull()?.second
-    val previousWeight = parsedWeights.dropLast(1).lastOrNull()?.second
-    val weightChange = if (latestWeight != null && previousWeight != null) latestWeight - previousWeight else null
-
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wideLayout = maxWidth >= 700.dp
         LazyColumn(
