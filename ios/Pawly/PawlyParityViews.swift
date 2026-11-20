@@ -307,16 +307,17 @@ final class PawlySavedPlacesStore: ObservableObject {
         guard let document else { places = local; return }
         do {
             let snapshot = try await document.getDocument()
-            if snapshot.exists, let raw = snapshot.get("entries") as? [String] {
-                places = raw.compactMap { value in
-                    guard let data = value.data(using: .utf8) else { return nil }
-                    return try? JSONDecoder().decode(PawlySavedPlace.self, from: data)
-                }
+            if snapshot.exists {
+                places = Self.decodePlaces(snapshot.get("entries") as? [String] ?? [])
                 persistLocal()
             } else {
                 places = local
-                try await save()
+                try await seedCloudIfMissing(local)
+                let refreshed = try await document.getDocument()
+                places = Self.decodePlaces(refreshed.get("entries") as? [String] ?? [])
+                persistLocal()
             }
+            message = nil
         } catch {
             places = local
             message = "No se pudieron sincronizar los favoritos: \(error.localizedDescription)"
@@ -324,17 +325,52 @@ final class PawlySavedPlacesStore: ObservableObject {
     }
 
     func toggle(_ place: PawlySavedPlace) {
-        if places.contains(where: { $0.id == place.id }) {
+        let wasSaved = places.contains(where: { $0.id == place.id })
+        if wasSaved {
             places.removeAll { $0.id == place.id }
         } else {
             places.append(place)
         }
-        Task { try? await save() }
+        persistLocal()
+        Task {
+            do {
+                try await mutateCloud { current in
+                    if current.contains(where: { $0.id == place.id }) {
+                        return current.filter { $0.id != place.id }
+                    }
+                    return current + [place]
+                }
+                await reloadFromCloud()
+            } catch {
+                message = "No se pudo guardar el favorito: \(error.localizedDescription)"
+                await reloadFromCloud()
+            }
+        }
     }
 
     func remove(_ place: PawlySavedPlace) {
         places.removeAll { $0.id == place.id }
-        Task { try? await save() }
+        persistLocal()
+        Task {
+            do {
+                try await mutateCloud { current in current.filter { $0.id != place.id } }
+                await reloadFromCloud()
+            } catch {
+                message = "No se pudo eliminar el favorito: \(error.localizedDescription)"
+                await reloadFromCloud()
+            }
+        }
+    }
+
+    private func reloadFromCloud() async {
+        guard let document else { return }
+        do {
+            let snapshot = try await document.getDocument()
+            places = Self.decodePlaces(snapshot.get("entries") as? [String] ?? [])
+            persistLocal()
+        } catch {
+            message = error.localizedDescription
+        }
     }
 
     private func persistLocal() {
@@ -343,26 +379,76 @@ final class PawlySavedPlacesStore: ObservableObject {
         }
     }
 
-    private func save() async throws {
-        guard let document else { persistLocal(); return }
-        guard places.count <= 100 else {
-            throw PawlyExploreError.tooManySavedPlaces
+    private static func decodePlaces(_ values: [String]) -> [PawlySavedPlace] {
+        values.compactMap { value in
+            guard let data = value.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(PawlySavedPlace.self, from: data)
         }
-        let encoded = try places.map { place -> String in
+    }
+
+    private func encodePlaces(_ values: [PawlySavedPlace]) throws -> [String] {
+        try values.map { place in
             let data = try JSONEncoder().encode(place)
             guard let value = String(data: data, encoding: .utf8) else {
                 throw PawlyExploreError.encodingFailed
             }
             return value
         }
-        try await document.setData([
-            "name": "Lugares favoritos",
-            "description": "Sitios guardados desde Explorar en iOS",
-            "entries": encoded,
-            "updatedAt": FieldValue.serverTimestamp()
-        ])
-        persistLocal()
-        message = nil
+    }
+
+    private func seedCloudIfMissing(_ local: [PawlySavedPlace]) async throws {
+        guard let document else { return }
+        let encoded = try encodePlaces(Array(local.prefix(100)))
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            db.runTransaction({ transaction, errorPointer -> Any? in
+                do {
+                    let snapshot = try transaction.getDocument(document)
+                    if !snapshot.exists {
+                        transaction.setData([
+                            "name": "Lugares favoritos",
+                            "description": "Sitios guardados desde Explorar en iOS",
+                            "entries": encoded,
+                            "updatedAt": FieldValue.serverTimestamp()
+                        ], forDocument: document)
+                    }
+                    return nil
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+            }, completion: { _, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: ()) }
+            })
+        }
+    }
+
+    private func mutateCloud(_ mutation: @escaping ([PawlySavedPlace]) throws -> [PawlySavedPlace]) async throws {
+        guard let document else { persistLocal(); return }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            db.runTransaction({ transaction, errorPointer -> Any? in
+                do {
+                    let snapshot = try transaction.getDocument(document)
+                    let current = Self.decodePlaces(snapshot.get("entries") as? [String] ?? [])
+                    let updated = try mutation(current)
+                    guard updated.count <= 100 else { throw PawlyExploreError.tooManySavedPlaces }
+                    let encoded = try self.encodePlaces(updated)
+                    transaction.setData([
+                        "name": "Lugares favoritos",
+                        "description": "Sitios guardados desde Explorar en iOS",
+                        "entries": encoded,
+                        "updatedAt": FieldValue.serverTimestamp()
+                    ], forDocument: document)
+                    return nil
+                } catch {
+                    errorPointer?.pointee = error as NSError
+                    return nil
+                }
+            }, completion: { _, error in
+                if let error { continuation.resume(throwing: error) }
+                else { continuation.resume(returning: ()) }
+            })
+        }
     }
 }
 
