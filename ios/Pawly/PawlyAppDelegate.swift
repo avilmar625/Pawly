@@ -24,4 +24,5 @@ final class PawlyAppDelegate:NSObject,UIApplicationDelegate,UNUserNotificationCe
  func userNotificationCenter(_ center:UNUserNotificationCenter,willPresent notification:UNNotification,withCompletionHandler completionHandler:@escaping(UNNotificationPresentationOptions)->Void){completionHandler([.banner,.sound,.badge])}
  func userNotificationCenter(_ center:UNUserNotificationCenter,didReceive response:UNNotificationResponse,withCompletionHandler completionHandler:@escaping()->Void){completionHandler()}
  func application(_ app:UIApplication,open url:URL,options:[UIApplication.OpenURLOptionsKey:Any]=[:])->Bool{PawlyGoogleSignIn.handle(url)}
+ @MainActor static func registerForRemoteNotifications(){UIApplication.shared.registerForRemoteNotifications()}
 }
