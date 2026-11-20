@@ -28,6 +28,7 @@ struct PawlyPassportEntry: Identifiable {
     var status: String = "REALIZADO"
     var reminderEnabled: Bool = false
     var reminderTime: String = "09:00"
+    var createdAtOrder: Int = 0
 }
 struct PawlyCareTask: Identifiable {
     var id: String
@@ -584,9 +585,13 @@ final class PawlyPetStore: ObservableObject {
                 nextDoseDate: d.get("nextDoseDate") as? String ?? "",
                 status: d.get("status") as? String ?? "REALIZADO",
                 reminderEnabled: d.get("reminderEnabled") as? Bool ?? false,
-                reminderTime: d.get("reminderTime") as? String ?? "09:00"
+                reminderTime: d.get("reminderTime") as? String ?? "09:00",
+                createdAtOrder: d.get("createdAtOrder") as? Int ?? 0
             )
-        }.sorted { $0.date > $1.date }
+        }.sorted {
+            if $0.date == $1.date { return $0.createdAtOrder > $1.createdAtOrder }
+            return $0.date > $1.date
+        }
     }
     func savePassport(_ e: PawlyPassportEntry, pet: PawlyPet) async throws {
         try await ensureSharedPet(pet)
