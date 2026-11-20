@@ -305,7 +305,7 @@ final class PawlyPetStore: ObservableObject {
                            age: age.trimmingCharacters(in: .whitespacesAndNewlines), description: description.trimmingCharacters(in: .whitespacesAndNewlines),
                            photoURL: photoURL, species: species)
         try await updateOwnedPetProfiles { current in
-            current.filter { ($0["id"] as? String) != pet.id } + [encode(pet)]
+            current.filter { ($0["id"] as? String) != pet.id } + [self.encode(pet)]
         }
         let updatedOwned = pets.filter { $0.ownerUID == nil && $0.id != pet.id } + [pet]
         pets = updatedOwned + pets.filter { $0.ownerUID != nil }
@@ -341,25 +341,27 @@ final class PawlyPetStore: ObservableObject {
             try await batch.commit()
             if owner == uid {
                 try await updateOwnedPetProfiles { current in
-                    guard let index = current.firstIndex(where: { ($0["id"] as? String) == original.id }) else {
+                    var updatedProfiles = current
+                    guard let index = updatedProfiles.firstIndex(where: { ($0["id"] as? String) == original.id }) else {
                         throw PawlyStoreError.petNotFound
                     }
-                    var value = current[index]
-                    value.merge(encode(updated)) { _, new in new }
-                    current[index] = value
-                    return current
+                    var value = updatedProfiles[index]
+                    value.merge(self.encode(updated)) { _, new in new }
+                    updatedProfiles[index] = value
+                    return updatedProfiles
                 }
             }
             pets = pets.map { $0.id == original.id && ($0.ownerUID == owner || ($0.ownerUID == nil && owner == uid)) ? updated : $0 }
         } else {
             try await updateOwnedPetProfiles { current in
-                guard let index = current.firstIndex(where: { ($0["id"] as? String) == original.id }) else {
+                var updatedProfiles = current
+                guard let index = updatedProfiles.firstIndex(where: { ($0["id"] as? String) == original.id }) else {
                     throw PawlyStoreError.petNotFound
                 }
-                var value = current[index]
-                value.merge(encode(updated)) { _, new in new }
-                current[index] = value
-                return current
+                var value = updatedProfiles[index]
+                value.merge(self.encode(updated)) { _, new in new }
+                updatedProfiles[index] = value
+                return updatedProfiles
             }
             let owned = pets.filter { $0.ownerUID == nil }.map { $0.id == original.id ? updated : $0 }
             pets = owned + pets.filter { $0.ownerUID != nil }
@@ -450,11 +452,12 @@ final class PawlyPetStore: ObservableObject {
             to: root.collection("tasks")
         )
         try await updateOwnedPetProfiles { current in
-            guard let index = current.firstIndex(where: { ($0["id"] as? String) == pet.id }) else {
+            var updatedProfiles = current
+            guard let index = updatedProfiles.firstIndex(where: { ($0["id"] as? String) == pet.id }) else {
                 throw PawlyStoreError.petNotFound
             }
-            current[index]["isShared"] = true
-            return current
+            updatedProfiles[index]["isShared"] = true
+            return updatedProfiles
         }
         pets = pets.map { value in
             guard value.id == pet.id && value.ownerUID == nil else { return value }
@@ -594,7 +597,7 @@ final class PawlyPetStore: ObservableObject {
               ["PENDIENTE", "REALIZADO", "VENCIDO"].contains(e.status),
               e.reminderTime.range(of: "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$", options: .regularExpression) != nil
         else { throw PawlyStoreError.invalidEntry }
-        let ref = passportRoot(pet).document(e.id)
+        let ref = try passportRoot(pet).document(e.id)
         let existing = try await ref.getDocument()
         let order = existing.get("createdAtOrder") as? Int ?? Int(Date().timeIntervalSince1970 * 1_000)
         try await ref.setData([
