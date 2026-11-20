@@ -27,6 +27,7 @@ struct PawlyMoreHubView: View {
      NavigationLink { PawlyProfileEditorView() } label:{Label("Mi perfil público",systemImage:"person.crop.circle")}
      NavigationLink { PetSharingSheet() } label:{Label("Compartir mascotas",systemImage:"person.2.badge.plus")}
      NavigationLink { AccountView() } label:{Label("Cuenta y privacidad",systemImage:"person.badge.key.fill")}
+     NavigationLink { PawlyBlockedUsersView() } label:{Label("Usuarios bloqueados",systemImage:"hand.raised")}
      NavigationLink { PawlyBackupView() } label:{Label("Copias de seguridad",systemImage:"externaldrive")}
     }
     Section("Aplicación") {
