@@ -96,7 +96,7 @@ struct PawlyLocalReminder: Identifiable, Codable {
         else { reminders = [] }
     }
     func requestPermission() async -> String {
-        do { let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge]); statusMessage = granted ? "Notificaciones activadas en este dispositivo." : "Permiso denegado. Actívalo en Ajustes de iOS."; if granted { rescheduleAll() } }
+        do { let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge]); statusMessage = granted ? "Notificaciones activadas en este dispositivo." : "Permiso denegado. Actívalo en Ajustes de iOS."; if granted { rescheduleAll(); PawlyAppDelegate.registerForRemoteNotifications() } }
         catch { statusMessage = error.localizedDescription }
         return statusMessage ?? ""
     }
