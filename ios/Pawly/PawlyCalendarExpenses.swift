@@ -361,8 +361,13 @@ struct PawlyCalendarView: View {
     }
 
     private var weekdaySymbols: [String] {
-        let symbols = calendar.shortStandaloneWeekdaySymbols
-        return Array(symbols[calendar.firstWeekday - 1...]) + Array(symbols[..<(calendar.firstWeekday - 1)])
+        let formatter = DateFormatter()
+        let symbols = formatter.shortStandaloneWeekdaySymbols
+            ?? formatter.shortWeekdaySymbols
+            ?? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        guard !symbols.isEmpty else { return [] }
+        let start = (calendar.firstWeekday - 1 + symbols.count) % symbols.count
+        return Array(symbols.dropFirst(start)) + Array(symbols.prefix(start))
     }
 
     private var monthCells: [Date?] {
@@ -403,7 +408,9 @@ struct PawlyCalendarView: View {
             let matches: Bool
             switch task.frequency {
             case "Diaria": matches = true
-            case "Semanal": matches = task.daysOfWeek.isEmpty || task.daysOfWeek.contains(isoWeekday)
+            case "Semanal":
+                let selectedDays = task.daysOfWeek ?? []
+                matches = selectedDays.isEmpty || selectedDays.contains(isoWeekday)
             case "Mensual": matches = calendar.component(.day, from: selectedDate) == calendar.component(.day, from: Date())
             default: matches = false
             }
@@ -430,7 +437,9 @@ struct PawlyCalendarView: View {
                 reminders.listenAgenda(ownerUID: pet.ownerUID ?? uid, petID: pet.id, petName: pet.name)
             }
             error = nil
-        } catch { error = error.localizedDescription }
+        } catch let loadError {
+            self.error = loadError.localizedDescription
+        }
     }
 
     private func changeMonth(_ amount: Int) {
