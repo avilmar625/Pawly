@@ -61,49 +61,33 @@ internal fun HomeScreen(
     storageScope: String? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val language = LocalPawlyLanguage.current
-    val locale = PawlyI18n.locale(language)
+    
     var passportEntries by remember(dogName, storageScope) {
         mutableStateOf(com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope))
     }
-    var isLoadingRemotePassport by remember(dogName, storageScope) { mutableStateOf(!storageScope.isNullOrBlank()) }
-    var passportLoadFailed by remember(dogName, storageScope) { mutableStateOf(false) }
-    var passportReloadRequest by remember(dogName, storageScope) { mutableIntStateOf(0) }
-
-    LaunchedEffect(dogName, storageScope, passportReloadRequest) {
+    LaunchedEffect(dogName, storageScope) {
         val local = com.pawly.app.care.data.PetCareLocalStore.loadEntries(context, dogName, storageScope)
         passportEntries = local
-        passportLoadFailed = false
         if (!storageScope.isNullOrBlank()) {
-            isLoadingRemotePassport = local.isEmpty()
-            try {
-                runCatching {
-                    val repository = com.pawly.app.care.data.FirebasePetCareRepository()
-                    repository.ensureSharedPet(dogName, dogName)
-                    val remote = repository.loadPassportEntries(dogName)
-                    if (remote.isEmpty() && local.isNotEmpty()) {
-                        repository.savePassportEntries(dogName, local)
-                        local
-                    } else {
-                        remote
-                    }
-                }.onSuccess { merged ->
-                    passportEntries = merged
-                    com.pawly.app.care.data.PetCareLocalStore.saveEntries(context, dogName, merged, storageScope)
+            runCatching {
+                val repository = com.pawly.app.care.data.FirebasePetCareRepository()
+                repository.ensureSharedPet(dogName, dogName)
+                val remote = repository.loadPassportEntries(dogName)
+                if (remote.isEmpty() && local.isNotEmpty()) {
+                    repository.savePassportEntries(dogName, local)
+                    local
+                } else {
+                    remote
                 }
-                    .onFailure {
-                        if (it is kotlinx.coroutines.CancellationException) throw it
-                        passportLoadFailed = true
-                    }
-            } finally {
-                isLoadingRemotePassport = false
+            }.onSuccess { merged ->
+                passportEntries = merged
+                com.pawly.app.care.data.PetCareLocalStore.saveEntries(context, dogName, merged, storageScope)
+            }.onFailure {
+                if (it is kotlinx.coroutines.CancellationException) throw it
             }
-        } else {
-            isLoadingRemotePassport = false
         }
     }
 
-    val weightEntries = passportEntries.filter { it.type.equals("Peso", true) }
     val nextUpcomingItem = remember(passportEntries, healthDates, calendarReminders) {
         findNextHomeUpcomingItem(
             passportEntries = passportEntries,
@@ -171,72 +155,6 @@ internal fun HomeScreen(
                 }
             )
         }
-        item {
-            Surface(onClick = onWeight, modifier = Modifier.animateContentSize(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.MonitorWeight, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
-                        Text(tr("Evolución del peso"), fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text(tr("Ver salud"), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
-                        Icon(Icons.Filled.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
-                    }
-                    if (isLoadingRemotePassport && passportEntries.isEmpty()) {
-                        HomeWeightSkeleton()
-                    } else if (latestWeight != null) {
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(String.format(locale, "%.1f", latestWeight), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
-                            Spacer(Modifier.width(5.dp))
-                            Text("kg", color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.dp))
-                            Spacer(Modifier.weight(1f))
-                            if (weightChange != null) {
-                                Text(String.format(locale, "%+.1f kg", weightChange), color = if (weightChange > 0) MaterialTheme.colorScheme.tertiary else if (weightChange < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                        if (parsedWeights.size > 1) {
-                            Row(Modifier.fillMaxWidth().height(46.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
-                                val recent = parsedWeights.takeLast(5).map { it.second }
-                                val min = (recent.minOrNull() ?: 0f) - .25f
-                                val max = (recent.maxOrNull() ?: 1f) + .25f
-                                recent.forEachIndexed { index, value ->
-                                    val fraction = ((value - min) / (max - min).coerceAtLeast(.1f)).coerceIn(.12f, 1f)
-                                    Box(Modifier.weight(1f).fillMaxHeight(fraction).clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                        .background(if (index == recent.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
-                                }
-                            }
-                            Text(tr("Últimas ${minOf(parsedWeights.size, 5)} mediciones"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-                        } else {
-                            Text(tr("Añade más mediciones para ver la evolución."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        }
-                        if (passportLoadFailed) {
-                            Text(tr("No se pudieron actualizar los datos. Se muestran los registros guardados en este dispositivo."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        }
-                    } else {
-                        if (passportLoadFailed) {
-                            Text(tr("No se pudo cargar el pasaporte de salud. Comprueba la conexión e inténtalo de nuevo."), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                            OutlinedButton(onClick = { passportReloadRequest++ }) { Text(tr("Reintentar")) }
-                        } else {
-                            Text(tr("Todavía no hay mediciones. Registra el primer peso en Mi perro → Pasaporte → Peso."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                            OutlinedButton(onClick = onWeight) { Text(tr("Registrar primer peso")) }
-                        }
-                    }
-                }
-            }
-        }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(tr("Ideas para vuestra próxima salida"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text(tr("Planes y lugares dog-friendly"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    TextButton(onClick = onExplore) { Text(tr("Ver todo")) }
-                }
-                HomeExploreCard(onClick = onExplore, elegantDesign = elegantDesign)
-            }
-        }
-        item { HomeLearnCard(onClick = onLearn) }
         }
     }
 }
