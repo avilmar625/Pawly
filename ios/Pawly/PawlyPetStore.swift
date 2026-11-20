@@ -43,6 +43,20 @@ struct PawlyCareTask: Identifiable {
 struct PawlyDiaryEntry: Identifiable {
     var id: String; var text: String; var title: String; var category: String; var photos: [String]; var date: Date?; var position: Int; var updatedAt: Date?
 }
+struct PawlyCareLogEntry: Identifiable {
+    var id: String
+    var taskTitle: String
+    var action: String
+    var actorUID: String
+    var actorName: String
+    var occurredAt: Date?
+    var note: String
+    var distanceKm: Double?
+    var mapURL: String
+    var description: String
+    var walker: String
+    var photoURLs: [String]
+}
 struct PawlyPetInvitation:Identifiable {
     var id:String;var sharedPetID:String;var petName:String;var ownerName:String;var ownerUID:String;var role:String
 }
@@ -256,6 +270,88 @@ final class PawlyPetStore: ObservableObject {
         if let owner=pet.ownerUID { return db.collection("sharedPets").document("\(owner)_\(pet.id)").collection("tasks") }
         return db.collection("users").document(uid).collection("petCare").document(pet.id).collection("tasks")
     }
+    private func careLogsRoot(_ pet: PawlyPet) throws -> CollectionReference {
+        guard let uid else { throw PawlyStoreError.notSignedIn }
+        if let owner = pet.ownerUID {
+            return db.collection("sharedPets").document("\(owner)_\(pet.id)").collection("careLogs")
+        }
+        return db.collection("users").document(uid).collection("petCare").document(pet.id).collection("careLogs")
+    }
+
+    func loadCareLogs(_ pet: PawlyPet, limit: Int = 100) async throws -> [PawlyCareLogEntry] {
+        guard (1...500).contains(limit) else { throw PawlyStoreError.invalidTask }
+        let snapshot = try await careLogsRoot(pet).order(by: "occurredAt", descending: true).limit(to: limit).getDocuments()
+        return snapshot.documents.compactMap { document in
+            guard let title = document.get("taskTitle") as? String else { return nil }
+            return PawlyCareLogEntry(
+                id: document.documentID,
+                taskTitle: title,
+                action: document.get("action") as? String ?? "Otro",
+                actorUID: document.get("actorUid") as? String ?? "",
+                actorName: document.get("actorName") as? String ?? "Cuidador",
+                occurredAt: (document.get("occurredAt") as? Timestamp)?.dateValue(),
+                note: document.get("note") as? String ?? "",
+                distanceKm: (document.get("distanceKm") as? NSNumber)?.doubleValue,
+                mapURL: document.get("mapUrl") as? String ?? "",
+                description: document.get("description") as? String ?? "",
+                walker: document.get("walker") as? String ?? "",
+                photoURLs: document.get("photoUrls") as? [String] ?? []
+            )
+        }
+    }
+
+    func logCareAction(
+        pet: PawlyPet,
+        taskTitle: String,
+        action: String,
+        note: String = "",
+        distanceKm: Double? = nil,
+        description: String = "",
+        walker: String = "",
+        photoURLs: [String] = [],
+        mapURL: String = ""
+    ) async throws {
+        guard let user = Auth.auth().currentUser else { throw PawlyStoreError.notSignedIn }
+        let allowedActions = ["Paseo", "Comida", "Medicación", "Higiene", "Otro"]
+        let cleanTitle = taskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanWalker = walker.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard
+            !cleanTitle.isEmpty, cleanTitle.count <= 120,
+            allowedActions.contains(action),
+            cleanNote.count <= 500,
+            cleanDescription.count <= 600,
+            cleanWalker.count <= 80,
+            distanceKm == nil || (distanceKm!.isFinite && distanceKm! >= 0.01 && distanceKm! <= 1000),
+            photoURLs.count <= 4,
+            photoURLs.allSatisfy({ $0.hasPrefix("https://") && $0.count <= 2048 }),
+            mapURL.count <= 2048,
+            mapURL.isEmpty || (URL(string: mapURL)?.scheme?.lowercased() == "https")
+        else { throw PawlyStoreError.invalidTask }
+
+        let actorProfile = try await db.collection("users").document(user.uid).getDocument()
+        let actorName = (actorProfile.get("displayName") as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? (actorProfile.get("username") as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? "Cuidador"
+        let reference = try careLogsRoot(pet).document()
+        var data: [String: Any] = [
+            "id": reference.documentID,
+            "taskTitle": cleanTitle,
+            "action": action,
+            "actorUid": user.uid,
+            "actorName": String(actorName.prefix(80)),
+            "occurredAt": FieldValue.serverTimestamp(),
+            "note": cleanNote,
+            "description": cleanDescription,
+            "walker": cleanWalker,
+            "photoUrls": photoURLs,
+            "mapUrl": mapURL
+        ]
+        if let distanceKm { data["distanceKm"] = distanceKm }
+        try await reference.setData(data)
+    }
+
     func loadPassport(_ pet:PawlyPet) async throws -> [PawlyPassportEntry] {
         let snapshot = try await passportRoot(pet).getDocuments()
         return snapshot.documents.compactMap { d in
