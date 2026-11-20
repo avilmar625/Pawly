@@ -6,7 +6,7 @@ concurrency:
 
 on:
   push:
-    branches: [codex/ios-port-2026-11]
+    branches: ["**"]
     paths:
       - "ios/**"
       - ".github/workflows/ios.yml"
