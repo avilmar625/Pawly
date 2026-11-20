@@ -1,6 +1,6 @@
 import SwiftUI
 import MapKit
-import CoreLocation
+@preconcurrency import CoreLocation
 import FirebaseAuth
 import FirebaseFirestore
 import PhotosUI
