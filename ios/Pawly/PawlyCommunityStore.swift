@@ -11,6 +11,11 @@ struct PawlyFeedPost: Identifiable {
 struct PawlyPublicUser:Identifiable {
     var id:String;var username:String;var displayName:String;var bio:String;var photoURL:String;var followersCount:Int;var following:Bool
 }
+struct PawlyBlockedUser: Identifiable {
+    var id: String
+    var username: String
+    var displayName: String
+}
 struct PawlyFeedComment: Identifiable {
     var id:String; var authorId:String; var authorName:String; var text:String; var createdAt:Date?
 }
@@ -325,6 +330,18 @@ final class PawlyCommunityStore: ObservableObject {
         batch.deleteDocument(db.collection("users").document(me).collection("blocked").document(userID))
         batch.deleteDocument(db.collection("users").document(userID).collection("blockedBy").document(me))
         try await batch.commit()
+    }
+
+    func loadBlockedUsers() async throws -> [PawlyBlockedUser] {
+        guard let me = uid else { throw PawlyCommunityError.notSignedIn }
+        let snapshot = try await db.collection("users").document(me).collection("blocked").getDocuments()
+        return snapshot.documents.map { document in
+            PawlyBlockedUser(
+                id: document.documentID,
+                username: document.get("username") as? String ?? "",
+                displayName: document.get("displayName") as? String ?? "Usuario"
+            )
+        }.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
     func reportUser(_ user:PawlyPublicUser,reason:String) async throws {
         try requireVerified()
