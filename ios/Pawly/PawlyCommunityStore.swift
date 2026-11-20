@@ -11,6 +11,12 @@ struct PawlyFeedPost: Identifiable {
 struct PawlyPublicUser:Identifiable {
     var id:String;var username:String;var displayName:String;var bio:String;var photoURL:String;var followersCount:Int;var following:Bool
 }
+struct PawlyLostPetSubscription {
+    var enabled: Bool
+    var radiusKm: Int
+    var latitude: Double
+    var longitude: Double
+}
 struct PawlyBlockedUser: Identifiable {
     var id: String
     var username: String
@@ -151,18 +157,75 @@ final class PawlyCommunityStore: ObservableObject {
         blockedFeedListener = nil
         blockedByFeedListener = nil
     }
-    func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "") async throws {
+    func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "") async throws -> String {
         try requireVerified()
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
         guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidPost}
         guard let uid else{throw PawlyCommunityError.notSignedIn}
         let profile=try await db.collection("users").document(uid).getDocument()
-        try await db.collection("posts").addDocument(data:[
+        let reference = db.collection("posts").document()
+        try await reference.setData([
             "authorId":uid,"authorName":profile.get("displayName") as? String ?? profile.get("username") as? String ?? "Usuario Pawly",
             "authorPhoto":profile.get("photoUrl") as? String ?? "","dogName":String(petName.prefix(40)),
             "category":category,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"likeCount":0,"commentCount":0,
             "likedBy":[String](),"createdAt":FieldValue.serverTimestamp()
         ])
+        return reference.documentID
+    }
+
+    func loadLostPetSubscription() async throws -> PawlyLostPetSubscription? {
+        guard let uid else { throw PawlyCommunityError.notSignedIn }
+        let document = try await db.collection("lostPetSubscriptions").document(uid).getDocument()
+        guard document.exists,
+              let latCell = document.get("latCell") as? NSNumber,
+              let lonCell = document.get("lonCell") as? NSNumber else { return nil }
+        return PawlyLostPetSubscription(
+            enabled: document.get("enabled") as? Bool ?? false,
+            radiusKm: document.get("radiusKm") as? Int ?? 10,
+            latitude: latCell.doubleValue / 100,
+            longitude: lonCell.doubleValue / 100
+        )
+    }
+
+    func saveLostPetSubscription(
+        enabled: Bool,
+        radiusKm: Int,
+        latitude: Double,
+        longitude: Double
+    ) async throws {
+        try requireVerified()
+        guard [5, 10, 20, 30, 50, 100].contains(radiusKm),
+              (-90...90).contains(latitude), (-180...180).contains(longitude) else {
+            throw PawlyLostPetError.invalidSubscription
+        }
+        guard let uid else { throw PawlyCommunityError.notSignedIn }
+        try await db.collection("lostPetSubscriptions").document(uid).setData([
+            "uid": uid,
+            "enabled": enabled,
+            "radiusKm": radiusKm,
+            "latCell": Int((latitude * 100).rounded()),
+            "lonCell": Int((longitude * 100).rounded()),
+            "updatedAt": FieldValue.serverTimestamp()
+        ])
+    }
+
+    func publishLostPetAlert(postID: String, dogName: String, coordinate: CLLocationCoordinate2D) async throws -> Int {
+        try requireVerified()
+        guard let uid else { throw PawlyCommunityError.notSignedIn }
+        guard (-90...90).contains(coordinate.latitude), (-180...180).contains(coordinate.longitude),
+              !postID.isEmpty, postID.count <= 128 else {
+            throw PawlyLostPetError.invalidLocation
+        }
+        try await db.collection("lostPetAlerts").document(postID).setData([
+            "postId": postID,
+            "authorUid": uid,
+            "dogName": String(dogName.prefix(40)),
+            "latCell": Int((coordinate.latitude * 100).rounded()),
+            "lonCell": Int((coordinate.longitude * 100).rounded()),
+            "status": "active",
+            "createdAt": FieldValue.serverTimestamp()
+        ])
+        return try await PawlyBackendClient.dispatchLostPetAlert(alertID: postID)
     }
     func toggleLike(_ post:PawlyFeedPost) async throws {
         try requireVerified()
@@ -482,6 +545,17 @@ enum PawlyCommunityError:LocalizedError {
         case .userNotFound:return "No se ha encontrado ese usuario público de Pawly."
         case .blocked:return "No puedes contactar con una cuenta bloqueada."
         case .notParticipant:return "No formas parte de esta conversación."
+        }
+    }
+}
+
+enum PawlyLostPetError: LocalizedError {
+    case invalidSubscription
+    case invalidLocation
+    var errorDescription: String? {
+        switch self {
+        case .invalidSubscription: return "La configuración de alertas o el radio seleccionado no son válidos."
+        case .invalidLocation: return "No se ha podido validar la ubicación aproximada del aviso."
         }
     }
 }
