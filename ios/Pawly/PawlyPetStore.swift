@@ -352,6 +352,10 @@ final class PawlyPetStore: ObservableObject {
         try await reference.setData(data)
     }
 
+    func deleteCareLog(_ id: String, pet: PawlyPet) async throws {
+        try await careLogsRoot(pet).document(id).delete()
+    }
+
     func loadPassport(_ pet:PawlyPet) async throws -> [PawlyPassportEntry] {
         let snapshot = try await passportRoot(pet).getDocuments()
         return snapshot.documents.compactMap { d in
