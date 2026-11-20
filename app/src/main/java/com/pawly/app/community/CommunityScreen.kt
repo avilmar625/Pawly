@@ -55,7 +55,7 @@ private enum class CommunityPage(val label: String) {
 }
 
 @Composable
-internal fun CommunityScreen(openNotifications: Boolean = false) {
+internal fun CommunityScreen(openNotifications: Boolean = false, openProfile: Boolean = false, onProfileOpened: () -> Unit = {}, onLostPet: () -> Unit = {}) {
     val context = LocalContext.current
     val repository = remember(context) { FirebaseCommunityRepository.create(context) }
     if (repository == null) {
@@ -64,7 +64,7 @@ internal fun CommunityScreen(openNotifications: Boolean = false) {
     }
     var uid by remember { mutableStateOf(repository.currentUid) }
     if (uid.isNullOrBlank()) CommunityAuthPanel(repository, onAuthenticated = { uid = repository.currentUid }, onContinueOffline = {})
-    else CommunityHub(repository, uid!!, openNotifications)
+    else CommunityHub(repository, uid!!, openNotifications, openProfile, onProfileOpened, onLostPet)
 }
 
 
@@ -346,8 +346,9 @@ internal fun CommunityAuthPanel(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, openNotifications: Boolean = false) {
+private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, openNotifications: Boolean = false, openProfile: Boolean = false, onProfileOpened: () -> Unit = {}, onLostPet: () -> Unit = {}) {
     var page by remember(openNotifications) { mutableStateOf(if (openNotifications) CommunityPage.NOTIFICATIONS else CommunityPage.FEED) }
+    LaunchedEffect(openProfile) { if (openProfile) { page = CommunityPage.PROFILE; onProfileOpened() } }
     var posts by remember { mutableStateOf(emptyList<PawlyPost>()) }
     var followingIds by remember { mutableStateOf(emptySet<String>()) }
     var unreadNotifications by remember { mutableIntStateOf(0) }
@@ -412,7 +413,7 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, openNot
         messageUnreadCounts = updatedCounts
         unreadMessages = updatedCounts.values.sum()
     }
-    val communityTabs = listOf(CommunityPage.FEED, CommunityPage.SEARCH, CommunityPage.MESSAGES, CommunityPage.PROFILE)
+    val communityTabs = listOf(CommunityPage.FEED, CommunityPage.SEARCH, CommunityPage.MESSAGES)
     val selectedCommunityTab = if (page in communityTabs) page else CommunityPage.FEED
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         PawlySectionNavigationHeader(
@@ -420,7 +421,9 @@ private fun CommunityHub(repo: FirebaseCommunityRepository, uid: String, openNot
             labels = communityTabs.map { tr(it.label) },
             selectedIndex = communityTabs.indexOf(selectedCommunityTab),
             onSelect = { index -> page = communityTabs[index]; selectedUser = null; chat = null },
+            includeStatusBarInset = false,
             actions = {
+                IconButton(onClick = onLostPet) { Icon(Icons.Default.Campaign, contentDescription = tr("He perdido mi mascota"), tint = MaterialTheme.colorScheme.error) }
                 IconButton(onClick = { page = CommunityPage.NOTIFICATIONS; selectedUser = null; chat = null }) {
                     Box {
                         Icon(Icons.Default.Notifications, contentDescription = tr("Avisos"), tint = MaterialTheme.colorScheme.primary)

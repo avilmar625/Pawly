@@ -47,6 +47,7 @@ internal fun MoreHubScreen(
     onInviteFriend: () -> Unit,
     onContact: () -> Unit,
     onLostPet: () -> Unit = {},
+    onProfile: () -> Unit = {},
     onPrivacy: () -> Unit,
     onTerms: () -> Unit,
     onSignOut: () -> Unit,
@@ -61,6 +62,7 @@ internal fun MoreHubScreen(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
         MoreSectionLabel(t("TU ESPACIO"))
         MoreDestinationCard(Icons.Filled.Settings, t("Ajustes"), t("Diseño, colores, idioma y servicios multimedia."), onSettings)
+        MoreDestinationCard(Icons.Filled.Pets, t("Mi perfil"), t("Consulta y gestiona tu perfil de comunidad."), onProfile)
         MoreSectionLabel(t("SOPORTE Y CUENTA"))
         MoreDisclosureCard(
             icon = Icons.Filled.Help,

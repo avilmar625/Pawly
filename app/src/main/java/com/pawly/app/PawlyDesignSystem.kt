@@ -137,12 +137,15 @@ internal fun PawlySectionNavigationHeader(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    includeStatusBarInset: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(modifier = modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
         Column {
             Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 18.dp, end = 8.dp, top = 0.dp, bottom = 0.dp),
+                Modifier.fillMaxWidth()
+                    .then(if (includeStatusBarInset) Modifier.statusBarsPadding() else Modifier)
+                    .padding(start = 18.dp, end = 8.dp, top = 0.dp, bottom = 0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

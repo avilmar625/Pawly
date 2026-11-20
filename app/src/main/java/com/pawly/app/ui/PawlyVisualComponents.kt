@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
  */
 @Composable
 internal fun PawlyPageHeader(
-    eyebrow: String,
+    eyebrow: String? = null,
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier
@@ -42,8 +42,8 @@ internal fun PawlyPageHeader(
         modifier = modifier.fillMaxWidth().animateContentSize(animationSpec = tween(durationMillis = 180)).padding(bottom = 2.dp),
         verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
-        Text(
-            tr(eyebrow.uppercase()),
+        eyebrow?.let { Text(
+            tr(it.uppercase()),
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontWeight = FontWeight.ExtraBold,
@@ -51,7 +51,7 @@ internal fun PawlyPageHeader(
             ),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
-        )
+        ) }
         Text(
             tr(title),
             color = MaterialTheme.colorScheme.onSurface,

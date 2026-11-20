@@ -236,6 +236,7 @@ private fun PawlyMainApp(
     LaunchedEffect(selected) { if (selected != Tab.DIARY) previousTab = selected }
     BackHandler(enabled = selected == Tab.DIARY) { selected = previousTab }
     var openCommunityNotifications by remember { mutableStateOf(false) }
+    var openCommunityProfile by remember { mutableStateOf(false) }
     var pendingCareAction by remember { mutableStateOf<String?>(null) }
     var pendingPassportType by remember { mutableStateOf<String?>(null) }
     var pendingCareSection by remember { mutableStateOf<String?>(null) }
@@ -522,21 +523,6 @@ private fun PawlyMainApp(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            if (selected == Tab.DIARY) {
-                Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 3.dp) {
-                    Row(
-                        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 6.dp, end = 18.dp, top = 7.dp, bottom = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { selected = previousTab }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = PawlyI18n.text("Volver", language), tint = MaterialTheme.colorScheme.primary)
-                        }
-                        Text(PawlyI18n.text("Diario", language), modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        Icon(Icons.Default.AutoStories, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
-                    }
-                }
-            } else {
                 val petTabs = listOf(Tab.HOME, Tab.HEALTH, Tab.DIARY, Tab.CALENDAR)
                 val moreTabs = listOf(Tab.MORE, Tab.LEARN, Tab.SERVICES)
                 val routeTabs = when (selected) {
@@ -557,7 +543,6 @@ private fun PawlyMainApp(
                         }
                     )
                 }
-            }
         },
         bottomBar = {
             val navigationTabs = listOf(Tab.HOME, Tab.COMMUNITY, Tab.EXPLORE, Tab.MORE)
@@ -698,9 +683,13 @@ private fun PawlyMainApp(
                     petId = selectedSharedPet?.let { it.sharedPetId.removePrefix("${it.ownerUid}_") } ?: dogName
                 )
                 Tab.COMMUNITY -> CommunityScreen(
-                    openNotifications = openCommunityNotifications
+                    openNotifications = openCommunityNotifications,
+                    openProfile = openCommunityProfile,
+                    onProfileOpened = { openCommunityProfile = false },
+                    onLostPet = { selected = Tab.LOST }
                 )
                 Tab.MORE -> MoreHubScreen(
+                    onProfile = { openCommunityProfile = true; selected = Tab.COMMUNITY },
                     onSettings = { showSettings = true },
                     onPawlyMarket = { selected = Tab.MARKET },
                     onSharePetPdf = {

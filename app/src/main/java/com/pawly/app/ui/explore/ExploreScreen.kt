@@ -335,7 +335,8 @@ internal fun ExploreScreen(savedPlaces: Set<String>, onToggleSave: (String) -> U
             title = tr("Explorar"),
             labels = explorePages.map { tr(it.label) },
             selectedIndex = explorePages.indexOf(activeExplorePage),
-            onSelect = { activeExplorePage = explorePages[it] }
+            onSelect = { activeExplorePage = explorePages[it] },
+            includeStatusBarInset = false
         )
         LazyColumn(
             Modifier.weight(1f),

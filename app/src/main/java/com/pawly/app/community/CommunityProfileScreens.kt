@@ -119,8 +119,7 @@ internal fun MyCommunityProfile(repo: FirebaseCommunityRepository, onManagePhone
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(15.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
             PawlyPageHeader(
-                eyebrow = "Comunidad",
-                title = "Tu perfil Pawly",
+                title = "Mi perfil",
                 subtitle = "Tu presentación, tus mascotas y cómo te encuentra la comunidad."
             )
         }

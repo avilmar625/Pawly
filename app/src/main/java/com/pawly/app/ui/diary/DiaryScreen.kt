@@ -188,26 +188,26 @@ internal fun DiaryScreen(
         item {
             Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primary) {
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text(tr("UN RECUERDO NUEVO"), color = MaterialTheme.colorScheme.tertiaryContainer, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(tr("UN RECUERDO NUEVO"), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     OutlinedTextField(
                         value = memoryTitle,
                         onValueChange = { memoryTitle = it.take(80) },
                         enabled = canEditSharedDiary,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(tr("Título del recuerdo"), color = Color.White.copy(alpha = .6f)) },
+                        placeholder = { Text(tr("Título del recuerdo"), color = Color.White.copy(alpha = .82f)) },
                         singleLine = true,
                         shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .3f), cursorColor = Lime)
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = Color.White, unfocusedLabelColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .65f), cursorColor = Color.White)
                     )
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it.take(1200) },
                         enabled = canEditSharedDiary,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(tr("Cuenta qué habéis hecho y qué lo hizo especial…"), color = Color.White.copy(alpha = .6f)) },
+                        placeholder = { Text(tr("Cuenta qué habéis hecho y qué lo hizo especial…"), color = Color.White.copy(alpha = .82f)) },
                         minLines = 2,
                         shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .3f), cursorColor = Lime)
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = Color.White, unfocusedLabelColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .65f), cursorColor = Color.White)
                     )
                     PawlyDropdownSelector(
                         title = tr("Categoría"),
