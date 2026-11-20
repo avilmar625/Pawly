@@ -260,8 +260,18 @@ final class PawlyCommunityStore: ObservableObject {
         let ids=[me,other].sorted(), cid=ids.joined(separator:"_"), ref=db.collection("conversations").document(cid)
         let existing=try await ref.getDocument()
         if !existing.exists {
-            let mine=try await db.collection("users").document(me).getDocument()
-            try await ref.setData(["participants":ids,"participantNames":[me:mine.get("displayName") as? String ?? "Yo",other:otherProfile.get("displayName") as? String ?? clean],"updatedAt":FieldValue.serverTimestamp()])
+            let mine = try await db.collection("users").document(me).getDocument()
+            let myName = mine.get("displayName") as? String ?? ""
+            let otherName = otherProfile.get("displayName") as? String ?? ""
+            let myPhoto = mine.get("photoUrl") as? String ?? ""
+            let otherPhoto = otherProfile.get("photoUrl") as? String ?? ""
+            guard !myName.isEmpty, !otherName.isEmpty else { throw PawlyCommunityError.userNotFound }
+            try await ref.setData([
+                "participants": ids,
+                "participantNames": [me: myName, other: otherName],
+                "participantPhotos": [me: myPhoto, other: otherPhoto],
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
         }
         return cid
     }
