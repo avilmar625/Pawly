@@ -246,7 +246,7 @@ struct PawlyModerationView: View {
                             Text(report.reason).font(.subheadline)
                             Text("Elemento: \(report.targetID)")
                                 .font(.caption2).foregroundStyle(.secondary)
-                            HStack(flexible: true) {
+                            HStack(spacing: 8) {
                                 if report.targetType == "post" {
                                     Button("Retirar publicación", role: .destructive) {
                                         Task { await runAction { try await store.removeReportedPost(report) } }
