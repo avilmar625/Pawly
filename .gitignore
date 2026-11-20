@@ -22,3 +22,10 @@ local.properties
 /backend/cloudflare-worker/node_modules/
 /backend/cloudflare-worker/.wrangler/
 /backend/cloudflare-worker/.dev.vars
+
+# Xcode-generated projects and local iOS credentials
+/ios/Pawly.xcodeproj/
+/ios/build/
+/ios/DerivedData/
+/ios/Pawly/GoogleService-Info.plist
+/ios/Config.local.xcconfig
