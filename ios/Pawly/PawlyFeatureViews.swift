@@ -836,6 +836,12 @@ struct PetSharingSheet:View {
 }
 
 struct DiaryView:View {
+    private let openPhotoPickerOnEnter: Bool
+
+    init(openPhotoPickerOnEnter: Bool = false) {
+        self.openPhotoPickerOnEnter = openPhotoPickerOnEnter
+    }
+
     @EnvironmentObject private var pets:PawlyPetStore
     @State private var entries:[PawlyDiaryEntry]=[]
     @State private var title=""
@@ -843,6 +849,7 @@ struct DiaryView:View {
     @State private var category="Paseos"
     @State private var date=Date()
     @State private var selectedPhotos:[PhotosPickerItem]=[]
+    @State private var showPhotoPicker=false
     @State private var diaryFilter="Todos"
     @State private var newestFirst=true
     @State private var busy=false
@@ -968,7 +975,12 @@ struct DiaryView:View {
                 }
             }
             .navigationTitle("Recuerdos")
-            .task(id:pets.selectedPetID){diaryFilter="Todos";await load()}
+            .task(id:pets.selectedPetID) {
+                diaryFilter="Todos"
+                await load()
+                if openPhotoPickerOnEnter { showPhotoPicker = true }
+            }
+            .photosPicker(isPresented:$showPhotoPicker,selection:$selectedPhotos,maxSelectionCount:8,matching:.images)
         }
     }
 

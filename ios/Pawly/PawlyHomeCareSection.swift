@@ -170,6 +170,8 @@ struct PawlyHomeCareSection: View {
                     showWeightEntry = true
                 }
                 quickAction("Foto", icon: "camera.fill") {
+                    let uid = Auth.auth().currentUser?.uid ?? "guest"
+                    UserDefaults.standard.set(true, forKey: "pawly.diary.\(uid).\(pet.id).newMemory")
                     showDiary = true
                 }
                 quickAction("Comida", icon: "fork.knife") {
@@ -321,7 +323,7 @@ struct PawlyHomeCareSection: View {
         .sheet(isPresented: $showWeightEntry) {
             CareView(startWithNewEntry: true, initialEntryType: "Peso").environmentObject(pets)
         }
-        .sheet(isPresented: $showDiary) { DiaryView().environmentObject(pets) }
+        .sheet(isPresented: $showDiary) { DiaryView(openPhotoPickerOnEnter: true).environmentObject(pets) }
         .sheet(isPresented: $showCareHistory) { PawlyCareLogsView().environmentObject(pets) }
         .sheet(isPresented: $showQuickCareLog) {
             PawlyCareLogForm(petName: pet.name, initialAction: quickCareAction) { title, action, note, distance, description, walker, photos in
