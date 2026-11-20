@@ -75,6 +75,7 @@ internal fun DiaryScreen(
     val diarySaveErrorText = tr("No se pudo guardar el recuerdo.")
     var note by remember { mutableStateOf("") }
     var memoryTitle by remember { mutableStateOf("") }
+    var newMemoryExpanded by remember { mutableStateOf(true) }
     var memoryCategory by remember { mutableStateOf("Paseos") }
     var diaryFilter by remember { mutableStateOf("Todos") }
     var newestFirst by remember { mutableStateOf(true) }
@@ -186,28 +187,52 @@ internal fun DiaryScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.primary) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text(tr("UN RECUERDO NUEVO"), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(tr("UN RECUERDO NUEVO"), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            if (!newMemoryExpanded) {
+                                Text(tr("Guarda los momentos especiales de vuestra historia."), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        TextButton(
+                            onClick = { newMemoryExpanded = !newMemoryExpanded },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                if (newMemoryExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = tr(if (newMemoryExpanded) "Ocultar formulario" else "Mostrar formulario")
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(tr(if (newMemoryExpanded) "Ocultar" else "Crear recuerdo"))
+                        }
+                    }
+                    AnimatedVisibility(visible = newMemoryExpanded, enter = fadeIn(), exit = fadeOut()) {
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     OutlinedTextField(
                         value = memoryTitle,
                         onValueChange = { memoryTitle = it.take(80) },
                         enabled = canEditSharedDiary,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(tr("Título del recuerdo"), color = Color.White.copy(alpha = .82f)) },
+                        placeholder = { Text(tr("Título del recuerdo")) },
                         singleLine = true,
                         shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = Color.White, unfocusedLabelColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .65f), cursorColor = Color.White)
+                        colors = OutlinedTextFieldDefaults.colors()
                     )
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it.take(1200) },
                         enabled = canEditSharedDiary,
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text(tr("Cuenta qué habéis hecho y qué lo hizo especial…"), color = Color.White.copy(alpha = .82f)) },
+                        placeholder = { Text(tr("Cuenta qué habéis hecho y qué lo hizo especial…")) },
                         minLines = 2,
                         shape = RoundedCornerShape(15.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLabelColor = Color.White, unfocusedLabelColor = Color.White, focusedBorderColor = Lime, unfocusedBorderColor = Color.White.copy(alpha = .65f), cursorColor = Color.White)
+                        colors = OutlinedTextFieldDefaults.colors()
                     )
                     PawlyDropdownSelector(
                         title = tr("Categoría"),
@@ -241,12 +266,12 @@ internal fun DiaryScreen(
                         )
                     }
                     if (selectedPhotos.isNotEmpty()) {
-                        Text(tr("${selectedPhotos.size} fotografías seleccionadas"), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                        Text(tr("${selectedPhotos.size} fotografías seleccionadas"), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
                         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             selectedPhotos.forEach { uri -> AsyncImage(model = uri, contentDescription = tr("Vista previa de fotografía"), modifier = Modifier.size(76.dp).clip(RoundedCornerShape(12.dp)), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
                         }
                     }
-                    if (photoUploadError != null) Text(photoUploadError!!, color = Color(0xFFFFC4BC), style = MaterialTheme.typography.labelSmall)
+                    if (photoUploadError != null) Text(photoUploadError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                     Button(
                         onClick = {
                             diaryScope.launch {
@@ -276,13 +301,15 @@ internal fun DiaryScreen(
                             }
                         },
                         enabled = (memoryTitle.isNotBlank() || note.isNotBlank()) && canEditSharedDiary && !photoUploadBusy,
-                        colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Forest),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                         shape = RoundedCornerShape(13.dp)
                     ) {
                         if (photoUploadBusy) CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 2.dp)
                         else Icon(Icons.Filled.Add, contentDescription = null)
                         Spacer(Modifier.width(5.dp))
                         Text(tr(if (photoUploadBusy) "Guardando…" else "Guardar recuerdo"))
+                    }
+                        }
                     }
                 }
             }
