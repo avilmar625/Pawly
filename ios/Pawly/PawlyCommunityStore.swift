@@ -193,12 +193,10 @@ final class PawlyCommunityStore: ObservableObject {
 
         // Read relationship state first, then apply the privacy change and remove
         // both sides of any follow relationship in one atomic batch.
-        let relationshipDocs = try await [
-            myFollowing.getDocument(),
-            theirFollowing.getDocument()
-        ]
-        let iFollow = relationshipDocs[0].exists
-        let theyFollow = relationshipDocs[1].exists
+        let myFollowingSnapshot = try await myFollowing.getDocument()
+        let theirFollowingSnapshot = try await theirFollowing.getDocument()
+        let iFollow = myFollowingSnapshot.exists
+        let theyFollow = theirFollowingSnapshot.exists
 
         let batch = db.batch()
         batch.setData([
@@ -225,10 +223,7 @@ final class PawlyCommunityStore: ObservableObject {
             batch.deleteDocument(theirFollowing)
             batch.deleteDocument(myFollower)
             batch.updateData(["followersCount": FieldValue.increment(Int64(-1))], forDocument: meRef)
-            batch.updateData([
-                "followingCount": FieldValue.increment(Int64(-1)),
-                "lastFollowingChangeUid": me
-            ], forDocument: otherRef)
+            batch.updateData(["followingCount": FieldValue.increment(Int64(-1))], forDocument: otherRef)
         }
         try await batch.commit()
     }
