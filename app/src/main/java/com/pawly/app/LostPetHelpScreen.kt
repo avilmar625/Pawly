@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
@@ -84,6 +86,7 @@ internal fun LostPetHelpScreen(
     var receiveNearbyAlerts by remember { mutableStateOf(false) }
     var alertRadius by remember { mutableStateOf(10) }
     var subscriptionSaved by remember { mutableStateOf(false) }
+    var alertPreferencesExpanded by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { photo = it }
     val cameraCapture = rememberPawlyCameraCapture(
         onImageSelected = { photo = it },
@@ -156,48 +159,69 @@ internal fun LostPetHelpScreen(
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(t("Alertas de mascotas perdidas cerca de ti"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                        Text(t("Actívalas solo si quieres recibir avisos de tu zona."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text(t("Preferencias de búsqueda"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                        Text(
+                            if (receiveNearbyAlerts) "$alertRadius km · " + t("Alertas activadas") else t("Alertas desactivadas"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     }
-                    Switch(checked = receiveNearbyAlerts, onCheckedChange = { receiveNearbyAlerts = it; subscriptionSaved = false })
+                    TextButton(onClick = { alertPreferencesExpanded = !alertPreferencesExpanded }) {
+                        Icon(
+                            if (alertPreferencesExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = t(if (alertPreferencesExpanded) "Ocultar opciones" else "Mostrar opciones")
+                        )
+                        Text(t(if (alertPreferencesExpanded) "Ocultar" else "Configurar"))
+                    }
                 }
-                PawlyDropdownSelector(
-                    title = t("Radio de recepción"),
-                    selectedLabel = "$alertRadius km",
-                    options = listOf(5, 10, 20, 30, 50, 100).map { it.toString() to "$it km" },
-                    selectedValue = alertRadius.toString(),
-                    onSelected = { alertRadius = it.toInt(); subscriptionSaved = false }
-                )
-                Text(
-                    t("Pawly utiliza una ubicación aproximada (redondeada a unos 1 km). No se comparte tu posición exacta. Los avisos solo se envían a personas que hayan activado esta opción y estén dentro del radio."),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-                OutlinedButton(
-                    onClick = {
-                        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-                        if (!fine && !coarse) locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                        else requestApproximateLocation()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Icon(Icons.Default.LocationOn, null); Text("  " + t(if (approximateLocation == null) "Compartir ubicación aproximada" else "Actualizar ubicación aproximada")) }
-                if (approximateLocation != null) Text(t("Ubicación aproximada lista."), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
-                Button(
-                    onClick = {
-                        val point = approximateLocation
-                        if (point == null) { error = t("Necesitamos tu ubicación aproximada para configurar alertas."); return@Button }
-                        busy = true
-                        scope.launch {
-                            runCatching { repository?.saveLostPetSubscription(receiveNearbyAlerts, alertRadius, point.first, point.second) }
-                                .onSuccess { subscriptionSaved = true; error = null }
-                                .onFailure { error = it.localizedMessage ?: t("No se pudo guardar la preferencia.") }
-                            busy = false
+                if (alertPreferencesExpanded) {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(t("Alertas de mascotas perdidas cerca de ti"), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Text(t("Actívalas solo si quieres recibir avisos de tu zona."), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                            Switch(checked = receiveNearbyAlerts, onCheckedChange = { receiveNearbyAlerts = it; subscriptionSaved = false })
                         }
-                    },
-                    enabled = repository != null && !busy && approximateLocation != null,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(t(if (subscriptionSaved) "Preferencias guardadas" else "Guardar preferencias de alertas")) }
+                        PawlyDropdownSelector(
+                            title = t("Radio de recepción"),
+                            selectedLabel = "$alertRadius km",
+                            options = listOf(5, 10, 20, 30, 50, 100).map { it.toString() to "$it km" },
+                            selectedValue = alertRadius.toString(),
+                            onSelected = { alertRadius = it.toInt(); subscriptionSaved = false }
+                        )
+                        Text(
+                            t("Pawly utiliza una ubicación aproximada (redondeada a unos 1 km). No se comparte tu posición exacta. Los avisos solo se envían a personas que hayan activado esta opción y estén dentro del radio."),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                                if (!fine && !coarse) locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                                else requestApproximateLocation()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Icon(Icons.Default.LocationOn, null); Text("  " + t(if (approximateLocation == null) "Compartir ubicación aproximada" else "Actualizar ubicación aproximada")) }
+                        if (approximateLocation != null) Text(t("Ubicación aproximada lista."), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                        Button(
+                            onClick = {
+                                val point = approximateLocation
+                                if (point == null) { error = t("Necesitamos tu ubicación aproximada para configurar alertas."); return@Button }
+                                busy = true
+                                scope.launch {
+                                    runCatching { repository?.saveLostPetSubscription(receiveNearbyAlerts, alertRadius, point.first, point.second) }
+                                        .onSuccess { subscriptionSaved = true; error = null }
+                                        .onFailure { error = it.localizedMessage ?: t("No se pudo guardar la preferencia.") }
+                                    busy = false
+                                }
+                            },
+                            enabled = repository != null && !busy && approximateLocation != null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(t(if (subscriptionSaved) "Preferencias guardadas" else "Guardar preferencias de alertas")) }
+                    }
+                }
             }
         }
 
