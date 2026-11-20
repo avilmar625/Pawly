@@ -760,7 +760,10 @@ struct PawlyLostPetView: View {
  @State private var subscriptionLocation:CLLocationCoordinate2D?
  @State private var lostLocation:CLLocationCoordinate2D?
  @State private var subscriptionSaved=false
+ @State private var posterURL:URL?
+ @State private var generatingPoster=false
  @Environment(\.dismiss) private var dismiss
+ private var posterPreferenceKey:String { "pawly.lostPet.\(session.user?.uid ?? "guest").alertsExpanded" }
 
  var body:some View {
   NavigationStack {
@@ -781,6 +784,25 @@ struct PawlyLostPetView: View {
       Image(uiImage:image).resizable().scaledToFill()
        .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))
      }
+     if let posterURL {
+      ShareLink(item:posterURL) {
+       Label("Compartir cartel JPG",systemImage:"square.and.arrow.up")
+      }
+      Button("Volver a crear el cartel") { generatePoster() }
+       .disabled(generatingPoster)
+     } else {
+      Button {
+       generatePoster()
+      } label: {
+       HStack {
+        if generatingPoster { ProgressView() }
+        Label("Crear cartel para compartir",systemImage:"photo.badge.arrow.down")
+       }
+      }
+      .disabled(generatingPoster || name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ||
+                area.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ||
+                details.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+     }
     }
     Section("Ubicación aproximada del aviso") {
      Text("La zona del aviso se localiza a partir de la dirección o barrio que escribas. Pawly redondea la posición a una celda de aproximadamente 1 km antes de guardarla.")
@@ -798,35 +820,44 @@ struct PawlyLostPetView: View {
        .font(.caption).foregroundStyle(.secondary)
      }
     }
-    Section("Alertas de mascotas perdidas cerca de ti") {
-     Toggle("Quiero recibir avisos de mi zona",isOn:$receiveNearbyAlerts)
-      .onChange(of:receiveNearbyAlerts){_ in subscriptionSaved=false}
-     Picker("Radio de recepción",selection:$alertRadius) {
-      ForEach([5,10,20,30,50,100],id:\.self){Text("\($0) km").tag($0)}
-     }
-     Text("Solo se enviarán alertas si otra persona también ha activado esta función y el aviso está dentro del radio. Tu posición exacta no se comparte.")
-      .font(.caption).foregroundStyle(.secondary)
-     Button {
-      locationProvider.request()
-     } label: {
-      Label(subscriptionLocation == nil ? "Usar mi ubicación aproximada":"Actualizar mi ubicación aproximada",
-            systemImage:"location.circle")
-     }
-     if let locationMessage=locationProvider.message {
-      Text(locationMessage).font(.caption).foregroundStyle(.secondary)
-     }
-     if subscriptionLocation != nil {
-      Text("Ubicación de recepción disponible (se guarda redondeada a ~1 km).")
-       .font(.caption).foregroundStyle(PawlyColors.primary)
-     }
-     Button {
-      Task { await saveSubscription() }
-     } label: {
-      HStack {
-       if savingSubscription { ProgressView() }
-       Text(subscriptionSaved ? "Preferencias guardadas":"Guardar preferencias de alertas")
+    Section {
+     PawlyPersistentDisclosureGroup(
+      title:"Alertas de mascotas perdidas cerca de ti",
+      subtitle:receiveNearbyAlerts ? "Activadas · radio de \(alertRadius) km":"Desactivadas",
+      icon:"bell.badge",
+      storageKey:posterPreferenceKey,
+      defaultExpanded:false
+     ) {
+      Toggle("Quiero recibir avisos de mi zona",isOn:$receiveNearbyAlerts)
+       .onChange(of:receiveNearbyAlerts){_ in subscriptionSaved=false}
+      Picker("Radio de recepción",selection:$alertRadius) {
+       ForEach([5,10,20,30,50,100],id:\.self){Text("\($0) km").tag($0)}
       }
-     }.disabled(savingSubscription || subscriptionLocation == nil)
+      Text("Solo se enviarán alertas si otra persona también ha activado esta función y el aviso está dentro del radio. Tu posición exacta no se comparte.")
+       .font(.caption).foregroundStyle(.secondary)
+      Button {
+       locationProvider.request()
+      } label: {
+       Label(subscriptionLocation == nil ? "Usar mi ubicación aproximada":"Actualizar mi ubicación aproximada",
+             systemImage:"location.circle")
+      }
+      if let locationMessage=locationProvider.message {
+       Text(locationMessage).font(.caption).foregroundStyle(.secondary)
+      }
+      if subscriptionLocation != nil {
+       Text("Ubicación de recepción disponible (se guarda redondeada a ~1 km).")
+        .font(.caption).foregroundStyle(PawlyColors.primary)
+      }
+      Button {
+       Task { await saveSubscription() }
+      } label: {
+       HStack {
+        if savingSubscription { ProgressView() }
+        Text(subscriptionSaved ? "Preferencias guardadas":"Guardar preferencias de alertas")
+       }
+      }.disabled(savingSubscription || subscriptionLocation == nil)
+     }
+     .id(posterPreferenceKey)
     }
     Section {
      Button {
@@ -854,12 +885,49 @@ struct PawlyLostPetView: View {
    }
    .onChange(of:photoItem){item in
     guard let item else{return}
-    Task { photoData=try? await item.loadTransferable(type:Data.self) }
+    Task { photoData=try? await item.loadTransferable(type:Data.self);posterURL=nil }
    }
    .onChange(of:locationProvider.location?.coordinate.latitude){_ in
     if let location=locationProvider.location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
    }
    .task { await loadSubscription() }
+  }
+ }
+
+ @MainActor private func generatePoster() {
+  guard !name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,
+        !area.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,
+        !details.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {
+   error="Añade el nombre, la zona y una descripción para crear el cartel."
+   return
+  }
+  generatingPoster=true
+  defer { generatingPoster=false }
+  do {
+   let poster=PawlyLostPetPoster(
+    name:name,
+    breed:details.isEmpty ? "" : "",
+    area:area,
+    lastSeen:lastSeen,
+    description:details,
+    contact:contact,
+    photo:photoData.flatMap(UIImage.init(data:))
+   )
+   let renderer=ImageRenderer(content:poster)
+   renderer.scale=3
+   guard let image=renderer.uiImage,let data=image.jpegData(compressionQuality:0.92) else {
+    throw NSError(domain:"PawlyPoster",code:1,userInfo:[NSLocalizedDescriptionKey:"No se pudo generar la imagen del cartel."])
+   }
+   let directory=FileManager.default.temporaryDirectory.appendingPathComponent("PawlyShared",isDirectory:true)
+   try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+   let safeName=name.replacingOccurrences(of:"[^A-Za-z0-9_-]",with:"_",options:.regularExpression)
+   let url=directory.appendingPathComponent("pawly-se-busca-\(safeName.isEmpty ? "mascota":safeName)-\(UUID().uuidString).jpg")
+   try data.write(to:url,options:.atomic)
+   posterURL=url
+   error=nil
+   status="Cartel creado en este dispositivo. Puedes compartir el JPG."
+  } catch {
+   self.error=error.localizedDescription
   }
  }
 
