@@ -182,9 +182,25 @@ final class PawlyPetStore: ObservableObject {
                 }
             }
             pets=ownedPets+sharedPets
+
+            // Older builds may already have created the owner's sharedPet root
+            // without setting the isShared marker in dogProfiles. Detect that
+            // state on sign-in and migrate private care data before new writes.
+            for ownedPet in ownedPets where !ownedPet.isShared {
+                let root = db.collection("sharedPets").document("\(uid)_\(ownedPet.id)")
+                let rootSnapshot = try await root.getDocument()
+                guard rootSnapshot.exists,
+                      rootSnapshot.get("ownerUid") as? String == uid else { continue }
+                let ownerMembership = try await root.collection("members").document(uid).getDocument()
+                guard ownerMembership.exists else { continue }
+                try await enableSharedCareSync(for: ownedPet)
+            }
+
             let home = try? await db.collection("users").document(uid).collection("privateData").document("home").getDocument()
+            let selectedID = home?.get("selectedPetId") as? String
             let selectedName = home?.get("dogName") as? String
-            let remoteSelection = selectedName.flatMap { name in pets.first(where: { $0.name == name }) }
+            let remoteSelection = selectedID.flatMap { id in pets.first(where: { $0.id == id }) }
+                ?? selectedName.flatMap { name in pets.first(where: { $0.name == name }) }
             if let remoteSelection {
                 applyingRemoteSelection = true
                 selectedPetID = remoteSelection.id
@@ -267,12 +283,22 @@ final class PawlyPetStore: ObservableObject {
     }
 
     private func encode(_ pet: PawlyPet) -> [String: Any] {
-        ["id": pet.id, "name": pet.name, "breed": pet.breed, "age": pet.age, "description": pet.description,
-         "photoUrl": pet.photoURL, "species": pet.species, "traits": [String]()]
+        [
+            "id": pet.id,
+            "name": pet.name,
+            "breed": pet.breed,
+            "age": pet.age,
+            "description": pet.description,
+            "photoUrl": pet.photoURL,
+            "species": pet.species,
+            "isShared": pet.isShared,
+            "traits": [String]()
+        ]
     }
     func deletePet(_ pet: PawlyPet) async throws {
         guard let uid else { throw PawlyStoreError.notSignedIn }
         guard pet.ownerUID == nil else { throw PawlyStoreError.noSharedAccess }
+        guard !pet.isShared else { throw PawlyStoreError.sharedPetCannotDelete }
         try await updateOwnedPetProfiles { current in current.filter { ($0["id"] as? String) != pet.id } }
         let updatedOwned = pets.filter { $0.ownerUID == nil && $0.id != pet.id }
         pets = updatedOwned + pets.filter { $0.ownerUID != nil }
@@ -311,9 +337,15 @@ final class PawlyPetStore: ObservableObject {
             throw PawlyStoreError.tooManyLegacyCareRecords
         }
         guard !sourceSnapshot.documents.isEmpty else { return }
-        let destinationSnapshot = try await destination.limit(to: maximumDocuments + 1).getDocuments()
-        let existingIDs = Set(destinationSnapshot.documents.map(\.documentID))
-        let missing = sourceSnapshot.documents.filter { !existingIDs.contains($0.documentID) }
+
+        // Check every destination ID rather than sampling the first 451 records.
+        // This guarantees that an older shared record is never overwritten just
+        // because it happened to be outside a limited destination query.
+        var missing: [QueryDocumentSnapshot] = []
+        for document in sourceSnapshot.documents {
+            let destinationSnapshot = try await destination.document(document.documentID).getDocument()
+            if !destinationSnapshot.exists { missing.append(document) }
+        }
         guard !missing.isEmpty else { return }
         let batch = db.batch()
         for document in missing {
@@ -656,7 +688,7 @@ final class PawlyPetStore: ObservableObject {
 }
 
 enum PawlyStoreError: LocalizedError {
-    case notSignedIn, invalidPetName, invalidEntry, invalidTask, invalidDiary, diaryLimit, verifyEmail, noSharedAccess, invalidUsername, invalidInvitee, alreadyMember, invitationPending, petNotFound, tooManyLegacyCareRecords
+    case notSignedIn, invalidPetName, invalidEntry, invalidTask, invalidDiary, diaryLimit, verifyEmail, noSharedAccess, invalidUsername, invalidInvitee, alreadyMember, invitationPending, petNotFound, tooManyLegacyCareRecords, sharedPetCannotDelete
     var errorDescription:String? {
         switch self {
         case .notSignedIn:return "Inicia sesión para continuar."
@@ -669,6 +701,7 @@ enum PawlyStoreError: LocalizedError {
         case .noSharedAccess:return "No tienes acceso a este perfil compartido."
         case .petNotFound:return "No se ha encontrado el perfil de mascota que intentas editar."
         case .tooManyLegacyCareRecords:return "Hay demasiados registros antiguos para migrarlos en una sola operación. Se han conservado sin cambios; contacta con soporte."
+        case .sharedPetCannotDelete:return "Esta mascota ya está compartida. Retira primero el acceso de las demás personas antes de eliminar el perfil."
         case .invalidUsername:return "Escribe un nombre de usuario válido (3–24 caracteres)."
         case .invalidInvitee:return "No se ha encontrado ese usuario o no puedes invitarte a ti mismo."
         case .alreadyMember:return "Esta persona ya tiene acceso al perfil."
