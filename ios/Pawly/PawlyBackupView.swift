@@ -55,6 +55,7 @@ enum PawlyBackupManager {
 
         let exploreCollections = try await exportCollection(userRef.collection("exploreCollections"))
         let privateContact = try await userRef.collection("privateData").document("professionalContact").getDocument()
+        let privateHome = try await userRef.collection("privateData").document("home").getDocument()
         let reminderData = PawlyReminderStore.shared.exportBackupData()?.base64EncodedString() ?? ""
         let savedPlacesData = try? JSONEncoder().encode(PawlySavedPlace.load())
 
@@ -65,6 +66,7 @@ enum PawlyBackupManager {
             "uid": uid,
             "profile": jsonSafe(profile),
             "privateProfessionalContact": privateContact.get("value") as? String ?? "",
+            "privateHome": privateHome.exists ? jsonSafe(privateHome.data() ?? [:]) : [:],
             "pets": pets,
             "exploreCollections": exploreCollections,
             "localRemindersBase64": reminderData,
@@ -111,6 +113,22 @@ enum PawlyBackupManager {
                 try? await userRef.collection("privateData").document("professionalContact").delete()
             }
             if !allowed.isEmpty { try await userRef.updateData(allowed) }
+        }
+        if let rawHome = payload["privateHome"] as? [String: Any] {
+            let home = restoreValue(rawHome) as? [String: Any] ?? [:]
+            if let dogName = home["dogName"] as? String,
+               let dogProfiles = home["dogProfiles"] as? [String],
+               !dogName.isEmpty, dogProfiles.count <= 100 {
+                var fields: [String: Any] = [
+                    "dogName": String(dogName.prefix(40)),
+                    "dogProfiles": Array(dogProfiles.prefix(100)),
+                    "updatedAt": FieldValue.serverTimestamp()
+                ]
+                if let selectedPetId = home["selectedPetId"] as? String {
+                    fields["selectedPetId"] = String(selectedPetId.prefix(128))
+                }
+                try await userRef.collection("privateData").document("home").setData(fields)
+            }
         }
 
         var restoredDocuments = 0
