@@ -283,6 +283,7 @@ private struct PawlyCommunityPlaceRow: View {
 }
 
 private struct PawlyCommunityPlaceDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     let place: PawlyCommunityPlace
 
     var body: some View {
@@ -308,7 +309,7 @@ private struct PawlyCommunityPlaceDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cerrar") { }
+                    Button("Cerrar") { dismiss() }
                 }
             }
         }
