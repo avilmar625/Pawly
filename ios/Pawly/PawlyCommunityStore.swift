@@ -88,6 +88,12 @@ final class PawlyCommunityStore: ObservableObject {
                 "createdAt": FieldValue.serverTimestamp(),
                 "read": false
             ])
+            await PawlyPushDispatcher.send(
+                type: type,
+                recipientUID: targetUID,
+                relatedID: String(relatedID.prefix(128)),
+                sourceEventID: String(sourceEventID.prefix(128))
+            )
         } catch {
             // The interaction is already committed. A notification failure is best-effort.
         }
