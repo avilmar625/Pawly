@@ -17,6 +17,7 @@ struct PawlyMoreHubView: View {
      NavigationLink { PawlyLearningHubView() } label:{Label("Aprender y descubrir",systemImage:"graduationcap.fill")}
      NavigationLink { PawlyCalendarView() } label:{Label("Calendario de cuidados",systemImage:"calendar")}
      NavigationLink { PawlyEventsView() } label:{Label("Eventos y quedadas",systemImage:"calendar.badge.plus")}
+     NavigationLink { PawlyCommunityPlacesView() } label:{Label("Lugares de la comunidad",systemImage:"map.pin.and.ellipse")}
      NavigationLink { PawlyRemindersView() } label:{Label("Agenda y recordatorios",systemImage:"calendar.badge.clock")}
      NavigationLink { PawlyExpensesView() } label:{Label("Gastos de mi mascota",systemImage:"receipt")}
      NavigationLink { MessagesView() } label:{Label("Mensajes privados",systemImage:"bubble.left.and.bubble.right.fill")}
@@ -34,6 +35,7 @@ struct PawlyMoreHubView: View {
     Section("Aplicación") {
      NavigationLink { PawlySettingsView() } label:{Label("Ajustes y apariencia",systemImage:"slider.horizontal.3")}
      NavigationLink { PawlyAboutView() } label:{Label("Acerca de Pawly",systemImage:"pawprint")}
+     NavigationLink { PawlyModerationView() } label:{Label("Centro de moderación",systemImage:"shield.lefthalf.filled")}
     }
     Section { Button(role:.destructive){try? session.signOut()} label:{Label("Cerrar sesión",systemImage:"rectangle.portrait.and.arrow.right")} }
    }.navigationTitle("Más")
