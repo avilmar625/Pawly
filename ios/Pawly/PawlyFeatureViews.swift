@@ -112,7 +112,7 @@ struct HomeView: View {
                                 .font(.headline)
                                 .foregroundStyle(PawlyColors.primary)
                                 .frame(width: 42, height: 42)
-                                .background(.white, in: Circle())
+                                .background(PawlyColors.surface, in: Circle())
                                 .overlay(Circle().stroke(PawlyColors.muted.opacity(0.18)))
                         }
                         .accessibilityLabel("Abrir comunidad y avisos")
@@ -122,7 +122,7 @@ struct HomeView: View {
                                 .font(.headline)
                                 .foregroundStyle(PawlyColors.primary)
                                 .frame(width: 42, height: 42)
-                                .background(.white, in: Circle())
+                                .background(PawlyColors.surface, in: Circle())
                                 .overlay(Circle().stroke(PawlyColors.muted.opacity(0.18)))
                         }
                         .accessibilityLabel("Abrir ajustes")
