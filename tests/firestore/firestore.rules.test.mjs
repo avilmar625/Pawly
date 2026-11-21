@@ -400,3 +400,43 @@ test("account deletion requests must be pending and belong to the caller", async
     status: "approved", source: "android"
   }));
 });
+
+
+test("pet invitation list queries are scoped to the owner or invitee required by the security rule", async () => {
+  const ownerDb = env.authenticatedContext("owner", { email_verified: true }).firestore();
+  const inviteeDb = env.authenticatedContext("invitee", { email_verified: true }).firestore();
+
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "petInvitations/owner-invite"), {
+      sharedPetId: "owner_pet",
+      ownerUid: "owner",
+      inviteeUid: "invitee",
+      status: "pending",
+      createdAt: new Date()
+    });
+  });
+
+  const ownerScopedQuery = query(
+    collection(ownerDb, "petInvitations"),
+    where("sharedPetId", "==", "owner_pet"),
+    where("ownerUid", "==", "owner"),
+    where("inviteeUid", "==", "invitee"),
+    where("status", "==", "pending")
+  );
+  await assertSucceeds(getDocs(ownerScopedQuery));
+
+  const unscopedOwnerQuery = query(
+    collection(ownerDb, "petInvitations"),
+    where("sharedPetId", "==", "owner_pet"),
+    where("inviteeUid", "==", "invitee"),
+    where("status", "==", "pending")
+  );
+  await assertFails(getDocs(unscopedOwnerQuery));
+
+  const inviteeScopedQuery = query(
+    collection(inviteeDb, "petInvitations"),
+    where("inviteeUid", "==", "invitee"),
+    where("status", "==", "pending")
+  );
+  await assertSucceeds(getDocs(inviteeScopedQuery));
+});
