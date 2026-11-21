@@ -710,6 +710,7 @@ final class PawlyPetStore: ObservableObject {
         let member=try await root.collection("members").document(invitee).getDocument()
         guard !member.exists else { throw PawlyStoreError.alreadyMember }
         let pending=try await db.collection("petInvitations").whereField("sharedPetId",isEqualTo:root.documentID)
+            .whereField("ownerUid",isEqualTo:uid)
             .whereField("inviteeUid",isEqualTo:invitee).whereField("status",isEqualTo:"pending").limit(to:1).getDocuments()
         guard pending.isEmpty else { throw PawlyStoreError.invitationPending }
         let owner=try await db.collection("users").document(uid).getDocument()
