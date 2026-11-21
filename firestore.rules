@@ -388,6 +388,9 @@ service cloud.firestore {
       function isMember() {
         return signedIn() && exists(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid));
       }
+      function isMemberAfter() {
+        return signedIn() && existsAfter(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid));
+      }
       allow get: if signedIn() && (isMember() || sharedPetId.matches('^' + request.auth.uid + '_.*'));
       allow list: if false;
       allow create: if verified()
@@ -501,7 +504,7 @@ service cloud.firestore {
       }
       match /profile/{profileId} {
         allow read: if isMember() && profileId == 'current';
-        allow create, update: if isMember() && profileId == 'current'
+        allow create, update: if isMemberAfter() && profileId == 'current'
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
           && request.resource.data.keys().hasOnly(['petId', 'name', 'photoUrl', 'updatedAt'])
           && request.resource.data.petId is string
