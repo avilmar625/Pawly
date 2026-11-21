@@ -44,7 +44,7 @@ struct AuthenticationView: View {
                                 .textContentType(isRegistering ? .newPassword : .password)
                         }
                         .padding(16)
-                        .background(.white, in: RoundedRectangle(cornerRadius: 15))
+                        .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))
                     }
                     if let message {
                         Text(message).font(.footnote).foregroundStyle(isError ? .red : PawlyColors.primary)
@@ -75,7 +75,7 @@ struct AuthenticationView: View {
                         } label: {
                             HStack { if isGoogleWorking { ProgressView() }; Image(systemName: "g.circle.fill"); Text("Continuar con Google") }
                                 .fontWeight(.semibold).frame(maxWidth: .infinity).padding(.vertical, 15)
-                                .background(.white, in: RoundedRectangle(cornerRadius: 15))
+                                .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))
                                 .overlay(RoundedRectangle(cornerRadius: 15).stroke(PawlyColors.muted.opacity(0.25)))
                                 .foregroundStyle(PawlyColors.ink)
                         }.disabled(isWorking || isGoogleWorking)
@@ -112,7 +112,7 @@ struct AuthenticationView: View {
             TextField(title, text: text)
         }
         .padding(16)
-        .background(.white, in: RoundedRectangle(cornerRadius: 15))
+        .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))
     }
 
     @MainActor private func submit() async {
