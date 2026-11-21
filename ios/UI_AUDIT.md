@@ -20,6 +20,7 @@ Base: `codex/ios-final-polish-sync-hardening-2026-11`.
 3. **Chat.** Se reducen las miniaturas de fotos/vídeos y los espacios laterales para que las burbujas tengan más probabilidades de encajar en iPhones compactos.
 4. **Ajustes honestos.** Se retira el selector Simple/Elegante porque el código no aplicaba ningún cambio visual al modificarlo. Se conserva la selección de acento y el modo oscuro.
 5. **Diseño compartido.** El componente de tarjeta y los colores de superficie siguen la preferencia de apariencia de Pawly.
+6. **Push de mensajería.** El cliente solicita el envío tras guardar un mensaje; el Worker verifica la conversación y el mensaje antes de enviar una notificación sin texto privado, y el deep link abre esa conversación.
 
 ## Lo que confirma la CI
 
@@ -36,7 +37,8 @@ La revisión del código no puede demostrar cómo se dibuja cada vista en un dis
 - Teclado abierto en registro, publicación, búsqueda, chat y formularios; comprobar que no tapa el campo activo ni los botones de guardar.
 - Fotos y vídeos grandes, imágenes que tardan en cargar o fallan, permisos denegados y ausencia de conexión.
 - Navegación hacia atrás, apertura/cierre repetido de hojas, cambio rápido de pestaña y sesión/cuenta distinta.
+- Mensajes push con Worker desplegado, dos cuentas verificadas, token FCM/APNs registrado y el destinatario en primer plano, segundo plano y con la app terminada.
 
 ## Alcance
 
-Esta auditoría identifica y corrige problemas demostrables desde el código, pero no equivale a una inspección visual de capturas ni a una prueba manual en iPhone/iPad. El simulador no reproduce APNs reales ni valida credenciales de Firebase, Google o Cloudinary.
+Esta auditoría identifica y corrige problemas demostrables desde el código, pero no equivale a una inspección visual de capturas ni a una prueba manual en iPhone/iPad. El simulador no reproduce APNs reales ni valida credenciales de Firebase, Google o Cloudinary. El Worker de Cloudflare sigue pendiente de despliegue y configuración de secretos; hasta entonces la ruta de push de mensajes no puede entregar notificaciones.
