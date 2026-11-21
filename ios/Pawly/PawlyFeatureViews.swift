@@ -13,7 +13,7 @@ struct PawlyTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView().tabItem { Label("Inicio", systemImage: "house.fill") }.tag(0)
+            HomeView(selectedTab: $selectedTab).tabItem { Label("Inicio", systemImage: "house.fill") }.tag(0)
             PawlyExploreView().tabItem { Label("Explorar", systemImage: "map.fill") }.tag(1)
             CareView().tabItem { Label("Salud", systemImage: "cross.case.fill") }.tag(2)
             CommunityView().tabItem { Label("Comunidad", systemImage: "person.3.fill") }.tag(3)
@@ -31,100 +31,200 @@ struct PawlyTabView: View {
 }
 
 struct HomeView: View {
-    @EnvironmentObject private var session:PawlySession
-    @EnvironmentObject private var pets:PawlyPetStore
-    @State private var showAdd=false
-    @State private var showDelete=false
-    @State private var petToDelete:PawlyPet?
-    @State private var petToEdit:PawlyPet?
+    @EnvironmentObject private var pets: PawlyPetStore
+    @Binding private var selectedTab: Int
+    @State private var showAdd = false
+    @State private var petToDelete: PawlyPet?
+    @State private var petToEdit: PawlyPet?
+
+    init(selectedTab: Binding<Int>) {
+        self._selectedTab = selectedTab
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment:.leading,spacing:18) {
-                    HStack {
-                        VStack(alignment:.leading,spacing:4) {
-                            Text("Hola, \(session.user?.displayName?.components(separatedBy:" ").first ?? "bienvenido")")
-                                .font(.title2.bold()).foregroundStyle(PawlyColors.ink)
-                            Text("Un día más de aventuras juntos").font(.subheadline).foregroundStyle(PawlyColors.muted)
-                        }
-                        Spacer()
-                        Image(systemName:"sun.max.fill").font(.title2).foregroundStyle(.orange)
-                            .padding(13).background(PawlyColors.peach,in:Circle())
-                    }
-                    if let pet=pets.selectedPet {
-                        VStack(alignment:.leading,spacing:10) {
-                            HStack {
-                                Image(systemName:"pawprint.fill").font(.title2)
-                                Spacer()
-                                PetPicker()
-                            }.foregroundStyle(.white)
-                            Text(pet.name).font(.largeTitle.bold()).foregroundStyle(.white)
-                            Text([pet.species,pet.breed,pet.age].filter{!$0.isEmpty}.joined(separator:" · "))
-                                .font(.subheadline).foregroundStyle(.white.opacity(0.85))
-                            if !pet.description.isEmpty { Text(pet.description).font(.subheadline).foregroundStyle(.white.opacity(0.9)) }
-                        }
-                        .padding(20).frame(maxWidth:.infinity,alignment:.leading)
-                        .background(LinearGradient(colors:[PawlyColors.primary,Color(red:0.35,green:0.66,blue:0.53)],startPoint:.topLeading,endPoint:.bottomTrailing),
-                                    in:RoundedRectangle(cornerRadius:24))
-                        .contextMenu {
-                        if pet.ownerUID == nil {
-                            Button { petToEdit=pet } label:{Label("Editar perfil",systemImage:"pencil")}
-                            Button(role:.destructive) { petToDelete=pet;showDelete=true } label:{Label("Eliminar perfil",systemImage:"trash")}
-                        }
-                    }
-                    PawlyHomeCareSection(pet:pet)
-                    } else {
-                        PawlyEmptyState(icon:"pawprint",title:"Tu historia empieza aquí",detail:"Añade el perfil de tu mascota para organizar sus cuidados y recuerdos.")
-                    }
-                    HStack {
-                        Text("Mis compañeros").font(.title3.bold()).foregroundStyle(PawlyColors.ink)
-                        Spacer()
-                        Button { showAdd=true } label:{Label("Añadir",systemImage:"plus").font(.subheadline.weight(.semibold))}
-                            .tint(PawlyColors.primary)
-                    }
-                    ForEach(pets.pets) { pet in
-                        Button { pets.select(pet) } label:{
-                            HStack(spacing:12) {
-                                if let url=URL(string:pet.photoURL),!pet.photoURL.isEmpty {
-                                    AsyncImage(url: url) { image in
-                                        image.resizable().scaledToFill()
-                                    } placeholder: {
-                                        Image(systemName: "pawprint.fill").foregroundStyle(PawlyColors.primary)
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 10) {
+                        if let pet = pets.selectedPet {
+                            Button {
+                                if pet.ownerUID == nil { petToEdit = pet }
+                            } label: {
+                                HStack(spacing: 11) {
+                                    if let url = URL(string: pet.photoURL), !pet.photoURL.isEmpty {
+                                        AsyncImage(url: url) { image in
+                                            image.resizable().scaledToFill()
+                                        } placeholder: {
+                                            Image(systemName: pet.species == "Gato" ? "cat.fill" : "pawprint.fill")
+                                                .foregroundStyle(PawlyColors.primary)
+                                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                                .background(PawlyColors.mint)
+                                        }
+                                        .frame(width: 50, height: 50)
+                                        .clipShape(Circle())
+                                    } else {
+                                        Image(systemName: pet.species == "Gato" ? "cat.fill" : "pawprint.fill")
+                                            .font(.title3)
+                                            .foregroundStyle(PawlyColors.primary)
+                                            .frame(width: 50, height: 50)
+                                            .background(PawlyColors.mint, in: Circle())
                                     }
-                                    .frame(width:46,height:46).clipShape(Circle())
-                                } else {
-                                    Image(systemName:pet.species == "Gato" ? "cat.fill":"pawprint.fill")
-                                        .foregroundStyle(PawlyColors.primary).padding(12).background(PawlyColors.mint,in:Circle())
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(pet.name)
+                                            .font(.headline)
+                                            .foregroundStyle(PawlyColors.ink)
+                                        Text(pet.ownerUID == nil ? "Editar perfil" : "Mascota compartida")
+                                            .font(.caption)
+                                            .foregroundStyle(PawlyColors.muted)
+                                    }
                                 }
-                                VStack(alignment:.leading,spacing:3) {
-                                    Text(pet.name).font(.headline).foregroundStyle(PawlyColors.ink)
-                                    if pet.ownerUID != nil { Text("Perfil compartido").font(.caption2).foregroundStyle(PawlyColors.primary) }
-                                    Text([pet.breed,pet.age].filter{!$0.isEmpty}.joined(separator:" · "))
-                                        .font(.caption).foregroundStyle(PawlyColors.muted)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(pet.ownerUID != nil)
+                            .contextMenu {
+                                if pet.ownerUID == nil {
+                                    Button { petToEdit = pet } label: {
+                                        Label("Editar perfil", systemImage: "pencil")
+                                    }
+                                    Button(role: .destructive) {
+                                        petToDelete = pet
+                                    } label: {
+                                        Label("Eliminar perfil", systemImage: "trash")
+                                    }
                                 }
-                                Spacer()
-                                if pets.selectedPetID==pet.id { Image(systemName:"checkmark.circle.fill").foregroundStyle(PawlyColors.primary) }
-                            }.padding(13).background(.white,in:RoundedRectangle(cornerRadius:16))
-                        }.buttonStyle(.plain)
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Tu mascota")
+                                    .font(.headline)
+                                    .foregroundStyle(PawlyColors.ink)
+                                Text("Añade un perfil para empezar")
+                                    .font(.caption)
+                                    .foregroundStyle(PawlyColors.muted)
+                            }
+                        }
+
+                        Spacer(minLength: 4)
+
+                        Button { selectedTab = 3 } label: {
+                            Image(systemName: "bell")
+                                .font(.headline)
+                                .foregroundStyle(PawlyColors.primary)
+                                .frame(width: 42, height: 42)
+                                .background(.white, in: Circle())
+                                .overlay(Circle().stroke(PawlyColors.muted.opacity(0.18)))
+                        }
+                        .accessibilityLabel("Abrir comunidad y avisos")
+
+                        Button { selectedTab = 4 } label: {
+                            Image(systemName: "slider.horizontal.3")
+                                .font(.headline)
+                                .foregroundStyle(PawlyColors.primary)
+                                .frame(width: 42, height: 42)
+                                .background(.white, in: Circle())
+                                .overlay(Circle().stroke(PawlyColors.muted.opacity(0.18)))
+                        }
+                        .accessibilityLabel("Abrir ajustes")
                     }
-                    if let error=pets.errorMessage { Text(error).font(.caption).foregroundStyle(.red) }
-                }.padding(20)
+
+                    if pets.pets.count > 1 {
+                        HStack {
+                            Text("Cambiar de mascota")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(PawlyColors.muted)
+                            Spacer()
+                            PetPicker()
+                        }
+                    }
+
+                    if let pet = pets.selectedPet {
+                        PawlyHomeCareSection(pet: pet)
+                    } else {
+                        PawlyEmptyState(
+                            icon: "pawprint",
+                            title: "Tu historia empieza aquí",
+                            detail: "Añade el perfil de tu mascota para organizar sus cuidados y recuerdos."
+                        )
+                        .frame(minHeight: 230)
+                    }
+
+                    HStack {
+                        Text("Tus mascotas")
+                            .font(.headline)
+                            .foregroundStyle(PawlyColors.ink)
+                        Spacer()
+                        Button { showAdd = true } label: {
+                            Label("Añadir", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .tint(PawlyColors.primary)
+                    }
+
+                    if pets.pets.count > 1 {
+                        ForEach(pets.pets) { pet in
+                            Button { pets.select(pet) } label: {
+                                HStack(spacing: 11) {
+                                    Image(systemName: pet.species == "Gato" ? "cat.fill" : "pawprint.fill")
+                                        .foregroundStyle(PawlyColors.primary)
+                                        .frame(width: 40, height: 40)
+                                        .background(PawlyColors.mint, in: Circle())
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(pet.name)
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(PawlyColors.ink)
+                                        Text(pet.ownerUID == nil ? [pet.breed, pet.age].filter { !$0.isEmpty }.joined(separator: " · ") : "Perfil compartido")
+                                            .font(.caption)
+                                            .foregroundStyle(PawlyColors.muted)
+                                    }
+                                    Spacer()
+                                    if pets.selectedPetID == pet.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(PawlyColors.primary)
+                                    }
+                                }
+                                .padding(11)
+                                .background(.white, in: RoundedRectangle(cornerRadius: 15))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    if let error = pets.errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                }
+                .padding(18)
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
             }
             .background(PawlyColors.canvas)
             .navigationBarHidden(true)
-            .toolbar { ToolbarItem(placement:.topBarTrailing) { Button { showAdd=true } label:{Image(systemName:"plus")} } }
-            .sheet(isPresented:$showAdd) { PetFormSheet() }
-            .sheet(item:$petToEdit) { pet in PetFormSheet(pet:pet) }
-            .confirmationDialog("¿Eliminar el perfil de \(petToDelete?.name ?? "esta mascota")?",isPresented:$showDelete,titleVisibility:.visible) {
-                Button("Eliminar perfil",role:.destructive) {
-                    if let pet=petToDelete { Task { try? await pets.deletePet(pet) } }
+            .sheet(isPresented: $showAdd) { PetFormSheet() }
+            .sheet(item: $petToEdit) { pet in PetFormSheet(pet: pet) }
+            .confirmationDialog(
+                "¿Eliminar el perfil de \(petToDelete?.name ?? "esta mascota")?",
+                isPresented: Binding(
+                    get: { petToDelete != nil },
+                    set: { if !$0 { petToDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Eliminar perfil", role: .destructive) {
+                    if let pet = petToDelete {
+                        Task { try? await pets.deletePet(pet) }
+                    }
+                    petToDelete = nil
                 }
-            } message:{Text("Esto elimina el perfil de la lista de tu cuenta. Los registros históricos no se borran automáticamente.")}
+            } message: {
+                Text("Esto elimina el perfil de la lista de tu cuenta. Los registros históricos no se borran automáticamente.")
+            }
             .refreshable { await pets.loadPets() }
         }
     }
 }
-
 struct PetPicker:View {
     @EnvironmentObject private var pets:PawlyPetStore
     var body:some View {

@@ -106,13 +106,17 @@ struct PawlySettingsView:View {
    }
    Section("Avisos") {
     Toggle("Notificaciones de Pawly",isOn:$notificationsEnabled).onChange(of:notificationsEnabled){enabled in Task{
-     if enabled {message=await reminders.requestPermission();if message?.contains("activadas")==true{UIApplication.shared.registerForRemoteNotifications()}}
-     else{reminders.cancelAllNotifications()}
+     if enabled {
+      message=await reminders.requestPermission()
+     } else {
+      reminders.cancelAllNotifications()
+      PawlyAppDelegate.disableRemoteNotifications()
+      message="Notificaciones de Pawly desactivadas en este dispositivo."
+     }
     }}
     NavigationLink{PawlyRemindersView()}label:{Label("Gestionar recordatorios",systemImage:"bell.badge")}
-    Button("Activar notificaciones push"){Task{
+    Button("Activar notificaciones push"){notificationsEnabled=true;Task{
      message=await reminders.requestPermission()
-     if message?.contains("activadas")==true{UIApplication.shared.registerForRemoteNotifications()}
     }}
     if let message{Text(message).font(.caption).foregroundStyle(.secondary)}
    }
