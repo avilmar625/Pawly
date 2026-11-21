@@ -440,3 +440,35 @@ test("pet invitation list queries are scoped to the owner or invitee required by
   );
   await assertSucceeds(getDocs(inviteeScopedQuery));
 });
+
+
+test("an owner can atomically create a shared pet, its membership and its initial profile", async () => {
+  const db = env.authenticatedContext("owner", { email_verified: true }).firestore();
+  const batch = writeBatch(db);
+  const root = doc(db, "sharedPets/owner_newpet");
+
+  batch.set(root, {
+    id: "owner_newpet",
+    petId: "newpet",
+    name: "Chispita",
+    ownerUid: "owner",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  batch.set(doc(db, "sharedPets/owner_newpet/members/owner"), {
+    uid: "owner",
+    role: "owner",
+    displayName: "Owner",
+    username: "owner",
+    joinedAt: serverTimestamp()
+  });
+  batch.set(doc(db, "sharedPets/owner_newpet/profile/current"), {
+    petId: "newpet",
+    name: "Chispita",
+    photoUrl: null,
+    updatedAt: serverTimestamp()
+  });
+
+  await assertSucceeds(batch.commit());
+  await assertSucceeds(getDoc(doc(db, "sharedPets/owner_newpet/profile/current")));
+});
