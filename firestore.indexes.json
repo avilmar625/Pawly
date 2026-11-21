@@ -37,6 +37,10 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "ownerUid",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "inviteeUid",
           "order": "ASCENDING"
         },
