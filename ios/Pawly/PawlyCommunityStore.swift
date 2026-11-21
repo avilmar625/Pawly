@@ -618,6 +618,14 @@ final class PawlyCommunityStore: ObservableObject {
         let preview = clean.isEmpty ? (videoURL.isEmpty ? "📷 Fotografía" : "🎥 Vídeo") : String(clean.prefix(120))
         batch.updateData(["lastMessage":preview,"updatedAt":FieldValue.serverTimestamp()],forDocument:ref)
         try await batch.commit()
+        Task {
+            await PawlyPushDispatcher.send(
+                type: "MESSAGE",
+                recipientUID: other,
+                relatedID: conversationID,
+                sourceEventID: msg.documentID
+            )
+        }
     }
     func markRead(conversationID:String) async {
         guard let uid else{return}
