@@ -191,7 +191,7 @@ struct PawlyHomeCareSection: View {
                             .font(.title3)
                             .foregroundStyle(PawlyColors.primary)
                             .frame(width: 44, height: 44)
-                            .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 14))
+                            .background(PawlyColors.raisedSurface, in: RoundedRectangle(cornerRadius: 14))
                         VStack(alignment: .leading, spacing: 3) {
                             Text("PRÓXIMAMENTE")
                                 .font(.caption2.weight(.bold))
@@ -250,7 +250,7 @@ struct PawlyHomeCareSection: View {
                             .foregroundStyle(PawlyColors.primary)
                     }
                     .padding(12)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PawlyColors.ink.opacity(0.06)))
                 }
                 .buttonStyle(.plain)
@@ -383,7 +383,7 @@ struct PawlyHomeCareSection: View {
                     .foregroundStyle(PawlyColors.primary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 46)
-                    .background(.white, in: RoundedRectangle(cornerRadius: 14))
+                    .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 14))
                     .overlay(RoundedRectangle(cornerRadius: 14).stroke(PawlyColors.ink.opacity(0.07)))
                 Text(title)
                     .font(.caption2.weight(.semibold))
