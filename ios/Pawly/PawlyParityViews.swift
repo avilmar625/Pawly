@@ -560,7 +560,7 @@ struct PawlyLearningHubView:View{
    HStack{Text("Noticias").font(.title3.bold());Spacer();Button("Actualizar"){Task{await loadNews()}}.font(.caption.weight(.semibold))}
    if loading{ProgressView().frame(maxWidth:.infinity)}
    if let error{Text(error).font(.caption).foregroundStyle(.secondary)}
-   ForEach(articles){a in Link(destination:a.url){VStack(alignment:.leading,spacing:5){Text(a.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary);Text(a.source).font(.caption).foregroundStyle(.secondary)}.padding(13).frame(maxWidth:.infinity,alignment:.leading).background(.white,in:RoundedRectangle(cornerRadius:14))}}
+   ForEach(articles){a in Link(destination:a.url){VStack(alignment:.leading,spacing:5){Text(a.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary);Text(a.source).font(.caption).foregroundStyle(.secondary)}.padding(13).frame(maxWidth:.infinity,alignment:.leading).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:14))}}
   }.padding(18)}.background(PawlyColors.canvas).navigationTitle("Aprender").task{await loadNews()}}
  }
  @MainActor private func loadNews()async{
@@ -603,7 +603,7 @@ struct PawlyMarketView: View {
      ScrollView(.horizontal,showsIndicators:false){HStack{ForEach(["Todo"]+categories.map(\.id),id:\.self){item in Button(item){category=item}.buttonStyle(.bordered).tint(category == item ? PawlyColors.primary:.secondary)}}}
      ForEach(visible) { item in
       Button { openSearch(search.isEmpty ? item.query:search) } label: {
-       HStack(spacing:12){Image(systemName:item.icon).font(.title3).foregroundStyle(PawlyColors.primary).frame(width:43,height:43).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:13));VStack(alignment:.leading,spacing:3){Text(item.id).font(.headline).foregroundStyle(.primary);Text(item.detail).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"arrow.up.right").foregroundStyle(PawlyColors.primary)}.padding(13).background(.white,in:RoundedRectangle(cornerRadius:16))
+       HStack(spacing:12){Image(systemName:item.icon).font(.title3).foregroundStyle(PawlyColors.primary).frame(width:43,height:43).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:13));VStack(alignment:.leading,spacing:3){Text(item.id).font(.headline).foregroundStyle(.primary);Text(item.detail).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"arrow.up.right").foregroundStyle(PawlyColors.primary)}.padding(13).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:16))
       }.buttonStyle(.plain)
      }
      Text("Compara ingredientes, necesidades veterinarias y precio antes de comprar.").font(.caption).foregroundStyle(.secondary)
