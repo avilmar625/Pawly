@@ -184,7 +184,7 @@ struct HomeView: View {
                                     }
                                 }
                                 .padding(11)
-                                .background(.white, in: RoundedRectangle(cornerRadius: 15))
+                                .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))
                             }
                             .buttonStyle(.plain)
                         }
@@ -1143,40 +1143,85 @@ struct CommunityView:View {
         NavigationStack {
             ScrollView {
                 VStack(spacing:13) {
-                    HStack(spacing:8){
-                        VStack(alignment:.leading,spacing:3){Text("La comunidad").font(.title2.bold());Text("Historias y aventuras Pawly").font(.caption).foregroundStyle(PawlyColors.muted)}
-                        Spacer(minLength:4)
-                        Button{notifications=true} label:{
-                            ZStack(alignment:.topTrailing) {
-                                Image(systemName:"bell").font(.headline).foregroundStyle(PawlyColors.primary)
-                                    .padding(11).background(PawlyColors.mint,in:Circle())
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("La comunidad")
+                                .font(.title2.bold())
+                                .foregroundStyle(PawlyColors.ink)
+                            Text("Historias y aventuras Pawly")
+                                .font(.caption)
+                                .foregroundStyle(PawlyColors.muted)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                        }
+                        Spacer(minLength: 4)
+
+                        Button { notifications = true } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "bell")
+                                    .font(.headline)
+                                    .foregroundStyle(PawlyColors.primary)
+                                    .frame(width: 40, height: 40)
+                                    .background(PawlyColors.mint, in: Circle())
                                 if store.unreadNotificationCount > 0 {
                                     Text(store.unreadNotificationCount > 99 ? "99+" : "\(store.unreadNotificationCount)")
-                                        .font(.system(size:9,weight:.bold))
+                                        .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(.white)
-                                        .padding(.horizontal,4).padding(.vertical,2)
-                                        .background(Color.red,in:Capsule())
-                                        .offset(x:4,y:-4)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 2)
+                                        .background(Color.red, in: Capsule())
+                                        .offset(x: 3, y: -3)
                                 }
                             }
-                        }.accessibilityLabel("Avisos de Comunidad, \(store.unreadNotificationCount) sin leer")
-                        Button{inbox=true} label:{
-                            ZStack(alignment:.topTrailing) {
-                                Image(systemName:"bubble.left.and.bubble.right").font(.headline).foregroundStyle(PawlyColors.primary)
-                                    .padding(11).background(PawlyColors.mint,in:Circle())
+                        }
+                        .accessibilityLabel("Avisos de Comunidad, \(store.unreadNotificationCount) sin leer")
+
+                        Button { inbox = true } label: {
+                            ZStack(alignment: .topTrailing) {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .font(.headline)
+                                    .foregroundStyle(PawlyColors.primary)
+                                    .frame(width: 40, height: 40)
+                                    .background(PawlyColors.mint, in: Circle())
                                 if store.unreadMessageCount > 0 {
                                     Text(store.unreadMessageCount > 99 ? "99+" : "\(store.unreadMessageCount)")
-                                        .font(.system(size:9,weight:.bold))
+                                        .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(.white)
-                                        .padding(.horizontal,4).padding(.vertical,2)
-                                        .background(Color.red,in:Capsule())
-                                        .offset(x:4,y:-4)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 2)
+                                        .background(Color.red, in: Capsule())
+                                        .offset(x: 3, y: -3)
                                 }
                             }
-                        }.accessibilityLabel("Mensajes, \(store.unreadMessageCount) sin leer")
-                        Button{people=true} label:{Image(systemName:"magnifyingglass").font(.headline).foregroundStyle(PawlyColors.primary).padding(11).background(PawlyColors.mint,in:Circle())}.accessibilityLabel("Buscar personas")
-                        Button{composerCategory="LOST";composer=true} label:{Image(systemName:"pawprint.slash.fill").font(.headline).foregroundStyle(.red).padding(11).background(.red.opacity(0.1),in:Circle())}.accessibilityLabel("Avisar de mascota perdida")
-                        Button{composerCategory="STORY";composer=true} label:{Image(systemName:"plus").font(.headline).foregroundStyle(.white).padding(11).background(PawlyColors.primary,in:Circle())}.accessibilityLabel("Crear publicación")
+                        }
+                        .accessibilityLabel("Mensajes, \(store.unreadMessageCount) sin leer")
+
+                        Menu {
+                            Button {
+                                people = true
+                            } label: {
+                                Label("Buscar personas", systemImage: "magnifyingglass")
+                            }
+                            Button {
+                                composerCategory = "LOST"
+                                composer = true
+                            } label: {
+                                Label("Avisar de mascota perdida", systemImage: "pawprint.slash.fill")
+                            }
+                            Button {
+                                composerCategory = "STORY"
+                                composer = true
+                            } label: {
+                                Label("Crear publicación", systemImage: "plus")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle.fill")
+                                .font(.headline)
+                                .foregroundStyle(PawlyColors.primary)
+                                .frame(width: 40, height: 40)
+                                .background(PawlyColors.mint, in: Circle())
+                        }
+                        .accessibilityLabel("Más acciones de Comunidad")
                     }
                     if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
                     if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
@@ -1394,7 +1439,7 @@ struct FeedPostCard:View {
             }
             HStack(spacing:20){Button(action:onLike){Label("\(post.likeCount)",systemImage:post.likedByMe ? "heart.fill":"heart")}.foregroundStyle(post.likedByMe ? .pink:PawlyColors.muted);Button(action:onComment){Label("\(post.commentCount)",systemImage:"bubble.right")}.foregroundStyle(PawlyColors.muted)}
                 .font(.subheadline.weight(.semibold))
-        }.padding(15).background(.white,in:RoundedRectangle(cornerRadius:19))
+        }.padding(15).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:19))
     }
 }
 
@@ -1615,17 +1660,17 @@ struct ChatView:View {
 
     @ViewBuilder private func messageRow(_ message:PawlyChatMessage) -> some View {
         HStack {
-            if message.senderID == store.uid { Spacer(minLength:50) }
+            if message.senderID == store.uid { Spacer(minLength: 28) }
             VStack(alignment:.leading,spacing:5) {
                 if !message.text.isEmpty {
                     Text(message.text).foregroundStyle(message.senderID == store.uid ? .white : PawlyColors.ink)
                 }
                 if !message.imageURL.isEmpty, let url=URL(string:message.imageURL) {
                     AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
-                        .frame(width:210,height:160).clipShape(RoundedRectangle(cornerRadius:10))
+                        .frame(width:190,height:150).clipShape(RoundedRectangle(cornerRadius:10))
                 }
                 if !message.videoURL.isEmpty, let url=URL(string:message.videoURL) {
-                    VideoPlayer(player:AVPlayer(url:url)).frame(width:230,height:160)
+                    VideoPlayer(player:AVPlayer(url:url)).frame(width:205,height:150)
                         .clipShape(RoundedRectangle(cornerRadius:10))
                 }
                 if message.senderID == store.uid && message.readBy.contains(chat.otherUserID) {
@@ -1633,8 +1678,8 @@ struct ChatView:View {
                 }
             }
             .padding(12)
-            .background(message.senderID == store.uid ? PawlyColors.primary : Color.white,in:RoundedRectangle(cornerRadius:15))
-            if message.senderID != store.uid { Spacer(minLength:50) }
+            .background(message.senderID == store.uid ? PawlyColors.primary : PawlyColors.surface,in:RoundedRectangle(cornerRadius:15))
+            if message.senderID != store.uid { Spacer(minLength: 28) }
         }
     }
 
