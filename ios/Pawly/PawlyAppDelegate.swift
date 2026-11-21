@@ -58,8 +58,6 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         if let previousUID, let previousToken,
            (previousUID != user?.uid || !Self.pushNotificationsEnabled) {
             Self.delete(token: previousToken, uid: previousUID)
-            defaults.removeObject(forKey: Self.registeredUIDKey)
-            defaults.removeObject(forKey: Self.registeredTokenKey)
         }
 
         guard let user, Self.pushNotificationsEnabled else { return }
@@ -120,6 +118,11 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
                     print("Pawly FCM token could not be saved: \(error.localizedDescription)")
                     return
                 }
+                // The account or preference may have changed while the Firestore write was in flight.
+                guard Auth.auth().currentUser?.uid == uid, pushNotificationsEnabled else {
+                    delete(token: token, uid: uid)
+                    return
+                }
                 defaults.set(uid, forKey: registeredUIDKey)
                 defaults.set(token, forKey: registeredTokenKey)
             }
@@ -133,6 +136,14 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             .delete { error in
                 if let error {
                     print("Pawly FCM token cleanup failed: \(error.localizedDescription)")
+                    return
+                }
+                let defaults = UserDefaults.standard
+                // Do not erase a newer token that may have replaced this one meanwhile.
+                if defaults.string(forKey: registeredUIDKey) == uid,
+                   defaults.string(forKey: registeredTokenKey) == token {
+                    defaults.removeObject(forKey: registeredUIDKey)
+                    defaults.removeObject(forKey: registeredTokenKey)
                 }
             }
     }
@@ -161,10 +172,13 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         let uid = defaults.string(forKey: registeredUIDKey) ?? Auth.auth().currentUser?.uid
         let token = defaults.string(forKey: registeredTokenKey)
         if let uid, let token {
+            // Keep the cached pair until Firestore confirms deletion so a later
+            // app launch can retry cleanup after a transient network failure.
             delete(token: token, uid: uid)
+        } else {
+            defaults.removeObject(forKey: registeredUIDKey)
+            defaults.removeObject(forKey: registeredTokenKey)
         }
-        defaults.removeObject(forKey: registeredUIDKey)
-        defaults.removeObject(forKey: registeredTokenKey)
     }
 
     func userNotificationCenter(
