@@ -186,6 +186,10 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        guard Self.pushNotificationsEnabled else {
+            completionHandler([])
+            return
+        }
         completionHandler([.banner, .sound, .badge])
     }
 
