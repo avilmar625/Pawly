@@ -13,6 +13,7 @@ Backend de confianza de Pawly para notificaciones FCM, avisos de mascotas perdid
 
 - Verifica Firebase ID tokens y exige correo verificado.
 - Comprueba en Firestore el origen de likes, comentarios y follows; respeta bloqueos, idempotencia y tokens FCM.
+- Para mensajes, valida pertenencia a la conversación y existencia del mensaje; envía un aviso sin incluir el contenido privado.
 - Envía alertas de mascotas perdidas por radios voluntarios de 5, 10 o 20 km, con coordenadas aproximadas y paginación.
 - Limita cada ejecución de alertas para respetar el máximo de 50 subpeticiones externas por invocación en Workers Free.
 - Recibe propuestas de lugares verificadas, limita a una propuesta diaria por cuenta y las guarda como `pending`.
