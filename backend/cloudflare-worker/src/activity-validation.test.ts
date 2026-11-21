@@ -11,12 +11,17 @@ describe("parseActivityRequest", () => {
   it("accepts a follow without content identifiers", () => {
     expect(parseActivityRequest({ type: "FOLLOW", recipientUid: "recipient", relatedId: "", sourceEventId: "" })?.type).toBe("FOLLOW");
   });
+  it("accepts a message with a conversation and message identifier", () => {
+    expect(parseActivityRequest({ type: "MESSAGE", recipientUid: "recipient", relatedId: "conversation_1", sourceEventId: "message_1" })?.type).toBe("MESSAGE");
+  });
   it.each([
     null, [], {},
     { type: "ADMIN", recipientUid: "recipient", relatedId: "", sourceEventId: "" },
     { type: "FOLLOW", recipientUid: "recipient", relatedId: "post", sourceEventId: "" },
     { type: "LIKE", recipientUid: "recipient", relatedId: "post", sourceEventId: "other" },
     { type: "COMMENT", recipientUid: "recipient", relatedId: "", sourceEventId: "comment" },
+    { type: "MESSAGE", recipientUid: "recipient", relatedId: "", sourceEventId: "message" },
+    { type: "MESSAGE", recipientUid: "recipient", relatedId: "conversation", sourceEventId: "" },
     { type: "FOLLOW", recipientUid: "../users", relatedId: "", sourceEventId: "" },
     { type: "FOLLOW", recipientUid: "recipient", relatedId: "", sourceEventId: "", actorName: "spoofed" }
   ])("rejects malformed or over-privileged payloads: %j", (payload) => {
