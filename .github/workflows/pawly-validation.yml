@@ -2,12 +2,29 @@ name: Pawly Firestore validation
 
 on:
   push:
-    branches:
-      - 'cambios*'
-      - 'pawly-*'
+    branches: ["**"]
+    paths:
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - "firebase.json"
+      - "tests/firestore/**"
+      - ".github/workflows/pawly-validation.yml"
+      - "ios/**"
+      - "app/src/main/java/**"
+      - "app/build.gradle.kts"
+      - "app/src/main/AndroidManifest.xml"
   pull_request:
-    branches:
-      - main
+    branches: ["main"]
+    paths:
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - "firebase.json"
+      - "tests/firestore/**"
+      - ".github/workflows/pawly-validation.yml"
+      - "ios/**"
+      - "app/src/main/java/**"
+      - "app/build.gradle.kts"
+      - "app/src/main/AndroidManifest.xml"
   workflow_dispatch:
 
 jobs:
