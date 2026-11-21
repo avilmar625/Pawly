@@ -18,7 +18,7 @@ interface Env {
   CLOUDINARY_API_SECRET?: string;
 }
 
-type ActivityType = "LIKE" | "COMMENT" | "FOLLOW";
+type ActivityType = "LIKE" | "COMMENT" | "FOLLOW" | "MESSAGE";
 
 const firebaseKeys = createRemoteJWKSet(
   new URL("https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com")
@@ -391,6 +391,7 @@ function notificationCopy(type: ActivityType, actorName: string): { title: strin
     case "LIKE": return { title: "Nueva interacción en Pawly", body: `${name} ha indicado que le gusta tu publicación.` };
     case "COMMENT": return { title: "Nuevo comentario en Pawly", body: `${name} ha comentado tu publicación.` };
     case "FOLLOW": return { title: "Nuevo seguidor en Pawly", body: `${name} ha empezado a seguirte.` };
+    case "MESSAGE": return { title: "Nuevo mensaje en Pawly", body: `${name} te ha enviado un mensaje.` };
   }
 }
 
@@ -415,6 +416,22 @@ async function verifyActivity(
     if (input.relatedId !== "" || input.sourceEventId !== "") return null;
     const follower = await readDocument(env, accessToken, `users/${recipientUid}/followers/${actorUid}`);
     if (!follower) return null;
+  } else if (input.type === "MESSAGE") {
+    if (!input.relatedId || input.relatedId.length > 128 ||
+        !input.sourceEventId || input.sourceEventId.length > 128) return null;
+
+    const conversation = await readDocument(env, accessToken, `conversations/${input.relatedId}`);
+    const participants = decodeFirestoreStrings(conversation?.fields?.participants);
+    if (!conversation || participants.length !== 2 ||
+        !participants.includes(actorUid) || !participants.includes(recipientUid)) return null;
+
+    const message = await readDocument(
+      env, accessToken, `conversations/${input.relatedId}/messages/${input.sourceEventId}`
+    );
+    if (!message || decodeFirestoreString(message.fields?.senderId) !== actorUid) return null;
+    // If the recipient opened the chat before this request reached the worker,
+    // a push would be stale and unnecessary.
+    if (decodeFirestoreStrings(message.fields?.readBy).includes(recipientUid)) return null;
   } else {
     if (!input.relatedId || input.relatedId.length > 128) return null;
     const post = await readDocument(env, accessToken, `posts/${input.relatedId}`);
