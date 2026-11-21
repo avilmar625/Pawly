@@ -24,7 +24,7 @@ final class PawlyPushRouter: ObservableObject {
         }
 
         let type = value("type").uppercased()
-        guard ["LIKE", "COMMENT", "FOLLOW", "LOST_PET"].contains(type) else { return }
+        guard ["LIKE", "COMMENT", "FOLLOW", "LOST_PET", "MESSAGE"].contains(type) else { return }
         destination = PawlyPushDestination(
             id: UUID().uuidString,
             type: type,
