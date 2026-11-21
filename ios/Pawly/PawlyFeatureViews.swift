@@ -1553,7 +1553,7 @@ struct CommentsView:View {
 }
 
 struct MessagesView:View {
-    let initialConversationID: String?
+    let initialConversationID: String? = nil
     @StateObject private var store=PawlyCommunityStore()
     @State private var openedInitialConversation = false
     @State private var newChat=false
@@ -1611,7 +1611,7 @@ struct MessagesView:View {
                     store.listenChats()
                     openInitialConversationIfAvailable()
                 }
-                .onChange(of: store.chats.map(\\.id)) { _ in
+                .onChange(of: store.chats.map(\.id)) { _ in
                     openInitialConversationIfAvailable()
                 }
                 .onDisappear{store.stopChats()}
