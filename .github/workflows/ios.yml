@@ -9,14 +9,42 @@ on:
     branches: ["**"]
     paths:
       - "ios/**"
+      - "backend/cloudflare-worker/**"
       - ".github/workflows/ios.yml"
   pull_request:
     paths:
       - "ios/**"
+      - "backend/cloudflare-worker/**"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
 jobs:
+  validate-worker:
+    name: Type-check and test Cloudflare Worker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/cloudflare-worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/cloudflare-worker/package-lock.json
+
+      - name: Install Worker dependencies
+        run: npm ci
+
+      - name: Type-check Worker
+        run: npm run check
+
+      - name: Run Worker unit tests
+        run: npm test
+
   build-ios:
     runs-on: macos-15
     steps:
