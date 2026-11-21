@@ -1553,8 +1553,12 @@ struct CommentsView:View {
 }
 
 struct MessagesView:View {
-    let initialConversationID: String? = nil
+    let initialConversationID: String?
     @StateObject private var store=PawlyCommunityStore()
+
+    init(initialConversationID: String? = nil) {
+        self.initialConversationID = initialConversationID
+    }
     @State private var openedInitialConversation = false
     @State private var newChat=false
     @State private var selected:PawlyChat?
