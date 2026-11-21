@@ -76,7 +76,6 @@ struct PawlyMoreHubView: View {
 struct PawlySettingsView:View {
  @AppStorage("pawly.darkMode") private var darkMode=false
  @AppStorage("pawly.accent") private var accent="forest"
- @AppStorage("pawly.designStyle") private var designStyle="elegant"
  @AppStorage("pawly.language") private var language="es"
  @AppStorage("pawly.notificationsEnabled") private var notificationsEnabled=true
  @StateObject private var reminders=PawlyReminderStore.shared
@@ -87,7 +86,8 @@ struct PawlySettingsView:View {
  var body:some View {
   Form {
    Section("Diseño") {
-    Picker("Estilo",selection:$designStyle){Text("Simple").tag("simple");Text("Elegante").tag("elegant")}
+    Text("El diseño de Pawly se adapta al color principal y al modo de apariencia que elijas.")
+     .font(.caption).foregroundStyle(.secondary)
     Toggle("Modo oscuro",isOn:$darkMode)
     VStack(alignment:.leading,spacing:12) {
      Text("Color principal")
