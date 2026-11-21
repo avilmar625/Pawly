@@ -13,7 +13,7 @@ Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. El
 - Aprender: guías y noticias RSS temáticas.
 - Agenda de recordatorios locales con fecha/hora, repetición y notificaciones del sistema.
 - Ajustes simple/elegante, modo oscuro, paletas, idioma preferido y notificaciones.
-- Registro de tokens APNs/FCM y backend Firebase opcional para notificaciones y eliminación integral.
+- Registro de tokens APNs/FCM y notificaciones push de actividad y mensajes mediante el Worker de Cloudflare, cuando esté desplegado y configurado. La eliminación integral sigue requiriendo su propio proceso de backend.
 
 ## Firebase iOS
 1. Registra una app iOS con bundle ID `com.pawly.ios` en el proyecto Firebase actual.
@@ -40,7 +40,7 @@ CI compila el simulador; Firebase/Google/Cloudinary/APNs reales y las pruebas co
 
 ## Límites que deben validarse
 - Los recordatorios son locales al dispositivo; no se sincronizan con Android ni con otros iPhones.
-- Las push requieren APNs, Firebase Messaging y Functions desplegadas.
+- Las push requieren APNs, Firebase Messaging, tokens registrados y el Worker de Cloudflare desplegado/configurado. Los avisos de mensajes validan la conversación y no incluyen el texto privado.
 - La eliminación integral requiere Functions y secretos Cloudinary configurados.
 - Cloudinary unsigned no ofrece privacidad de archivos ni cifrado E2E.
 - Explorar usa MapKit; los resultados dependen de Apple Maps y de la zona.
