@@ -1135,6 +1135,7 @@ struct CommunityView:View {
     @State private var composerCategory="STORY"
     @State private var people=false
     @State private var inbox=false
+    @State private var inboxConversationID:String?
     @State private var notifications=false
     @State private var comments:PawlyFeedPost?
     @State private var highlightedCommentID:String?
@@ -1250,8 +1251,9 @@ struct CommunityView:View {
                 .sheet(item:$comments){post in CommentsView(store:store,post:post,highlightedCommentID:highlightedCommentID)}
                 .sheet(isPresented:$people){PeopleSearchSheet(store:store)}
                 .sheet(isPresented:$inbox,onDismiss:{
+                    inboxConversationID=nil
                     Task { await store.refreshUnreadMessageCounts() }
-                }){MessagesView()}
+                }){MessagesView(initialConversationID: inboxConversationID)}
                 .sheet(isPresented:$notifications){PawlyNotificationsView()}
         }
     }
@@ -1260,6 +1262,9 @@ struct CommunityView:View {
         guard lastHandledPushID != destination.id else{return}
         lastHandledPushID=destination.id
         switch destination.type {
+        case "MESSAGE":
+            inboxConversationID = destination.relatedID.isEmpty ? nil : destination.relatedID
+            inbox = true
         case "FOLLOW":
             notifications=true
         case "LIKE","COMMENT","LOST_PET":
@@ -1548,7 +1553,9 @@ struct CommentsView:View {
 }
 
 struct MessagesView:View {
+    let initialConversationID: String?
     @StateObject private var store=PawlyCommunityStore()
+    @State private var openedInitialConversation = false
     @State private var newChat=false
     @State private var selected:PawlyChat?
     var body:some View {
@@ -1600,10 +1607,25 @@ struct MessagesView:View {
                     .buttonStyle(.plain)
                 }
             }.navigationTitle("Mensajes").toolbar{ToolbarItem(placement:.topBarTrailing){Button{newChat=true} label:{Image(systemName:"square.and.pencil")}}}
-                .onAppear{store.listenChats()}.onDisappear{store.stopChats()}
+                .onAppear {
+                    store.listenChats()
+                    openInitialConversationIfAvailable()
+                }
+                .onChange(of: store.chats.map(\\.id)) { _ in
+                    openInitialConversationIfAvailable()
+                }
+                .onDisappear{store.stopChats()}
                 .sheet(isPresented:$newChat){NewChatSheet{username in try await store.startConversation(username:username);store.listenChats()}}
                 .sheet(item:$selected){chat in ChatView(store:store,chat:chat)}
         }
+    }
+
+    private func openInitialConversationIfAvailable() {
+        guard !openedInitialConversation,
+              let initialConversationID,
+              let chat = store.chats.first(where: { $0.id == initialConversationID }) else { return }
+        openedInitialConversation = true
+        selected = chat
     }
 }
 struct NewChatSheet:View {
