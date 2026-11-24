@@ -1,6 +1,6 @@
 # Puesta en marcha de Pawly para iOS
 
-Esta guía corresponde a la rama `codex/ios-auth-push-hardening-2026-11` y al bundle ID `com.pawly.ios`.
+Esta guía contiene detalles de configuración de iOS para el bundle ID `com.pawly.ios`. **La rama actual y el procedimiento completo para macOS** están en [Pawly en Mac: desarrollo iOS, Firebase y Cloudflare](IOS_MAC_FIREBASE_CLOUDFLARE.md): utiliza `codex/firebase-permission-preflight-2026-11` y no la rama histórica citada en versiones anteriores de esta página.
 
 ## 1. Firebase: una app iOS dentro del proyecto existente
 
