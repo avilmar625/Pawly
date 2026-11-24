@@ -6,6 +6,8 @@ import FirebaseCore
 struct PawlyApp: App {
     @UIApplicationDelegateAdaptor(PawlyAppDelegate.self) private var appDelegate
     @AppStorage("pawly.darkMode") private var darkMode = false
+    @AppStorage("pawly.accent") private var accent = "forest"
+    @AppStorage("pawly.language") private var language = "es"
     @StateObject private var session: PawlySession
 
     init() {
@@ -31,7 +33,10 @@ struct PawlyApp: App {
                         .environmentObject(session)
                 }
             }
+            .environment(\.locale, Locale(identifier: language))
             .preferredColorScheme(darkMode ? .dark : .light)
+            .tint(PawlyColors.primary)
+            .environment(\.colorScheme, darkMode ? .dark : .light)
         }
     }
 }

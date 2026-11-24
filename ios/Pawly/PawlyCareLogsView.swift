@@ -167,12 +167,12 @@ struct PawlyCareLogForm: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Acción realizada") {
-                    TextField("Qué se ha hecho", text: $title)
+                Section(action == "Paseo" ? "Vuestro paseo" : "Acción realizada") {
                     Picker("Tipo", selection: $action) {
                         ForEach(actions, id: \.self) { Text($0) }
-                    }
-                    TextField("Cuidador o responsable (opcional)", text: $walker)
+                    }.onChange(of:action){next in if actions.contains(title) { title=next } }
+                    TextField(action == "Paseo" ? "Nombre del paseo" : "Qué se ha hecho", text: $title)
+                    TextField(action == "Paseo" ? "Quién ha paseado (opcional)" : "Cuidador o responsable (opcional)", text: $walker)
                 }
                 if action == "Paseo" {
                     Section("Paseo") {
@@ -194,7 +194,7 @@ struct PawlyCareLogForm: View {
                 }
                 if let error { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("Registrar cuidado")
+            .navigationTitle(action == "Paseo" ? "Registrar paseo" : "Registrar cuidado")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }.disabled(busy)

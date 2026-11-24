@@ -36,7 +36,6 @@ struct PawlyMoreHubView: View {
       NavigationLink { PawlyCommunityPlacesView() } label:{Label("Lugares de la comunidad",systemImage:"map.pin.and.ellipse")}
       NavigationLink { PawlyRemindersView() } label:{Label("Agenda y recordatorios",systemImage:"calendar.badge.clock")}
       NavigationLink { PawlyExpensesView() } label:{Label("Gastos de mi mascota",systemImage:"receipt")}
-      NavigationLink { MessagesView() } label:{Label("Mensajes privados",systemImage:"bubble.left.and.bubble.right.fill")}
       NavigationLink { PawlyProfessionalDirectoryView() } label:{Label("Profesionales",systemImage:"stethoscope")}
       NavigationLink { PawlyMarketView() } label:{Label("Pawly Market",systemImage:"bag.fill")}
       NavigationLink { PawlyLostPetView() } label:{Label("He perdido mi mascota",systemImage:"pawprint")}
@@ -517,6 +516,7 @@ struct PawlySavedPlacesView:View{
  @Published var message:String?
  override init(){super.init();manager.delegate=self;manager.desiredAccuracy=kCLLocationAccuracyHundredMeters}
  func request(){
+  message="Buscando ubicación…"
   switch manager.authorizationStatus{
   case .notDetermined:manager.requestWhenInUseAuthorization()
   case .authorizedAlways,.authorizedWhenInUse:manager.requestLocation()
@@ -526,6 +526,7 @@ struct PawlySavedPlacesView:View{
  }
  func locationManagerDidChangeAuthorization(_ manager:CLLocationManager){
   if manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse{manager.requestLocation()}
+  else if manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted { message="Permite el acceso a la ubicación en Ajustes de iOS." }
  }
  func locationManager(_ manager:CLLocationManager,didUpdateLocations locations:[CLLocation]){location=locations.last;message=nil}
  func locationManager(_ manager:CLLocationManager,didFailWithError error:Error){message=error.localizedDescription}
@@ -537,6 +538,14 @@ struct PawlyLearningHubView:View{
  @State private var loading=false
  @State private var error:String?
  @State private var topic="Actualidad"
+ @State private var searchText=""
+ @AppStorage("pawly.learning.guidesExpanded") private var guidesExpanded=false
+ private var matchingGuides:[Int] {
+  guides.indices.filter { searchText.isEmpty || [guides[$0].0,guides[$0].1,guides[$0].3].joined(separator:" ").localizedCaseInsensitiveContains(searchText) }
+ }
+ private var matchingArticles:[PawlyNewsArticle] {
+  articles.filter { searchText.isEmpty || $0.title.localizedCaseInsensitiveContains(searchText) || $0.source.localizedCaseInsensitiveContains(searchText) }
+ }
  private let topics=["Actualidad","Adopción","Comportamiento","Salud","Perros","Gatos"]
  private let guides:[(String,String,String,String)]=[
   ("Adopción responsable","Antes y después de la llegada","heart.fill","Prepara un espacio tranquilo, acuerda responsabilidades, respeta los tiempos de adaptación y concierta una revisión veterinaria. Evita exigir contacto o paseos largos durante los primeros días."),
@@ -548,19 +557,28 @@ struct PawlyLearningHubView:View{
  var body:some View{
   NavigationStack{ScrollView{VStack(alignment:.leading,spacing:17){
    VStack(alignment:.leading,spacing:6){Text("Aprender también es cuidar").font(.title2.bold());Text("Guías prácticas y actualidad sobre bienestar animal.").font(.subheadline).foregroundStyle(.secondary)}
-   ScrollView(.horizontal,showsIndicators:false){HStack{ForEach(topics,id:\.self){t in Button(t){topic=t;Task{await loadNews()}}.buttonStyle(.bordered).tint(topic==t ? PawlyColors.primary:.secondary)}}}
-   Text("Guías de Pawly").font(.title3.bold())
-   ForEach(guides.indices,id:\.self){index in
+   HStack {
+    TextField("Buscar guías o noticias",text:$searchText).textFieldStyle(.roundedBorder)
+    Menu {
+     ForEach(topics,id:\.self) { t in Button { topic=t;Task{await loadNews()} } label:{ if topic==t { Label(t,systemImage:"checkmark") } else { Text(t) } } }
+    } label:{ Label("Filtrar",systemImage:"line.3.horizontal.decrease.circle") }.buttonStyle(.bordered)
+   }
+   Text("Noticias: \(topic)").font(.caption).foregroundStyle(.secondary)
+   DisclosureGroup(isExpanded:$guidesExpanded) {
+   ForEach(matchingGuides,id:\.self){index in
     let g=guides[index]
     NavigationLink{PawlyGuideDetailView(title:g.0,subtitle:g.1,icon:g.2,content:g.3)}label:{
     HStack(spacing:12){Image(systemName:g.2).font(.title2).foregroundStyle(PawlyColors.primary).frame(width:45,height:45).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:14))
      VStack(alignment:.leading,spacing:3){Text(g.0).font(.headline).foregroundStyle(.primary);Text(g.1).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"chevron.right").font(.caption).foregroundStyle(.secondary)
     }.padding(12).background(PawlyColors.canvas,in:RoundedRectangle(cornerRadius:16))
    }.buttonStyle(.plain)}
+   if matchingGuides.isEmpty { Text("No hay guías que coincidan.").font(.caption).foregroundStyle(.secondary) }
+   } label: { Text("Guías de Pawly").font(.title3.bold()).foregroundStyle(PawlyColors.ink) }
+   .padding(13).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:16))
    HStack{Text("Noticias").font(.title3.bold());Spacer();Button("Actualizar"){Task{await loadNews()}}.font(.caption.weight(.semibold))}
    if loading{ProgressView().frame(maxWidth:.infinity)}
    if let error{Text(error).font(.caption).foregroundStyle(.secondary)}
-   ForEach(articles){a in Link(destination:a.url){VStack(alignment:.leading,spacing:5){Text(a.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary);Text(a.source).font(.caption).foregroundStyle(.secondary)}.padding(13).frame(maxWidth:.infinity,alignment:.leading).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:14))}}
+   ForEach(matchingArticles){a in Link(destination:a.url){VStack(alignment:.leading,spacing:5){Text(a.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary);Text(a.source).font(.caption).foregroundStyle(.secondary)}.padding(13).frame(maxWidth:.infinity,alignment:.leading).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:14))}}
   }.padding(18)}.background(PawlyColors.canvas).navigationTitle("Aprender").task{await loadNews()}}
  }
  @MainActor private func loadNews()async{
@@ -600,7 +618,11 @@ struct PawlyMarketView: View {
     VStack(alignment:.leading,spacing:16) {
      VStack(alignment:.leading,spacing:5){Text("Pawly Market").font(.title2.bold());Text("Encuentra productos en tiendas externas. Pawly no procesa pagos ni pedidos.").font(.subheadline).foregroundStyle(.secondary)}
      HStack { TextField("¿Qué estás buscando?",text:$search).textFieldStyle(.roundedBorder);Button { openSearch(search) } label:{Image(systemName:"magnifyingglass").padding(11)}.buttonStyle(.borderedProminent).tint(PawlyColors.primary).disabled(search.trimmingCharacters(in:.whitespaces).isEmpty) }
-     ScrollView(.horizontal,showsIndicators:false){HStack{ForEach(["Todo"]+categories.map(\.id),id:\.self){item in Button(item){category=item}.buttonStyle(.bordered).tint(category == item ? PawlyColors.primary:.secondary)}}}
+     HStack {
+      Label("Categoría",systemImage:"line.3.horizontal.decrease")
+      Spacer()
+      Picker("Categoría",selection:$category){ForEach(["Todo"]+categories.map(\.id),id:\.self){Text($0).tag($0)}}.pickerStyle(.menu)
+     }.padding(10).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:14))
      ForEach(visible) { item in
       Button { openSearch(search.isEmpty ? item.query:search) } label: {
        HStack(spacing:12){Image(systemName:item.icon).font(.title3).foregroundStyle(PawlyColors.primary).frame(width:43,height:43).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:13));VStack(alignment:.leading,spacing:3){Text(item.id).font(.headline).foregroundStyle(.primary);Text(item.detail).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"arrow.up.right").foregroundStyle(PawlyColors.primary)}.padding(13).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:16))
@@ -640,6 +662,8 @@ struct PawlyProfessionalProfile: Identifiable {
 }
 
 struct PawlyProfessionalDirectoryView: View {
+ @StateObject private var locationProvider=PawlyLocationProvider()
+ @State private var nearMe=false
  @State private var category="Veterinario"
  @State private var query=""
  @State private var area=""
@@ -655,8 +679,11 @@ struct PawlyProfessionalDirectoryView: View {
     Form {
      Section("Encuentra profesionales cerca") {
       Picker("Servicio",selection:$category){ForEach(categories,id:\.self){Text($0)}}
-      TextField("Ciudad o zona",text:$area)
+      TextField("Ciudad o zona",text:$area).onChange(of:area){_ in nearMe=false}
       TextField("Nombre o servicio concreto",text:$query)
+      Button { nearMe=true;locationProvider.request() } label:{Label("Buscar cerca de mi ubicación",systemImage:"location.circle")}
+       .buttonStyle(.borderless).disabled(busy)
+      if let locationMessage=locationProvider.message { Text(locationMessage).font(.caption).foregroundStyle(.secondary) }
       Button { Task { await search() } } label:{HStack{Spacer();if busy{ProgressView()};Label("Buscar en Mapas",systemImage:"magnifyingglass");Spacer()}}.disabled(busy)
      }
      if let message { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
@@ -685,6 +712,8 @@ struct PawlyProfessionalDirectoryView: View {
      }
     }
    }.navigationTitle("Profesionales").task { await loadPawlyProfessionals() }
+    .onChange(of:category){_ in Task { await loadPawlyProfessionals() }}
+    .onReceive(locationProvider.$location){value in if nearMe && value != nil { Task { await search() } } }
   }
  }
  @MainActor private func loadPawlyProfessionals() async {
@@ -736,7 +765,12 @@ struct PawlyProfessionalDirectoryView: View {
  @MainActor private func search() async {
   busy=true;message=nil;defer{busy=false}
   let term=query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? category:query
-  let request=MKLocalSearch.Request();request.naturalLanguageQuery=[term,area].filter{!$0.isEmpty}.joined(separator:" ")
+  let request=MKLocalSearch.Request()
+  request.naturalLanguageQuery=nearMe ? term : [term,area].filter{!$0.isEmpty}.joined(separator:" ")
+  if nearMe {
+   guard let coordinate=locationProvider.location?.coordinate else { message="Esperando la ubicación. Comprueba el permiso de iOS.";return }
+   request.region=MKCoordinateRegion(center:coordinate,latitudinalMeters:20000,longitudinalMeters:20000)
+  }
   do { results=try await MKLocalSearch(request:request).start().mapItems; if results.isEmpty{message="No se encontraron resultados. Prueba otra zona o servicio."} }
   catch { message="No se pudo buscar ahora. Comprueba la conexión y vuelve a intentarlo." }
  }
@@ -835,10 +869,13 @@ struct PawlyLostPetView: View {
       defaultExpanded:false
      ) {
       Toggle("Quiero recibir avisos de mi zona",isOn:$receiveNearbyAlerts)
-       .onChange(of:receiveNearbyAlerts){_ in subscriptionSaved=false}
+       .onChange(of:receiveNearbyAlerts){enabled in
+        subscriptionSaved=false
+        if enabled && subscriptionLocation == nil { locationProvider.request() }
+       }
       Picker("Radio de recepción",selection:$alertRadius) {
        ForEach([5,10,20,30,50,100],id:\.self){Text("\($0) km").tag($0)}
-      }
+      }.onChange(of:alertRadius){_ in subscriptionSaved=false}
       Text("Solo se enviarán alertas si otra persona también ha activado esta función y el aviso está dentro del radio. Tu posición exacta no se comparte.")
        .font(.caption).foregroundStyle(.secondary)
       Button {
@@ -899,8 +936,8 @@ struct PawlyLostPetView: View {
    .onChange(of:lastSeen){_ in posterURL=nil}
    .onChange(of:details){_ in posterURL=nil}
    .onChange(of:contact){_ in posterURL=nil}
-   .onChange(of:locationProvider.location?.coordinate.latitude){_ in
-    if let location=locationProvider.location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
+   .onReceive(locationProvider.$location){location in
+    if let location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
    }
    .task { await loadSubscription() }
   }

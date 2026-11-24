@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import FirebaseAuth
+import FirebaseCore
 import FirebaseFirestore
 import GoogleSignIn
 
@@ -11,8 +12,9 @@ enum PawlyGoogleSignIn {
 
     @MainActor
     static func signIn() async throws {
-        guard let clientID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String,
-              !clientID.isEmpty else {
+        let configuredID = Bundle.main.object(forInfoDictionaryKey: "GIDClientID") as? String
+        let clientID = [configuredID, FirebaseApp.app()?.options.clientID].compactMap { $0 }.first { !$0.isEmpty && !$0.contains("$(") }
+        guard let clientID else {
             throw PawlyGoogleError.missingClientID
         }
         guard let presenter = UIApplication.shared.connectedScenes
@@ -96,7 +98,7 @@ enum PawlyGoogleError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingClientID:
-            return "Falta GIDClientID en GoogleService-Info.plist."
+            return "No se encontró el CLIENT_ID de Google. Revisa GoogleService-Info.plist y GOOGLE_CLIENT_ID en Config.local.xcconfig."
         case .noPresenter:
             return "No se ha podido abrir la ventana de Google."
         case .missingToken:

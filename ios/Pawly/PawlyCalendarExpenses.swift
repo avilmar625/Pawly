@@ -110,10 +110,15 @@ struct PawlyExpensesView: View {
     @StateObject private var store = PawlyExpensesStore()
     @State private var selectedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
     @State private var showAdd = false
+    @State private var categoryFilter = "Todo"
+    @State private var showMonthPicker = false
 
     private let kinds = ["Alimentación", "Higiene", "Gasto veterinario", "Accesorios", "Otros"]
     private var monthEntries: [PawlyExpense] {
         store.entries.filter { Calendar.current.isDate($0.date, equalTo: selectedMonth, toGranularity: .month) }
+    }
+    private var filteredEntries: [PawlyExpense] {
+        monthEntries.filter { categoryFilter == "Todo" || $0.kind == categoryFilter }
     }
     private var monthlyTotal: Double { monthEntries.reduce(0) { $0 + $1.amount } }
     private var totals: [(String, Double)] {
@@ -129,11 +134,14 @@ struct PawlyExpensesView: View {
                 List {
                     Section {
                         HStack {
-                            Button { moveMonth(-1) } label: { Image(systemName: "chevron.left") }
+                            Button { moveMonth(-1) } label: { Image(systemName: "chevron.left").frame(width:44,height:44) }.buttonStyle(.borderless).accessibilityLabel("Mes anterior")
                             Spacer()
-                            Text(selectedMonth.formatted(.dateTime.month(.wide).year())).font(.headline)
+                            Button { showMonthPicker.toggle() } label: {
+                                Label(selectedMonth.formatted(.dateTime.month(.wide).year()), systemImage: "calendar")
+                                    .font(.headline)
+                            }.buttonStyle(.borderless)
                             Spacer()
-                            Button { moveMonth(1) } label: { Image(systemName: "chevron.right") }
+                            Button { moveMonth(1) } label: { Image(systemName: "chevron.right").frame(width:44,height:44) }.buttonStyle(.borderless).accessibilityLabel("Mes siguiente")
                         }
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -166,10 +174,13 @@ struct PawlyExpensesView: View {
                         }
                     }
                     Section("Movimientos") {
-                        if monthEntries.isEmpty {
+                        Picker("Categoría", selection: $categoryFilter) {
+                            ForEach(["Todo"] + kinds, id: \.self) { Text($0).tag($0) }
+                        }
+                        if filteredEntries.isEmpty {
                             Text("No hay movimientos registrados.").foregroundStyle(.secondary)
                         }
-                        ForEach(monthEntries) { entry in
+                        ForEach(filteredEntries) { entry in
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: icon(for: entry.kind))
                                     .foregroundStyle(PawlyColors.primary)
@@ -199,6 +210,16 @@ struct PawlyExpensesView: View {
                     }
                 }
                 .navigationTitle("Gastos de \(pet.name)")
+                .sheet(isPresented: $showMonthPicker) {
+                    NavigationStack {
+                        Form {
+                            DatePicker("Elige una fecha del mes", selection: $selectedMonth, displayedComponents: .date)
+                            Button("Mes actual") { selectedMonth = Date(); showMonthPicker = false }
+                        }
+                        .navigationTitle("Elegir mes")
+                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Aceptar") { selectedMonth = Calendar.current.dateInterval(of: .month, for: selectedMonth)?.start ?? selectedMonth; showMonthPicker = false } } }
+                    }.presentationDetents([.medium])
+                }
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { Button { showAdd = true } label: { Image(systemName: "plus") } } }
                 .sheet(isPresented: $showAdd) {
                     PawlyExpenseForm { entry in
@@ -302,11 +323,11 @@ struct PawlyCalendarView: View {
                 List {
                     Section {
                         HStack {
-                            Button { changeMonth(-1) } label: { Image(systemName: "chevron.left") }
+                            Button { changeMonth(-1) } label: { Image(systemName: "chevron.left").frame(width:44,height:44) }.buttonStyle(.borderless).accessibilityLabel("Mes anterior")
                             Spacer()
                             Text(month.formatted(.dateTime.month(.wide).year())).font(.headline)
                             Spacer()
-                            Button { changeMonth(1) } label: { Image(systemName: "chevron.right") }
+                            Button { changeMonth(1) } label: { Image(systemName: "chevron.right").frame(width:44,height:44) }.buttonStyle(.borderless).accessibilityLabel("Mes siguiente")
                         }
                         LazyVGrid(columns: columns, spacing: 8) {
                             ForEach(weekdaySymbols, id: \.self) { Text($0).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).frame(maxWidth: .infinity) }

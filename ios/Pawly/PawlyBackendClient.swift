@@ -3,11 +3,12 @@ import FirebaseAuth
 
 enum PawlyBackendClient {
     static func postJSON(path: String, body: [String: Any]) async throws -> [String: Any] {
+        guard let user = Auth.auth().currentUser else { throw PawlyBackendError.missingToken }
         guard
-            let user = Auth.auth().currentUser,
             let rawBaseURL = Bundle.main.object(forInfoDictionaryKey: "PAWLY_BACKEND_URL") as? String,
             let baseURL = URL(string: rawBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)),
             baseURL.scheme?.lowercased() == "https",
+            baseURL.host?.isEmpty == false,
             let url = URL(string: path, relativeTo: baseURL)
         else {
             throw PawlyBackendError.notConfigured

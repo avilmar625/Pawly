@@ -13,11 +13,10 @@ struct PawlyTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView(selectedTab: $selectedTab).tabItem { Label("Inicio", systemImage: "house.fill") }.tag(0)
-            PawlyExploreView().tabItem { Label("Explorar", systemImage: "map.fill") }.tag(1)
-            CareView().tabItem { Label("Salud", systemImage: "cross.case.fill") }.tag(2)
+            PawlyMyPetView(selectedTab: $selectedTab).tabItem { Label("Mi perro", systemImage: "pawprint.fill") }.tag(0)
             CommunityView().tabItem { Label("Comunidad", systemImage: "person.3.fill") }.tag(3)
-            PawlyMoreHubView().tabItem { Label("Más", systemImage: "square.grid.2x2.fill") }.tag(4)
+            PawlyExploreView().tabItem { Label("Explorar", systemImage: "safari.fill") }.tag(1)
+            PawlyMoreHubView().tabItem { Label("Más", systemImage: "ellipsis") }.tag(4)
         }
         .tint(PawlyColors.primary)
         .environmentObject(pets)
@@ -30,6 +29,57 @@ struct PawlyTabView: View {
     }
 }
 
+private struct PawlyMyPetView: View {
+    @Binding var selectedTab: Int
+    @EnvironmentObject private var pets: PawlyPetStore
+    @State private var section = 0
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 9) {
+                if section != 0, pets.pets.count > 1 {
+                    HStack { Text("Mascota").font(.caption); Spacer(); PetPicker() }
+                }
+                HStack(spacing: 4) {
+                    ForEach(Array(["Hoy", "Salud", "Diario", "Agenda"].enumerated()), id: \.offset) { index, label in
+                        Button { section = index } label: {
+                            Text(LocalizedStringKey(label))
+                                .font(.subheadline.weight(section == index ? .semibold : .regular))
+                                .lineLimit(1).minimumScaleFactor(0.8)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .foregroundStyle(section == index ? PawlyColors.primary : PawlyColors.ink)
+                                .background(section == index ? PawlyColors.mint : Color.clear, in: RoundedRectangle(cornerRadius: 12))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(section == index ? .isSelected : [])
+                    }
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 8)
+            .background(PawlyColors.surface)
+            Divider()
+            switch section {
+            case 1: CareView()
+            case 2: DiaryView()
+            case 3:
+                NavigationStack {
+                    PawlyRemindersView()
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                NavigationLink { PawlyCalendarView() } label: {
+                                    Label("Calendario", systemImage: "calendar")
+                                }
+                            }
+                        }
+                }
+            default: HomeView(selectedTab: $selectedTab, openHealth: { section = 1 })
+            }
+        }
+        .background(PawlyColors.canvas)
+    }
+}
+
 struct HomeView: View {
     @EnvironmentObject private var pets: PawlyPetStore
     @Binding private var selectedTab: Int
@@ -37,8 +87,11 @@ struct HomeView: View {
     @State private var petToDelete: PawlyPet?
     @State private var petToEdit: PawlyPet?
 
-    init(selectedTab: Binding<Int>) {
+    var openHealth: (() -> Void)?
+
+    init(selectedTab: Binding<Int>, openHealth: (() -> Void)? = nil) {
         self._selectedTab = selectedTab
+        self.openHealth = openHealth
     }
 
     var body: some View {
@@ -139,7 +192,7 @@ struct HomeView: View {
                     }
 
                     if let pet = pets.selectedPet {
-                        PawlyHomeCareSection(pet: pet)
+                        PawlyHomeCareSection(pet: pet, openHealth: openHealth)
                     } else {
                         PawlyEmptyState(
                             icon: "pawprint",
@@ -597,7 +650,7 @@ struct CareView:View {
                 await load()
                 if startWithNewEntry { showEntry = true }
             }
-            .sheet(isPresented:$showEntry){PassportEntrySheet(initialType: initialEntryType){entry in await save(entry)}}
+            .sheet(isPresented:$showEntry){PassportEntrySheet(initialType: initialEntryType, latestWeight: weightEntries.first?.1){entry in try await savePassportEntry(entry)}}
             .sheet(isPresented:$showTask){CareTaskSheet{task in await save(task)}}
             .sheet(isPresented:$showShare){PetSharingSheet()}
             .sheet(isPresented:$showDiary){DiaryView()}
@@ -632,8 +685,8 @@ struct CareView:View {
             error=nil
         } catch { self.error=error.localizedDescription }
     }
-    private func save(_ entry:PawlyPassportEntry) async {
-        guard let pet=pets.selectedPet else{return}
+    private func savePassportEntry(_ entry:PawlyPassportEntry) async throws {
+        guard let pet=pets.selectedPet else { throw NSError(domain:"Pawly",code:1,userInfo:[NSLocalizedDescriptionKey:"Selecciona una mascota."]) }
         do {
             try await pets.savePassport(entry,pet:pet)
             let reminderID="health-\(pet.id)-\(entry.id)"
@@ -646,7 +699,7 @@ struct CareView:View {
                 ))
             } else { PawlyReminderStore.shared.remove(id:reminderID) }
             await load()
-        } catch { self.error=error.localizedDescription }
+        } catch { self.error=error.localizedDescription; throw error }
     }
     private func healthReminderDate(nextDoseDate:String,time:String)->Date? {
         let formatter=DateFormatter()
@@ -722,12 +775,19 @@ struct CareView:View {
 
 struct PassportEntrySheet:View {
     @Environment(\.dismiss) private var dismiss
-    var onSave:(PawlyPassportEntry) async->Void
+    var onSave:(PawlyPassportEntry) async throws->Void
     @State private var title=""
     @State private var type:String
 
-    init(initialType: String? = nil, onSave: @escaping (PawlyPassportEntry) async -> Void) {
+    @State private var weight: Double
+    @State private var saving = false
+    @State private var saveError: String?
+    private let fixedWeight: Bool
+
+    init(initialType: String? = nil, latestWeight: Double? = nil, onSave: @escaping (PawlyPassportEntry) async throws -> Void) {
         self.onSave = onSave
+        fixedWeight = initialType == "Peso"
+        _weight = State(initialValue: latestWeight ?? 10)
         _type = State(initialValue: initialType ?? "Vacuna")
     }
     @State private var detail=""
@@ -750,17 +810,39 @@ struct PassportEntrySheet:View {
         NavigationStack {
             Form {
                 Section("Registro sanitario") {
-                    TextField(type == "Peso" ? "Peso (ej. 12,5 kg)" : "Título",text:$title)
-                        .keyboardType(type == "Peso" ? .decimalPad : .default)
-                    Picker("Tipo",selection:$type){ForEach(["Vacuna","Desparasitación","Medicación","Visita veterinaria","Revisión","Tratamiento","Alergia","Intervención","Peso","Microchip","Seguro","Veterinario habitual","Contacto de emergencia","Otro"],id:\.self){Text($0)}}
+                    if !fixedWeight {
+                        Picker("Tipo",selection:$type){ForEach(["Vacuna","Desparasitación","Medicación","Visita veterinaria","Revisión","Tratamiento","Alergia","Intervención","Peso","Microchip","Seguro","Veterinario habitual","Contacto de emergencia","Otro"],id:\.self){Text($0)}}
+                    }
+                    if type == "Peso" {
+                        HStack(spacing: 20) {
+                            Button { weight = max(0.1, (weight * 10 - 1).rounded() / 10) } label: {
+                                Image(systemName:"minus.circle.fill").font(.largeTitle)
+                            }.buttonStyle(.borderless).accessibilityLabel("Reducir peso")
+                            Spacer()
+                            VStack {
+                                Text(weight, format: .number.precision(.fractionLength(1))).font(.system(size:36,weight:.bold,design:.rounded)).monospacedDigit()
+                                Text("kg").font(.caption)
+                            }
+                            Spacer()
+                            Button { weight = min(150, (weight * 10 + 1).rounded() / 10) } label: {
+                                Image(systemName:"plus.circle.fill").font(.largeTitle)
+                            }.buttonStyle(.borderless).accessibilityLabel("Aumentar peso")
+                        }.foregroundStyle(PawlyColors.primary)
+                        TextField("Peso en kg", value: $weight, format: .number).keyboardType(.decimalPad)
+                    } else {
+                        TextField("Título",text:$title)
+                    }
                     DatePicker("Fecha del registro",selection:$date,displayedComponents:.date)
-                    Picker("Estado",selection:$status) {
-                        Text("Pendiente").tag("PENDIENTE")
-                        Text("Realizado").tag("REALIZADO")
-                        Text("Vencido").tag("VENCIDO")
+                    if type != "Peso" {
+                        Picker("Estado",selection:$status) {
+                            Text("Pendiente").tag("PENDIENTE")
+                            Text("Realizado").tag("REALIZADO")
+                            Text("Vencido").tag("VENCIDO")
+                        }
                     }
                     TextField("Detalles",text:$detail,axis:.vertical).lineLimit(3...5)
                 }
+                if type != "Peso" {
                 Section("Tratamiento y clínica") {
                     TextField("Producto o vacuna",text:$product)
                     TextField("Dosis",text:$dose)
@@ -774,24 +856,30 @@ struct PassportEntrySheet:View {
                         DatePicker("Hora del aviso",selection:$reminderTime,displayedComponents:.hourAndMinute)
                     }
                 }
+                }
+                if let saveError { Text(saveError).foregroundStyle(.red) }
             }
-            .navigationTitle("Nuevo registro")
+            .navigationTitle(type == "Peso" ? "Registrar peso" : "Nuevo registro")
             .toolbar {
                 ToolbarItem(placement:.cancellationAction) { Button("Cancelar") { dismiss() } }
                 ToolbarItem(placement:.confirmationAction) {
-                    Button("Guardar") {
+                    Button(saving ? "Guardando…" : "Guardar") {
                         Task {
-                            await onSave(PawlyPassportEntry(
-                                id:UUID().uuidString,type:type,title:title.trimmingCharacters(in:.whitespacesAndNewlines),
+                            saving = true
+                            defer { saving = false }
+                            do {
+                            try await onSave(PawlyPassportEntry(
+                                id:UUID().uuidString,type:type,title:type == "Peso" ? String(format:"%.1f kg",weight) : title.trimmingCharacters(in:.whitespacesAndNewlines),
                                 detail:detail.trimmingCharacters(in:.whitespacesAndNewlines),date:dateFormatter.string(from:date),
                                 product:String(product.prefix(120)),dose:String(dose.prefix(120)),
                                 frequency:String(frequency.prefix(120)),clinic:String(clinic.prefix(120)),
-                                nextDoseDate:dateFormatter.string(from:nextDose),status:status,
-                                reminderEnabled:reminderEnabled,reminderTime:timeFormatter.string(from:reminderTime)
+                                nextDoseDate:type == "Peso" ? "" : dateFormatter.string(from:nextDose),status:type == "Peso" ? "REALIZADO" : status,
+                                reminderEnabled:type != "Peso" && reminderEnabled,reminderTime:timeFormatter.string(from:reminderTime)
                             ))
                             dismiss()
+                            } catch { saveError = error.localizedDescription }
                         }
-                    }.disabled(title.trimmingCharacters(in:.whitespaces).isEmpty)
+                    }.disabled(saving || (type == "Peso" ? !((0.1...150).contains(weight)) : title.trimmingCharacters(in:.whitespaces).isEmpty))
                 }
             }
         }
@@ -1224,6 +1312,16 @@ struct CommunityView:View {
                         }
                         .accessibilityLabel("Más acciones de Comunidad")
                     }
+                    Button { people = true } label: {
+                        HStack {
+                            Label("Buscar personas", systemImage: "person.crop.circle.badge.plus")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .padding(11).foregroundStyle(PawlyColors.primary)
+                        .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 14))
+                    }.buttonStyle(.plain)
                     if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
                     if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
                     ForEach(store.posts){post in
@@ -1363,7 +1461,7 @@ struct PeopleSearchSheet:View {
         NavigationStack {
             VStack(spacing:10) {
                 HStack {
-                    TextField("Buscar por nombre de usuario",text:$query).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder)
+                    TextField("Buscar por nombre de usuario",text:$query).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit { search() }
                     Button("Buscar"){search()}.disabled(query.trimmingCharacters(in:.whitespaces).count<2)
                 }.padding(.horizontal)
                 if loading {ProgressView()}
@@ -1416,7 +1514,7 @@ struct PeopleSearchSheet:View {
     private func search(){Task{await searchNow()}}
     @MainActor private func searchNow() async {
         loading=true
-        do{results=try await store.searchUsers(query);status=results.isEmpty ? "No se han encontrado perfiles públicos.":nil}
+        do{results=try await store.searchUsers(query.trimmingCharacters(in:.whitespacesAndNewlines).trimmingCharacters(in:CharacterSet(charactersIn:"@")));status=results.isEmpty ? "No se han encontrado perfiles públicos.":nil}
         catch{status=error.localizedDescription}
         loading=false
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Foundation
 import UserNotifications
 import Combine
@@ -198,7 +199,9 @@ struct PawlyRemindersView: View {
                     }.padding(.vertical, 4)
                 }
             }
-            Section { Button { showAdd = true } label: { Label("Crear recordatorio", systemImage: "plus.circle.fill") }; Button { Task { _ = await store.requestPermission() } } label: { Label("Activar avisos", systemImage: "bell.badge") } }
+            Section { Button { showAdd = true } label: { Label("Crear recordatorio", systemImage: "plus.circle.fill") }.buttonStyle(.borderless)
+                Button { Task { _ = await store.requestPermission() } } label: { Label("Activar avisos", systemImage: "bell.badge") }.buttonStyle(.borderless)
+                Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Label("Abrir ajustes de notificaciones",systemImage:"gear") }.buttonStyle(.borderless) }
             if let message = store.statusMessage { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
         }
         .navigationTitle("Agenda")

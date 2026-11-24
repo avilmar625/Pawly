@@ -7,6 +7,7 @@ struct AuthenticationView: View {
     @State private var username = ""
     @State private var email = ""
     @State private var password = ""
+    @State private var showPassword = false
     @State private var message: String?
     @State private var isError = false
     @State private var isWorking = false
@@ -40,8 +41,20 @@ struct AuthenticationView: View {
                             .autocorrectionDisabled()
                         HStack {
                             Image(systemName: "lock").foregroundStyle(PawlyColors.muted)
-                            SecureField("Contraseña", text: $password)
-                                .textContentType(isRegistering ? .newPassword : .password)
+                            Group {
+                                if showPassword {
+                                    TextField("Contraseña", text: $password)
+                                } else {
+                                    SecureField("Contraseña", text: $password)
+                                }
+                            }
+                            .textContentType(isRegistering ? .newPassword : .password)
+                            .textInputAutocapitalization(.never).autocorrectionDisabled()
+                            Button { showPassword.toggle() } label: {
+                                Image(systemName: showPassword ? "eye.slash" : "eye")
+                                    .foregroundStyle(PawlyColors.muted)
+                            }.buttonStyle(.plain)
+                            .accessibilityLabel(showPassword ? "Ocultar contraseña" : "Mostrar contraseña")
                         }
                         .padding(16)
                         .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))

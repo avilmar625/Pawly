@@ -12,6 +12,7 @@ struct PawlyHomeCareSection: View {
     @EnvironmentObject private var pets: PawlyPetStore
     @StateObject private var reminders = PawlyReminderStore.shared
     let pet: PawlyPet
+    var openHealth: (() -> Void)? = nil
 
     @State private var tasks: [PawlyCareTask] = []
     @State private var passport: [PawlyPassportEntry] = []
@@ -31,6 +32,20 @@ struct PawlyHomeCareSection: View {
 
     private var scope: String {
         "\(Auth.auth().currentUser?.uid ?? "guest").\(pet.ownerUID ?? "owner").\(pet.id)"
+    }
+    private var latestWeight: Double? {
+        let sorted = passport.filter { $0.type.localizedCaseInsensitiveContains("peso") }.sorted {
+            $0.date == $1.date ? $0.createdAtOrder > $1.createdAtOrder : $0.date > $1.date
+        }
+        for entry in sorted {
+            for value in [entry.title, entry.detail] {
+                let raw = value.lowercased().replacingOccurrences(of:",",with:".")
+                if let range = raw.range(of: #"\d{1,3}(?:\.\d{1,2})?(?=\s*kg\b)"#, options:.regularExpression),
+                   let number = Double(raw[range]), (0.1...150).contains(number) { return number }
+                if let number = Double(raw.trimmingCharacters(in:.whitespacesAndNewlines)), (0.1...150).contains(number) { return number }
+            }
+        }
+        return nil
     }
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
     private var todayKey: String {
@@ -155,7 +170,7 @@ struct PawlyHomeCareSection: View {
                 }
                 HStack {
                     Spacer()
-                    Button("Ver Salud") { showHealth = true }
+                    Button("Ver Salud") { if let openHealth { openHealth() } else { showHealth = true } }
                         .font(.caption.weight(.semibold))
                 }
             }
@@ -321,7 +336,10 @@ struct PawlyHomeCareSection: View {
         .task(id: scope) { await load() }
         .sheet(isPresented: $showHealth) { CareView().environmentObject(pets) }
         .sheet(isPresented: $showWeightEntry) {
-            CareView(startWithNewEntry: true, initialEntryType: "Peso").environmentObject(pets)
+            PassportEntrySheet(initialType: "Peso", latestWeight: latestWeight) { entry in
+                try await pets.savePassport(entry, pet: pet)
+                await load()
+            }
         }
         .sheet(isPresented: $showDiary) { DiaryView(openPhotoPickerOnEnter: true).environmentObject(pets) }
         .sheet(isPresented: $showCareHistory) { PawlyCareLogsView().environmentObject(pets) }
