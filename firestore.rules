@@ -514,14 +514,17 @@ service cloud.firestore {
                 && request.resource.data.photoUrl.matches('^https://.+$')
                 && request.resource.data.photoUrl.size() <= 2048));
         }
+        function canCreateOrUpdateProfile() {
+          return (isMember()
+              && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'])
+            || (isMemberAfter()
+              && getAfter(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role == 'owner');
+        }
         allow read: if isMember() && profileId == 'current';
         // The first profile and owner membership are written in the same batch.
-        // Use getAfter only for that initial create, never for subsequent updates.
-        allow create: if isMemberAfter() && profileId == 'current'
-          && getAfter(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role == 'owner'
-          && validProfileData();
-        allow update: if isMember() && profileId == 'current'
-          && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
+        // Existing owners/editors can also create the document if it was removed.
+        allow create, update: if canCreateOrUpdateProfile()
+          && profileId == 'current'
           && validProfileData();
         allow delete: if isMember() && profileId == 'current'
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role == 'owner';
