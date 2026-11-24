@@ -21,6 +21,8 @@ struct PawlyTabView: View {
         .tint(PawlyColors.primary)
         .environmentObject(pets)
         .environmentObject(pushRouter)
+        .toolbarBackground(PawlyColors.surface, for:.tabBar)
+        .toolbarBackground(.visible, for:.tabBar)
         .onReceive(pushRouter.$destination.compactMap { $0 }) { _ in
             selectedTab = 3
         }
@@ -468,7 +470,7 @@ struct CareView:View {
                                         HStack(spacing:7) {
                                             ForEach(historyCategories,id:\.self) { category in
                                                 Button { historyCategory=category } label:{
-                                                    Text(category).font(.caption.weight(.semibold))
+                                                    Text(LocalizedStringKey(category)).font(.caption.weight(.semibold))
                                                         .foregroundStyle(historyCategory == category ? .white:PawlyColors.primary)
                                                         .padding(.horizontal,12).padding(.vertical,8)
                                                         .background(historyCategory == category ? PawlyColors.primary:PawlyColors.mint,in:Capsule())
@@ -1040,6 +1042,7 @@ struct DiaryView:View {
     @State private var selectedPhotos:[PhotosPickerItem]=[]
     @State private var cameraPhotos:[Data]=[]
     @State private var showPhotoSources=false
+    @State private var launchCamera=false
     @State private var showPhotoPicker=false
     @State private var diaryFilter="Todos"
     @State private var newestFirst=true
@@ -1086,7 +1089,7 @@ struct DiaryView:View {
                                     PhotosPicker(selection:$selectedPhotos,maxSelectionCount:max(1,8-cameraPhotos.count),matching:.images) {
                                         Label("Elegir de la galería",systemImage:"photo")
                                     }.disabled(cameraPhotos.count >= 8)
-                                    PawlyCameraButton { data in if selectedPhotos.count+cameraPhotos.count < 8 { cameraPhotos.append(data) } }
+                                    PawlyCameraButton(requestCapture:$launchCamera) { data in if selectedPhotos.count+cameraPhotos.count < 8 { cameraPhotos.append(data) } }
                                         .disabled(selectedPhotos.count+cameraPhotos.count >= 8)
                                     if selectedPhotos.count+cameraPhotos.count > 0 {
                                         LabeledContent("Fotografías seleccionadas",value:"\(selectedPhotos.count+cameraPhotos.count)/8")
@@ -1117,7 +1120,7 @@ struct DiaryView:View {
                                 }
                                 HStack {
                                     Picker("Filtrar recuerdos",selection:$diaryFilter) {
-                                        ForEach(diaryCategories,id:\.self){Text($0)}
+                                        ForEach(diaryCategories,id:\.self){Text(LocalizedStringKey($0)).tag($0)}
                                     }.pickerStyle(.menu)
                                     Spacer()
                                     Button { newestFirst.toggle() } label:{
@@ -1179,9 +1182,9 @@ struct DiaryView:View {
             }
             .confirmationDialog("Añadir fotografía",isPresented:$showPhotoSources,titleVisibility:.visible) {
                 Button("Elegir de la galería"){showPhotoPicker=true}
-                Button("Ver opciones de cámara"){ }
+                Button("Hacer foto"){launchCamera=true}
                 Button("Cancelar",role:.cancel){}
-            } message:{Text("También puedes hacer una foto desde el editor del diario.")}
+            } message:{Text("Elige la cámara o la galería del dispositivo.")}
             .photosPicker(isPresented:$showPhotoPicker,selection:$selectedPhotos,maxSelectionCount:max(1,8-cameraPhotos.count),matching:.images)
         }
     }

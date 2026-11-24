@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum PawlyColors {
     static var isDarkMode: Bool {
@@ -6,7 +7,11 @@ enum PawlyColors {
     }
 
     static var primary: Color {
-        switch UserDefaults.standard.string(forKey: "pawly.accent") ?? "forest" {
+        accentColor(UserDefaults.standard.string(forKey: "pawly.accent") ?? "forest")
+    }
+
+    static func accentColor(_ accent:String)->Color {
+        switch accent {
         case "ocean": return Color(red: 0.10, green: 0.39, blue: 0.57)
         case "berry": return Color(red: 0.48, green: 0.29, blue: 0.50)
         case "sunset": return Color(red: 0.72, green: 0.34, blue: 0.22)
@@ -14,43 +19,17 @@ enum PawlyColors {
         }
     }
 
-    /// A readable card/control surface that follows Pawly's in-app appearance setting.
-    static var surface: Color {
-        isDarkMode ? Color(red: 0.12, green: 0.15, blue: 0.13) : .white
+    /// Dynamic UIKit colors automatically update when the app appearance changes.
+    private static func adaptive(light:UIColor,dark:UIColor)->Color {
+        Color(uiColor:UIColor { traits in traits.userInterfaceStyle == .dark ? dark:light })
     }
-
-    /// A subtly raised surface for nested cards and media controls.
-    static var raisedSurface: Color {
-        isDarkMode ? Color(red: 0.16, green: 0.19, blue: 0.17) : .white
-    }
-
-    static var mint: Color {
-        isDarkMode
-            ? Color(red: 0.13, green: 0.22, blue: 0.19)
-            : Color(red: 0.88, green: 0.95, blue: 0.90)
-    }
-
-    static var canvas: Color {
-        isDarkMode
-            ? Color(red: 0.07, green: 0.09, blue: 0.08)
-            : Color(red: 0.96, green: 0.97, blue: 0.94)
-    }
-
-    static var ink: Color {
-        isDarkMode ? .white : Color(red: 0.13, green: 0.20, blue: 0.17)
-    }
-
-    static var muted: Color {
-        isDarkMode
-            ? Color(red: 0.68, green: 0.73, blue: 0.69)
-            : Color(red: 0.43, green: 0.49, blue: 0.45)
-    }
-
-    static var peach: Color {
-        isDarkMode
-            ? Color(red: 0.25, green: 0.19, blue: 0.14)
-            : Color(red: 0.99, green: 0.90, blue: 0.82)
-    }
+    static var surface:Color { adaptive(light:.white,dark:UIColor(red:0.12,green:0.15,blue:0.13,alpha:1)) }
+    static var raisedSurface:Color { adaptive(light:.white,dark:UIColor(red:0.16,green:0.19,blue:0.17,alpha:1)) }
+    static var mint:Color { adaptive(light:UIColor(red:0.88,green:0.95,blue:0.90,alpha:1),dark:UIColor(red:0.13,green:0.22,blue:0.19,alpha:1)) }
+    static var canvas:Color { adaptive(light:UIColor(red:0.96,green:0.97,blue:0.94,alpha:1),dark:UIColor(red:0.07,green:0.09,blue:0.08,alpha:1)) }
+    static var ink:Color { adaptive(light:UIColor(red:0.13,green:0.20,blue:0.17,alpha:1),dark:.white) }
+    static var muted:Color { adaptive(light:UIColor(red:0.36,green:0.42,blue:0.38,alpha:1),dark:UIColor(red:0.68,green:0.73,blue:0.69,alpha:1)) }
+    static var peach:Color { adaptive(light:UIColor(red:0.99,green:0.90,blue:0.82,alpha:1),dark:UIColor(red:0.25,green:0.19,blue:0.14,alpha:1)) }
 }
 
 struct PawlyLogo: View {

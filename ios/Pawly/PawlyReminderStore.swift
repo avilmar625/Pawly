@@ -187,6 +187,7 @@ struct PawlyRemindersView: View {
     @StateObject private var store = PawlyReminderStore.shared
     @EnvironmentObject private var pets: PawlyPetStore
     @State private var showAdd = false
+    @State private var permissionMessage:String?
     var body: some View {
         List {
             Section("Agenda compartida") {
@@ -200,8 +201,9 @@ struct PawlyRemindersView: View {
                 }
             }
             Section { Button { showAdd = true } label: { Label("Crear recordatorio", systemImage: "plus.circle.fill") }.buttonStyle(.borderless)
-                Button { Task { _ = await store.requestPermission() } } label: { Label("Activar avisos", systemImage: "bell.badge") }.buttonStyle(.borderless)
+                Button { Task { permissionMessage = await store.requestPermission() } } label: { Label("Activar avisos", systemImage: "bell.badge") }.buttonStyle(.borderless)
                 Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Label("Abrir ajustes de notificaciones",systemImage:"gear") }.buttonStyle(.borderless) }
+            if let permissionMessage { Section { Text(permissionMessage).font(.caption).foregroundStyle(.secondary) } }
             if let message = store.statusMessage { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
         }
         .navigationTitle("Agenda")

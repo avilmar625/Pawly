@@ -101,7 +101,7 @@ struct PawlySettingsView:View {
    }
    Section("Idioma") {
     Picker("Idioma preferido",selection:$language){Text("Español").tag("es");Text("English").tag("en");Text("Català").tag("ca")}
-    Text("La preferencia queda guardada; la traducción integral se incorporará progresivamente.").font(.caption).foregroundStyle(.secondary)
+    Text("El idioma cambia los controles principales y los formatos. Algunas pantallas y contenidos todavía están en español.").font(.caption).foregroundStyle(.secondary)
    }
    Section("Avisos") {
     Toggle("Notificaciones de Pawly",isOn:$notificationsEnabled).onChange(of:notificationsEnabled){enabled in Task{
@@ -288,6 +288,10 @@ struct PawlyAboutView:View{
 }
 
 struct PawlyExploreView:View{
+ @State private var page=0
+ @State private var savedIdeas:Set<String>=[]
+ @StateObject private var collections=PawlyExploreCollectionsStore()
+ @State private var nearMe=false
  @State private var query=""
  @State private var area=""
  @State private var category="Veterinarios"
@@ -301,11 +305,30 @@ struct PawlyExploreView:View{
  var body:some View{
   NavigationStack{
    VStack(spacing:0){
+    HStack(spacing:4) {
+     ForEach(Array(["Ideas","Cerca","Guardados","Colecciones"].enumerated()),id:\.offset){index,title in
+      Button { page=index } label:{
+       Text(LocalizedStringKey(title)).font(.caption.weight(page==index ? .semibold:.regular))
+        .lineLimit(1).minimumScaleFactor(0.8).frame(maxWidth:.infinity).padding(.vertical,11)
+        .foregroundStyle(page==index ? PawlyColors.primary:PawlyColors.ink)
+        .background(page==index ? PawlyColors.mint:Color.clear,in:RoundedRectangle(cornerRadius:12))
+      }.buttonStyle(.plain)
+     }
+    }.padding(8).background(PawlyColors.surface)
+    switch page {
+    case 0:
+     PawlyExploreIdeasView(saved:$savedIdeas,collections:collections,onSearch:{category=$0;query="";page=1})
+    case 2:
+     PawlyExploreSavedView(savedIdeas:$savedIdeas,savedPlaces:savedStore,onSearch:{category=$0;query="";page=1})
+    case 3:
+     PawlyExploreCollectionsView(store:collections)
+    default:
+    VStack(spacing:0) {
     VStack(alignment:.leading,spacing:9){
      Text("Encuentra lugares para compartir más aventuras.").font(.subheadline).foregroundStyle(.secondary)
      Picker("Categoría",selection:$category){ForEach(categories,id:\.self){Text($0)}}.pickerStyle(.menu)
-     TextField("Ciudad o zona (ej. Málaga)",text:$area).textFieldStyle(.roundedBorder)
-     Button{locationProvider.request()}label:{Label("Usar mi ubicación actual",systemImage:"location.fill").font(.caption.weight(.semibold))}
+     TextField("Ciudad o zona (ej. Málaga)",text:$area).textFieldStyle(.roundedBorder).onChange(of:area){_ in nearMe=false}
+     Button{nearMe=true;locationProvider.request()}label:{Label("Usar mi ubicación actual",systemImage:"location.fill").font(.caption.weight(.semibold))}
      TextField("Búsqueda concreta (opcional)",text:$query).textFieldStyle(.roundedBorder)
      Button{Task{await search()}}label:{HStack{Spacer();if isSearching{ProgressView().tint(.white)};Label("Buscar lugares",systemImage:"magnifyingglass");Spacer()}}.buttonStyle(.borderedProminent).tint(PawlyColors.primary).disabled(isSearching)
     }.padding()
@@ -320,13 +343,32 @@ struct PawlyExploreView:View{
      }.font(.caption.weight(.semibold))
     }.padding(.vertical,4)}
     if results.isEmpty && !isSearching{VStack(spacing:8){Image(systemName:"map").font(.largeTitle).foregroundStyle(PawlyColors.primary);Text("Explora cerca de ti").font(.headline);Text("Elige una categoría y una zona para encontrar servicios y lugares pet-friendly.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)}.padding(25).frame(maxWidth:.infinity)}
-   }.navigationTitle("Explorar").task { await savedStore.load() }
+    }
+    }
+   }.background(PawlyColors.canvas).navigationTitle("Explorar").navigationBarTitleDisplayMode(.inline)
+    .task {
+     savedIdeas=Set(UserDefaults.standard.stringArray(forKey:ideaKey) ?? [])
+     await savedStore.load();await collections.load()
+    }
+    .onChange(of:savedIdeas){value in UserDefaults.standard.set(Array(value),forKey:ideaKey)}
+    .onReceive(locationProvider.$location){value in
+     if nearMe,let value {
+      region=MKCoordinateRegion(center:value.coordinate,latitudinalMeters:20000,longitudinalMeters:20000)
+      Task {await search()}
+     }
+    }
   }
  }
+ private var ideaKey:String { "pawly.ideas.\(Auth.auth().currentUser?.uid ?? "guest")" }
  @MainActor private func search()async{
   isSearching=true;error=nil;defer{isSearching=false}
   let term=query.trimmingCharacters(in:.whitespacesAndNewlines),place=area.trimmingCharacters(in:.whitespacesAndNewlines)
-  let request=MKLocalSearch.Request();request.naturalLanguageQuery=[term.isEmpty ? category:term,category,place].filter{!$0.isEmpty}.joined(separator:" ");request.region=region
+  let request=MKLocalSearch.Request()
+  request.naturalLanguageQuery=[term.isEmpty ? category:term,nearMe ? "":place].filter{!$0.isEmpty}.joined(separator:" ")
+  if nearMe {
+   guard locationProvider.location != nil else {error="Esperando ubicación. Comprueba el permiso de iOS.";return}
+   request.region=region
+  }
   do{let response=try await MKLocalSearch(request:request).start()
    results=response.mapItems.prefix(35).map{item in let address=[item.placemark.thoroughfare,item.placemark.locality].compactMap{$0}.joined(separator:", ")
     return PawlyPlaceResult(id:"\(item.placemark.coordinate.latitude):\(item.placemark.coordinate.longitude)",name:item.name ?? "Lugar",subtitle:address,coordinate:item.placemark.coordinate,phone:item.phoneNumber,mapItem:item)}
@@ -523,10 +565,12 @@ struct PawlySavedPlacesView:View{
 }
 @MainActor final class PawlyLocationProvider:NSObject,ObservableObject,CLLocationManagerDelegate{
  private let manager=CLLocationManager()
+ private var requested=false
  @Published var location:CLLocation?
  @Published var message:String?
  override init(){super.init();manager.delegate=self;manager.desiredAccuracy=kCLLocationAccuracyHundredMeters}
  func request(){
+  requested=true
   message="Buscando ubicación…"
   switch manager.authorizationStatus{
   case .notDetermined:manager.requestWhenInUseAuthorization()
@@ -536,11 +580,12 @@ struct PawlySavedPlacesView:View{
   }
  }
  func locationManagerDidChangeAuthorization(_ manager:CLLocationManager){
+  guard requested else{return}
   if manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse{manager.requestLocation()}
   else if manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted { message="Permite el acceso a la ubicación en Ajustes de iOS." }
  }
- func locationManager(_ manager:CLLocationManager,didUpdateLocations locations:[CLLocation]){location=locations.last;message=nil}
- func locationManager(_ manager:CLLocationManager,didFailWithError error:Error){message=error.localizedDescription}
+ func locationManager(_ manager:CLLocationManager,didUpdateLocations locations:[CLLocation]){requested=false;location=locations.last;message=nil}
+ func locationManager(_ manager:CLLocationManager,didFailWithError error:Error){requested=false;message=error.localizedDescription}
 }
 struct PawlyPlaceResult:Identifiable{let id:String;let name:String;let subtitle:String;let coordinate:CLLocationCoordinate2D;let phone:String?;let mapItem:MKMapItem}
 

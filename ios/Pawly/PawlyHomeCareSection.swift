@@ -183,7 +183,7 @@ struct PawlyHomeCareSection: View {
                 }
                 quickAction("Peso", icon: "scalemass") {
                     showWeightEntry = true
-                }
+                }.disabled(isLoading)
                 quickAction("Foto", icon: "camera.fill") {
                     let uid = Auth.auth().currentUser?.uid ?? "guest"
                     UserDefaults.standard.set(true, forKey: "pawly.diary.\(uid).\(pet.id).newMemory")
@@ -342,7 +342,7 @@ struct PawlyHomeCareSection: View {
             }
         }
         .sheet(isPresented: $showDiary) { DiaryView(openPhotoPickerOnEnter: true).environmentObject(pets) }
-        .sheet(isPresented: $showCareHistory) { PawlyCareLogsView().environmentObject(pets) }
+        .sheet(isPresented: $showCareHistory) { NavigationStack { PawlyCareLogsView() }.environmentObject(pets) }
         .sheet(isPresented: $showQuickCareLog) {
             PawlyCareLogForm(petName: pet.name, initialAction: quickCareAction) { title, action, note, distance, description, walker, photos, mapURL in
                 var photoURLs: [String] = []

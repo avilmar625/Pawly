@@ -17,6 +17,10 @@ enum PawlyGoogleSignIn {
         guard let clientID else {
             throw PawlyGoogleError.missingClientID
         }
+        let reversedID=clientID.split(separator:".").reversed().joined(separator:".")
+        let urlTypes=Bundle.main.object(forInfoDictionaryKey:"CFBundleURLTypes") as? [[String:Any]] ?? []
+        let schemes=urlTypes.flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
+        guard schemes.contains(reversedID) else { throw PawlyGoogleError.missingReversedClientID }
         guard let presenter = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
             .flatMap({ $0.windows })
@@ -90,6 +94,7 @@ enum PawlyGoogleSignIn {
 
 enum PawlyGoogleError: LocalizedError {
     case missingClientID
+    case missingReversedClientID
     case noPresenter
     case missingToken
     case invalidGeneratedUsername
@@ -99,6 +104,8 @@ enum PawlyGoogleError: LocalizedError {
         switch self {
         case .missingClientID:
             return "No se encontró el CLIENT_ID de Google. Revisa GoogleService-Info.plist y GOOGLE_CLIENT_ID en Config.local.xcconfig."
+        case .missingReversedClientID:
+            return "GOOGLE_REVERSED_CLIENT_ID no coincide con el cliente de Firebase. Revisa Config.local.xcconfig y vuelve a compilar."
         case .noPresenter:
             return "No se ha podido abrir la ventana de Google."
         case .missingToken:

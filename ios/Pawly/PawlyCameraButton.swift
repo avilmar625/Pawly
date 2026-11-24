@@ -10,30 +10,21 @@ enum PawlyCameraKind {
 struct PawlyCameraButton: View {
     var kind: PawlyCameraKind = .photo
     var label: String = "Hacer foto"
+    var requestCapture: Binding<Bool> = .constant(false)
     var onCapture: (Data) -> Void
     @State private var showing = false
     @State private var failure: String?
 
     var body: some View {
-        Button {
-            let mediaType = kind == .photo ? UTType.image.identifier : UTType.movie.identifier
-            guard UIImagePickerController.isSourceTypeAvailable(.camera),
-                  UIImagePickerController.availableMediaTypes(for:.camera)?.contains(mediaType) == true else {
-                failure = "La cámara no está disponible en este dispositivo. Puedes utilizar la galería."
-                return
-            }
-            let camera = AVCaptureDevice.authorizationStatus(for:.video)
-            let microphone = AVCaptureDevice.authorizationStatus(for:.audio)
-            if camera == .denied || camera == .restricted ||
-                (kind == .video && (microphone == .denied || microphone == .restricted)) {
-                failure = "Activa los permisos de cámara y micrófono necesarios en Ajustes de iOS."
-                return
-            }
-            showing = true
+        Button { beginCapture()
         } label: {
             Label(LocalizedStringKey(label), systemImage:kind == .photo ? "camera" : "video")
         }
         .buttonStyle(.borderless)
+        .onChange(of:requestCapture.wrappedValue){requested in
+            if requested { requestCapture.wrappedValue=false;beginCapture() }
+        }
+        .onAppear { if requestCapture.wrappedValue { requestCapture.wrappedValue=false;beginCapture() } }
         .fullScreenCover(isPresented:$showing) {
             PawlyCameraPicker(kind:kind) { result in
                 showing = false
@@ -49,6 +40,22 @@ struct PawlyCameraButton: View {
             }
             Button("Cerrar",role:.cancel) { failure=nil }
         } message: { Text(failure ?? "") }
+    }
+    private func beginCapture() {
+            let mediaType = kind == .photo ? UTType.image.identifier : UTType.movie.identifier
+            guard UIImagePickerController.isSourceTypeAvailable(.camera),
+                  UIImagePickerController.availableMediaTypes(for:.camera)?.contains(mediaType) == true else {
+                failure = "La cámara no está disponible en este dispositivo. Puedes utilizar la galería."
+                return
+            }
+            let camera = AVCaptureDevice.authorizationStatus(for:.video)
+            let microphone = AVCaptureDevice.authorizationStatus(for:.audio)
+            if camera == .denied || camera == .restricted ||
+                (kind == .video && (microphone == .denied || microphone == .restricted)) {
+                failure = "Activa los permisos de cámara y micrófono necesarios en Ajustes de iOS."
+                return
+            }
+            showing = true
     }
 }
 

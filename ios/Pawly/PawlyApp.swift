@@ -35,7 +35,7 @@ struct PawlyApp: App {
             }
             .environment(\.locale, Locale(identifier: language))
             .preferredColorScheme(darkMode ? .dark : .light)
-            .tint(PawlyColors.primary)
+            .tint(PawlyColors.accentColor(accent))
             .environment(\.colorScheme, darkMode ? .dark : .light)
         }
     }

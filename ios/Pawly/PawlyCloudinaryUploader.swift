@@ -25,7 +25,9 @@ struct PawlyCloudinaryUploader {
                                 preset:videoPreset,folder:folder,ownerUID:ownerUID)
     }
     private func upload(bytes:Data,filename:String,mime:String,resource:String,preset:String,folder:String,ownerUID:String) async throws -> String {
-        guard !cloudName.isEmpty,!preset.isEmpty else { throw PawlyMediaError.notConfigured }
+        guard !cloudName.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,
+              !preset.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,
+              !cloudName.contains("$("),!preset.contains("$(") else { throw PawlyMediaError.notConfigured }
         guard cloudName.range(of:"^[A-Za-z0-9_-]+$",options:.regularExpression) != nil else { throw PawlyMediaError.invalidConfiguration }
         let allowed = resource == "image" ? ["profile-photos","dog-photos","pet-photos","post-photos","message-photos","diary-photos"] : ["post-videos","message-videos"]
         guard allowed.contains(folder) else { throw PawlyMediaError.invalidFolder }
