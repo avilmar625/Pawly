@@ -344,11 +344,10 @@ struct PawlyHomeCareSection: View {
         .sheet(isPresented: $showDiary) { DiaryView(openPhotoPickerOnEnter: true).environmentObject(pets) }
         .sheet(isPresented: $showCareHistory) { PawlyCareLogsView().environmentObject(pets) }
         .sheet(isPresented: $showQuickCareLog) {
-            PawlyCareLogForm(petName: pet.name, initialAction: quickCareAction) { title, action, note, distance, description, walker, photos in
+            PawlyCareLogForm(petName: pet.name, initialAction: quickCareAction) { title, action, note, distance, description, walker, photos, mapURL in
                 var photoURLs: [String] = []
                 if let uid = Auth.auth().currentUser?.uid {
-                    for item in photos {
-                        guard let data = try await item.loadTransferable(type: Data.self) else { continue }
+                    for data in photos {
                         let url = try await PawlyCloudinaryUploader().uploadImage(data, folder: "pet-photos", ownerUID: uid)
                         photoURLs.append(url)
                     }
@@ -361,7 +360,8 @@ struct PawlyHomeCareSection: View {
                     distanceKm: distance,
                     description: description,
                     walker: walker,
-                    photoURLs: photoURLs
+                    photoURLs: photoURLs,
+                    mapURL: mapURL
                 )
                 await load()
             }

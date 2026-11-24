@@ -151,7 +151,11 @@ struct PawlyProfileEditorView:View {
      if let url=URL(string:photoURL),!photoURL.isEmpty{AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { PawlyAvatarPlaceholder() }.frame(width:76,height:76).clipShape(Circle())}
      else{PawlyAvatarPlaceholder().frame(width:76,height:76)}
      VStack(alignment:.leading,spacing:6){Text(displayName.isEmpty ? "Tu nombre":displayName).font(.headline);Text(session.user?.email ?? "").font(.caption).foregroundStyle(.secondary)
-      PhotosPicker(selection:$imageItem,matching:.images){Label("Cambiar fotografía",systemImage:"camera")}.font(.caption)}
+      PhotosPicker(selection:$imageItem,matching:.images){Label("Elegir foto",systemImage:"photo")}.font(.caption)
+      PawlyCameraButton { data in
+       Task { await uploadProfilePhoto(data) }
+      }.font(.caption)
+     }
     }
     TextField("Nombre visible",text:$displayName)
     TextField("Biografía",text:$bio,axis:.vertical).lineLimit(3...6)
@@ -197,13 +201,20 @@ struct PawlyProfileEditorView:View {
    Task {
     do {
      guard let data=try await item.loadTransferable(type:Data.self),let uid=session.user?.uid else{return}
-     photoURL=try await PawlyCloudinaryUploader().uploadImage(data,folder:"profile-photos",ownerUID:uid)
-     message="Fotografía subida. Guarda el perfil para aplicar el cambio.";hasError=false
+     await uploadProfilePhoto(data,uid:uid)
     } catch { message=error.localizedDescription;hasError=true }
    }
   }
  }
 
+ @MainActor private func uploadProfilePhoto(_ data:Data,uid:String? = nil) async {
+  guard let uid=uid ?? session.user?.uid else{return}
+  busy=true;defer{busy=false}
+  do {
+   photoURL=try await PawlyCloudinaryUploader().uploadImage(data,folder:"profile-photos",ownerUID:uid)
+   message="Fotografía subida. Guarda el perfil para aplicar el cambio.";hasError=false
+  } catch { message=error.localizedDescription;hasError=true }
+ }
  @MainActor private func load() async {
   guard let uid=session.user?.uid else{return}
   do {
@@ -818,8 +829,9 @@ struct PawlyLostPetView: View {
      TextField("Teléfono o contacto (opcional)",text:$contact).keyboardType(.phonePad)
      TextField("Rasgos y otra información útil",text:$details,axis:.vertical).lineLimit(3...7)
      PhotosPicker(selection:$photoItem,matching:.images) {
-      Label(photoData == nil ? "Añadir foto":"Cambiar foto",systemImage:"photo")
+      Label("Elegir de la galería",systemImage:"photo")
      }
+     PawlyCameraButton { data in photoItem=nil;photoData=data;posterURL=nil }
      if let photoData,let image=UIImage(data:photoData) {
       Image(uiImage:image).resizable().scaledToFill()
        .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))

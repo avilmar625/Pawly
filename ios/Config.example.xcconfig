@@ -1,0 +1,8 @@
+// Copy to Config.local.xcconfig and insert values from your existing Firebase and Cloudinary configuration.
+// The $() prevents xcconfig interpreting // as a comment. Do not commit Config.local.xcconfig.
+GOOGLE_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID =
+PAWLY_BACKEND_URL = https:/$()/your-worker.example.workers.dev
+CLOUDINARY_CLOUD_NAME =
+CLOUDINARY_IMAGE_UPLOAD_PRESET =
+CLOUDINARY_VIDEO_UPLOAD_PRESET =

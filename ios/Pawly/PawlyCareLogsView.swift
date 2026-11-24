@@ -46,6 +46,9 @@ struct PawlyCareLogsView: View {
                                 Label(String(format: "%.2f km", distance), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                                     .font(.caption).foregroundStyle(.secondary)
                             }
+                            if !entry.mapURL.isEmpty, let url=URL(string:entry.mapURL) {
+                                Link(destination:url){Label("Ver mapa",systemImage:"map").font(.caption)}
+                            }
                             if !entry.photoURLs.isEmpty {
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 8) {
@@ -77,11 +80,10 @@ struct PawlyCareLogsView: View {
                 .refreshable { await load(pet) }
                 .task(id: pet.id) { await load(pet) }
                 .sheet(isPresented: $showAdd) {
-                    PawlyCareLogForm(petName: pet.name) { title, action, note, distance, description, walker, photos in
+                    PawlyCareLogForm(petName: pet.name) { title, action, note, distance, description, walker, photos, mapURL in
                         var photoURLs: [String] = []
                         if let uid = Auth.auth().currentUser?.uid {
-                            for item in photos {
-                                guard let data = try await item.loadTransferable(type: Data.self) else { continue }
+                            for data in photos {
                                 let url = try await PawlyCloudinaryUploader().uploadImage(
                                     data, folder: "pet-photos", ownerUID: uid
                                 )
@@ -96,7 +98,8 @@ struct PawlyCareLogsView: View {
                             distanceKm: distance,
                             description: description,
                             walker: walker,
-                            photoURLs: photoURLs
+                            photoURLs: photoURLs,
+                            mapURL: mapURL
                         )
                         await load(pet)
                     }
@@ -138,7 +141,7 @@ struct PawlyCareLogForm: View {
     @Environment(\.dismiss) private var dismiss
     let petName: String
     let initialAction: String
-    var onSave: (String, String, String, Double?, String, String, [PhotosPickerItem]) async throws -> Void
+    var onSave: (String, String, String, Double?, String, String, [Data], String) async throws -> Void
 
     @State private var title: String
     @State private var action: String
@@ -146,7 +149,7 @@ struct PawlyCareLogForm: View {
     init(
         petName: String,
         initialAction: String = "Paseo",
-        onSave: @escaping (String, String, String, Double?, String, String, [PhotosPickerItem]) async throws -> Void
+        onSave: @escaping (String, String, String, Double?, String, String, [Data], String) async throws -> Void
     ) {
         self.petName = petName
         self.initialAction = initialAction
@@ -159,6 +162,8 @@ struct PawlyCareLogForm: View {
     @State private var description = ""
     @State private var walker = ""
     @State private var photos: [PhotosPickerItem] = []
+    @State private var cameraPhotos: [Data] = []
+    @State private var mapURL = ""
     @State private var busy = false
     @State private var error: String?
 
@@ -178,13 +183,21 @@ struct PawlyCareLogForm: View {
                     Section("Paseo") {
                         TextField("Distancia en km (opcional)", text: $distance)
                             .keyboardType(.decimalPad)
+                        TextField("Enlace HTTPS al mapa (opcional)",text:$mapURL)
+                            .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                     }
                 }
                 Section("Detalles") {
                     TextField("Notas", text: $note, axis: .vertical).lineLimit(2...5)
                     TextField("Descripción (opcional)", text: $description, axis: .vertical).lineLimit(2...5)
-                    PhotosPicker(selection: $photos, maxSelectionCount: 4, matching: .images) {
-                        Label(photos.isEmpty ? "Añadir fotografías" : "\(photos.count) fotografías", systemImage: "photo")
+                    PhotosPicker(selection: $photos, maxSelectionCount: max(1,4-cameraPhotos.count), matching: .images) {
+                        Label("Elegir de la galería",systemImage:"photo")
+                    }.disabled(cameraPhotos.count >= 4)
+                    PawlyCameraButton { data in if photos.count+cameraPhotos.count < 4 { cameraPhotos.append(data) } }
+                        .disabled(photos.count+cameraPhotos.count >= 4)
+                    if photos.count+cameraPhotos.count > 0 {
+                        LabeledContent("Fotografías seleccionadas",value:"\(photos.count+cameraPhotos.count)/4")
+                        Button("Quitar selección",role:.destructive){photos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                     }
                 }
                 Section {
@@ -211,7 +224,16 @@ struct PawlyCareLogForm: View {
                                 error = "La distancia debe estar entre 0,01 y 1000 km."
                                 return
                             }
+                            let cleanMap = action == "Paseo" ? mapURL.trimmingCharacters(in:.whitespacesAndNewlines) : ""
+                            if !cleanMap.isEmpty && (URL(string:cleanMap)?.scheme?.lowercased() != "https" || URL(string:cleanMap)?.host == nil) {
+                                error="Introduce un enlace válido que comience por https://.";return
+                            }
                             do {
+                                var imageData=cameraPhotos
+                                for item in photos {
+                                    guard let data=try await item.loadTransferable(type:Data.self) else {throw PawlyMediaError.invalidImage}
+                                    imageData.append(data)
+                                }
                                 try await onSave(
                                     title.trimmingCharacters(in: .whitespacesAndNewlines),
                                     action,
@@ -219,7 +241,8 @@ struct PawlyCareLogForm: View {
                                     parsedDistance,
                                     description.trimmingCharacters(in: .whitespacesAndNewlines),
                                     walker.trimmingCharacters(in: .whitespacesAndNewlines),
-                                    photos
+                                    Array(imageData.prefix(4)),
+                                    cleanMap
                                 )
                                 dismiss()
                             } catch {

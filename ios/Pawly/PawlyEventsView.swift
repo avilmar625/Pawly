@@ -446,7 +446,8 @@ private struct PawlyEventCreateSheet: View {
     @State private var location = ""
     @State private var date = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
     @State private var coordinate: CLLocationCoordinate2D?
-    @State private var geocoding = false
+    @State private var resolvedLocation = ""
+    @State private var showLocationPicker = false
     @State private var error: String?
 
     var body: some View {
@@ -465,15 +466,14 @@ private struct PawlyEventCreateSheet: View {
                     DatePicker("Comienza", selection: $date, in: Date()..., displayedComponents: [.date, .hourAndMinute])
                 }
                 Section("Ubicación en el mapa (opcional)") {
-                    Button {
-                        Task { await resolveLocation() }
-                    } label: {
-                        HStack {
-                            if geocoding { ProgressView() }
-                            Label(coordinate == nil ? "Buscar dirección en el mapa" : "Ubicación localizada",
-                                  systemImage: "mappin.and.ellipse")
-                        }
-                    }.disabled(geocoding || location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button { showLocationPicker=true } label: {
+                        Label(coordinate == nil || location != resolvedLocation ? "Buscar dirección en el mapa" : "Cambiar ubicación en el mapa",systemImage:"mappin.and.ellipse")
+                    }.buttonStyle(.borderless)
+                    if let coordinate, location == resolvedLocation {
+                        Map(coordinateRegion:.constant(MKCoordinateRegion(center:coordinate,latitudinalMeters:1200,longitudinalMeters:1200)))
+                            .frame(height:155).clipShape(RoundedRectangle(cornerRadius:12)).allowsHitTesting(false)
+                            .overlay { Image(systemName:"mappin.circle.fill").font(.title).foregroundStyle(PawlyColors.primary) }
+                    }
                     if coordinate != nil {
                         Button(role: .destructive) {
                             coordinate = nil
@@ -485,12 +485,17 @@ private struct PawlyEventCreateSheet: View {
                 if let error { Section { Text(error).foregroundStyle(.red) } }
             }
             .navigationTitle("Crear evento")
+            .sheet(isPresented:$showLocationPicker) {
+                PawlyEventLocationPicker(initialQuery:location){name,point in
+                    location=name;resolvedLocation=name;coordinate=point
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Publicar") {
                         Task {
-                            await onSave(title, description, category, location, date, coordinate)
+                            await onSave(title, description, category, location, date, location == resolvedLocation ? coordinate : nil)
                             dismiss()
                         }
                     }
@@ -502,19 +507,68 @@ private struct PawlyEventCreateSheet: View {
         }
     }
 
-    @MainActor private func resolveLocation() async {
-        geocoding = true
-        defer { geocoding = false }
-        do {
-            let placemarks = try await CLGeocoder().geocodeAddressString(location)
-            guard let first = placemarks.first?.location?.coordinate else {
-                error = "No se ha encontrado la dirección. Puedes publicar el evento sin coordenadas."
-                return
-            }
-            coordinate = first
-            error = nil
-        } catch {
-            self.error = error.localizedDescription
+}
+
+private struct PawlyEventLocationPicker:View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var query:String
+    @State private var results:[MKMapItem]=[]
+    @State private var selected:MKMapItem?
+    @State private var region=MKCoordinateRegion()
+    @State private var busy=false
+    @State private var message:String?
+    let onSelect:(String,CLLocationCoordinate2D)->Void
+
+    init(initialQuery:String,onSelect:@escaping(String,CLLocationCoordinate2D)->Void) {
+        _query=State(initialValue:initialQuery);self.onSelect=onSelect
+    }
+    var body:some View {
+        NavigationStack {
+            List {
+                Section("Buscar lugar o dirección") {
+                    TextField("Lugar, calle o localidad",text:$query).onSubmit{Task{await search()}}
+                    Button {Task{await search()}}label:{Label("Buscar en el mapa",systemImage:"magnifyingglass")}
+                        .disabled(busy || query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+                    if busy { ProgressView() }
+                    if let message {Text(message).font(.caption).foregroundStyle(.secondary)}
+                }
+                if let selected {
+                    Section("Ajusta el punto del evento") {
+                        Map(coordinateRegion:$region)
+                            .frame(height:230)
+                            .overlay { Image(systemName:"mappin.circle.fill").font(.largeTitle).foregroundStyle(PawlyColors.primary).allowsHitTesting(false) }
+                        Text("Desplaza el mapa para ajustar el punto central. Solo se guardará la ubicación del evento.").font(.caption)
+                        Button("Usar este punto") {
+                            let name=selected.placemark.title ?? selected.name ?? query
+                            onSelect(name,region.center);dismiss()
+                        }.buttonStyle(.borderedProminent)
+                    }
+                }
+                Section("Resultados") {
+                    ForEach(Array(results.enumerated()),id:\.offset){_,item in
+                        Button {
+                            selected=item
+                            region=MKCoordinateRegion(center:item.placemark.coordinate,latitudinalMeters:1200,longitudinalMeters:1200)
+                        } label: {
+                            VStack(alignment:.leading){Text(item.name ?? "Lugar");Text(item.placemark.title ?? "").font(.caption).foregroundStyle(.secondary)}
+                        }.buttonStyle(.borderless)
+                    }
+                }
+            }.navigationTitle("Ubicación del evento")
+            .toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}}
+            .task {if !query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty {await search()}}
         }
+    }
+    @MainActor private func search() async {
+        guard !busy,!query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else{return}
+        busy=true;message=nil;selected=nil;results=[];defer{busy=false}
+        let request=MKLocalSearch.Request();request.naturalLanguageQuery=query
+        do {
+            results=try await MKLocalSearch(request:request).start().mapItems
+            if let first=results.first {
+                selected=first
+                region=MKCoordinateRegion(center:first.placemark.coordinate,latitudinalMeters:1200,longitudinalMeters:1200)
+            } else {message="No se encontraron lugares. Prueba una dirección más concreta."}
+        } catch { message=error.localizedDescription }
     }
 }

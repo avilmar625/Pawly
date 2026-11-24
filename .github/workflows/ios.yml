@@ -59,7 +59,9 @@ jobs:
 
       - name: Generate Xcode project
         working-directory: ios
-        run: xcodegen generate
+        run: |
+          test -f Config.local.xcconfig || cp Config.example.xcconfig Config.local.xcconfig
+          xcodegen generate
 
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project ios/Pawly.xcodeproj -scheme Pawly

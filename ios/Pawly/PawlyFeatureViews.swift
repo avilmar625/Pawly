@@ -329,7 +329,8 @@ struct PetFormSheet:View {
                     TextField("Descripción",text:$description,axis:.vertical).lineLimit(2...4)
                 }
                 Section("Fotografía") {
-                    PhotosPicker(selection:$photoItem,matching:.images){Label(photoURL.isEmpty && photoData == nil ? "Añadir fotografía":"Cambiar fotografía",systemImage:"photo")}
+                    PhotosPicker(selection:$photoItem,matching:.images){Label("Elegir de la galería",systemImage:"photo")}
+                    PawlyCameraButton { data in photoItem=nil;photoData=data }
                     if let data=photoData,let image=UIImage(data:data){Image(uiImage:image).resizable().scaledToFill().frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))}
                     else if let url=URL(string:photoURL),!photoURL.isEmpty{
                         AsyncImage(url: url) { image in
@@ -1037,6 +1038,8 @@ struct DiaryView:View {
     @State private var category="Paseos"
     @State private var date=Date()
     @State private var selectedPhotos:[PhotosPickerItem]=[]
+    @State private var cameraPhotos:[Data]=[]
+    @State private var showPhotoSources=false
     @State private var showPhotoPicker=false
     @State private var diaryFilter="Todos"
     @State private var newestFirst=true
@@ -1080,8 +1083,14 @@ struct DiaryView:View {
                                         ForEach(["Paseos","Viajes","Juegos","Amigos","Celebraciones","Otros"],id:\.self){Text($0)}
                                     }
                                     DatePicker("Fecha del recuerdo",selection:$date,displayedComponents:.date)
-                                    PhotosPicker(selection:$selectedPhotos,maxSelectionCount:8,matching:.images) {
-                                        Label(selectedPhotos.isEmpty ? "Añadir fotografías":"\(selectedPhotos.count) fotografías seleccionadas",systemImage:"photo")
+                                    PhotosPicker(selection:$selectedPhotos,maxSelectionCount:max(1,8-cameraPhotos.count),matching:.images) {
+                                        Label("Elegir de la galería",systemImage:"photo")
+                                    }.disabled(cameraPhotos.count >= 8)
+                                    PawlyCameraButton { data in if selectedPhotos.count+cameraPhotos.count < 8 { cameraPhotos.append(data) } }
+                                        .disabled(selectedPhotos.count+cameraPhotos.count >= 8)
+                                    if selectedPhotos.count+cameraPhotos.count > 0 {
+                                        LabeledContent("Fotografías seleccionadas",value:"\(selectedPhotos.count+cameraPhotos.count)/8")
+                                        Button("Quitar selección",role:.destructive){selectedPhotos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                                     }
                                     if let error { Text(error).font(.caption).foregroundStyle(.red) }
                                     Button { Task { await add() } } label:{
@@ -1093,7 +1102,7 @@ struct DiaryView:View {
                                         }.padding(.vertical,5)
                                     }
                                     .buttonStyle(.borderedProminent).tint(PawlyColors.primary)
-                                    .disabled(busy || (title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && note.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty))
+                                    .disabled(busy || (title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && note.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && selectedPhotos.isEmpty && cameraPhotos.isEmpty))
                                 }
                             }
                             .id(editorStorageKey)
@@ -1166,9 +1175,14 @@ struct DiaryView:View {
             .task(id:pets.selectedPetID) {
                 diaryFilter="Todos"
                 await load()
-                if openPhotoPickerOnEnter { showPhotoPicker = true }
+                if openPhotoPickerOnEnter { showPhotoSources = true }
             }
-            .photosPicker(isPresented:$showPhotoPicker,selection:$selectedPhotos,maxSelectionCount:8,matching:.images)
+            .confirmationDialog("Añadir fotografía",isPresented:$showPhotoSources,titleVisibility:.visible) {
+                Button("Elegir de la galería"){showPhotoPicker=true}
+                Button("Ver opciones de cámara"){ }
+                Button("Cancelar",role:.cancel){}
+            } message:{Text("También puedes hacer una foto desde el editor del diario.")}
+            .photosPicker(isPresented:$showPhotoPicker,selection:$selectedPhotos,maxSelectionCount:max(1,8-cameraPhotos.count),matching:.images)
         }
     }
 
@@ -1186,9 +1200,12 @@ struct DiaryView:View {
                 guard let data=try await item.loadTransferable(type:Data.self) else{continue}
                 urls.append(try await PawlyCloudinaryUploader().uploadImage(data,folder:"diary-photos",ownerUID:uid))
             }
+            for data in cameraPhotos {
+                urls.append(try await PawlyCloudinaryUploader().uploadImage(data,folder:"diary-photos",ownerUID:uid))
+            }
             let payload:[String:Any] = [
                 "pawlyDiaryVersion":1,
-                "title":title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? note.trimmingCharacters(in:.whitespacesAndNewlines).prefix(48).description:title.trimmingCharacters(in:.whitespacesAndNewlines),
+                "title":title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? (note.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "Un recuerdo especial" : note.trimmingCharacters(in:.whitespacesAndNewlines).prefix(48).description):title.trimmingCharacters(in:.whitespacesAndNewlines),
                 "text":note.trimmingCharacters(in:.whitespacesAndNewlines),
                 "category":category,
                 "date":Int64(date.timeIntervalSince1970*1000),
@@ -1197,7 +1214,7 @@ struct DiaryView:View {
             let data=try JSONSerialization.data(withJSONObject:payload,options:[.sortedKeys])
             guard let raw=String(data:data,encoding:.utf8) else{throw PawlyMediaError.invalidImage}
             try await pets.addDiaryEntry(raw,pet:pet)
-            title="";note="";category="Paseos";selectedPhotos=[];await load()
+            title="";note="";category="Paseos";selectedPhotos=[];cameraPhotos=[];await load()
         } catch let saveError {
             self.error = saveError.localizedDescription
         }
@@ -1454,6 +1471,7 @@ struct PeopleSearchSheet:View {
     @State private var query=""
     @State private var results:[PawlyPublicUser]=[]
     @State private var loading=false
+    @State private var showContacts=false
     @State private var status:String?
     @State private var blockCandidate:PawlyPublicUser?
     @State private var reportCandidate:PawlyPublicUser?
@@ -1464,6 +1482,16 @@ struct PeopleSearchSheet:View {
                     TextField("Buscar por nombre de usuario",text:$query).textInputAutocapitalization(.never).autocorrectionDisabled().textFieldStyle(.roundedBorder).onSubmit { search() }
                     Button("Buscar"){search()}.disabled(query.trimmingCharacters(in:.whitespaces).count<2)
                 }.padding(.horizontal)
+                DisclosureGroup(isExpanded:$showContacts) {
+                    if showContacts {
+                        PawlyContactDiscoveryView { username in
+                            showContacts=false
+                            query=username
+                            if !username.isEmpty { search() }
+                        }
+                    }
+                } label:{Label("Buscar en mis contactos",systemImage:"person.crop.rectangle")}
+                    .padding(.horizontal)
                 if loading {ProgressView()}
                 if let status {Text(status).font(.caption).foregroundStyle(PawlyColors.muted).padding(.horizontal)}
                 List(results) { user in
@@ -1557,21 +1585,30 @@ struct PostComposerSheet:View {
     @State private var error:String?
     @State private var imageItem:PhotosPickerItem?
     @State private var videoItem:PhotosPickerItem?
+    @State private var cameraImage:Data?
+    @State private var cameraVideo:Data?
     var body:some View {
         NavigationStack {
             Form {
                 Picker("Tipo",selection:$category){Text("Historia").tag("STORY");Text("Adopción").tag("ADOPTION");Text("Perdido").tag("LOST");Text("Encontrado").tag("FOUND");Text("Acogida").tag("FOSTER")}
                 TextField("¿Qué queréis compartir?",text:$text,axis:.vertical).lineLimit(5...10)
-                HStack {
-                    PhotosPicker(selection:$imageItem,matching:.images){Label("Foto",systemImage:"photo")}
-                    PhotosPicker(selection:$videoItem,matching:.videos){Label("Vídeo",systemImage:"video")}
+                Section("Fotografía") {
+                    PhotosPicker(selection:$imageItem,matching:.images){Label("Elegir foto de la galería",systemImage:"photo")}
+                    PawlyCameraButton { data in imageItem=nil;cameraImage=data }
                 }
-                if imageItem != nil { Label("Fotografía seleccionada",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
-                if videoItem != nil { Label("Vídeo seleccionado",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
+                Section("Vídeo") {
+                    PhotosPicker(selection:$videoItem,matching:.videos){Label("Elegir vídeo de la galería",systemImage:"film")}
+                    PawlyCameraButton(kind:.video,label:"Grabar vídeo"){data in videoItem=nil;cameraVideo=data}
+                }
+                if imageItem != nil || cameraImage != nil { Label("Fotografía seleccionada",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
+                if videoItem != nil || cameraVideo != nil { Label("Vídeo seleccionado",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
                 if !petName.isEmpty{LabeledContent("Mascota",value:petName)}
                 if let error{Text(error).foregroundStyle(.red)}
                 Text("Para publicar necesitas verificar tu correo.").font(.caption).foregroundStyle(.secondary)
-            }.navigationTitle("Nueva publicación").onAppear{category=initialCategory}.toolbar{
+            }
+            .onChange(of:imageItem){item in if item != nil {cameraImage=nil}}
+            .onChange(of:videoItem){item in if item != nil {cameraVideo=nil}}
+            .navigationTitle("Nueva publicación").onAppear{category=initialCategory}.toolbar{
                 ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}
                 ToolbarItem(placement:.confirmationAction){Button(busy ? "Publicando…" : "Publicar"){
                     Task {
@@ -1580,11 +1617,15 @@ struct PostComposerSheet:View {
                             guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
                             let uploader=PawlyCloudinaryUploader()
                             var imageURL="",videoURL=""
-                            if let item=imageItem {
+                            if let cameraImage {
+                                imageURL=try await uploader.uploadImage(cameraImage,folder:"post-photos",ownerUID:uid)
+                            } else if let item=imageItem {
                                 guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
                                 imageURL=try await uploader.uploadImage(data,folder:"post-photos",ownerUID:uid)
                             }
-                            if let item=videoItem {
+                            if let cameraVideo {
+                                videoURL=try await uploader.uploadVideo(cameraVideo,folder:"post-videos",ownerUID:uid)
+                            } else if let item=videoItem {
                                 guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
                                 videoURL=try await uploader.uploadVideo(data,folder:"post-videos",ownerUID:uid)
                             }
@@ -1593,7 +1634,7 @@ struct PostComposerSheet:View {
                         } catch { self.error=error.localizedDescription }
                         busy=false
                     }
-                }.disabled(busy || (text.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil))}
+                }.disabled(busy || (text.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil && cameraImage == nil && cameraVideo == nil))}
             }
         }
     }
@@ -1751,6 +1792,9 @@ struct ChatView:View {
     @State private var listener:ListenerRegistration?
     @State private var imageItem:PhotosPickerItem?
     @State private var videoItem:PhotosPickerItem?
+    @State private var cameraImage:Data?
+    @State private var cameraVideo:Data?
+    @State private var sending=false
 
     var body:some View {
         NavigationStack {
@@ -1811,38 +1855,58 @@ struct ChatView:View {
         HStack(spacing:10) {
             PhotosPicker(selection:$imageItem,matching:.images) {
                 Image(systemName:"photo").font(.title3).foregroundStyle(PawlyColors.primary)
-            }
+            }.accessibilityLabel("Foto de galería")
             PhotosPicker(selection:$videoItem,matching:.videos) {
-                Image(systemName:"video").font(.title3).foregroundStyle(PawlyColors.primary)
-            }
+                Image(systemName:"film").font(.title3).foregroundStyle(PawlyColors.primary)
+            }.accessibilityLabel("Vídeo de galería")
+            PawlyCameraButton { data in imageItem=nil;videoItem=nil;cameraVideo=nil;cameraImage=data }
+                .labelStyle(.iconOnly)
+            PawlyCameraButton(kind:.video,label:"Grabar vídeo") { data in imageItem=nil;videoItem=nil;cameraImage=nil;cameraVideo=data }
+                .labelStyle(.iconOnly)
             TextField("Mensaje",text:$draft,axis:.vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
             Button(action:send) {
                 Image(systemName:"arrow.up.circle.fill").font(.system(size:30)).foregroundStyle(PawlyColors.primary)
             }
-            .disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil)
+            .disabled(sending || (draft.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil && cameraImage == nil && cameraVideo == nil))
         }
         .padding()
-        .onChange(of:imageItem) { _ in if imageItem != nil { videoItem=nil } }
-        .onChange(of:videoItem) { _ in if videoItem != nil { imageItem=nil } }
+        .onChange(of:imageItem) { _ in if imageItem != nil { videoItem=nil;cameraImage=nil;cameraVideo=nil } }
+        .onChange(of:videoItem) { _ in if videoItem != nil { imageItem=nil;cameraImage=nil;cameraVideo=nil } }
+        .safeAreaInset(edge:.top) {
+            if imageItem != nil || videoItem != nil || cameraImage != nil || cameraVideo != nil {
+                HStack {
+                    Label("Archivo adjunto",systemImage:"paperclip").font(.caption)
+                    Spacer()
+                    Button("Quitar"){imageItem=nil;videoItem=nil;cameraImage=nil;cameraVideo=nil}.font(.caption)
+                }.padding(.horizontal).background(PawlyColors.surface)
+            }
+        }
     }
 
     private func send() {
+        guard !sending else {return}
+        sending=true
         let value=draft
         Task {
+            defer{sending=false}
             do {
                 guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
                 let uploader=PawlyCloudinaryUploader()
                 var imageURL="",videoURL=""
-                if let item=imageItem {
+                if let cameraImage {
+                    imageURL=try await uploader.uploadImage(cameraImage,folder:"message-photos",ownerUID:uid)
+                } else if let item=imageItem {
                     guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
                     imageURL=try await uploader.uploadImage(data,folder:"message-photos",ownerUID:uid)
                 }
-                if let item=videoItem {
+                if let cameraVideo {
+                    videoURL=try await uploader.uploadVideo(cameraVideo,folder:"message-videos",ownerUID:uid)
+                } else if let item=videoItem {
                     guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
                     videoURL=try await uploader.uploadVideo(data,folder:"message-videos",ownerUID:uid)
                 }
                 try await store.sendMessage(conversationID:chat.id,text:value,imageURL:imageURL,videoURL:videoURL)
-                draft="";imageItem=nil;videoItem=nil;error=nil
+                draft="";imageItem=nil;videoItem=nil;cameraImage=nil;cameraVideo=nil;error=nil
             } catch { self.error=error.localizedDescription }
         }
     }
