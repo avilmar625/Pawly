@@ -1,6 +1,6 @@
 # Pawly para iOS
 
-Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. El trabajo se desarrolla en `codex/ios-auth-push-hardening-2026-11`, manteniendo separadas las ramas nativas de Android e iOS. El cliente iOS es SwiftUI nativo y vive en `ios/`; el código Android sigue en sus carpetas actuales.
+Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. La rama iOS más reciente de trabajo es `codex/firebase-permission-preflight-2026-11`; las ramas nativas de Android e iOS siguen separadas. El cliente iOS vive en `ios/` y el código Android continúa en sus carpetas actuales. Para preparar el entorno completo en macOS, sigue [la guía de Mac, Firebase y Cloudflare](../docs/IOS_MAC_FIREBASE_CLOUDFLARE.md).
 
 ## Funciones iOS incorporadas
 - Acceso, registro, verificación y recuperación de contraseña con Firebase; inicio de sesión Google.
