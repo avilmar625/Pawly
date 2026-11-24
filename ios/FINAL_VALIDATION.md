@@ -39,11 +39,11 @@ Esta lista separa los ajustes cerrados en el código de las comprobaciones que n
 
 - La eliminación de cuenta iOS registra una solicitud; no borra por sí sola Firebase Auth, todas las subcolecciones ni los medios de Cloudinary.
 - Las notificaciones remotas dependen de APNs y de desplegar/configurar el backend Cloudflare Worker con sus secretos de Firebase.
-- La mensajería tiene contadores y confirmaciones de lectura en la app; el backend actual no envía todavía push específicas de mensajes nuevos.
+- El código de iOS y del Worker ya incorpora push específicas de mensajes nuevos, validando la conversación y sin incluir el contenido privado del mensaje. Solo se entregan cuando el Worker está desplegado, se han configurado sus secretos y APNs/FCM está habilitado.
 - Los recordatorios del sistema son locales al dispositivo; los registros de agenda compartida no equivalen a sincronizar todos los detalles y disparadores de notificación.
 - Cloudinary unsigned no ofrece privacidad de archivos ni cifrado de extremo a extremo; para producción conviene firma desde backend y límites de subida.
 - El idioma preferido está guardado, pero no todo el contenido de la app está traducido.
-- No se ha podido ejecutar Xcode ni probar APNs reales desde este entorno. La compilación de GitHub Actions y las pruebas en dispositivo siguen siendo necesarias.
+- CI de GitHub ha completado correctamente la compilación de iOS para simulador y la validación TypeScript/Vitest del Worker. Las 21 pruebas de reglas Firestore también pasan en el emulador. APNs real, OAuth, Cloudinary, sincronización y push deben seguir probándose en un dispositivo con las credenciales del propietario.
 
 ## Criterio de salida
 
