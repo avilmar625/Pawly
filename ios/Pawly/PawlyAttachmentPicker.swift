@@ -110,16 +110,17 @@ private struct PickedMovie: Transferable {
 
 struct PawlyAttachmentPicker: View {
     @ObservedObject var draft: PawlyAttachmentDraft
+    var allowsVideo = true
     @State private var item: PhotosPickerItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                PhotosPicker(selection: $item, matching: .any(of: [.images, .videos])) {
+                PhotosPicker(selection: $item, matching: allowsVideo ? .any(of: [.images, .videos]) : .images) {
                     Label("Elegir de la galería", systemImage: "photo.on.rectangle")
                 }
                 PawlyCameraButton { draft.capture($0, kind: .photo) }
-                PawlyCameraButton(kind: .video, label: "Grabar vídeo") { draft.capture($0, kind: .video) }
+                if allowsVideo { PawlyCameraButton(kind: .video, label: "Grabar vídeo") { draft.capture($0, kind: .video) } }
                 if draft.loading { ProgressView() }
                 if draft.hasAttachment || draft.loading {
                     Spacer()

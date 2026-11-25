@@ -6,6 +6,10 @@ import UniformTypeIdentifiers
 import FirebaseFirestore
 
 struct PawlyCloudinaryUploader {
+    static func indexID(for url: String) -> String {
+        SHA256.hash(data: Data(url.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
     func uploadImage(_ data: Data, folder: String, ownerUID: String) async throws -> String {
         let contract = try configuration(resource: "image", folder: folder, owner: ownerUID)
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
@@ -49,7 +53,7 @@ struct PawlyCloudinaryUploader {
             return try contract.asset(from: responseData)
         } index: { asset in
             guard Auth.auth().currentUser?.uid == owner else { throw PawlyStoreError.notSignedIn }
-            let recordKey = SHA256.hash(data: Data(asset.public_id.utf8)).map { String(format: "%02x", $0) }.joined()
+            let recordKey = Self.indexID(for: asset.secure_url)
             let ref = Firestore.firestore().collection("cloudinaryAssets").document(recordKey)
             do {
                 try await ref.setData(["uid": owner, "publicId": asset.public_id, "resourceType": contract.resource,

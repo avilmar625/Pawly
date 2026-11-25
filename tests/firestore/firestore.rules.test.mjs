@@ -472,3 +472,23 @@ test("an owner can atomically create a shared pet, its membership and its initia
   await assertSucceeds(batch.commit());
   await assertSucceeds(getDoc(doc(db, "sharedPets/owner_newpet/profile/current")));
 });
+
+test("events accept legacy documents and an optional registered organizer photo", async () => {
+  const db = env.authenticatedContext("author", { email_verified: true }).firestore();
+  const event = {
+    title: "Paseo", description: "Ruta para mascotas.", category: "Ruta", location: "Parque",
+    dateText: "Mañana", startAt: new Date(Date.now() + 86400000), timeZoneId: "Europe/Madrid",
+    organizerUid: "author", organizerName: "Autor", interestedCount: 0, createdAt: serverTimestamp()
+  };
+  const photoUrl = "https://res.cloudinary.com/test/image/upload/v1/pawly/post-photos/author/test.jpg";
+  const photoAssetId = "a".repeat(64);
+  await assertSucceeds(setDoc(doc(db, "events/legacy"), event));
+  await assertFails(setDoc(doc(db, "events/unregistered"), { ...event, photoUrl, photoAssetId }));
+  await assertSucceeds(setDoc(doc(db, "cloudinaryAssets", photoAssetId), {
+    uid: "author", resourceType: "image", publicId: "pawly/post-photos/author/test", secureUrl: photoUrl, createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(setDoc(doc(db, "events/with-photo"), { ...event, photoUrl, photoAssetId }));
+  await assertFails(setDoc(doc(db, "events/mismatch"), { ...event, photoUrl: photoUrl + "x", photoAssetId }));
+  const other = env.authenticatedContext("other", { email_verified: true }).firestore();
+  await assertFails(setDoc(doc(other, "events/wrong-owner"), { ...event, organizerUid: "other", photoUrl, photoAssetId }));
+});

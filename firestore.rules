@@ -938,9 +938,25 @@ service cloud.firestore {
 
     // Public events are tied to their venue, not to the private location of a person.
     match /events/{eventId} {
+      function validOptionalPhoto(data) {
+        return !data.keys().hasAny(['photoUrl', 'photoAssetId']) || (
+          data.keys().hasAll(['photoUrl', 'photoAssetId'])
+          && data.photoAssetId is string && data.photoAssetId.matches('^[a-f0-9]{64}$')
+          && data.photoUrl is string && data.photoUrl.size() <= 2048
+          && data.photoUrl.matches('^https://res[.]cloudinary[.]com/[^/]+/image/upload/.*')
+          && validEventAsset(data.photoAssetId, data.photoUrl)
+        );
+      }
+      function validEventAsset(id, url) {
+        let asset = get(/databases/$(database)/documents/cloudinaryAssets/$(id)).data;
+        return asset.uid == request.auth.uid && asset.resourceType == 'image'
+          && asset.publicId.matches('^pawly/post-photos/' + request.auth.uid + '/.+$')
+          && asset.secureUrl == url;
+      }
       allow get, list: if signedIn();
       allow create: if verified()
-        && request.resource.data.keys().hasOnly(['title', 'description', 'category', 'location', 'dateText', 'startAt', 'timeZoneId', 'latitude', 'longitude', 'organizerUid', 'organizerName', 'interestedCount', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['title', 'description', 'category', 'location', 'dateText', 'startAt', 'timeZoneId', 'latitude', 'longitude', 'organizerUid', 'organizerName', 'interestedCount', 'createdAt', 'photoUrl', 'photoAssetId'])
+        && validOptionalPhoto(request.resource.data)
         && request.resource.data.title is string && request.resource.data.title.size() >= 4 && request.resource.data.title.size() <= 90
         && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 1200
         && request.resource.data.category in ['Quedada', 'Ruta', 'Taller', 'Adopción']

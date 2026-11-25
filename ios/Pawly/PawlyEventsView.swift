@@ -19,6 +19,7 @@ struct PawlyEventItem: Identifiable {
     var organizerUID: String
     var interestedCount: Int
     var interestedByMe: Bool
+    var photoURL: String = ""
 }
 
 struct PawlyEventAttendee: Identifiable {
@@ -72,7 +73,7 @@ final class PawlyEventsStore: ObservableObject {
                     organizerName: document.get("organizerName") as? String ?? "Comunidad Pawly",
                     organizerUID: document.get("organizerUid") as? String ?? "",
                     interestedCount: document.get("interestedCount") as? Int ?? 0,
-                    interestedByMe: interest.exists
+                    interestedByMe: interest.exists, photoURL: document.get("photoUrl") as? String ?? ""
                 ))
             }
             events = values.sorted { $0.startAt < $1.startAt }
@@ -88,7 +89,8 @@ final class PawlyEventsStore: ObservableObject {
         category: String,
         location: String,
         date: Date,
-        coordinate: CLLocationCoordinate2D?
+        coordinate: CLLocationCoordinate2D?,
+        photoURL: String
     ) async throws {
         guard let user = Auth.auth().currentUser, user.isEmailVerified else {
             throw PawlyEventError.emailVerificationRequired
@@ -134,6 +136,10 @@ final class PawlyEventsStore: ObservableObject {
         if let coordinate {
             data["latitude"] = coordinate.latitude
             data["longitude"] = coordinate.longitude
+        }
+        if !photoURL.isEmpty {
+            data["photoUrl"] = photoURL
+            data["photoAssetId"] = PawlyCloudinaryUploader.indexID(for: photoURL)
         }
         _ = try await db.collection("events").addDocument(data: data)
     }
@@ -242,6 +248,7 @@ struct PawlyEventsView: View {
     @State private var selectedEvent: PawlyEventItem?
     @State private var showCreate = false
     @State private var createMessage: String?
+    @State private var created = false
     @State private var showReport = false
 
     @State private var query = ""
@@ -324,15 +331,13 @@ struct PawlyEventsView: View {
         }
         .task { await store.load() }
         .refreshable { await store.load() }
-        .sheet(isPresented: $showCreate) {
-            PawlyEventCreateSheet { title, description, category, location, date, coordinate in
-                    try await store.create(
-                        title: title, description: description, category: category,
-                        location: location, date: date, coordinate: coordinate
-                    )
-                    createMessage = "Evento publicado."
-                    await store.load()
-
+        .sheet(isPresented: $showCreate, onDismiss: {
+            if created { createMessage = "Evento publicado."; created = false; Task { await store.load() } }
+        }) {
+            PawlyEventCreateSheet { title, description, category, location, date, coordinate, photoURL in
+                try await store.create(title: title, description: description, category: category,
+                                       location: location, date: date, coordinate: coordinate, photoURL: photoURL)
+                created = true
             }
         }
         .sheet(item: $selectedEvent) { event in
@@ -358,6 +363,10 @@ private struct PawlyEventDetailsSheet: View {
         NavigationStack {
             List {
                 Section {
+                    if let url = URL(string: event.photoURL), !event.photoURL.isEmpty {
+                        AsyncImage(url: url) { image in image.resizable().scaledToFit() } placeholder: { ProgressView() }
+                            .frame(maxHeight: 240)
+                    }
                     Text(event.title).font(.title2.bold())
                     Text(event.description)
                     Label(event.category, systemImage: "calendar")
@@ -452,7 +461,7 @@ private struct PawlyEventDetailsSheet: View {
 
 private struct PawlyEventCreateSheet: View {
     @Environment(\.dismiss) private var dismiss
-    var onSave: (String, String, String, String, Date, CLLocationCoordinate2D?) async throws -> Void
+    var onSave: (String, String, String, String, Date, CLLocationCoordinate2D?, String) async throws -> Void
     @State private var title = ""
     @State private var description = ""
     @State private var category = "Quedada"
@@ -461,6 +470,7 @@ private struct PawlyEventCreateSheet: View {
     @State private var coordinate: CLLocationCoordinate2D?
     @State private var resolvedLocation = ""
     @State private var showLocationPicker = false
+    @StateObject private var attachment = PawlyAttachmentDraft()
     @State private var saving = false
     @State private var error: String?
 
@@ -476,6 +486,7 @@ private struct PawlyEventCreateSheet: View {
                     TextField("Descripción", text: $description, axis: .vertical).lineLimit(3...7)
                     TextField("Lugar o dirección", text: $location)
                 }
+                Section("Fotografía") { PawlyAttachmentPicker(draft: attachment, allowsVideo: false) }
                 Section("Fecha y hora") {
                     DatePicker("Comienza", selection: $date, in: Date()..., displayedComponents: [.date, .hourAndMinute])
                 }
@@ -512,11 +523,16 @@ private struct PawlyEventCreateSheet: View {
                         saving = true
                         Task {
                             defer { saving = false }
-                            do { try await onSave(title, description, category, location, date, location == resolvedLocation ? coordinate : nil)
-                            dismiss() } catch { self.error = error.localizedDescription }
+                            do {
+                                guard let user = Auth.auth().currentUser, user.isEmailVerified else { throw PawlyEventError.emailVerificationRequired }
+                                let media = try await attachment.upload(owner: user.uid, forPost: true)
+                                try await onSave(title, description, category, location, date,
+                                                 location == resolvedLocation ? coordinate : nil, media.image)
+                                dismiss()
+                            } catch { self.error = error.localizedDescription }
                         }
                     }
-                    .disabled(saving || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 ||
+                    .disabled(attachment.loading || saving || description.count > 1200 || location.count > 160 || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 ||
                               description.trimmingCharacters(in: .whitespacesAndNewlines).count < 10 ||
                               location.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 || date <= Date())
                 }
