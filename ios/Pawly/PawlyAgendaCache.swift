@@ -70,3 +70,63 @@ enum PawlyAgendaCache {
         }
     }
 }
+
+struct PawlyNotificationOccurrence {
+    let reminder: PawlyLocalReminder
+    let date: Date
+    let components: DateComponents
+    let repeats: Bool
+
+    var identifier: String {
+        let scope = reminder.petScope ?? reminder.petName
+        let key = "\(scope.utf8.count):\(scope):\(reminder.id.utf8.count):\(reminder.id)"
+        return repeats ? key : key + ":\(Int64(date.timeIntervalSince1970))"
+    }
+}
+
+enum PawlyNotificationSchedule {
+    private static func pattern(_ item: PawlyLocalReminder, calendar: Calendar) -> DateComponents? {
+        let units: Set<Calendar.Component>
+        switch item.repeatRule {
+        case "Cada día": units = [.hour, .minute]
+        case "Cada semana": units = [.weekday, .hour, .minute]
+        case "Cada mes": units = [.day, .hour, .minute]
+        case "Cada año": units = [.month, .day, .hour, .minute]
+        default: return nil
+        }
+        return calendar.dateComponents(units, from: item.date)
+    }
+
+    static func next(_ item: PawlyLocalReminder, after now: Date, calendar: Calendar) -> Date? {
+        guard !item.completed else { return nil }
+        guard let start = calendar.dateInterval(of: .minute, for: item.date)?.start else { return nil }
+        if start > now { return start }
+        guard let pattern = pattern(item, calendar: calendar) else { return nil }
+        return calendar.nextDate(after: now, matching: pattern, matchingPolicy: .strict)
+    }
+
+    static func requests(for items: [PawlyLocalReminder], after now: Date, calendar: Calendar, limit: Int = 64) -> [PawlyNotificationOccurrence] {
+        var candidates = items.compactMap { item -> PawlyNotificationOccurrence? in
+            guard let date = next(item, after: now, calendar: calendar) else { return nil }
+            if let pattern = pattern(item, calendar: calendar),
+               calendar.nextDate(after: now, matching: pattern, matchingPolicy: .strict) == date {
+                return PawlyNotificationOccurrence(reminder: item, date: date, components: pattern, repeats: true)
+            }
+            return dated(item, date, calendar)
+        }
+        var result: [PawlyNotificationOccurrence] = []
+        while result.count < limit, let index = candidates.indices.min(by: { candidates[$0].date < candidates[$1].date }) {
+            let event = candidates.remove(at: index)
+            result.append(event)
+            if !event.repeats, let next = next(event.reminder, after: event.date, calendar: calendar) {
+                candidates.append(dated(event.reminder, next, calendar))
+            }
+        }
+        return result
+    }
+
+    private static func dated(_ item: PawlyLocalReminder, _ date: Date, _ calendar: Calendar) -> PawlyNotificationOccurrence {
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        return PawlyNotificationOccurrence(reminder: item, date: date, components: components, repeats: false)
+    }
+}

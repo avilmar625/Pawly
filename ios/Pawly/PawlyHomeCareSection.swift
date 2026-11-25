@@ -38,12 +38,7 @@ struct PawlyHomeCareSection: View {
             $0.date == $1.date ? $0.createdAtOrder > $1.createdAtOrder : $0.date > $1.date
         }
         for entry in sorted {
-            for value in [entry.title, entry.detail] {
-                let raw = value.lowercased().replacingOccurrences(of:",",with:".")
-                if let range = raw.range(of: #"\d{1,3}(?:\.\d{1,2})?(?=\s*kg\b)"#, options:.regularExpression),
-                   let number = Double(raw[range]), (0.1...150).contains(number) { return number }
-                if let number = Double(raw.trimmingCharacters(in:.whitespacesAndNewlines)), (0.1...150).contains(number) { return number }
-            }
+            if let value = PawlyWeight.kilograms(title: entry.title, detail: entry.detail) { return value }
         }
         return nil
     }
@@ -85,13 +80,13 @@ struct PawlyHomeCareSection: View {
                 date: date
             ))
         }
-        for reminder in reminders.items(for: pet) where
-            !reminder.completed && reminder.date > Date() {
+        for reminder in reminders.items(for: pet) {
+            guard let next = PawlyNotificationSchedule.next(reminder, after: Date(), calendar: .current) else { continue }
             candidates.append(PawlyHomeUpcomingItem(
                 id: "reminder-" + reminder.id, detail: reminder.notes,
                 title: reminder.title,
                 category: reminder.category,
-                date: reminder.date
+                date: next
             ))
         }
         return candidates.min { $0.date < $1.date }

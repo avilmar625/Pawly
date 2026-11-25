@@ -13,4 +13,5 @@ run_test UploadContract Pawly/PawlyUploadContract.swift
 run_test UploadRetry Pawly/PawlyUploadContract.swift Pawly/PawlyUploadCache.swift
 run_test AgendaCache Pawly/PawlyAgendaCache.swift
 run_test BackupPolicy Pawly/PawlyBackupPolicy.swift
+run_test Weight Pawly/PawlyWeight.swift
 python3 Tests/check-localizations.py

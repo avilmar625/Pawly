@@ -22,6 +22,25 @@ import Foundation
         let old = Data(#"{"id":"old","title":"Walk","petName":"Uma","date":0}"#.utf8)
         let decoded = try JSONDecoder().decode(PawlyLocalReminder.self, from: old)
         precondition(decoded.petScope == nil && decoded.repeatRule == "Nunca")
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 11, day: 5, hour: 12))!
+        var delayed = PawlyLocalReminder(id: "common", title: "Care", petName: "Uma", date: now.addingTimeInterval(7 * 86400), repeatRule: "Cada día")
+        var active = delayed
+        active.date = now.addingTimeInterval(-4 * 86400)
+        active.petScope = a
+        delayed.petScope = b
+        let scheduled = PawlyNotificationSchedule.requests(for: [delayed, active], after: now, calendar: calendar, limit: 4)
+        precondition(scheduled.count == 4 && scheduled.first?.repeats == true)
+        precondition(scheduled.first?.date == now.addingTimeInterval(86400))
+        precondition(scheduled.dropFirst().allSatisfy { !$0.repeats && $0.date >= delayed.date })
+        precondition(Set(scheduled.map(\.identifier)).count == 4)
+        var monthly = active
+        monthly.repeatRule = "Cada mes"
+        monthly.date = calendar.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 10))!
+        precondition(calendar.component(.month, from: PawlyNotificationSchedule.next(monthly, after: now, calendar: calendar)!) == 12)
+        monthly.completed = true
+        precondition(PawlyNotificationSchedule.next(monthly, after: now, calendar: calendar) == nil)
         print("Separate agendas, remote deletion, local fields and legacy records passed")
     }
 }

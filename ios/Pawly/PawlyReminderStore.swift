@@ -131,22 +131,19 @@ import FirebaseFirestore
     }
     func cancelAllNotifications() { center.removeAllPendingNotificationRequests(); statusMessage = "Avisos pausados. Los recordatorios siguen guardados." }
     private func persist() { if let data = try? JSONEncoder().encode(reminders) { UserDefaults.standard.set(data, forKey: key) } }
-    private func rescheduleAll() { center.removeAllPendingNotificationRequests(); reminders.filter { !$0.completed && $0.date > Date() }.forEach(schedule) }
-    private func schedule(_ item: PawlyLocalReminder) {
-        guard UserDefaults.standard.object(forKey: "pawly.notificationsEnabled") as? Bool != false, !item.completed, item.date > Date() else { return }
-        let content = UNMutableNotificationContent(); content.title = item.title
-        content.body = item.notes.isEmpty ? "\(item.petName) · \(item.category)" : "\(item.petName): \(item.notes)"; content.sound = .default
-        var components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: item.date)
-        let repeats = item.repeatRule != "Nunca"
-        if repeats { switch item.repeatRule {
-            case "Cada día": components = Calendar.current.dateComponents([.hour, .minute], from: item.date)
-            case "Cada semana": components = Calendar.current.dateComponents([.weekday, .hour, .minute], from: item.date)
-            case "Cada mes": components = Calendar.current.dateComponents([.day, .hour, .minute], from: item.date)
-            case "Cada año": components = Calendar.current.dateComponents([.month, .day, .hour, .minute], from: item.date)
-            default: break
-        } }
-        center.add(UNNotificationRequest(identifier: item.id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: repeats))) { [weak self] error in
-            if let error { Task { @MainActor in self?.statusMessage = error.localizedDescription } }
+    func rescheduleAll() {
+        center.removeAllPendingNotificationRequests()
+        guard UserDefaults.standard.object(forKey: "pawly.notificationsEnabled") as? Bool != false else { return }
+        for occurrence in PawlyNotificationSchedule.requests(for: reminders, after: Date(), calendar: .current) {
+            let item = occurrence.reminder
+            let content = UNMutableNotificationContent()
+            content.title = item.title
+            content.body = [item.petName, item.notes.isEmpty ? item.category : item.notes].joined(separator: " · ")
+            content.sound = .default
+            let trigger = UNCalendarNotificationTrigger(dateMatching: occurrence.components, repeats: occurrence.repeats)
+            center.add(UNNotificationRequest(identifier: occurrence.identifier, content: content, trigger: trigger)) { [weak self] error in
+                if let error { Task { @MainActor in self?.statusMessage = error.localizedDescription } }
+            }
         }
     }
 }

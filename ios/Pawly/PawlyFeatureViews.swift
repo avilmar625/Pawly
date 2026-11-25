@@ -7,6 +7,7 @@ import FirebaseAuth
 import Combine
 
 struct PawlyTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var pets = PawlyPetStore()
     @StateObject private var pushRouter = PawlyPushRouter.shared
     @State private var selectedTab = 0
@@ -18,13 +19,15 @@ struct PawlyTabView: View {
             PawlyExploreView().tabItem { Label("Explorar", systemImage: "safari.fill") }.tag(1)
             PawlyMoreHubView().tabItem { Label("Más", systemImage: "ellipsis") }.tag(4)
         }
-        .tint(PawlyColors.primary)
         .environmentObject(pets)
         .environmentObject(pushRouter)
         .toolbarBackground(PawlyColors.surface, for:.tabBar)
         .toolbarBackground(.visible, for:.tabBar)
         .onReceive(pushRouter.$destination.compactMap { $0 }) { _ in
             selectedTab = 3
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { PawlyReminderStore.shared.rescheduleAll() }
         }
         .task { await pets.loadPets(); pets.startListening() }
         .task(id: pets.selectedPet) {
@@ -593,28 +596,9 @@ struct CareView:View {
             catch{self.error=error.localizedDescription}
         }
     }
-    private func parseWeight(_ entry:PawlyPassportEntry)->Double? {
-        let raw="\(entry.title) \(entry.detail)"
-        let range=NSRange(raw.startIndex...,in:raw)
-        let unitPattern=try! NSRegularExpression(pattern:"(?<![\\d.,])(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*kg\\b",options:[.caseInsensitive])
-        var captured:String?
-        if let match=unitPattern.firstMatch(in:raw,range:range),
-           let valueRange=Range(match.range(at:1),in:raw) {
-            captured=String(raw[valueRange])
-        } else {
-            let standalone=try! NSRegularExpression(pattern:"^\\s*(?:peso\\s*[:=-]?\\s*)?(\\d{1,3}(?:[.,]\\d{1,2})?)\\s*$",options:[.caseInsensitive])
-            if let match=standalone.firstMatch(in:raw,range:range),
-               let valueRange=Range(match.range(at:1),in:raw) {
-                captured=String(raw[valueRange])
-            }
-        }
-        guard let captured,let value=Double(captured.replacingOccurrences(of:",",with:".")),
-              (0.1...150).contains(value) else { return nil }
-        return value
-    }
     private var weightEntries:[(PawlyPassportEntry,Double)] {
         passport.filter{$0.type.localizedCaseInsensitiveContains("peso")}.compactMap{entry in
-            guard let value=parseWeight(entry) else{return nil}
+            guard let value=PawlyWeight.kilograms(title: entry.title, detail: entry.detail) else{return nil}
             return(entry,value)
         }.sorted {
             if $0.0.date == $1.0.date { return $0.0.createdAtOrder > $1.0.createdAtOrder }
