@@ -6,34 +6,6 @@ import Combine
 import FirebaseAuth
 import FirebaseFirestore
 
-struct PawlyLocalReminder: Identifiable, Codable {
-    var id: String
-    var title: String
-    var petName: String
-    var date: Date
-    var notes: String
-    var repeatRule: String
-    var completed: Bool
-    var category: String
-
-    private enum CodingKeys: String, CodingKey { case id, title, petName, date, notes, repeatRule, completed, category }
-    init(id: String, title: String, petName: String, date: Date, notes: String = "", repeatRule: String = "Nunca", completed: Bool = false, category: String = "Personal") {
-        self.id = id; self.title = title; self.petName = petName; self.date = date
-        self.notes = notes; self.repeatRule = repeatRule; self.completed = completed; self.category = category
-    }
-    init(from decoder: Decoder) throws {
-        let values = try decoder.container(keyedBy: CodingKeys.self)
-        id = try values.decode(String.self, forKey: .id)
-        title = try values.decode(String.self, forKey: .title)
-        petName = try values.decode(String.self, forKey: .petName)
-        date = try values.decode(Date.self, forKey: .date)
-        notes = try values.decodeIfPresent(String.self, forKey: .notes) ?? ""
-        repeatRule = try values.decodeIfPresent(String.self, forKey: .repeatRule) ?? "Nunca"
-        completed = try values.decodeIfPresent(Bool.self, forKey: .completed) ?? false
-        category = try values.decodeIfPresent(String.self, forKey: .category) ?? "Personal"
-    }
-}
-
 @MainActor final class PawlyReminderStore: ObservableObject {
     static let shared = PawlyReminderStore()
     @Published private(set) var reminders: [PawlyLocalReminder] = []
@@ -42,7 +14,7 @@ struct PawlyLocalReminder: Identifiable, Codable {
     private let db = Firestore.firestore()
     private var agendaListener: ListenerRegistration?
     private var agendaPath: String?
-    private var attemptedAgendaMigration: Set<String> = []
+    @Published private(set) var systemAllowsNotifications = false
     private var activeUID: String?
     private var key: String { "pawly.localReminders.\(activeUID ?? "local")" }
 
@@ -50,7 +22,7 @@ struct PawlyLocalReminder: Identifiable, Codable {
     func loadForCurrentUser() {
         let uid = Auth.auth().currentUser?.uid
         guard uid != activeUID else { return }
-        center.removeAllPendingNotificationRequests(); activeUID = uid; loadStored(); rescheduleAll()
+        stopListening(); center.removeAllPendingNotificationRequests(); activeUID = uid; loadStored(); rescheduleAll()
     }
     func exportBackupData() -> Data? {
         try? JSONEncoder().encode(reminders)
@@ -67,38 +39,19 @@ struct PawlyLocalReminder: Identifiable, Codable {
         let path = "sharedPets/\(ownerUID)_\(petID)/agenda"
         guard path != agendaPath else { return }
         agendaListener?.remove(); agendaPath = path
-        agendaListener = db.collection(path).order(by: "date").limit(to: 500).addSnapshotListener { [weak self] snapshot, error in
+        agendaListener = db.collection(path).order(by: "date").addSnapshotListener(includeMetadataChanges: true) { [weak self] snapshot, error in
             Task { @MainActor in
-                guard let self else { return }
-                if let error { self.statusMessage = "No se pudo sincronizar la agenda: \(error.localizedDescription)"; return }
-                guard let snapshot else { return }
-                if snapshot.documents.isEmpty, !self.reminders.isEmpty,
-                   !self.attemptedAgendaMigration.contains(path),
-                   let uid = Auth.auth().currentUser?.uid {
-                    self.attemptedAgendaMigration.insert(path)
-                    let legacy = self.reminders
-                    for reminder in legacy {
-                        self.db.collection(path).document(reminder.id).setData([
-                            "id": reminder.id, "title": reminder.title,
-                            "date": Int64(reminder.date.timeIntervalSince1970 * 1000),
-                            "category": reminder.category, "createdBy": uid,
-                            "updatedAt": FieldValue.serverTimestamp()
-                        ])
-                    }
-                    return
-                }
-                let localByID = Dictionary(uniqueKeysWithValues: self.reminders.map { ($0.id, $0) })
-                self.reminders = snapshot.documents.compactMap { document in
+                guard let self, self.agendaPath == path, self.activeUID == Auth.auth().currentUser?.uid else { return }
+                if let error { self.statusMessage = error.localizedDescription; return }
+                guard let snapshot, !snapshot.metadata.isFromCache, !snapshot.metadata.hasPendingWrites else { return }
+                let remote = snapshot.documents.compactMap { document -> PawlyLocalReminder? in
                     guard let title = document.get("title") as? String,
                           let millis = document.get("date") as? NSNumber else { return nil }
-                    let remote = PawlyLocalReminder(id: document.documentID, title: title, petName: petName,
+                    return PawlyLocalReminder(id: document.documentID, title: title, petName: petName,
                         date: Date(timeIntervalSince1970: millis.doubleValue / 1000),
                         category: document.get("category") as? String ?? "Personal")
-                    guard let local = localByID[document.documentID] else { return remote }
-                    var merged = local; merged.title = remote.title; merged.petName = remote.petName
-                    merged.date = remote.date; merged.category = remote.category
-                    return merged
                 }
+                self.reminders = PawlyAgendaCache.merge(local: self.reminders, remote: remote, scope: path, name: petName)
                 self.persist(); self.rescheduleAll(); self.statusMessage = "Agenda sincronizada con la mascota."
             }
         }
@@ -111,61 +64,75 @@ struct PawlyLocalReminder: Identifiable, Codable {
     func requestPermission() async -> String {
         do { let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge]); statusMessage = granted ? "Notificaciones activadas en este dispositivo." : "Permiso denegado. Actívalo en Ajustes de iOS."; if granted { rescheduleAll(); PawlyAppDelegate.registerForRemoteNotifications() } }
         catch { statusMessage = error.localizedDescription }
+        refreshAuthorizationStatus()
         return statusMessage ?? ""
     }
-    func refreshAuthorizationStatus() { center.getNotificationSettings { [weak self] settings in Task { @MainActor in self?.statusMessage = settings.authorizationStatus == .authorized ? "Avisos locales activados." : "Activa las notificaciones en Ajustes de iOS." } } }
-    func add(title: String, petName: String, date: Date, notes: String, repeatRule: String, category: String) {
-        let item = PawlyLocalReminder(id: UUID().uuidString, title: title.trimmingCharacters(in: .whitespacesAndNewlines), petName: petName, date: date, notes: notes, repeatRule: repeatRule, category: category)
-        reminders.append(item); persist(); schedule(item)
-        guard let agendaPath, let uid = Auth.auth().currentUser?.uid else { return }
-        let values: [String: Any] = ["id": item.id, "title": item.title, "date": Int64(date.timeIntervalSince1970 * 1000), "category": category, "createdBy": uid, "updatedAt": FieldValue.serverTimestamp()]
-        db.collection(agendaPath).document(item.id).setData(values) { [weak self] error in
-            if let error { Task { @MainActor in self?.statusMessage = "No se pudo sincronizar el aviso: \(error.localizedDescription)" } }
+    func refreshAuthorizationStatus() {
+        Task {
+            let settings = await center.notificationSettings()
+            systemAllowsNotifications = [.authorized, .provisional, .ephemeral].contains(settings.authorizationStatus)
         }
     }
 
-    func upsert(_ item: PawlyLocalReminder) {
-        reminders.removeAll { $0.id == item.id }
-        reminders.append(item)
-        reminders.sort { $0.date < $1.date }
-        persist()
-        center.removePendingNotificationRequests(withIdentifiers: [item.id])
-        schedule(item)
-        guard let agendaPath, let uid = Auth.auth().currentUser?.uid else { return }
-        let values: [String: Any] = [
-            "id": item.id,
-            "title": item.title,
-            "date": Int64(item.date.timeIntervalSince1970 * 1000),
-            "category": item.category,
-            "createdBy": uid,
-            "updatedAt": FieldValue.serverTimestamp()
-        ]
-        db.collection(agendaPath).document(item.id).setData(values) { [weak self] error in
-            if let error {
-                Task { @MainActor in self?.statusMessage = "No se pudo sincronizar el recordatorio: \(error.localizedDescription)" }
+    func scope(for pet: PawlyPet) -> String? {
+        guard let uid = Auth.auth().currentUser?.uid else { return nil }
+        return "sharedPets/\(pet.ownerUID ?? uid)_\(pet.id)/agenda"
+    }
+
+    func items(for pet: PawlyPet?) -> [PawlyLocalReminder] {
+        guard let pet, let path = scope(for: pet) else { return [] }
+        return reminders.filter { $0.belongs(to: path, name: pet.name) }.sorted { $0.date < $1.date }
+    }
+
+    func save(_ reminder: PawlyLocalReminder, pet: PawlyPet) async throws {
+        loadForCurrentUser()
+        guard let path = scope(for: pet), let uid = activeUID else { throw PawlyStoreError.notSignedIn }
+        var item = reminder
+        item.petScope = path
+        if Auth.auth().currentUser?.isEmailVerified == true {
+            let ref = db.collection(path).document(item.id)
+            let mutable: [String: Any] = ["title": item.title, "date": Int64(item.date.timeIntervalSince1970 * 1000),
+                                          "category": item.category, "updatedAt": FieldValue.serverTimestamp()]
+            let id = item.id
+            _ = try await db.runTransaction { transaction, failure -> Any? in
+                do {
+                    if try transaction.getDocument(ref).exists { transaction.updateData(mutable, forDocument: ref) }
+                    else { transaction.setData(mutable.merging(["id": id, "createdBy": uid]) { original, _ in original }, forDocument: ref) }
+                } catch { failure?.pointee = error as NSError }
+                return nil
             }
+            item.synced = true
         }
+        guard activeUID == uid, Auth.auth().currentUser?.uid == uid else { return }
+        reminders.removeAll { $0.id == item.id && $0.belongs(to: path, name: pet.name) }
+        reminders.append(item)
+        persist()
+        rescheduleAll()
     }
 
-    func remove(id: String) {
-        guard let item = reminders.first(where: { $0.id == id }) else { return }
-        remove(item)
-    }
     func toggle(_ item: PawlyLocalReminder) {
-        guard let index = reminders.firstIndex(where: { $0.id == item.id }) else { return }
+        guard let index = reminders.firstIndex(where: { $0.id == item.id && $0.petScope == item.petScope }) else { return }
         reminders[index].completed.toggle()
-        if reminders[index].completed { center.removePendingNotificationRequests(withIdentifiers: [item.id]) } else { schedule(reminders[index]) }
         persist()
+        rescheduleAll()
     }
-    func remove(_ item: PawlyLocalReminder) {
-        reminders.removeAll { $0.id == item.id }; center.removePendingNotificationRequests(withIdentifiers: [item.id]); persist()
-        if let agendaPath { db.collection(agendaPath).document(item.id).delete { [weak self] error in if let error { Task { @MainActor in self?.statusMessage = "No se pudo borrar el aviso: \(error.localizedDescription)" } } } }
+
+    func remove(id: String, pet: PawlyPet) async throws {
+        guard let path = scope(for: pet), let uid = activeUID else { return }
+        let local = items(for: pet).first { $0.id == id }
+        if Auth.auth().currentUser?.isEmailVerified == true && local?.synced != false {
+            try await db.collection(path).document(id).delete()
+        }
+        guard activeUID == uid, Auth.auth().currentUser?.uid == uid else { return }
+        reminders.removeAll { $0.id == id && $0.belongs(to: path, name: pet.name) }
+        persist()
+        rescheduleAll()
     }
     func cancelAllNotifications() { center.removeAllPendingNotificationRequests(); statusMessage = "Avisos pausados. Los recordatorios siguen guardados." }
     private func persist() { if let data = try? JSONEncoder().encode(reminders) { UserDefaults.standard.set(data, forKey: key) } }
     private func rescheduleAll() { center.removeAllPendingNotificationRequests(); reminders.filter { !$0.completed && $0.date > Date() }.forEach(schedule) }
     private func schedule(_ item: PawlyLocalReminder) {
-        guard !item.completed, item.date > Date() else { return }
+        guard UserDefaults.standard.object(forKey: "pawly.notificationsEnabled") as? Bool != false, !item.completed, item.date > Date() else { return }
         let content = UNMutableNotificationContent(); content.title = item.title
         content.body = item.notes.isEmpty ? "\(item.petName) · \(item.category)" : "\(item.petName): \(item.notes)"; content.sound = .default
         var components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: item.date)
@@ -186,42 +153,76 @@ struct PawlyLocalReminder: Identifiable, Codable {
 struct PawlyRemindersView: View {
     @StateObject private var store = PawlyReminderStore.shared
     @EnvironmentObject private var pets: PawlyPetStore
+    @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("pawly.notificationsEnabled") private var noticesEnabled = true
+    @State private var editing: PawlyLocalReminder?
     @State private var showAdd = false
     @State private var permissionMessage:String?
     var body: some View {
         List {
             Section("Agenda compartida") {
-                if store.reminders.isEmpty { Text("Todavía no tienes avisos. Crea uno para vacunas, medicación, revisiones o cualquier cuidado.").font(.subheadline).foregroundStyle(.secondary) }
-                ForEach(store.reminders) { item in
+                if store.items(for: pets.selectedPet).isEmpty { Text("Todavía no tienes avisos. Crea uno para vacunas, medicación, revisiones o cualquier cuidado.").font(.subheadline).foregroundStyle(.secondary) }
+                ForEach(store.items(for: pets.selectedPet)) { item in
                     HStack(spacing: 10) {
                         Button { store.toggle(item) } label: { Image(systemName: item.completed ? "checkmark.circle.fill" : "circle").font(.title2).foregroundStyle(PawlyColors.primary) }.buttonStyle(.plain)
                         VStack(alignment: .leading, spacing: 3) { Text(item.title).strikethrough(item.completed).font(.headline); Text("\(item.category) · \(item.petName) · \(item.date.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary); if !item.notes.isEmpty { Text(item.notes).font(.caption).foregroundStyle(.secondary) } }
-                        Spacer(); Button(role: .destructive) { store.remove(item) } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
+                        Spacer(); Button { editing = item } label: { Label("Editar", systemImage: "pencil").labelStyle(.iconOnly) }.buttonStyle(.borderless)
+                        Button(role: .destructive) {
+                            guard let pet = pets.selectedPet else { return }
+                            Task { do { try await store.remove(id: item.id, pet: pet) } catch { store.statusMessage = error.localizedDescription } }
+                        } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
                     }.padding(.vertical, 4)
                 }
             }
             Section { Button { showAdd = true } label: { Label("Crear recordatorio", systemImage: "plus.circle.fill") }.buttonStyle(.borderless)
-                Button { Task { permissionMessage = await store.requestPermission() } } label: { Label("Activar avisos", systemImage: "bell.badge") }.buttonStyle(.borderless)
+                if noticesEnabled && store.systemAllowsNotifications {
+                    Label("Avisos activados", systemImage: "checkmark.circle")
+                    Button("Pausar avisos de Pawly") {
+                        noticesEnabled = false
+                        store.cancelAllNotifications()
+                        PawlyAppDelegate.disableRemoteNotifications()
+                    }
+                } else {
+                    Button { noticesEnabled = true; Task { permissionMessage = await store.requestPermission() } } label: {
+                        Label("Activar avisos", systemImage: "bell.badge")
+                    }.buttonStyle(.borderless)
+                }
                 Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Label("Abrir ajustes de notificaciones",systemImage:"gear") }.buttonStyle(.borderless) }
             if let permissionMessage { Section { Text(permissionMessage).font(.caption).foregroundStyle(.secondary) } }
             if let message = store.statusMessage { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
         }
         .navigationTitle("Agenda")
-        .sheet(isPresented: $showAdd) { PawlyReminderForm(petName: pets.selectedPet?.name ?? "Mi mascota") { title, date, notes, repeatRule, category in store.add(title: title, petName: pets.selectedPet?.name ?? "Mi mascota", date: date, notes: notes, repeatRule: repeatRule, category: category) } }
+        .sheet(isPresented: $showAdd) { if let pet = pets.selectedPet { form(for: pet) } }
+        .sheet(item: $editing) { item in if let pet = pets.selectedPet { form(for: pet, reminder: item) } }
         .onAppear { store.loadForCurrentUser(); store.refreshAuthorizationStatus() }
-        .task(id: pets.selectedPet?.id) {
-            guard let pet = pets.selectedPet, let uid = Auth.auth().currentUser?.uid, Auth.auth().currentUser?.isEmailVerified == true else { return }
-            do { try await pets.ensureSharedPet(pet); store.listenAgenda(ownerUID: pet.ownerUID ?? uid, petID: pet.id, petName: pet.name) }
-            catch { store.statusMessage = "No se pudo abrir la agenda compartida: \(error.localizedDescription)" }
+        .onChange(of: scenePhase) { if $0 == .active { store.refreshAuthorizationStatus() } }
+    }
+
+    private func form(for pet: PawlyPet, reminder: PawlyLocalReminder? = nil) -> some View {
+        PawlyReminderForm(petName: pet.name, existing: reminder) { title, date, notes, repeatRule, category in
+            try await store.save(PawlyLocalReminder(id: reminder?.id ?? UUID().uuidString, title: title, petName: pet.name,
+                date: date, notes: notes, repeatRule: repeatRule, completed: reminder?.completed ?? false, category: category), pet: pet)
         }
-        .onDisappear { store.stopListening() }
     }
 }
 
 struct PawlyReminderForm: View {
     @Environment(\.dismiss) private var dismiss
     let petName: String
-    var onSave: (String, Date, String, String, String) -> Void
+    var onSave: (String, Date, String, String, String) async throws -> Void
+    @State private var busy = false
+    @State private var error: String?
+    init(petName: String, existing: PawlyLocalReminder? = nil, onSave: @escaping (String, Date, String, String, String) async throws -> Void) {
+        self.petName = petName
+        self.onSave = onSave
+        if let existing {
+            _title = State(initialValue: existing.title)
+            _date = State(initialValue: existing.date)
+            _notes = State(initialValue: existing.notes)
+            _repeatRule = State(initialValue: existing.repeatRule)
+            _category = State(initialValue: existing.category)
+        }
+    }
     @State private var title = ""
     @State private var date = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
     @State private var notes = ""
@@ -235,10 +236,18 @@ struct PawlyReminderForm: View {
                 Picker("Categoría", selection: $category) { ForEach(["Personal", "Veterinario", "Cuidado", "Paseo", "Viaje"], id: \.self) { Text($0) } }
                 TextField("Notas (opcional)", text: $notes, axis: .vertical).lineLimit(2...4)
                 Picker("Repetición", selection: $repeatRule) { ForEach(["Nunca", "Cada día", "Cada semana", "Cada mes", "Cada año"], id: \.self) { Text($0) } }
+                if let error { Text(error).foregroundStyle(.red) }
                 LabeledContent("Mascota", value: petName)
-            }.navigationTitle("Nuevo aviso").toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Guardar") { onSave(title, date, notes, repeatRule, category); dismiss() }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 || date <= Date()) }
+            }.disabled(busy).interactiveDismissDisabled(busy).navigationTitle("Recordatorio").toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.disabled(busy) }
+                ToolbarItem(placement: .confirmationAction) { Button("Guardar") {
+                    busy = true
+                    Task {
+                        defer { busy = false }
+                        do { try await onSave(title.trimmingCharacters(in: .whitespacesAndNewlines), date, notes, repeatRule, category); dismiss() }
+                        catch { self.error = error.localizedDescription }
+                    }
+                }.disabled(busy || title.count > 100 || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 || date <= Date()) }
             }
         }
     }

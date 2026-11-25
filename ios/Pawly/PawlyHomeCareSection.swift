@@ -85,8 +85,7 @@ struct PawlyHomeCareSection: View {
                 date: date
             ))
         }
-        for reminder in reminders.reminders where
-            reminder.petName.caseInsensitiveCompare(pet.name) == .orderedSame &&
+        for reminder in reminders.items(for: pet) where
             !reminder.completed && reminder.date > Date() {
             candidates.append(PawlyHomeUpcomingItem(
                 id: "reminder-" + reminder.id, detail: reminder.notes,

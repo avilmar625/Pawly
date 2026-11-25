@@ -27,7 +27,18 @@ struct PawlyTabView: View {
             selectedTab = 3
         }
         .task { await pets.loadPets(); pets.startListening() }
-        .onDisappear { pets.stopListening() }
+        .task(id: pets.selectedPet) {
+            let reminders = PawlyReminderStore.shared
+            reminders.loadForCurrentUser()
+            reminders.stopListening()
+            guard let pet = pets.selectedPet, let user = Auth.auth().currentUser, user.isEmailVerified else { return }
+            do {
+                try await pets.ensureSharedPet(pet)
+                try Task.checkCancellation()
+                reminders.listenAgenda(ownerUID: pet.ownerUID ?? user.uid, petID: pet.id, petName: pet.name)
+            } catch { if !Task.isCancelled { reminders.statusMessage = error.localizedDescription } }
+        }
+        .onDisappear { pets.stopListening(); PawlyReminderStore.shared.stopListening() }
     }
 }
 
@@ -519,11 +530,13 @@ struct CareView:View {
             if entry.reminderEnabled,
                let reminderDate=healthReminderDate(nextDoseDate:entry.nextDoseDate,time:entry.reminderTime),
                reminderDate>Date() {
-                PawlyReminderStore.shared.upsert(PawlyLocalReminder(
+                try await PawlyReminderStore.shared.save(PawlyLocalReminder(
                     id:reminderID,title:"Salud · \(entry.title)",petName:pet.name,date:reminderDate,
                     notes:entry.product.isEmpty ? "Próxima dosis o revisión":entry.product,category:"Veterinario"
-                ))
-            } else { PawlyReminderStore.shared.remove(id:reminderID) }
+                ), pet: pet)
+            } else if PawlyReminderStore.shared.items(for: pet).contains(where: { $0.id == reminderID }) {
+                try await PawlyReminderStore.shared.remove(id: reminderID, pet: pet)
+            }
             await load()
         } catch { self.error=error.localizedDescription; throw error }
     }
@@ -545,7 +558,7 @@ struct CareView:View {
         Task {
             do {
                 try await pets.deletePassport(entry.id,pet:pet)
-                PawlyReminderStore.shared.remove(id:"health-\(pet.id)-\(entry.id)")
+                try await PawlyReminderStore.shared.remove(id:"health-\(pet.id)-\(entry.id)", pet: pet)
                 await load()
             } catch { self.error=error.localizedDescription }
         }
@@ -608,6 +621,7 @@ struct PassportEntrySheet:View {
     @State private var weight: Double
     @State private var saving = false
     @State private var saveError: String?
+    @State private var recordID = UUID().uuidString
     private let fixedWeight: Bool
 
     init(initialType: String? = nil, latestWeight: Double? = nil, onSave: @escaping (PawlyPassportEntry) async throws -> Void) {
@@ -698,7 +712,7 @@ struct PassportEntrySheet:View {
                             defer { saving = false }
                             do {
                             try await onSave(PawlyPassportEntry(
-                                id:UUID().uuidString,type:type,title:type == "Peso" ? String(format:"%.1f kg",weight) : title.trimmingCharacters(in:.whitespacesAndNewlines),
+                                id:recordID,type:type,title:type == "Peso" ? String(format:"%.1f kg",weight) : title.trimmingCharacters(in:.whitespacesAndNewlines),
                                 detail:detail.trimmingCharacters(in:.whitespacesAndNewlines),date:dateFormatter.string(from:date),
                                 product:String(product.prefix(120)),dose:String(dose.prefix(120)),
                                 frequency:String(frequency.prefix(120)),clinic:String(clinic.prefix(120)),
@@ -1029,7 +1043,7 @@ struct DiaryView:View {
         do {
             var urls:[String]=[]
             for item in selectedPhotos {
-                guard let data=try await item.loadTransferable(type:Data.self) else{continue}
+                guard let data=try await item.loadTransferable(type:Data.self) else{throw PawlyMediaError.invalidImage}
                 urls.append(try await PawlyCloudinaryUploader().uploadImage(data,folder:"diary-photos",ownerUID:uid))
             }
             for data in cameraPhotos {
@@ -1069,6 +1083,12 @@ struct CommunityView:View {
     @EnvironmentObject private var pets:PawlyPetStore
     @EnvironmentObject private var pushRouter:PawlyPushRouter
     @State private var composer=false
+    @State private var feedCategory = ""
+    @State private var newestFirst = true
+    private var visiblePosts: [PawlyFeedPost] {
+        let filtered = store.posts.filter { feedCategory.isEmpty || $0.category == feedCategory }
+        return newestFirst ? filtered : Array(filtered.reversed())
+    }
     @State private var composerCategory="STORY"
     @State private var people=false
     @State private var inbox=false
@@ -1134,46 +1154,31 @@ struct CommunityView:View {
                         }
                         .accessibilityLabel("Mensajes, \(store.unreadMessageCount) sin leer")
 
-                        Menu {
-                            Button {
-                                people = true
-                            } label: {
-                                Label("Buscar personas", systemImage: "magnifyingglass")
-                            }
-                            Button {
-                                composerCategory = "LOST"
-                                composer = true
-                            } label: {
-                                Label("Avisar de mascota perdida", systemImage: "pawprint.slash.fill")
-                            }
-                            Button {
-                                composerCategory = "STORY"
-                                composer = true
-                            } label: {
-                                Label("Crear publicación", systemImage: "plus")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle.fill")
-                                .font(.headline)
-                                .foregroundStyle(PawlyColors.primary)
-                                .frame(width: 40, height: 40)
-                                .background(PawlyColors.mint, in: Circle())
+                        Button { people = true } label: {
+                            Label("Buscar personas", systemImage: "magnifyingglass").labelStyle(.iconOnly).frame(width: 44, height: 44)
                         }
-                        .accessibilityLabel("Más acciones de Comunidad")
                     }
-                    Button { people = true } label: {
-                        HStack {
-                            Label("Buscar personas", systemImage: "person.crop.circle.badge.plus")
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption)
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .padding(11).foregroundStyle(PawlyColors.primary)
-                        .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 14))
-                    }.buttonStyle(.plain)
+                    HStack {
+                        Button { composerCategory = "STORY"; composer = true } label: {
+                            Label("Crear publicación", systemImage: "plus")
+                        }.buttonStyle(.borderedProminent)
+                        Spacer()
+                        Menu {
+                            Picker("Tipo", selection: $feedCategory) {
+                                Text("Todos").tag("")
+                                Text("Historia").tag("STORY")
+                                Text("Adopción").tag("ADOPTION")
+                                Text("Perdido").tag("LOST")
+                                Text("Encontrado").tag("FOUND")
+                                Text("Acogida").tag("FOSTER")
+                            }
+                            Toggle("Más recientes primero", isOn: $newestFirst)
+                        } label: { Label("Filtrar", systemImage: "line.3.horizontal.decrease.circle") }
+                    }
                     if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
                     if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
-                    ForEach(store.posts){post in
+                    if !store.posts.isEmpty && visiblePosts.isEmpty { Text("No hay publicaciones de este tipo.") }
+                    ForEach(visiblePosts){post in
                         FeedPostCard(post:post,onLike:{Task{do{try await store.toggleLike(post)}catch { store.statusMessage = error.localizedDescription }}},onComment:{comments=post})
                     }
                 }.padding(15)
@@ -1189,6 +1194,7 @@ struct CommunityView:View {
                 .onDisappear{
                     store.stopFeed()
                     store.stopChats()
+                    store.stopNotifications()
                 }
                 .onChange(of:pushRouter.destination?.id) { _ in
                     guard let destination=pushRouter.destination else{return}
@@ -1415,58 +1421,35 @@ struct PostComposerSheet:View {
     @State private var category="STORY"
     @State private var busy=false
     @State private var error:String?
-    @State private var imageItem:PhotosPickerItem?
-    @State private var videoItem:PhotosPickerItem?
-    @State private var cameraImage:Data?
-    @State private var cameraVideo:Data?
+    @StateObject private var attachment = PawlyAttachmentDraft()
     var body:some View {
         NavigationStack {
             Form {
                 Picker("Tipo",selection:$category){Text("Historia").tag("STORY");Text("Adopción").tag("ADOPTION");Text("Perdido").tag("LOST");Text("Encontrado").tag("FOUND");Text("Acogida").tag("FOSTER")}
                 TextField("¿Qué queréis compartir?",text:$text,axis:.vertical).lineLimit(5...10)
-                Section("Fotografía") {
-                    PhotosPicker(selection:$imageItem,matching:.images){Label("Elegir foto de la galería",systemImage:"photo")}
-                    PawlyCameraButton { data in imageItem=nil;cameraImage=data }
-                }
-                Section("Vídeo") {
-                    PhotosPicker(selection:$videoItem,matching:.videos){Label("Elegir vídeo de la galería",systemImage:"film")}
-                    PawlyCameraButton(kind:.video,label:"Grabar vídeo"){data in videoItem=nil;cameraVideo=data}
-                }
-                if imageItem != nil || cameraImage != nil { Label("Fotografía seleccionada",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
-                if videoItem != nil || cameraVideo != nil { Label("Vídeo seleccionado",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(PawlyColors.primary) }
+                Section("Archivo adjunto") { PawlyAttachmentPicker(draft: attachment) }
+                if busy { ProgressView("Publicando…") }
                 if !petName.isEmpty{LabeledContent("Mascota",value:petName)}
                 if let error{Text(error).foregroundStyle(.red)}
                 Text("Para publicar necesitas verificar tu correo.").font(.caption).foregroundStyle(.secondary)
             }
-            .onChange(of:imageItem){item in if item != nil {cameraImage=nil}}
-            .onChange(of:videoItem){item in if item != nil {cameraVideo=nil}}
+            .disabled(busy)
+            .interactiveDismissDisabled(busy)
             .navigationTitle("Nueva publicación").onAppear{category=initialCategory}.toolbar{
-                ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}
+                ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}.disabled(busy)}
                 ToolbarItem(placement:.confirmationAction){Button(busy ? "Publicando…" : "Publicar"){
                     Task {
                         busy=true
                         do {
                             guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
-                            let uploader=PawlyCloudinaryUploader()
-                            var imageURL="",videoURL=""
-                            if let cameraImage {
-                                imageURL=try await uploader.uploadImage(cameraImage,folder:"post-photos",ownerUID:uid)
-                            } else if let item=imageItem {
-                                guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
-                                imageURL=try await uploader.uploadImage(data,folder:"post-photos",ownerUID:uid)
-                            }
-                            if let cameraVideo {
-                                videoURL=try await uploader.uploadVideo(cameraVideo,folder:"post-videos",ownerUID:uid)
-                            } else if let item=videoItem {
-                                guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
-                                videoURL=try await uploader.uploadVideo(data,folder:"post-videos",ownerUID:uid)
-                            }
-                            try await onPublish(text,category,imageURL,videoURL)
+                            guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyCommunityError.verifyEmail }
+                            let media = try await attachment.upload(owner: uid, forPost: true)
+                            try await onPublish(text, category, media.image, media.video)
                             dismiss()
                         } catch { self.error=error.localizedDescription }
                         busy=false
                     }
-                }.disabled(busy || (text.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil && cameraImage == nil && cameraVideo == nil))}
+                }.disabled(busy || attachment.loading || text.count > 2000 || (text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && !attachment.hasAttachment))}
             }
         }
     }
@@ -1622,10 +1605,7 @@ struct ChatView:View {
     @State private var draft=""
     @State private var error:String?
     @State private var listener:ListenerRegistration?
-    @State private var imageItem:PhotosPickerItem?
-    @State private var videoItem:PhotosPickerItem?
-    @State private var cameraImage:Data?
-    @State private var cameraVideo:Data?
+    @StateObject private var attachment = PawlyAttachmentDraft()
     @State private var sending=false
 
     var body:some View {
@@ -1684,35 +1664,17 @@ struct ChatView:View {
     }
 
     private var composer:some View {
-        HStack(spacing:10) {
-            PhotosPicker(selection:$imageItem,matching:.images) {
-                Image(systemName:"photo").font(.title3).foregroundStyle(PawlyColors.primary)
-            }.accessibilityLabel("Foto de galería")
-            PhotosPicker(selection:$videoItem,matching:.videos) {
-                Image(systemName:"film").font(.title3).foregroundStyle(PawlyColors.primary)
-            }.accessibilityLabel("Vídeo de galería")
-            PawlyCameraButton { data in imageItem=nil;videoItem=nil;cameraVideo=nil;cameraImage=data }
-                .labelStyle(.iconOnly)
-            PawlyCameraButton(kind:.video,label:"Grabar vídeo") { data in imageItem=nil;videoItem=nil;cameraImage=nil;cameraVideo=data }
-                .labelStyle(.iconOnly)
-            TextField("Mensaje",text:$draft,axis:.vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
-            Button(action:send) {
-                Image(systemName:"arrow.up.circle.fill").font(.system(size:30)).foregroundStyle(PawlyColors.primary)
+        VStack(alignment: .leading) {
+            PawlyAttachmentPicker(draft: attachment)
+            HStack {
+                TextField("Mensaje", text: $draft, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                if sending { ProgressView() }
+                else {
+                    Button(action: send) { Label("Enviar", systemImage: "arrow.up.circle.fill").labelStyle(.iconOnly).font(.title) }
+                        .disabled(attachment.loading || (draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !attachment.hasAttachment))
+                }
             }
-            .disabled(sending || (draft.trimmingCharacters(in:.whitespaces).isEmpty && imageItem == nil && videoItem == nil && cameraImage == nil && cameraVideo == nil))
-        }
-        .padding()
-        .onChange(of:imageItem) { _ in if imageItem != nil { videoItem=nil;cameraImage=nil;cameraVideo=nil } }
-        .onChange(of:videoItem) { _ in if videoItem != nil { imageItem=nil;cameraImage=nil;cameraVideo=nil } }
-        .safeAreaInset(edge:.top) {
-            if imageItem != nil || videoItem != nil || cameraImage != nil || cameraVideo != nil {
-                HStack {
-                    Label("Archivo adjunto",systemImage:"paperclip").font(.caption)
-                    Spacer()
-                    Button("Quitar"){imageItem=nil;videoItem=nil;cameraImage=nil;cameraVideo=nil}.font(.caption)
-                }.padding(.horizontal).background(PawlyColors.surface)
-            }
-        }
+        }.padding(.horizontal).padding(.vertical, 5).disabled(sending)
     }
 
     private func send() {
@@ -1723,22 +1685,12 @@ struct ChatView:View {
             defer{sending=false}
             do {
                 guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
-                let uploader=PawlyCloudinaryUploader()
-                var imageURL="",videoURL=""
-                if let cameraImage {
-                    imageURL=try await uploader.uploadImage(cameraImage,folder:"message-photos",ownerUID:uid)
-                } else if let item=imageItem {
-                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.invalidImage }
-                    imageURL=try await uploader.uploadImage(data,folder:"message-photos",ownerUID:uid)
-                }
-                if let cameraVideo {
-                    videoURL=try await uploader.uploadVideo(cameraVideo,folder:"message-videos",ownerUID:uid)
-                } else if let item=videoItem {
-                    guard let data=try await item.loadTransferable(type:Data.self) else { throw PawlyMediaError.videoTooLarge }
-                    videoURL=try await uploader.uploadVideo(data,folder:"message-videos",ownerUID:uid)
-                }
-                try await store.sendMessage(conversationID:chat.id,text:value,imageURL:imageURL,videoURL:videoURL)
-                draft="";imageItem=nil;videoItem=nil;cameraImage=nil;cameraVideo=nil;error=nil
+                guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyCommunityError.verifyEmail }
+                let media = try await attachment.upload(owner: uid, forPost: false)
+                try await store.sendMessage(conversationID: chat.id, text: value, imageURL: media.image, videoURL: media.video)
+                draft = ""
+                attachment.clear()
+                error = nil
             } catch { self.error=error.localizedDescription }
         }
     }

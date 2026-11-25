@@ -375,7 +375,6 @@ struct PawlyCalendarView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement: .topBarTrailing) { NavigationLink { PawlyRemindersView() } label: { Label("Recordatorios", systemImage: "bell.badge") } } }
                 .task(id: pet.id) { await load(pet) }
-                .onDisappear { reminders.stopListening() }
             } else {
                 PawlyEmptyState(icon: "calendar", title: "Añade una mascota", detail: "Su calendario de cuidados aparecerá aquí.")
             }
@@ -402,7 +401,7 @@ struct PawlyCalendarView: View {
     }
 
     private var events: [PawlyCalendarEvent] {
-        var result = reminders.reminders.filter { !$0.completed }.map {
+        var result = reminders.items(for: pets.selectedPet).filter { !$0.completed }.map {
             PawlyCalendarEvent(id: "reminder-\($0.id)", title: $0.title,
                                subtitle: "\($0.petName) · \($0.category)", date: $0.date,
                                symbol: "bell.fill", tint: PawlyColors.primary)
@@ -454,10 +453,6 @@ struct PawlyCalendarView: View {
             passport = try await p
             tasks = try await t
             diary = try await d
-            if let uid = Auth.auth().currentUser?.uid {
-                reminders.loadForCurrentUser()
-                reminders.listenAgenda(ownerUID: pet.ownerUID ?? uid, petID: pet.id, petName: pet.name)
-            }
             error = nil
         } catch let loadError {
             self.error = loadError.localizedDescription

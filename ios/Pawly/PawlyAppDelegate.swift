@@ -25,6 +25,7 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             FirebaseApp.configure()
         }
 
+        guard FirebaseApp.app() != nil else { return true }
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
 
