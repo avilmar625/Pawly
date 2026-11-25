@@ -37,7 +37,7 @@ enum PawlyPDFExporter {
             }
             draw("Generado con Pawly · \(Date.now.formatted(date:.long,time:.shortened))",size:8,color:.tertiaryLabel,spacing:0)
         }
-        let url=FileManager.default.temporaryDirectory.appendingPathComponent("Pawly-\(pet.name.replacingOccurrences(of:" ",with:"-"))-cuidados.pdf")
+        let url=FileManager.default.temporaryDirectory.appendingPathComponent("Pawly-\(UUID().uuidString)-cuidados.pdf")
         try data.write(to:url,options:.atomic)
         return url
     }

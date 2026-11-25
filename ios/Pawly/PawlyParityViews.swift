@@ -178,8 +178,8 @@ struct PawlyProfileEditorView:View {
     }
    }
    Section("Comunidad") {
-    LabeledContent("Seguidores",value:"\(followers)")
-    LabeledContent("Siguiendo",value:"\(following)")
+    NavigationLink { PawlyRelationshipList(relation: .followers) } label: { LabeledContent("Seguidores",value:"\(followers)") }
+    NavigationLink { PawlyRelationshipList(relation: .following) } label: { LabeledContent("Siguiendo",value:"\(following)") }
     Text("El nombre de usuario es tu identificador y no se cambia desde esta pantalla.")
      .font(.caption).foregroundStyle(.secondary)
    }

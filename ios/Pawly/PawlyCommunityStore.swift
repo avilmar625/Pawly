@@ -322,6 +322,21 @@ final class PawlyCommunityStore: ObservableObject {
         await createActivityNotification(targetUID: postAuthorID, type: "COMMENT",
                                          relatedID: postID, sourceEventID: comment.documentID)
     }
+    func publicUser(_ id: String) async throws -> PawlyPublicUser? {
+        guard let me = uid, !id.isEmpty else { throw PawlyCommunityError.notSignedIn }
+        let document = try await db.collection("users").document(id).getDocument()
+        guard let fields = document.data(), fields["isPublic"] as? Bool == true || id == me else { return nil }
+        let following = try await db.collection("users").document(me).collection("following").document(id).getDocument()
+        return publicUser(id: id, fields: fields, following: following.exists)
+    }
+
+    private func publicUser(id: String, fields: [String: Any], following: Bool) -> PawlyPublicUser {
+        let username = fields["username"] as? String ?? ""
+        return PawlyPublicUser(id: id, username: username, displayName: fields["displayName"] as? String ?? username,
+            bio: fields["bio"] as? String ?? "", photoURL: fields["photoUrl"] as? String ?? "",
+            followersCount: fields["followersCount"] as? Int ?? 0, following: following)
+    }
+
     func searchUsers(_ query:String) async throws -> [PawlyPublicUser] {
         guard let me=uid else{throw PawlyCommunityError.notSignedIn}
         let clean=query.trimmingCharacters(in:.whitespacesAndNewlines).replacingOccurrences(of:"@",with:"").lowercased()
@@ -335,10 +350,7 @@ final class PawlyCommunityStore: ObservableObject {
         var results:[PawlyPublicUser]=[]
         for d in docs.documents where d.documentID != me && !blockedIDs.contains(d.documentID) {
             let x=d.data(), following=try await db.collection("users").document(me).collection("following").document(d.documentID).getDocument()
-            results.append(PawlyPublicUser(id:d.documentID,username:x["username"] as? String ?? "",
-                displayName:x["displayName"] as? String ?? x["username"] as? String ?? "Usuario",
-                bio:x["bio"] as? String ?? "",photoURL:x["photoUrl"] as? String ?? "",
-                followersCount:x["followersCount"] as? Int ?? 0,following:following.exists))
+            results.append(publicUser(id: d.documentID, fields: x, following: following.exists))
         }
         return results
     }

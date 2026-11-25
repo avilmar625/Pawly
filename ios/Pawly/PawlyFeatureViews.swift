@@ -231,6 +231,8 @@ struct CareView:View {
     @State private var showTask=false
     @State private var showShare=false
     @State private var exportURL:URL?
+    @State private var exportReady = false
+    @State private var exporting = false
     @State private var error:String?
 
     private var preferenceScope:String {
@@ -478,8 +480,9 @@ struct CareView:View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement:.topBarTrailing) {
-                    if let exportURL { ShareLink(item:exportURL){Image(systemName:"square.and.arrow.up")} }
-                    else { Button(action:exportPDF){Image(systemName:"square.and.arrow.up")} }
+                    if exporting { ProgressView() }
+                    else if let exportURL { ShareLink(item:exportURL){Image(systemName:"square.and.arrow.up")} }
+                    else { Button(action:exportPDF){Image(systemName:"square.and.arrow.up")}.disabled(!exportReady).accessibilityLabel("Exportar PDF") }
                     Button{showShare=true} label:{Image(systemName:"person.2.badge.plus")}
                 }
             }
@@ -502,25 +505,34 @@ struct CareView:View {
         }
     }
     private func exportPDF() {
-        guard let pet=pets.selectedPet else{return}
+        guard let pet = pets.selectedPet, exportReady, !exporting else { return }
+        let entries = passport, routines = tasks
+        exporting = true
         Task {
+            defer { exporting = false }
             do {
-                let entries=try await pets.loadPassport(pet)
-                let routines=try await pets.loadTasks(pet)
-                exportURL=try PawlyPDFExporter.create(pet:pet,passport:entries,tasks:routines)
-                error=nil
-            } catch { self.error=error.localizedDescription }
+                let file = try await Task.detached(priority: .userInitiated) {
+                    try PawlyPDFExporter.create(pet: pet, passport: entries, tasks: routines)
+                }.value
+                guard pets.selectedPet == pet, exportReady else { return }
+                exportURL = file
+                error = nil
+            } catch { self.error = error.localizedDescription }
         }
     }
     @MainActor private func load() async {
-        guard let pet=pets.selectedPet else { passport=[];tasks=[];return }
+        exportReady = false
+        exportURL = nil
+        guard let pet = pets.selectedPet else { passport = []; tasks = []; return }
         do {
-            async let p=pets.loadPassport(pet)
-            async let t=pets.loadTasks(pet)
-            passport=try await p
-            tasks=try await t
-            error=nil
-        } catch { self.error=error.localizedDescription }
+            async let p = pets.loadPassport(pet)
+            async let t = pets.loadTasks(pet)
+            let values = try await (p, t)
+            guard !Task.isCancelled, pets.selectedPet == pet else { return }
+            (passport, tasks) = values
+            exportReady = true
+            error = nil
+        } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
     }
     private func savePassportEntry(_ entry:PawlyPassportEntry) async throws {
         guard let pet=pets.selectedPet else { throw NSError(domain:"Pawly",code:1,userInfo:[NSLocalizedDescriptionKey:"Selecciona una mascota."]) }
@@ -882,6 +894,7 @@ struct DiaryView:View {
     @State private var date=Date()
     @State private var selectedPhotos:[PhotosPickerItem]=[]
     @State private var cameraPhotos:[Data]=[]
+    @State private var editorExpanded = true
     @State private var showPhotoSources=false
     @State private var launchCamera=false
     @State private var showPhotoPicker=false
@@ -910,15 +923,17 @@ struct DiaryView:View {
                 } else {
                     List {
                         Section {
-                            PawlyPersistentDisclosureGroup(
-                                title:"Un recuerdo nuevo",
-                                subtitle:"Guarda los momentos especiales de vuestra historia.",
-                                icon:"book.closed.fill",
-                                storageKey:editorStorageKey,
-                                defaultExpanded:true,
-                                highlighted:true
-                            ) {
-                                VStack(alignment:.leading,spacing:12) {
+                            Button {
+                                editorExpanded.toggle()
+                                UserDefaults.standard.set(editorExpanded, forKey: editorStorageKey)
+                            } label: {
+                                HStack {
+                                    Label("Un recuerdo nuevo", systemImage: "book.closed.fill")
+                                    Spacer()
+                                    Image(systemName: editorExpanded ? "chevron.up" : "chevron.down")
+                                }
+                            }.buttonStyle(.borderless)
+                            if editorExpanded {
                                     TextField("Título del recuerdo",text:$title)
                                         .textInputAutocapitalization(.sentences).textFieldStyle(.roundedBorder)
                                     TextField("Cuenta qué habéis hecho y qué lo hizo especial…",text:$note,axis:.vertical)
@@ -934,6 +949,16 @@ struct DiaryView:View {
                                     PawlyCameraButton(requestCapture:$launchCamera) { data in if selectedPhotos.count+cameraPhotos.count < 8 { cameraPhotos.append(data) } }
                                         .disabled(selectedPhotos.count+cameraPhotos.count >= 8)
                                     if selectedPhotos.count+cameraPhotos.count > 0 {
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack {
+                                                ForEach(selectedPhotos, id: \.self) { item in DiaryPhotoThumbnail(item: item) }
+                                                ForEach(cameraPhotos.indices, id: \.self) { index in
+                                                    if let image = UIImage(data: cameraPhotos[index]) {
+                                                        Image(uiImage: image).resizable().scaledToFill().frame(width: 64, height: 64).clipped()
+                                                    }
+                                                }
+                                            }
+                                        }
                                         LabeledContent("Fotografías seleccionadas",value:"\(selectedPhotos.count+cameraPhotos.count)/8")
                                         Button("Quitar selección",role:.destructive){selectedPhotos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                                     }
@@ -948,10 +973,7 @@ struct DiaryView:View {
                                     }
                                     .buttonStyle(.borderedProminent).tint(PawlyColors.primary)
                                     .disabled(busy || (title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && note.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && selectedPhotos.isEmpty && cameraPhotos.isEmpty))
-                                }
                             }
-                            .id(editorStorageKey)
-                            .listRowBackground(PawlyColors.mint.opacity(0.45))
                         }
                         Section {
                             VStack(alignment:.leading,spacing:10) {
@@ -1019,6 +1041,7 @@ struct DiaryView:View {
             .navigationTitle("Recuerdos")
             .navigationBarTitleDisplayMode(.inline)
             .task(id:pets.selectedPetID) {
+                editorExpanded = openPhotoPickerOnEnter || (UserDefaults.standard.object(forKey: editorStorageKey) as? Bool ?? true)
                 diaryFilter="Todos"
                 await load()
                 if openPhotoPickerOnEnter { showPhotoSources = true }
@@ -1194,7 +1217,6 @@ struct CommunityView:View {
                 .onDisappear{
                     store.stopFeed()
                     store.stopChats()
-                    store.stopNotifications()
                 }
                 .onChange(of:pushRouter.destination?.id) { _ in
                     guard let destination=pushRouter.destination else{return}
@@ -1342,7 +1364,7 @@ struct PeopleSearchSheet:View {
                                 PawlyAvatarPlaceholder().frame(width:48,height:48)
                             }
                             VStack(alignment:.leading,spacing:3) {
-                                Text(user.displayName).font(.headline)
+                                NavigationLink { PawlyPublicProfile(userID: user.id) } label: { Text(verbatim: user.displayName).font(.headline) }
                                 Text("@\(user.username) · \(user.followersCount) seguidores").font(.caption).foregroundStyle(.secondary)
                                 if !user.bio.isEmpty {Text(user.bio).font(.caption).foregroundStyle(PawlyColors.muted).lineLimit(2)}
                             }
@@ -1397,7 +1419,7 @@ struct FeedPostCard:View {
                     AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{PawlyAvatarPlaceholder()}
                         .frame(width:38,height:38).clipShape(Circle())
                 } else { PawlyAvatarPlaceholder().frame(width:38,height:38) }
-                VStack(alignment:.leading,spacing:2){Text(post.authorName).font(.subheadline.weight(.semibold));Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
+                VStack(alignment:.leading,spacing:2){NavigationLink { PawlyPublicProfile(userID: post.authorId) } label: { Text(verbatim: post.authorName).font(.subheadline.weight(.semibold)) };Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
             if !post.text.isEmpty { Text(post.text).frame(maxWidth:.infinity,alignment:.leading) }
             if !post.imageURL.isEmpty, let url=URL(string:post.imageURL) {
                 AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
@@ -1471,7 +1493,7 @@ struct CommentsView:View {
                     Section {
                         VStack(alignment:.leading,spacing:8) {
                             HStack(spacing:8) {
-                                Text(post.authorName).font(.subheadline.weight(.semibold))
+                                NavigationLink { PawlyPublicProfile(userID: post.authorId) } label: { Text(verbatim: post.authorName).font(.subheadline.weight(.semibold)) }
                                 Spacer()
                                 Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)")
                                     .font(.caption).foregroundStyle(.secondary)
@@ -1629,6 +1651,7 @@ struct ChatView:View {
             }
             .background(PawlyColors.canvas)
             .navigationTitle(chat.otherUserName)
+            .toolbar { ToolbarItem(placement: .principal) { NavigationLink { PawlyPublicProfile(userID: chat.otherUserID) } label: { Text(verbatim: chat.otherUserName).font(.headline) } } }
             .toolbar { ToolbarItem(placement:.confirmationAction) { Button("Cerrar") { dismiss() } } }
             .onAppear {
                 store.listenMessages(conversationID:chat.id) { messages=$0 }

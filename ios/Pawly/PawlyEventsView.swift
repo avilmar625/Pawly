@@ -395,11 +395,13 @@ private struct PawlyEventDetailsSheet: View {
                             }
                         }.disabled(loadingAttendees)
                         ForEach(attendees) { person in
+                            NavigationLink { PawlyPublicProfile(userID: person.id) } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(person.displayName)
                                 if !person.username.isEmpty {
                                     Text("@\(person.username)").font(.caption).foregroundStyle(.secondary)
                                 }
+                            }
                             }
                         }
                         if !nextPage.isEmpty {

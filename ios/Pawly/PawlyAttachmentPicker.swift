@@ -137,3 +137,20 @@ struct PawlyAttachmentPicker: View {
         }
     }
 }
+
+struct DiaryPhotoThumbnail: View {
+    let item: PhotosPickerItem
+    @State private var thumbnail: UIImage?
+    var body: some View {
+        Group {
+            if let thumbnail { Image(uiImage: thumbnail).resizable().scaledToFill() }
+            else { Image(systemName: "photo") }
+        }
+        .frame(width: 64, height: 64).clipped()
+        .task(id: item) {
+            guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { return }
+            let preview = await image.byPreparingThumbnail(ofSize: CGSize(width: 128, height: 128))
+            if !Task.isCancelled { thumbnail = preview }
+        }
+    }
+}
