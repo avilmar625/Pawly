@@ -372,7 +372,8 @@ struct PawlyCalendarView: View {
                     if let error { Section { Text(error).font(.caption).foregroundStyle(.red) } }
                 }
                 .navigationTitle("Calendario")
-                .toolbar { ToolbarItem(placement: .topBarTrailing) { PetPicker() } }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .topBarTrailing) { NavigationLink { PawlyRemindersView() } label: { Label("Recordatorios", systemImage: "bell.badge") } } }
                 .task(id: pet.id) { await load(pet) }
                 .onDisappear { reminders.stopListening() }
             } else {

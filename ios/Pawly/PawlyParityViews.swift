@@ -29,12 +29,8 @@ struct PawlyMoreHubView: View {
       title:"Tu día a día", subtitle:"Diario, agenda, eventos y recursos", icon:"pawprint.fill",
       storageKey:sectionKey("daily"), defaultExpanded:true
      ) {
-      NavigationLink { DiaryView() } label:{Label("Diario de recuerdos",systemImage:"book.closed.fill")}
       NavigationLink { PawlyLearningHubView() } label:{Label("Aprender y descubrir",systemImage:"graduationcap.fill")}
-      NavigationLink { PawlyCalendarView() } label:{Label("Calendario de cuidados",systemImage:"calendar")}
       NavigationLink { PawlyEventsView() } label:{Label("Eventos y quedadas",systemImage:"calendar.badge.plus")}
-      NavigationLink { PawlyCommunityPlacesView() } label:{Label("Lugares de la comunidad",systemImage:"map.pin.and.ellipse")}
-      NavigationLink { PawlyRemindersView() } label:{Label("Agenda y recordatorios",systemImage:"calendar.badge.clock")}
       NavigationLink { PawlyExpensesView() } label:{Label("Gastos de mi mascota",systemImage:"receipt")}
       NavigationLink { PawlyProfessionalDirectoryView() } label:{Label("Profesionales",systemImage:"stethoscope")}
       NavigationLink { PawlyMarketView() } label:{Label("Pawly Market",systemImage:"bag.fill")}
@@ -67,7 +63,8 @@ struct PawlyMoreHubView: View {
      Button(role:.destructive){try? session.signOut()} label:{Label("Cerrar sesión",systemImage:"rectangle.portrait.and.arrow.right")}
     }
    }
-   .navigationTitle("Tu espacio Pawly")
+   .navigationTitle("Más")
+   .navigationBarTitleDisplayMode(.inline)
   }
  }
 }
@@ -612,7 +609,6 @@ struct PawlyLearningHubView:View{
  ]
  var body:some View{
   NavigationStack{ScrollView{VStack(alignment:.leading,spacing:17){
-   VStack(alignment:.leading,spacing:6){Text("Aprender también es cuidar").font(.title2.bold());Text("Guías prácticas y actualidad sobre bienestar animal.").font(.subheadline).foregroundStyle(.secondary)}
    HStack {
     TextField("Buscar guías o noticias",text:$searchText).textFieldStyle(.roundedBorder)
     Menu {

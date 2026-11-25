@@ -2,7 +2,9 @@ import SwiftUI
 import FirebaseAuth
 import PhotosUI
 
-private struct PawlyHomeUpcomingItem {
+private struct PawlyHomeUpcomingItem: Identifiable {
+    let id: String
+    let detail: String
     let title: String
     let category: String
     let date: Date
@@ -12,7 +14,6 @@ struct PawlyHomeCareSection: View {
     @EnvironmentObject private var pets: PawlyPetStore
     @StateObject private var reminders = PawlyReminderStore.shared
     let pet: PawlyPet
-    var openHealth: (() -> Void)? = nil
 
     @State private var tasks: [PawlyCareTask] = []
     @State private var passport: [PawlyPassportEntry] = []
@@ -22,10 +23,9 @@ struct PawlyHomeCareSection: View {
     @State private var pendingTaskIDs: Set<String> = []
     @State private var confirmationTask: PawlyCareTask?
     @State private var duplicateMedicationLog: PawlyCareLogEntry?
-    @State private var showHealth = false
+    @State private var selectedUpcoming: PawlyHomeUpcomingItem?
     @State private var showWeightEntry = false
     @State private var showDiary = false
-    @State private var showCareHistory = false
     @State private var showQuickCareLog = false
     @State private var quickCareAction = "Paseo"
     @State private var error: String?
@@ -76,9 +76,10 @@ struct PawlyHomeCareSection: View {
         formatter.timeZone = Calendar.current.timeZone
         formatter.dateFormat = "yyyy-MM-dd"
         for entry in passport where !entry.type.localizedCaseInsensitiveContains("peso") {
-            guard let date = formatter.date(from: String(entry.date.prefix(10))),
+            guard let date = formatter.date(from: entry.nextDoseDate.isEmpty ? entry.date : entry.nextDoseDate),
                   Calendar.current.startOfDay(for: date) >= today else { continue }
             candidates.append(PawlyHomeUpcomingItem(
+                id: "passport-" + entry.id, detail: [entry.detail, entry.product, entry.dose, entry.clinic].filter { !$0.isEmpty }.joined(separator: "\n"),
                 title: entry.title.isEmpty ? entry.type : entry.title,
                 category: entry.type,
                 date: date
@@ -88,6 +89,7 @@ struct PawlyHomeCareSection: View {
             reminder.petName.caseInsensitiveCompare(pet.name) == .orderedSame &&
             !reminder.completed && reminder.date > Date() {
             candidates.append(PawlyHomeUpcomingItem(
+                id: "reminder-" + reminder.id, detail: reminder.notes,
                 title: reminder.title,
                 category: reminder.category,
                 date: reminder.date
@@ -168,11 +170,6 @@ struct PawlyHomeCareSection: View {
                         }
                     }
                 }
-                HStack {
-                    Spacer()
-                    Button("Ver Salud") { if let openHealth { openHealth() } else { showHealth = true } }
-                        .font(.caption.weight(.semibold))
-                }
             }
             .id("pawly.home.\(scope).today")
 
@@ -200,7 +197,7 @@ struct PawlyHomeCareSection: View {
             }
 
             if let upcoming = nextUpcoming {
-                Button { showHealth = true } label: {
+                Button { selectedUpcoming = upcoming } label: {
                     HStack(spacing: 12) {
                         Image(systemName: "cross.case.fill")
                             .font(.title3)
@@ -271,70 +268,23 @@ struct PawlyHomeCareSection: View {
                 .buttonStyle(.plain)
             }
 
-            if let latestLog = careLogs.first {
-                PawlyPersistentDisclosureGroup(
-                    title: "Último cuidado registrado",
-                    subtitle: latestLog.taskTitle,
-                    icon: "clock.arrow.circlepath",
-                    storageKey: "pawly.home.\(scope).lastCare",
-                    defaultExpanded: false
-                ) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(latestLog.action) · \(latestLog.actorName)")
-                            .font(.subheadline.weight(.semibold))
-                        if let date = latestLog.occurredAt {
-                            Text(date.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        if !latestLog.note.isEmpty {
-                            Text(latestLog.note).font(.caption).foregroundStyle(.secondary)
-                        }
-                        if !latestLog.description.isEmpty {
-                            Text(latestLog.description).font(.caption).foregroundStyle(.secondary)
-                        }
-                        if !latestLog.walker.isEmpty {
-                            Label(latestLog.walker, systemImage: "figure.walk")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        if let distance = latestLog.distanceKm {
-                            Label(String(format: "%.2f km", distance), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        if !latestLog.mapURL.isEmpty, let url = URL(string: latestLog.mapURL) {
-                            Link(destination: url) {
-                                Label("Ver mapa", systemImage: "map")
-                                    .font(.caption.weight(.semibold))
-                            }
-                        }
-                        if !latestLog.photoURLs.isEmpty {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 7) {
-                                    ForEach(latestLog.photoURLs.prefix(4), id: \.self) { url in
-                                        AsyncImage(url: URL(string: url)) { image in
-                                            image.resizable().scaledToFill()
-                                        } placeholder: {
-                                            PawlyAnniversaryPlaceholder()
-                                        }
-                                        .frame(width: 58, height: 58)
-                                        .clipShape(RoundedRectangle(cornerRadius: 9))
-                                    }
-                                }
-                            }
-                        }
-                        Button("Abrir historial de cuidados") { showCareHistory = true }
-                            .font(.caption.weight(.semibold))
-                    }
-                }
-                .id("pawly.home.\(scope).lastCare")
-            }
-
             if let error {
                 Text(error).font(.caption).foregroundStyle(.red)
             }
         }
         .task(id: scope) { await load() }
-        .sheet(isPresented: $showHealth) { CareView().environmentObject(pets) }
+        .sheet(item: $selectedUpcoming) { item in
+            NavigationStack {
+                Form {
+                    LabeledContent("Mascota", value: pet.name)
+                    LabeledContent("Tipo") { Text(LocalizedStringKey(item.category)) }
+                    LabeledContent("Fecha") { Text(item.date, format: .dateTime.day().month().year().hour().minute()) }
+                    if !item.detail.isEmpty { Text(verbatim: item.detail) }
+                }
+                .navigationTitle(item.title)
+                .toolbar { Button("Cerrar") { selectedUpcoming = nil } }
+            }
+        }
         .sheet(isPresented: $showWeightEntry) {
             PassportEntrySheet(initialType: "Peso", latestWeight: latestWeight) { entry in
                 try await pets.savePassport(entry, pet: pet)
@@ -342,7 +292,6 @@ struct PawlyHomeCareSection: View {
             }
         }
         .sheet(isPresented: $showDiary) { DiaryView(openPhotoPickerOnEnter: true).environmentObject(pets) }
-        .sheet(isPresented: $showCareHistory) { NavigationStack { PawlyCareLogsView() }.environmentObject(pets) }
         .sheet(isPresented: $showQuickCareLog) {
             PawlyCareLogForm(petName: pet.name, initialAction: quickCareAction) { title, action, note, distance, description, walker, photos, mapURL in
                 var photoURLs: [String] = []

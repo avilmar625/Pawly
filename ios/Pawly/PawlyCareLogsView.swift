@@ -140,7 +140,7 @@ struct PawlyCareLogsView: View {
 struct PawlyCareLogForm: View {
     @Environment(\.dismiss) private var dismiss
     let petName: String
-    let initialAction: String
+    let fixedAction: Bool
     var onSave: (String, String, String, Double?, String, String, [Data], String) async throws -> Void
 
     @State private var title: String
@@ -148,14 +148,14 @@ struct PawlyCareLogForm: View {
 
     init(
         petName: String,
-        initialAction: String = "Paseo",
+        initialAction: String? = nil,
         onSave: @escaping (String, String, String, Double?, String, String, [Data], String) async throws -> Void
     ) {
         self.petName = petName
-        self.initialAction = initialAction
+        self.fixedAction = initialAction != nil
         self.onSave = onSave
-        _title = State(initialValue: initialAction)
-        _action = State(initialValue: initialAction)
+        _title = State(initialValue: initialAction ?? "Paseo")
+        _action = State(initialValue: initialAction ?? "Paseo")
     }
     @State private var note = ""
     @State private var distance = ""
@@ -173,9 +173,11 @@ struct PawlyCareLogForm: View {
         NavigationStack {
             Form {
                 Section(action == "Paseo" ? "Vuestro paseo" : "Acción realizada") {
-                    Picker("Tipo", selection: $action) {
+                    if !fixedAction {
+                        Picker("Tipo", selection: $action) {
                         ForEach(actions, id: \.self) { Text($0) }
-                    }.onChange(of:action){next in if actions.contains(title) { title=next } }
+                        }.onChange(of: action) { next in if actions.contains(title) { title = next } }
+                    }
                     TextField(action == "Paseo" ? "Nombre del paseo" : "Qué se ha hecho", text: $title)
                     TextField(action == "Paseo" ? "Quién ha paseado (opcional)" : "Cuidador o responsable (opcional)", text: $walker)
                 }
