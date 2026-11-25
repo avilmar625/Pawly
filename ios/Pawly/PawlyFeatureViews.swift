@@ -74,7 +74,7 @@ private struct PawlyMyPetView: View {
             case 2: DiaryView().id(pets.selectedPetID)
             case 3:
                 NavigationStack {
-                    PawlyCalendarView()
+                    PawlyCalendarView().id(pets.selectedPetID)
 
                 }
             default: HomeView()

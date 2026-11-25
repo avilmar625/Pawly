@@ -12,6 +12,7 @@ struct PawlyCameraButton: View {
     var label: String = "Hacer foto"
     var requestCapture: Binding<Bool> = .constant(false)
     var onCapture: (Data) -> Void
+    @State private var requesting = false
     @State private var showing = false
     @State private var failure: String?
 
@@ -21,6 +22,7 @@ struct PawlyCameraButton: View {
             Label(LocalizedStringKey(label), systemImage:kind == .photo ? "camera" : "video")
         }
         .buttonStyle(.borderless)
+        .disabled(requesting)
         .onChange(of:requestCapture.wrappedValue){requested in
             if requested { requestCapture.wrappedValue=false;beginCapture() }
         }
@@ -48,14 +50,22 @@ struct PawlyCameraButton: View {
                 failure = "La cámara no está disponible en este dispositivo. Puedes utilizar la galería."
                 return
             }
-            let camera = AVCaptureDevice.authorizationStatus(for:.video)
-            let microphone = AVCaptureDevice.authorizationStatus(for:.audio)
-            if camera == .denied || camera == .restricted ||
-                (kind == .video && (microphone == .denied || microphone == .restricted)) {
-                failure = "Activa los permisos de cámara y micrófono necesarios en Ajustes de iOS."
-                return
+            guard !requesting else { return }
+            requesting = true
+            Task { @MainActor in
+                defer { requesting = false }
+                guard await AVCaptureDevice.requestAccess(for: .video) else {
+                    failure = "Permite el acceso a la cámara en Ajustes de iOS."
+                    return
+                }
+                if kind == .video {
+                    guard await AVCaptureDevice.requestAccess(for: .audio) else {
+                        failure = "Permite el acceso al micrófono en Ajustes de iOS para grabar vídeo."
+                        return
+                    }
+                }
+                showing = true
             }
-            showing = true
     }
 }
 
@@ -89,7 +99,7 @@ private struct PawlyCameraPicker: UIViewControllerRepresentable {
                 } else if let url=info[.mediaURL] as? URL {
                     let size=try url.resourceValues(forKeys:[.fileSizeKey]).fileSize ?? 0
                     guard size <= 40*1024*1024 else { throw PawlyMediaError.videoTooLarge }
-                    completion(.success(try Data(contentsOf:url)))
+                    completion(.success(try Data(contentsOf:url, options:.mappedIfSafe)))
                 } else { throw PawlyMediaError.invalidImage }
             } catch { completion(.failure(error)) }
         }

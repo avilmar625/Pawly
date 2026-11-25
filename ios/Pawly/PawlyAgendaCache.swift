@@ -39,6 +39,18 @@ struct PawlyLocalReminder: Identifiable, Codable {
 
 
 enum PawlyAgendaCache {
+    static func occurs(_ reminder: PawlyLocalReminder, on day: Date, calendar: Calendar) -> Bool {
+        let first = calendar.startOfDay(for: reminder.date)
+        guard day >= first else { return false }
+        switch reminder.repeatRule {
+        case "Cada día": return true
+        case "Cada semana": return calendar.component(.weekday, from: day) == calendar.component(.weekday, from: first)
+        case "Cada mes": return calendar.component(.day, from: day) == calendar.component(.day, from: first)
+        case "Cada año": return calendar.dateComponents([.month, .day], from: day) == calendar.dateComponents([.month, .day], from: first)
+        default: return calendar.isDate(day, inSameDayAs: first)
+        }
+    }
+
     static func merge(local: [PawlyLocalReminder], remote: [PawlyLocalReminder], scope: String, name: String) -> [PawlyLocalReminder] {
         let samePet = local.filter { $0.belongs(to: scope, name: name) }
         let ids = Set(remote.map(\.id))

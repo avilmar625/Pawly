@@ -1,4 +1,6 @@
 import Foundation
+import CryptoKit
+import FirebaseAuth
 import ImageIO
 import UniformTypeIdentifiers
 import FirebaseFirestore
@@ -36,18 +38,28 @@ struct PawlyCloudinaryUploader {
     }
 
     private func upload(_ contract: PawlyUploadContract, data: Data, filename: String, mime: String, owner: String) async throws -> String {
-        let request = contract.request(data: data, filename: filename, mime: mime)
-        let (responseData, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw PawlyMediaError.invalidResponse }
-        guard (200..<300).contains(http.statusCode) else { throw PawlyMediaError.uploadFailed(http.statusCode) }
-        let asset = try contract.asset(from: responseData)
-        let index = Firestore.firestore().collection("cloudinaryAssets").document()
-        do {
-            try await index.setData(["uid": owner, "publicId": asset.public_id, "resourceType": contract.resource,
-                                     "secureUrl": asset.secure_url, "createdAt": FieldValue.serverTimestamp()])
-        } catch {
-            throw PawlyMediaError.indexFailed
+        guard Auth.auth().currentUser?.uid == owner else { throw PawlyStoreError.notSignedIn }
+        let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        let key = "\(contract.endpoint)/\(contract.folder)/\(contract.preset)/\(digest)"
+        return try await PawlyUploadCache.shared.resolve(key: key) {
+            let request = contract.request(data: data, filename: filename, mime: mime)
+            let (responseData, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw PawlyMediaError.invalidResponse }
+            guard (200..<300).contains(http.statusCode) else { throw PawlyMediaError.uploadFailed(http.statusCode) }
+            return try contract.asset(from: responseData)
+        } index: { asset in
+            guard Auth.auth().currentUser?.uid == owner else { throw PawlyStoreError.notSignedIn }
+            let recordKey = SHA256.hash(data: Data(asset.public_id.utf8)).map { String(format: "%02x", $0) }.joined()
+            let ref = Firestore.firestore().collection("cloudinaryAssets").document(recordKey)
+            do {
+                try await ref.setData(["uid": owner, "publicId": asset.public_id, "resourceType": contract.resource,
+                                       "secureUrl": asset.secure_url, "createdAt": FieldValue.serverTimestamp()])
+            } catch {
+                // The owner index is create-only. A prior write may have committed before losing its response.
+                guard let existing = try? await ref.getDocument(), existing.get("uid") as? String == owner,
+                      existing.get("publicId") as? String == asset.public_id,
+                      existing.get("secureUrl") as? String == asset.secure_url else { throw PawlyMediaError.indexFailed }
+            }
         }
-        return asset.secure_url
     }
 }
