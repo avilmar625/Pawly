@@ -54,8 +54,14 @@ struct PawlyExploreCollection:Identifiable {
         let id=UUID(uuid:(bytes[0],bytes[1],bytes[2],bytes[3],bytes[4],bytes[5],bytes[6],bytes[7],bytes[8],bytes[9],bytes[10],bytes[11],bytes[12],bytes[13],bytes[14],bytes[15])).uuidString.lowercased()
         do {
             let ref=root.document(id)
-            guard !(try await ref.getDocument()).exists else {message="Ya existe esta colección.";return false}
-            try await ref.setData(["name":clean,"description":description,"entries":[String](),"updatedAt":FieldValue.serverTimestamp()])
+            let created = try await Firestore.firestore().runTransaction { transaction, failure -> Any? in
+                do {
+                    guard !(try transaction.getDocument(ref)).exists else { return false }
+                    transaction.setData(["name":clean,"description":description,"entries":[String](),"updatedAt":FieldValue.serverTimestamp()], forDocument: ref)
+                    return true
+                } catch { failure?.pointee = error as NSError; return nil }
+            }
+            guard created as? Bool == true else { message="Ya existe esta colección."; return false }
             await load();return true
         } catch {message=error.localizedDescription;return false}
     }

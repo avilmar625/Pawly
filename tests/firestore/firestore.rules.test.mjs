@@ -492,3 +492,17 @@ test("events accept legacy documents and an optional registered organizer photo"
   const other = env.authenticatedContext("other", { email_verified: true }).firestore();
   await assertFails(setDoc(doc(other, "events/wrong-owner"), { ...event, organizerUid: "other", photoUrl, photoAssetId }));
 });
+
+test("map favourites are private and survive collection synchronisation", async () => {
+  const owner = env.authenticatedContext("owner").firestore();
+  const other = env.authenticatedContext("other").firestore();
+  const path = "users/owner/privateData/mapFavourites";
+  const data = { entries: ["test-place"], updatedAt: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(owner, path), data));
+  await assertFails(getDoc(doc(other, path)));
+  await assertFails(setDoc(doc(other, path), data));
+  await assertFails(updateDoc(doc(owner, path), { entries: Array(101).fill("place"), updatedAt: serverTimestamp() }));
+  await assertSucceeds(deleteDoc(doc(owner, "users/owner/exploreCollections/ios-favourites")));
+  const result = await assertSucceeds(getDoc(doc(owner, path)));
+  assert.deepEqual(result.data().entries, ["test-place"]);
+});

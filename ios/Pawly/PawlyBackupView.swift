@@ -53,7 +53,7 @@ enum PawlyBackupManager {
         let privateContact = try await userRef.collection("privateData").document("professionalContact").getDocument()
         let privateHome = try await userRef.collection("privateData").document("home").getDocument()
         let reminderData = PawlyReminderStore.shared.exportBackupData()?.base64EncodedString() ?? ""
-        let savedPlacesData = try? JSONEncoder().encode(PawlySavedPlace.load())
+        let savedPlacesData = try JSONEncoder().encode(try await PawlySavedPlacesStore.snapshot(for: uid))
 
         let envelope: [String: Any] = [
             "format": PawlyBackupPolicy.format,
@@ -64,9 +64,9 @@ enum PawlyBackupManager {
             "privateProfessionalContact": privateContact.get("value") as? String ?? "",
             "privateHome": privateHome.exists ? jsonSafe(privateHome.data() ?? [:]) : [:],
             "pets": pets,
-            "exploreCollections": exploreCollections,
+            "exploreCollections": exploreCollections.filter { $0["id"] as? String != "ios-favourites" },
             "localRemindersBase64": reminderData,
-            "localSavedPlacesBase64": savedPlacesData?.base64EncodedString() ?? ""
+            "localSavedPlacesBase64": savedPlacesData.base64EncodedString()
         ]
 
         let data = try PawlyBackupPolicy.encode(envelope)
@@ -83,7 +83,11 @@ enum PawlyBackupManager {
         let payload = try PawlyBackupPolicy.decode(data, for: uid)
         let reminders = try localValues(PawlyLocalReminder.self, key: "localRemindersBase64", in: payload)
         guard reminders.count <= 500, reminders.allSatisfy({ PawlyBackupPolicy.validID($0.id) }) else { throw PawlyBackupError.invalidFormat }
-        let savedPlaces = try localValues(PawlySavedPlace.self, key: "localSavedPlacesBase64", in: payload)
+        let localPlaces = try localValues(PawlySavedPlace.self, key: "localSavedPlacesBase64", in: payload)
+        let collections = payload["exploreCollections"] as? [[String: Any]] ?? []
+        let legacy = collections.first { $0["id"] as? String == "ios-favourites" }?["data"] as? [String: Any]
+        let oldPlaces = try PawlySavedPlace.decodeEntries(legacy?["entries"] as? [String] ?? [])
+        let savedPlaces = PawlyBackupPolicy.addingMissing(oldPlaces, to: localPlaces) { $0.id }
         guard savedPlaces.count <= 100 else { throw PawlyBackupError.invalidFormat }
 
         let db = Firestore.firestore()
@@ -157,15 +161,14 @@ enum PawlyBackupManager {
         }
 
         restoredDocuments += try await restoreExploreCollections(
-            payload["exploreCollections"],
+            collections.filter { $0["id"] as? String != "ios-favourites" },
             to: userRef.collection("exploreCollections")
         )
 
         guard Auth.auth().currentUser?.uid == uid else { throw PawlyBackupError.accountMismatch }
         if !reminders.isEmpty { try PawlyReminderStore.shared.importBackupData(JSONEncoder().encode(reminders)) }
         if !savedPlaces.isEmpty {
-            let places = PawlyBackupPolicy.addingMissing(savedPlaces, to: PawlySavedPlace.load()) { $0.id }
-            UserDefaults.standard.set(try JSONEncoder().encode(places), forKey: PawlySavedPlace.cacheKey(uid))
+            try await PawlySavedPlacesStore.restore(savedPlaces, for: uid)
         }
 
         return PawlyBackupReport(

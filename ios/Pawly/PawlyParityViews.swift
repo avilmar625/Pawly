@@ -332,10 +332,11 @@ struct PawlyExploreView:View{
     }.padding()
     if !results.isEmpty{Map(coordinateRegion:$region,annotationItems:results){p in MapMarker(coordinate:p.coordinate,tint:.green)}.frame(height:205)}
     if let error{Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal)}
+    if let message=savedStore.message { Text(message).font(.caption).foregroundStyle(.secondary) }
     if let locationMessage=locationProvider.message{Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary).padding(.horizontal)}
     List(results){p in VStack(alignment:.leading,spacing:6){
      HStack{VStack(alignment:.leading,spacing:3){Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)}
-      Spacer();Button{savedStore.toggle(PawlySavedPlace(id:p.id,name:p.name,subtitle:p.subtitle,latitude:p.coordinate.latitude,longitude:p.coordinate.longitude,phone:p.phone))}label:{Image(systemName:savedStore.places.contains(where:{$0.id==p.id}) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain)}
+      Spacer();Button{savedStore.toggle(PawlySavedPlace(id:p.id,name:p.name,subtitle:p.subtitle,latitude:p.coordinate.latitude,longitude:p.coordinate.longitude,phone:p.phone))}label:{Image(systemName:savedStore.places.contains(where:{$0.id==p.id}) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain).disabled(savedStore.busy)}
      HStack{if let phone=p.phone,!phone.isEmpty,let tel=URL(string:"tel:\(phone.filter{$0.isNumber || $0=="+"})"){Link("Llamar",destination:tel)}
       Spacer();Button("Cómo llegar"){p.mapItem.openInMaps(launchOptions:[MKLaunchOptionsDirectionsModeKey:MKLaunchOptionsDirectionsModeDriving])}
      }.font(.caption.weight(.semibold))
@@ -374,181 +375,6 @@ struct PawlyExploreView:View{
    if results.isEmpty{error="No se han encontrado resultados. Prueba con otra zona o término."}
   }catch{self.error=error.localizedDescription}
  }
-}
-struct PawlySavedPlace:Identifiable,Codable{
- let id:String;let name:String;let subtitle:String;let latitude:Double;let longitude:Double;let phone:String?
- static func cacheKey(_ uid: String) -> String { "pawly.savedPlaces.v3." + uid }
- static func load()->[PawlySavedPlace]{guard let uid = Auth.auth().currentUser?.uid, let data=UserDefaults.standard.data(forKey:cacheKey(uid)),let values=try? JSONDecoder().decode([PawlySavedPlace].self,from:data)else{return []};return values}
-}
-@MainActor
-final class PawlySavedPlacesStore: ObservableObject {
-    @Published private(set) var places: [PawlySavedPlace] = []
-    @Published var message: String?
-    private let db = Firestore.firestore()
-    private var document: DocumentReference? {
-        guard let uid = Auth.auth().currentUser?.uid else { return nil }
-        return db.collection("users").document(uid).collection("exploreCollections").document("ios-favourites")
-    }
-
-    func load() async {
-        let local = PawlySavedPlace.load()
-        guard let document else { places = local; return }
-        do {
-            let snapshot = try await document.getDocument()
-            if snapshot.exists {
-                places = Self.decodePlaces(snapshot.get("entries") as? [String] ?? [])
-                persistLocal()
-            } else {
-                places = local
-                try await seedCloudIfMissing(local)
-                let refreshed = try await document.getDocument()
-                places = Self.decodePlaces(refreshed.get("entries") as? [String] ?? [])
-                persistLocal()
-            }
-            message = nil
-        } catch {
-            places = local
-            message = "No se pudieron sincronizar los favoritos: \(error.localizedDescription)"
-        }
-    }
-
-    func toggle(_ place: PawlySavedPlace) {
-        let wasSaved = places.contains(where: { $0.id == place.id })
-        if wasSaved {
-            places.removeAll { $0.id == place.id }
-        } else {
-            places.append(place)
-        }
-        persistLocal()
-        Task {
-            do {
-                try await mutateCloud { current in
-                    if wasSaved {
-                        return current.filter { $0.id != place.id }
-                    }
-                    return current.contains(where: { $0.id == place.id }) ? current : current + [place]
-                }
-                await reloadFromCloud()
-            } catch {
-                message = "No se pudo guardar el favorito: \(error.localizedDescription)"
-                await reloadFromCloud()
-            }
-        }
-    }
-
-    func remove(_ place: PawlySavedPlace) {
-        places.removeAll { $0.id == place.id }
-        persistLocal()
-        Task {
-            do {
-                try await mutateCloud { current in current.filter { $0.id != place.id } }
-                await reloadFromCloud()
-            } catch {
-                message = "No se pudo eliminar el favorito: \(error.localizedDescription)"
-                await reloadFromCloud()
-            }
-        }
-    }
-
-    private func reloadFromCloud() async {
-        guard let document else { return }
-        do {
-            let snapshot = try await document.getDocument()
-            places = Self.decodePlaces(snapshot.get("entries") as? [String] ?? [])
-            persistLocal()
-        } catch {
-            message = error.localizedDescription
-        }
-    }
-
-    private func persistLocal() {
-        if let uid = Auth.auth().currentUser?.uid, let data = try? JSONEncoder().encode(places) {
-            UserDefaults.standard.set(data, forKey: PawlySavedPlace.cacheKey(uid))
-        }
-    }
-
-    private static func decodePlaces(_ values: [String]) -> [PawlySavedPlace] {
-        values.compactMap { value in
-            guard let data = value.data(using: .utf8) else { return nil }
-            return try? JSONDecoder().decode(PawlySavedPlace.self, from: data)
-        }
-    }
-
-    private func encodePlaces(_ values: [PawlySavedPlace]) throws -> [String] {
-        try values.map { place in
-            let data = try JSONEncoder().encode(place)
-            guard let value = String(data: data, encoding: .utf8) else {
-                throw PawlyExploreError.encodingFailed
-            }
-            return value
-        }
-    }
-
-    private func seedCloudIfMissing(_ local: [PawlySavedPlace]) async throws {
-        guard let document else { return }
-        let encoded = try encodePlaces(Array(local.prefix(100)))
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            db.runTransaction({ transaction, errorPointer -> Any? in
-                do {
-                    let snapshot = try transaction.getDocument(document)
-                    if !snapshot.exists {
-                        transaction.setData([
-                            "name": "Lugares favoritos",
-                            "description": "Sitios guardados desde Explorar en iOS",
-                            "entries": encoded,
-                            "updatedAt": FieldValue.serverTimestamp()
-                        ], forDocument: document)
-                    }
-                    return nil
-                } catch {
-                    errorPointer?.pointee = error as NSError
-                    return nil
-                }
-            }, completion: { _, error in
-                if let error { continuation.resume(throwing: error) }
-                else { continuation.resume(returning: ()) }
-            })
-        }
-    }
-
-    private func mutateCloud(_ mutation: @escaping ([PawlySavedPlace]) throws -> [PawlySavedPlace]) async throws {
-        guard let document else { persistLocal(); return }
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            db.runTransaction({ transaction, errorPointer -> Any? in
-                do {
-                    let snapshot = try transaction.getDocument(document)
-                    let current = Self.decodePlaces(snapshot.get("entries") as? [String] ?? [])
-                    let updated = try mutation(current)
-                    guard updated.count <= 100 else { throw PawlyExploreError.tooManySavedPlaces }
-                    let encoded = try self.encodePlaces(updated)
-                    transaction.setData([
-                        "name": "Lugares favoritos",
-                        "description": "Sitios guardados desde Explorar en iOS",
-                        "entries": encoded,
-                        "updatedAt": FieldValue.serverTimestamp()
-                    ], forDocument: document)
-                    return nil
-                } catch {
-                    errorPointer?.pointee = error as NSError
-                    return nil
-                }
-            }, completion: { _, error in
-                if let error { continuation.resume(throwing: error) }
-                else { continuation.resume(returning: ()) }
-            })
-        }
-    }
-}
-
-enum PawlyExploreError: LocalizedError {
-    case tooManySavedPlaces
-    case encodingFailed
-    var errorDescription: String? {
-        switch self {
-        case .tooManySavedPlaces: return "Puedes guardar hasta 100 lugares."
-        case .encodingFailed: return "No se pudo preparar la lista de lugares."
-        }
-    }
 }
 struct PawlySavedPlacesView:View{
  @StateObject private var store = PawlySavedPlacesStore()
@@ -713,7 +539,7 @@ struct PawlyProfessionalDirectoryView: View {
       TextField("Nombre o servicio concreto",text:$query)
       Button { nearMe=true;locationProvider.request() } label:{Label("Buscar cerca de mi ubicación",systemImage:"location.circle")}
        .buttonStyle(.borderless).disabled(busy)
-      if let locationMessage=locationProvider.message { Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary) }
+    if let locationMessage=locationProvider.message { Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary) }
       Button { Task { await search() } } label:{HStack{Spacer();if busy{ProgressView()};Label("Buscar en Mapas",systemImage:"magnifyingglass");Spacer()}}.disabled(busy)
      }
      if let message { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
@@ -917,7 +743,7 @@ struct PawlyLostPetView: View {
        Label(subscriptionLocation == nil ? "Usar mi ubicación aproximada":"Actualizar mi ubicación aproximada",
              systemImage:"location.circle")
       }
-      if let locationMessage=locationProvider.message {
+    if let locationMessage=locationProvider.message {
        Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary)
       }
       if subscriptionLocation != nil {

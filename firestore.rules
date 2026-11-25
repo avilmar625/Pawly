@@ -142,7 +142,11 @@ service cloud.firestore {
           && !blockedEitherWay(uid));
         allow list: if false;
         allow create, update: if owner(uid) && (
-          (privateDocumentId == 'professionalContact'
+          (privateDocumentId == 'mapFavourites'
+            && request.resource.data.keys().hasOnly(['entries', 'updatedAt'])
+            && request.resource.data.entries is list && request.resource.data.entries.size() <= 100
+            && request.resource.data.updatedAt == request.time)
+          || (privateDocumentId == 'professionalContact'
             && request.resource.data.keys().hasOnly(['value'])
             && request.resource.data.value is string
             && request.resource.data.value.size() <= 120)
