@@ -331,7 +331,7 @@ struct PawlyExploreView:View{
     }.padding()
     if !results.isEmpty{Map(coordinateRegion:$region,annotationItems:results){p in MapMarker(coordinate:p.coordinate,tint:.green)}.frame(height:205)}
     if let error{Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal)}
-    if let locationMessage=locationProvider.message{Text(locationMessage).font(.caption).foregroundStyle(.secondary).padding(.horizontal)}
+    if let locationMessage=locationProvider.message{Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary).padding(.horizontal)}
     List(results){p in VStack(alignment:.leading,spacing:6){
      HStack{VStack(alignment:.leading,spacing:3){Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)}
       Spacer();Button{savedStore.toggle(PawlySavedPlace(id:p.id,name:p.name,subtitle:p.subtitle,latitude:p.coordinate.latitude,longitude:p.coordinate.longitude,phone:p.phone))}label:{Image(systemName:savedStore.places.contains(where:{$0.id==p.id}) ? "bookmark.fill":"bookmark").foregroundStyle(PawlyColors.primary)}.buttonStyle(.plain)}
@@ -560,30 +560,6 @@ struct PawlySavedPlacesView:View{
   }.navigationTitle("Lugares favoritos").task { await store.load() }
  }
 }
-@MainActor final class PawlyLocationProvider:NSObject,ObservableObject,CLLocationManagerDelegate{
- private let manager=CLLocationManager()
- private var requested=false
- @Published var location:CLLocation?
- @Published var message:String?
- override init(){super.init();manager.delegate=self;manager.desiredAccuracy=kCLLocationAccuracyHundredMeters}
- func request(){
-  requested=true
-  message="Buscando ubicación…"
-  switch manager.authorizationStatus{
-  case .notDetermined:manager.requestWhenInUseAuthorization()
-  case .authorizedAlways,.authorizedWhenInUse:manager.requestLocation()
-  case .denied,.restricted:message="Permite el acceso a la ubicación en Ajustes de iOS."
-  @unknown default:message="No se ha podido consultar la ubicación."
-  }
- }
- func locationManagerDidChangeAuthorization(_ manager:CLLocationManager){
-  guard requested else{return}
-  if manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse{manager.requestLocation()}
-  else if manager.authorizationStatus == .denied || manager.authorizationStatus == .restricted { message="Permite el acceso a la ubicación en Ajustes de iOS." }
- }
- func locationManager(_ manager:CLLocationManager,didUpdateLocations locations:[CLLocation]){requested=false;location=locations.last;message=nil}
- func locationManager(_ manager:CLLocationManager,didFailWithError error:Error){requested=false;message=error.localizedDescription}
-}
 struct PawlyPlaceResult:Identifiable{let id:String;let name:String;let subtitle:String;let coordinate:CLLocationCoordinate2D;let phone:String?;let mapItem:MKMapItem}
 
 struct PawlyLearningHubView:View{
@@ -735,7 +711,7 @@ struct PawlyProfessionalDirectoryView: View {
       TextField("Nombre o servicio concreto",text:$query)
       Button { nearMe=true;locationProvider.request() } label:{Label("Buscar cerca de mi ubicación",systemImage:"location.circle")}
        .buttonStyle(.borderless).disabled(busy)
-      if let locationMessage=locationProvider.message { Text(locationMessage).font(.caption).foregroundStyle(.secondary) }
+      if let locationMessage=locationProvider.message { Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary) }
       Button { Task { await search() } } label:{HStack{Spacer();if busy{ProgressView()};Label("Buscar en Mapas",systemImage:"magnifyingglass");Spacer()}}.disabled(busy)
      }
      if let message { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
@@ -851,6 +827,7 @@ struct PawlyLostPetView: View {
  @State private var subscriptionLocation:CLLocationCoordinate2D?
  @State private var lostLocation:CLLocationCoordinate2D?
  @State private var subscriptionSaved=false
+ @State private var posterImage: UIImage?
  @State private var posterURL:URL?
  @State private var generatingPoster=false
  @Environment(\.dismiss) private var dismiss
@@ -878,6 +855,7 @@ struct PawlyLostPetView: View {
        .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))
      }
      if let posterURL {
+      if let posterImage { Image(uiImage: posterImage).resizable().scaledToFit().frame(maxHeight: 260).accessibilityLabel("Cartel de mascota perdida") }
       ShareLink(item:posterURL) {
        Label("Compartir cartel JPG",systemImage:"square.and.arrow.up")
       }
@@ -938,7 +916,7 @@ struct PawlyLostPetView: View {
              systemImage:"location.circle")
       }
       if let locationMessage=locationProvider.message {
-       Text(locationMessage).font(.caption).foregroundStyle(.secondary)
+       Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary)
       }
       if subscriptionLocation != nil {
        Text("Ubicación de recepción disponible (se guarda redondeada a ~1 km).")
@@ -951,7 +929,7 @@ struct PawlyLostPetView: View {
         if savingSubscription { ProgressView() }
         Text(subscriptionSaved ? "Preferencias guardadas":"Guardar preferencias de alertas")
        }
-      }.disabled(savingSubscription || subscriptionLocation == nil)
+      }.disabled(savingSubscription || (receiveNearbyAlerts && subscriptionLocation == nil))
      }
      .id(posterPreferenceKey)
     }
@@ -972,6 +950,7 @@ struct PawlyLostPetView: View {
       .font(.caption).foregroundStyle(.secondary)
     }
    }
+   .buttonStyle(.borderless)
    .navigationTitle("Mascota perdida")
    .navigationBarTitleDisplayMode(.inline)
    .toolbar {
@@ -985,14 +964,15 @@ struct PawlyLostPetView: View {
    }
    .onChange(of:name){_ in posterURL=nil}
    .onChange(of:breed){_ in posterURL=nil}
-   .onChange(of:area){_ in posterURL=nil}
+   .onChange(of:area){_ in posterURL=nil; lostLocation=nil}
    .onChange(of:lastSeen){_ in posterURL=nil}
    .onChange(of:details){_ in posterURL=nil}
    .onChange(of:contact){_ in posterURL=nil}
    .onReceive(locationProvider.$location){location in
-    if let location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
+    if receiveNearbyAlerts, let location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
    }
    .task { await loadSubscription() }
+   .onDisappear { locationProvider.cancel() }
   }
  }
 
@@ -1025,6 +1005,7 @@ struct PawlyLostPetView: View {
    let safeName=name.replacingOccurrences(of:"[^A-Za-z0-9_-]",with:"_",options:.regularExpression)
    let url=directory.appendingPathComponent("pawly-se-busca-\(safeName.isEmpty ? "mascota":safeName)-\(UUID().uuidString).jpg")
    try data.write(to:url,options:.atomic)
+   posterImage=image
    posterURL=url
    error=nil
    status="Cartel creado en este dispositivo. Puedes compartir el JPG."
@@ -1045,17 +1026,20 @@ struct PawlyLostPetView: View {
  }
 
  @MainActor private func saveSubscription() async {
-  guard let coordinate=subscriptionLocation else {
-   error="Permite el acceso a la ubicación para guardar las alertas."
-   return
-  }
   savingSubscription=true
   defer { savingSubscription=false }
   do {
-   try await community.saveLostPetSubscription(
-    enabled:receiveNearbyAlerts,radiusKm:alertRadius,
-    latitude:coordinate.latitude,longitude:coordinate.longitude
-   )
+   if receiveNearbyAlerts {
+    guard let coordinate = subscriptionLocation else {
+     error = "Permite el acceso a la ubicación para guardar las alertas."
+     return
+    }
+    try await community.saveLostPetSubscription(enabled: true, radiusKm: alertRadius, latitude: coordinate.latitude, longitude: coordinate.longitude)
+   } else {
+    try await community.disableLostPetSubscription()
+    subscriptionLocation = nil
+    locationProvider.cancel()
+   }
    subscriptionSaved=true
    error=nil
    status="Preferencias de alertas guardadas."
@@ -1066,14 +1050,16 @@ struct PawlyLostPetView: View {
   geocoding=true
   defer { geocoding=false }
   do {
-   let results=try await CLGeocoder().geocodeAddressString(area)
+   let query = area
+   let results=try await CLGeocoder().geocodeAddressString(query)
+   guard query == area else { return }
    guard let coordinate=results.first?.location?.coordinate else {
     error="No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto."
     return
    }
-   lostLocation=coordinate
+   lostLocation=CLLocationCoordinate2D(latitude: (coordinate.latitude * 100).rounded() / 100, longitude: (coordinate.longitude * 100).rounded() / 100)
    error=nil
-  } catch let geocodingError { self.error=geocodingError.localizedDescription }
+  } catch { self.error="No se ha podido localizar la zona. Prueba con el barrio y el municipio." }
  }
 
  @MainActor private func publish() async {

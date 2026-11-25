@@ -227,13 +227,17 @@ final class PawlyCommunityStore: ObservableObject {
         )
     }
 
+    func disableLostPetSubscription() async throws {
+        guard let uid else { throw PawlyCommunityError.notSignedIn }
+        try await db.collection("lostPetSubscriptions").document(uid).delete()
+    }
+
     func saveLostPetSubscription(
         enabled: Bool,
         radiusKm: Int,
         latitude: Double,
         longitude: Double
     ) async throws {
-        try requireVerified()
         guard [5, 10, 20, 30, 50, 100].contains(radiusKm),
               (-90...90).contains(latitude), (-180...180).contains(longitude) else {
             throw PawlyLostPetError.invalidSubscription

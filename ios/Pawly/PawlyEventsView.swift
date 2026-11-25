@@ -244,23 +244,33 @@ struct PawlyEventsView: View {
     @State private var createMessage: String?
     @State private var showReport = false
 
+    @State private var query = ""
+    @State private var days = 0
+    @State private var ascending = true
+
     private var visibleEvents: [PawlyEventItem] {
-        store.events.filter { selectedCategory == "Todos" || $0.category == selectedCategory }
+        let cutoff = Calendar.current.date(byAdding: .day, value: days, to: Date()) ?? Date()
+        return store.events.filter { event in
+            (selectedCategory == "Todos" || event.category == selectedCategory)
+                && (days == 0 || event.startAt <= cutoff)
+                && (query.isEmpty || [event.title, event.description, event.location].contains { $0.localizedCaseInsensitiveContains(query) })
+        }.sorted { ascending ? $0.startAt < $1.startAt : $0.startAt > $1.startAt }
     }
 
     var body: some View {
         List {
             Section {
-                Picker("Tipo de evento", selection: $selectedCategory) {
-                    Text("Todos").tag("Todos")
-                    ForEach(["Quedada", "Ruta", "Taller", "Adopción"], id: \.self) { category in
-                        Text(category).tag(category)
+                Menu {
+                    Picker("Tipo de evento", selection: $selectedCategory) {
+                        ForEach(["Todos", "Quedada", "Ruta", "Taller", "Adopción"], id: \.self) { Text(LocalizedStringKey($0)).tag($0) }
                     }
-                }
-                .pickerStyle(.menu)
-                Button { showCreate = true } label: {
-                    Label("Proponer una quedada o actividad", systemImage: "plus.circle.fill")
-                }
+                    Picker("Fecha", selection: $days) {
+                        Text("Todas las fechas").tag(0)
+                        Text("Próximos 7 días").tag(7)
+                        Text("Próximos 30 días").tag(30)
+                    }
+                    Toggle("Más próximos primero", isOn: $ascending)
+                } label: { Label("Filtrar", systemImage: "line.3.horizontal.decrease.circle") }
             }
             Section("Próximos planes") {
                 if visibleEvents.isEmpty {
@@ -300,10 +310,12 @@ struct PawlyEventsView: View {
             if let message = store.errorMessage {
                 Section { Text(message).font(.caption).foregroundStyle(.red) }
             }
-            if let createMessage {
-                Section { Text(createMessage).font(.caption).foregroundStyle(PawlyColors.primary) }
-            }
+
         }
+        .searchable(text: $query, prompt: "Buscar eventos")
+        .alert("Eventos y quedadas", isPresented: Binding(get: { createMessage != nil }, set: { if !$0 { createMessage = nil } })) {
+            Button("Cerrar") { createMessage = nil }
+        } message: { Text(LocalizedStringKey(createMessage ?? "")) }
         .navigationTitle("Eventos y quedadas")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -314,14 +326,13 @@ struct PawlyEventsView: View {
         .refreshable { await store.load() }
         .sheet(isPresented: $showCreate) {
             PawlyEventCreateSheet { title, description, category, location, date, coordinate in
-                do {
                     try await store.create(
                         title: title, description: description, category: category,
                         location: location, date: date, coordinate: coordinate
                     )
                     createMessage = "Evento publicado."
                     await store.load()
-                } catch { createMessage = error.localizedDescription }
+
             }
         }
         .sheet(item: $selectedEvent) { event in
@@ -439,7 +450,7 @@ private struct PawlyEventDetailsSheet: View {
 
 private struct PawlyEventCreateSheet: View {
     @Environment(\.dismiss) private var dismiss
-    var onSave: (String, String, String, String, Date, CLLocationCoordinate2D?) async -> Void
+    var onSave: (String, String, String, String, Date, CLLocationCoordinate2D?) async throws -> Void
     @State private var title = ""
     @State private var description = ""
     @State private var category = "Quedada"
@@ -448,6 +459,7 @@ private struct PawlyEventCreateSheet: View {
     @State private var coordinate: CLLocationCoordinate2D?
     @State private var resolvedLocation = ""
     @State private var showLocationPicker = false
+    @State private var saving = false
     @State private var error: String?
 
     var body: some View {
@@ -484,6 +496,7 @@ private struct PawlyEventCreateSheet: View {
                 }
                 if let error { Section { Text(error).foregroundStyle(.red) } }
             }
+            .disabled(saving).interactiveDismissDisabled(saving)
             .navigationTitle("Crear evento")
             .sheet(isPresented:$showLocationPicker) {
                 PawlyEventLocationPicker(initialQuery:location){name,point in
@@ -491,15 +504,17 @@ private struct PawlyEventCreateSheet: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.disabled(saving) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Publicar") {
+                    Button(saving ? "Guardando…" : "Publicar") {
+                        saving = true
                         Task {
-                            await onSave(title, description, category, location, date, location == resolvedLocation ? coordinate : nil)
-                            dismiss()
+                            defer { saving = false }
+                            do { try await onSave(title, description, category, location, date, location == resolvedLocation ? coordinate : nil)
+                            dismiss() } catch { self.error = error.localizedDescription }
                         }
                     }
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 ||
+                    .disabled(saving || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 ||
                               description.trimmingCharacters(in: .whitespacesAndNewlines).count < 10 ||
                               location.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 || date <= Date())
                 }
