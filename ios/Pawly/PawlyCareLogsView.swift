@@ -198,6 +198,7 @@ struct PawlyCareLogForm: View {
                     PawlyCameraButton { data in if photos.count+cameraPhotos.count < 4 { cameraPhotos.append(data) } }
                         .disabled(photos.count+cameraPhotos.count >= 4)
                     if photos.count+cameraPhotos.count > 0 {
+                        PawlyPhotoSelection(gallery: $photos, camera: $cameraPhotos)
                         LabeledContent("Fotografías seleccionadas",value:"\(photos.count+cameraPhotos.count)/4")
                         Button("Quitar selección",role:.destructive){photos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                     }

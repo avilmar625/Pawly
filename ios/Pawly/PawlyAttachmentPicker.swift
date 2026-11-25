@@ -1,6 +1,7 @@
 import AVFoundation
 import CoreTransferable
 import PhotosUI
+import ImageIO
 import SwiftUI
 
 private struct PickedMovie: Transferable {
@@ -139,19 +140,61 @@ struct PawlyAttachmentPicker: View {
     }
 }
 
-struct DiaryPhotoThumbnail: View {
-    let item: PhotosPickerItem
-    @State private var thumbnail: UIImage?
+struct PawlyPhotoSelection: View {
+    @Binding var gallery: [PhotosPickerItem]
+    @Binding var camera: [Data]
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack {
+                ForEach(gallery, id: \.self) { item in
+                    thumbnail { try await item.loadTransferable(type: Data.self) } remove: {
+                        gallery.removeAll { $0 == item }
+                    }.id(item)
+                }
+                ForEach(Array(camera.enumerated()), id: \.offset) { index, bytes in
+                    thumbnail { bytes } remove: { if camera.indices.contains(index) { camera.remove(at: index) } }
+                        .id(bytes)
+                }
+            }
+        }
+    }
+
+    private func thumbnail(load: @escaping () async throws -> Data?, remove: @escaping () -> Void) -> some View {
+        ZStack(alignment: .topTrailing) {
+            PawlyPhotoThumbnail(load: load)
+            Button(action: remove) {
+                Image(systemName: "xmark.circle.fill").symbolRenderingMode(.palette).foregroundStyle(.white, .black.opacity(0.72))
+                    .frame(width: 44, height: 44, alignment: .topTrailing)
+            }.buttonStyle(.borderless).accessibilityLabel("Quitar foto")
+        }
+    }
+}
+
+private struct PawlyPhotoThumbnail: View {
+    let load: () async throws -> Data?
+    @State private var preview: UIImage?
+
     var body: some View {
         Group {
-            if let thumbnail { Image(uiImage: thumbnail).resizable().scaledToFill() }
+            if let preview { Image(uiImage: preview).resizable().scaledToFill() }
             else { Image(systemName: "photo") }
         }
-        .frame(width: 64, height: 64).clipped()
-        .task(id: item) {
-            guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { return }
-            let preview = await image.byPreparingThumbnail(ofSize: CGSize(width: 128, height: 128))
-            if !Task.isCancelled { thumbnail = preview }
+        .frame(width: 72, height: 72).clipped()
+        .task {
+            guard let bytes = try? await load(), !Task.isCancelled else { return }
+            let thumbnail = await Self.image(from: bytes)
+            if !Task.isCancelled { preview = thumbnail }
         }
+    }
+
+    nonisolated private static func image(from data: Data) async -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 144
+              ] as CFDictionary) else { return nil }
+        return UIImage(cgImage: image)
     }
 }

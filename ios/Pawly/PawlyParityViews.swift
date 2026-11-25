@@ -345,6 +345,11 @@ struct PawlyExploreView:View{
     }
     }
    }.background(PawlyColors.canvas).navigationTitle("Explorar").navigationBarTitleDisplayMode(.inline)
+    .toolbar {
+     ToolbarItem(placement: .navigationBarTrailing) {
+      NavigationLink { PawlyExploreMap(saved: savedStore.places, nearby: results, region: region) } label: { Label("Mapa de Pawly", systemImage: "map") }
+     }
+    }
     .task {
      savedIdeas=Set(UserDefaults.standard.stringArray(forKey:ideaKey) ?? [])
      await savedStore.load();await collections.load()

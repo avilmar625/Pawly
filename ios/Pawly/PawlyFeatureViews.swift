@@ -933,16 +933,7 @@ struct DiaryView:View {
                                     PawlyCameraButton(requestCapture:$launchCamera) { data in if selectedPhotos.count+cameraPhotos.count < 8 { cameraPhotos.append(data) } }
                                         .disabled(selectedPhotos.count+cameraPhotos.count >= 8)
                                     if selectedPhotos.count+cameraPhotos.count > 0 {
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack {
-                                                ForEach(selectedPhotos, id: \.self) { item in DiaryPhotoThumbnail(item: item) }
-                                                ForEach(cameraPhotos.indices, id: \.self) { index in
-                                                    if let image = UIImage(data: cameraPhotos[index]) {
-                                                        Image(uiImage: image).resizable().scaledToFill().frame(width: 64, height: 64).clipped()
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        PawlyPhotoSelection(gallery: $selectedPhotos, camera: $cameraPhotos)
                                         LabeledContent("Fotografías seleccionadas",value:"\(selectedPhotos.count+cameraPhotos.count)/8")
                                         Button("Quitar selección",role:.destructive){selectedPhotos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                                     }
