@@ -106,6 +106,7 @@ enum PawlyExpenseError: LocalizedError {
 }
 
 struct PawlyExpensesView: View {
+    @Environment(\.locale) private var locale
     @EnvironmentObject private var pets: PawlyPetStore
     @StateObject private var store = PawlyExpensesStore()
     @State private var selectedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()

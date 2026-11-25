@@ -5,10 +5,6 @@ import FirebaseFirestore
 
 @MainActor
 enum PawlyBackupManager {
-    private static let format = "pawly-ios-backup"
-    private static let version = 2
-    private static let maximumBytes = 25 * 1024 * 1024
-
     static func exportBackup() async throws -> URL {
         guard let uid = Auth.auth().currentUser?.uid else { throw PawlyBackupError.notSignedIn }
         let db = Firestore.firestore()
@@ -19,7 +15,7 @@ enum PawlyBackupManager {
         let rawPets = profile["dogProfiles"] as? [[String: Any]] ?? []
         var pets: [[String: Any]] = []
         for rawPet in rawPets {
-            guard let petID = rawPet["id"] as? String, !petID.isEmpty else { continue }
+            guard let petID = rawPet["id"] as? String, PawlyBackupPolicy.validID(petID) else { throw PawlyBackupError.invalidFormat }
             let privateRoot = userRef.collection("petCare").document(petID)
             let privateCare: [String: Any] = [
                 "passport": try await exportCollection(privateRoot.collection("passport")),
@@ -60,11 +56,11 @@ enum PawlyBackupManager {
         let savedPlacesData = try? JSONEncoder().encode(PawlySavedPlace.load())
 
         let envelope: [String: Any] = [
-            "format": format,
-            "version": version,
+            "format": PawlyBackupPolicy.format,
+            "version": PawlyBackupPolicy.version,
             "exportedAt": Int64(Date().timeIntervalSince1970 * 1000),
             "uid": uid,
-            "profile": jsonSafe(profile),
+            "profile": jsonSafe(profile.filter { PawlyBackupPolicy.profileFields.contains($0.key) }),
             "privateProfessionalContact": privateContact.get("value") as? String ?? "",
             "privateHome": privateHome.exists ? jsonSafe(privateHome.data() ?? [:]) : [:],
             "pets": pets,
@@ -73,8 +69,7 @@ enum PawlyBackupManager {
             "localSavedPlacesBase64": savedPlacesData?.base64EncodedString() ?? ""
         ]
 
-        let data = try JSONSerialization.data(withJSONObject: envelope, options: [.prettyPrinted, .sortedKeys])
-        guard data.count <= maximumBytes else { throw PawlyBackupError.tooLarge }
+        let data = try PawlyBackupPolicy.encode(envelope)
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmm"
         let file = FileManager.default.temporaryDirectory
@@ -84,51 +79,41 @@ enum PawlyBackupManager {
     }
 
     static func restoreBackup(from data: Data) async throws -> PawlyBackupReport {
-        guard data.count <= maximumBytes else { throw PawlyBackupError.tooLarge }
         guard let uid = Auth.auth().currentUser?.uid else { throw PawlyBackupError.notSignedIn }
-        guard let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-              payload["format"] as? String == format,
-              (payload["version"] as? Int) == version else {
-            throw PawlyBackupError.invalidFormat
-        }
-        guard payload["uid"] as? String == uid else { throw PawlyBackupError.accountMismatch }
+        let payload = try PawlyBackupPolicy.decode(data, for: uid)
+        let reminders = try localValues(PawlyLocalReminder.self, key: "localRemindersBase64", in: payload)
+        guard reminders.count <= 500, reminders.allSatisfy({ PawlyBackupPolicy.validID($0.id) }) else { throw PawlyBackupError.invalidFormat }
+        let savedPlaces = try localValues(PawlySavedPlace.self, key: "localSavedPlacesBase64", in: payload)
+        guard savedPlaces.count <= 100 else { throw PawlyBackupError.invalidFormat }
 
         let db = Firestore.firestore()
         let userRef = db.collection("users").document(uid)
-        if let rawProfile = payload["profile"] as? [String: Any] {
-            let decoded = restoreValue(rawProfile) as? [String: Any] ?? [:]
-            var allowed: [String: Any] = [:]
-            for key in [
-                "displayName", "bio", "photoUrl", "isPublic", "dogProfiles",
-                "accountType", "professionalCategory", "professionalLocation",
-                "professionalDescription", "professionalContactPublic", "professionalPublicContact"
-            ] {
-                if let value = decoded[key] { allowed[key] = value }
+        if let raw = payload["profile"] as? [String: Any], let source = restoreValue(raw) as? [String: Any] {
+            _ = try await db.runTransaction { transaction, failure -> Any? in
+                do {
+                    let current = try transaction.getDocument(userRef)
+                    guard let fields = current.data() else { throw PawlyBackupError.profileMissing }
+                    var changes = source.filter { PawlyBackupPolicy.profileFields.contains($0.key) && fields[$0.key] == nil }
+                    if let imported = source["dogProfiles"] as? [[String: Any]] {
+                        let existing = fields["dogProfiles"] as? [[String: Any]] ?? []
+                        guard fields["dogProfiles"] == nil || fields["dogProfiles"] is [[String: Any]] else {
+                            throw PawlyBackupError.invalidFormat
+                        }
+                        let merged = PawlyBackupPolicy.addingMissing(imported, to: existing) { $0["id"] as? String }
+                        if merged.count > existing.count { changes["dogProfiles"] = merged }
+                    }
+                    if !changes.isEmpty { transaction.updateData(changes, forDocument: userRef) }
+                } catch { failure?.pointee = error as NSError }
+                return nil
             }
-            if let contact = payload["privateProfessionalContact"] as? String, !contact.isEmpty {
-                try await userRef.collection("privateData").document("professionalContact").setData([
-                    "value": String(contact.prefix(120))
-                ])
-            } else {
-                try? await userRef.collection("privateData").document("professionalContact").delete()
-            }
-            if !allowed.isEmpty { try await userRef.updateData(allowed) }
         }
-        if let rawHome = payload["privateHome"] as? [String: Any] {
-            let home = restoreValue(rawHome) as? [String: Any] ?? [:]
-            if let dogName = home["dogName"] as? String,
-               let dogProfiles = home["dogProfiles"] as? [String],
-               !dogName.isEmpty, dogProfiles.count <= 100 {
-                var fields: [String: Any] = [
-                    "dogName": String(dogName.prefix(40)),
-                    "dogProfiles": Array(dogProfiles.prefix(100)),
-                    "updatedAt": FieldValue.serverTimestamp()
-                ]
-                if let selectedPetId = home["selectedPetId"] as? String {
-                    fields["selectedPetId"] = String(selectedPetId.prefix(128))
-                }
-                try await userRef.collection("privateData").document("home").setData(fields)
-            }
+        if let contact = payload["privateProfessionalContact"] as? String, !contact.isEmpty {
+            _ = try await insertMissing([(userRef.collection("privateData").document("professionalContact"), ["value": String(contact.prefix(120))])])
+        }
+        if let home = payload["privateHome"] as? [String: Any], !home.isEmpty,
+           var fields = restoreValue(home) as? [String: Any] {
+            fields["updatedAt"] = FieldValue.serverTimestamp()
+            _ = try await insertMissing([(userRef.collection("privateData").document("home"), fields)])
         }
 
         var restoredDocuments = 0
@@ -161,12 +146,12 @@ enum PawlyBackupManager {
             if let rawProfile = shared["profile"] as? [String: Any] {
                 let profile = restoreValue(rawProfile) as? [String: Any] ?? [:]
                 if let name = profile["name"] as? String, !name.isEmpty {
-                    try await sharedRoot.collection("profile").document("current").setData([
+                    _ = try await insertMissing([(sharedRoot.collection("profile").document("current"), [
                         "petId": petID,
                         "name": String(name.prefix(40)),
                         "photoUrl": profile["photoUrl"] ?? NSNull(),
                         "updatedAt": FieldValue.serverTimestamp()
-                    ], merge: true)
+                    ])])
                 }
             }
         }
@@ -176,13 +161,11 @@ enum PawlyBackupManager {
             to: userRef.collection("exploreCollections")
         )
 
-        if let encoded = payload["localRemindersBase64"] as? String,
-           let reminderData = Data(base64Encoded: encoded), !reminderData.isEmpty {
-            try PawlyReminderStore.shared.importBackupData(reminderData)
-        }
-        if let encoded = payload["localSavedPlacesBase64"] as? String,
-           let savedData = Data(base64Encoded: encoded) {
-            UserDefaults.standard.set(savedData, forKey: "pawly.savedPlaces.v2")
+        guard Auth.auth().currentUser?.uid == uid else { throw PawlyBackupError.accountMismatch }
+        if !reminders.isEmpty { try PawlyReminderStore.shared.importBackupData(JSONEncoder().encode(reminders)) }
+        if !savedPlaces.isEmpty {
+            let places = PawlyBackupPolicy.addingMissing(savedPlaces, to: PawlySavedPlace.load()) { $0.id }
+            UserDefaults.standard.set(try JSONEncoder().encode(places), forKey: PawlySavedPlace.cacheKey(uid))
         }
 
         return PawlyBackupReport(
@@ -212,8 +195,7 @@ enum PawlyBackupManager {
             guard !fields.isEmpty else { continue }
             writes.append((collection.document(id), fields))
         }
-        try await commit(writes)
-        return writes.count
+        return try await insertMissing(writes)
     }
 
     private static func restoreAgenda(_ raw: Any?, to collection: CollectionReference, uid: String) async throws -> Int {
@@ -227,12 +209,11 @@ enum PawlyBackupManager {
             fields["id"] = id
             fields["title"] = String(title.prefix(100))
             fields["date"] = date
-            fields["createdBy"] = uid
+            guard fields["createdBy"] as? String == uid else { continue }
             fields["updatedAt"] = FieldValue.serverTimestamp()
             writes.append((collection.document(id), fields))
         }
-        try await commit(writes)
-        return writes.count
+        return try await insertMissing(writes)
     }
 
     private static func restoreDiary(_ raw: Any?, to collection: CollectionReference) async throws -> Int {
@@ -248,8 +229,7 @@ enum PawlyBackupManager {
                 "position": position, "updatedAt": FieldValue.serverTimestamp()
             ]))
         }
-        try await commit(writes)
-        return writes.count
+        return try await insertMissing(writes)
     }
 
     private static func restoreExploreCollections(_ raw: Any?, to collection: CollectionReference) async throws -> Int {
@@ -271,8 +251,7 @@ enum PawlyBackupManager {
                 "updatedAt": FieldValue.serverTimestamp()
             ]))
         }
-        try await commit(writes)
-        return writes.count
+        return try await insertMissing(writes)
     }
 
     private static func restoreExpenses(_ raw: Any?, to collection: CollectionReference, uid: String) async throws -> Int {
@@ -284,7 +263,7 @@ enum PawlyBackupManager {
                   let kind = fields["kind"] as? String,
                   let title = fields["title"] as? String,
                   let amount = fields["amount"],
-                  let date = fields["date"] else { continue }
+                  let date = fields["date"], fields["createdBy"] as? String == uid else { continue }
             writes.append((collection.document(id), [
                 "id": id, "kind": kind, "title": String(title.prefix(80)),
                 "detail": String((fields["detail"] as? String ?? "").prefix(500)),
@@ -292,18 +271,32 @@ enum PawlyBackupManager {
                 "updatedAt": FieldValue.serverTimestamp()
             ]))
         }
-        try await commit(writes)
-        return writes.count
+        return try await insertMissing(writes)
     }
 
-    private static func commit(_ writes: [(DocumentReference, [String: Any])]) async throws {
-        for start in stride(from: 0, to: writes.count, by: 400) {
-            let batch = Firestore.firestore().batch()
-            for (reference, fields) in writes[start..<min(start + 400, writes.count)] {
-                batch.setData(fields, forDocument: reference, merge: false)
+    private static func localValues<T: Decodable>(_ type: T.Type, key: String, in payload: [String: Any]) throws -> [T] {
+        guard let raw = payload[key] else { return [] }
+        guard let encoded = raw as? String else { throw PawlyBackupError.invalidFormat }
+        if encoded.isEmpty { return [] }
+        guard let data = Data(base64Encoded: encoded) else { throw PawlyBackupError.invalidFormat }
+        return try JSONDecoder().decode([T].self, from: data)
+    }
+
+    private static func insertMissing(_ writes: [(DocumentReference, [String: Any])]) async throws -> Int {
+        var count = 0
+        // Read the whole group before queuing writes. Firestore retries if a device creates a record concurrently.
+        for start in stride(from: 0, to: writes.count, by: 20) {
+            let group = Array(writes[start..<min(start + 20, writes.count)])
+            let result = try await Firestore.firestore().runTransaction { transaction, failure -> Any? in
+                do {
+                    let missing = try group.filter { try !transaction.getDocument($0.0).exists }
+                    for (ref, data) in missing { transaction.setData(data, forDocument: ref) }
+                    return missing.count
+                } catch { failure?.pointee = error as NSError; return nil }
             }
-            try await batch.commit()
+            count += result as? Int ?? 0
         }
+        return count
     }
 
     private static func jsonSafe(_ value: Any) -> Any {
@@ -344,19 +337,6 @@ struct PawlyBackupReport {
     let petCount: Int
     let restoredDocuments: Int
     let skippedCareLogs: Int
-}
-
-enum PawlyBackupError: LocalizedError {
-    case notSignedIn, profileMissing, tooLarge, invalidFormat, accountMismatch
-    var errorDescription: String? {
-        switch self {
-        case .notSignedIn: return "Inicia sesión para crear o restaurar una copia."
-        case .profileMissing: return "No se ha encontrado el perfil de Pawly."
-        case .tooLarge: return "La copia supera el límite de 25 MB."
-        case .invalidFormat: return "El archivo no es una copia de Pawly compatible."
-        case .accountMismatch: return "Esta copia pertenece a otra cuenta de Pawly."
-        }
-    }
 }
 
 struct PawlyBackupView: View {
@@ -436,9 +416,11 @@ struct PawlyBackupView: View {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         do {
-            let data = try Data(contentsOf: url)
+            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize
+            guard let size, size <= PawlyBackupPolicy.maximumBytes else { throw PawlyBackupError.tooLarge }
+            let data = try Data(contentsOf: url, options: .mappedIfSafe)
             let report = try await PawlyBackupManager.restoreBackup(from: data)
-            message = "Restauración finalizada: \(report.petCount) mascotas y \(report.restoredDocuments) registros. \(report.skippedCareLogs) registros de actividad no se han recreado por seguridad."
+            message = "Restauración finalizada: \(report.petCount) mascotas revisadas y \(report.restoredDocuments) registros incorporados. \(report.skippedCareLogs) registros de actividad no se han recreado por seguridad."
             isError = false
         } catch {
             message = error.localizedDescription

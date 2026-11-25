@@ -377,7 +377,8 @@ struct PawlyExploreView:View{
 }
 struct PawlySavedPlace:Identifiable,Codable{
  let id:String;let name:String;let subtitle:String;let latitude:Double;let longitude:Double;let phone:String?
- static func load()->[PawlySavedPlace]{guard let data=UserDefaults.standard.data(forKey:"pawly.savedPlaces.v2"),let values=try? JSONDecoder().decode([PawlySavedPlace].self,from:data)else{return []};return values}
+ static func cacheKey(_ uid: String) -> String { "pawly.savedPlaces.v3." + uid }
+ static func load()->[PawlySavedPlace]{guard let uid = Auth.auth().currentUser?.uid, let data=UserDefaults.standard.data(forKey:cacheKey(uid)),let values=try? JSONDecoder().decode([PawlySavedPlace].self,from:data)else{return []};return values}
 }
 @MainActor
 final class PawlySavedPlacesStore: ObservableObject {
@@ -422,10 +423,10 @@ final class PawlySavedPlacesStore: ObservableObject {
         Task {
             do {
                 try await mutateCloud { current in
-                    if current.contains(where: { $0.id == place.id }) {
+                    if wasSaved {
                         return current.filter { $0.id != place.id }
                     }
-                    return current + [place]
+                    return current.contains(where: { $0.id == place.id }) ? current : current + [place]
                 }
                 await reloadFromCloud()
             } catch {
@@ -461,8 +462,8 @@ final class PawlySavedPlacesStore: ObservableObject {
     }
 
     private func persistLocal() {
-        if let data = try? JSONEncoder().encode(places) {
-            UserDefaults.standard.set(data, forKey: "pawly.savedPlaces.v2")
+        if let uid = Auth.auth().currentUser?.uid, let data = try? JSONEncoder().encode(places) {
+            UserDefaults.standard.set(data, forKey: PawlySavedPlace.cacheKey(uid))
         }
     }
 

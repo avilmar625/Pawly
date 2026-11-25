@@ -31,7 +31,8 @@ import FirebaseFirestore
     func importBackupData(_ data: Data) throws {
         let values = try JSONDecoder().decode([PawlyLocalReminder].self, from: data)
         guard values.count <= 500 else { throw PawlyReminderBackupError.tooMany }
-        reminders = values
+        loadForCurrentUser()
+        reminders = PawlyBackupPolicy.addingMissing(values, to: reminders) { [$0.petScope ?? $0.petName, $0.id] }
         persist()
         rescheduleAll()
     }
