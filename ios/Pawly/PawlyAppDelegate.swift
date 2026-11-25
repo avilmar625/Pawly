@@ -20,6 +20,9 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
+        #if DEBUG && targetEnvironment(simulator)
+        if PawlyApp.usesLocalEmulators { return true }
+        #endif
         if FirebaseApp.app() == nil,
            Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") != nil {
             FirebaseApp.configure()

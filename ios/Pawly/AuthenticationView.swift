@@ -48,12 +48,14 @@ struct AuthenticationView: View {
                                     SecureField("Contraseña", text: $password)
                                 }
                             }
+                            .accessibilityIdentifier("auth.password")
                             .textContentType(isRegistering ? .newPassword : .password)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                             Button { showPassword.toggle() } label: {
                                 Image(systemName: showPassword ? "eye.slash" : "eye")
                                     .foregroundStyle(PawlyColors.muted)
                             }.frame(minWidth: 44, minHeight: 44).buttonStyle(.plain)
+                            .accessibilityIdentifier("auth.showPassword")
                             .accessibilityLabel(showPassword ? "Ocultar contraseña" : "Mostrar contraseña")
                         }
                         .padding(16)
@@ -74,6 +76,7 @@ struct AuthenticationView: View {
                         .background(PawlyColors.primary, in: RoundedRectangle(cornerRadius: 16))
                         .foregroundStyle(.white)
                     }
+                    .accessibilityIdentifier("auth.submit")
                     .disabled(isWorking || email.isEmpty || password.count < 6 ||
                               (isRegistering && (name.trimmingCharacters(in: .whitespaces).isEmpty || username.isEmpty)))
                     .opacity(isWorking ? 0.7 : 1)
@@ -107,6 +110,7 @@ struct AuthenticationView: View {
                             isRegistering.toggle()
                             message = nil
                         }
+                        .accessibilityIdentifier("auth.switchMode")
                         .fontWeight(.bold).foregroundStyle(PawlyColors.primary)
                     }
                     .font(.subheadline).frame(maxWidth: .infinity)
@@ -122,7 +126,7 @@ struct AuthenticationView: View {
     private func field(_ title: String, text: Binding<String>, icon: String) -> some View {
         HStack {
             Image(systemName: icon).foregroundStyle(PawlyColors.muted)
-            TextField(LocalizedStringKey(title), text: text)
+            TextField(LocalizedStringKey(title), text: text).accessibilityIdentifier("auth." + icon)
         }
         .padding(16)
         .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))

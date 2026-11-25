@@ -62,3 +62,21 @@ targets:
         product: FirebaseMessaging
       - package: GoogleSignIn
         product: GoogleSignIn
+  PawlyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: Pawly
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexvilarrubla.pawly.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Pawly
+schemes:
+  Pawly:
+    build:
+      targets:
+        Pawly: all
+    test:
+      targets: [PawlyUITests]

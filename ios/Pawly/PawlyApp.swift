@@ -1,6 +1,10 @@
 // iOS parity build checkpoint for the expanded native feature set.
 import SwiftUI
 import FirebaseCore
+#if DEBUG && targetEnvironment(simulator)
+import FirebaseAuth
+import FirebaseFirestore
+#endif
 
 @main
 struct PawlyApp: App {
@@ -11,12 +15,29 @@ struct PawlyApp: App {
     @StateObject private var session: PawlySession
 
     init() {
+        #if DEBUG && targetEnvironment(simulator)
+        if Self.usesLocalEmulators {
+            let options = FirebaseOptions(googleAppID: "1:100000000000:ios:0123456789abcdef", gcmSenderID: "100000000000")
+            options.projectID = "demo-pawly"
+            // Firebase Installations validates the shape before Auth selects its loopback endpoint.
+            options.apiKey = "A" + String(repeating: "0", count: 38)
+            FirebaseApp.configure(options: options)
+            Auth.auth().useEmulator(withHost: "127.0.0.1", port: 9099)
+            Firestore.firestore().useEmulator(withHost: "127.0.0.1", port: 8080)
+        }
+        #endif
         if Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") != nil,
            FirebaseApp.app() == nil {
             FirebaseApp.configure()
         }
         _session = StateObject(wrappedValue: PawlySession())
     }
+
+    #if DEBUG && targetEnvironment(simulator)
+    static var usesLocalEmulators: Bool {
+        ProcessInfo.processInfo.arguments.contains("-PawlyLocalEmulators")
+    }
+    #endif
 
     private var calendar: Calendar {
         var calendar = Calendar.current

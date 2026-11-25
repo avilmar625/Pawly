@@ -60,11 +60,23 @@ jobs:
       - name: Generate Xcode project
         working-directory: ios
         run: |
-          test -f Config.local.xcconfig || cp Config.example.xcconfig Config.local.xcconfig
+          cp Config.example.xcconfig Config.local.xcconfig
+          sed -i '' 's/^GOOGLE_CLIENT_ID =$/GOOGLE_CLIENT_ID = fixture.apps.example.invalid/; s/^GOOGLE_REVERSED_CLIENT_ID =$/GOOGLE_REVERSED_CLIENT_ID = invalid.example.apps.fixture/; s/^CLOUDINARY_CLOUD_NAME =$/CLOUDINARY_CLOUD_NAME = fixture/; s/^CLOUDINARY_IMAGE_UPLOAD_PRESET =$/CLOUDINARY_IMAGE_UPLOAD_PRESET = image-fixture/; s/^CLOUDINARY_VIDEO_UPLOAD_PRESET =$/CLOUDINARY_VIDEO_UPLOAD_PRESET = video-fixture/' Config.local.xcconfig
           xcodegen generate
 
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project ios/Pawly.xcodeproj -scheme Pawly
 
+      - name: Test Swift contracts and translations
+        run: bash ios/Tests/run.sh
+
       - name: Build iOS Simulator
         run: xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+
+      - name: Check processed Debug configuration
+        run: python3 ios/Tests/check-built-config.py build/Build/Products/Debug-iphonesimulator/Pawly.app
+
+      - name: Test authentication UI on iPhone
+        run: |
+          device=$(python3 ios/Tests/simulator-id.py)
+          xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -destination "platform=iOS Simulator,id=$device" -derivedDataPath build -parallel-testing-enabled NO test
