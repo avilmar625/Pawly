@@ -1,5 +1,6 @@
 name: Pawly
 options:
+  developmentLanguage: es
   bundleIdPrefix: com.pawly
   deploymentTarget:
     iOS: "16.0"

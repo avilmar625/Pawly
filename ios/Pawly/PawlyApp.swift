@@ -18,6 +18,12 @@ struct PawlyApp: App {
         _session = StateObject(wrappedValue: PawlySession())
     }
 
+    private var calendar: Calendar {
+        var calendar = Calendar.current
+        calendar.locale = Locale(identifier: language)
+        return calendar
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -34,6 +40,7 @@ struct PawlyApp: App {
                 }
             }
             .environment(\.locale, Locale(identifier: language))
+            .environment(\.calendar, calendar)
             .preferredColorScheme(darkMode ? .dark : .light)
             .tint(PawlyColors.accentColor(accent))
             .environment(\.colorScheme, darkMode ? .dark : .light)

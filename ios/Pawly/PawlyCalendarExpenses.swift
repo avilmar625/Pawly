@@ -137,7 +137,7 @@ struct PawlyExpensesView: View {
                             Button { moveMonth(-1) } label: { Image(systemName: "chevron.left").frame(width:44,height:44) }.buttonStyle(.borderless).accessibilityLabel("Mes anterior")
                             Spacer()
                             Button { showMonthPicker.toggle() } label: {
-                                Label(selectedMonth.formatted(.dateTime.month(.wide).year()), systemImage: "calendar")
+                                Label(selectedMonth.formatted(.dateTime.month(.wide).year().locale(locale)), systemImage: "calendar")
                                     .font(.headline)
                             }.buttonStyle(.borderless)
                             Spacer()
@@ -314,7 +314,8 @@ struct PawlyCalendarView: View {
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var error: String?
 
-    private let calendar = Calendar.current
+    @Environment(\.calendar) private var calendar
+    @Environment(\.locale) private var locale
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
     var body: some View {
@@ -325,7 +326,7 @@ struct PawlyCalendarView: View {
                         HStack {
                             Button { changeMonth(-1) } label: { Image(systemName: "chevron.left").frame(width:44,height:44) }.buttonStyle(.borderless).accessibilityLabel("Mes anterior")
                             Spacer()
-                            Text(month.formatted(.dateTime.month(.wide).year())).font(.headline)
+                            Text(month.formatted(.dateTime.month(.wide).year().locale(locale))).font(.headline)
                             Spacer()
                             Button { changeMonth(1) } label: { Image(systemName: "chevron.right").frame(width:44,height:44) }.buttonStyle(.borderless).accessibilityLabel("Mes siguiente")
                         }
@@ -383,6 +384,7 @@ struct PawlyCalendarView: View {
 
     private var weekdaySymbols: [String] {
         let formatter = DateFormatter()
+        formatter.locale = locale
         let symbols = formatter.shortStandaloneWeekdaySymbols
             ?? formatter.shortWeekdaySymbols
             ?? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]

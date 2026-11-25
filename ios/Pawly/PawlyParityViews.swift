@@ -97,8 +97,9 @@ struct PawlySettingsView:View {
     }.padding(.vertical,5)
    }
    Section("Idioma") {
-    Picker("Idioma preferido",selection:$language){Text("Español").tag("es");Text("English").tag("en");Text("Català").tag("ca")}
-    Text("El idioma cambia los controles principales y los formatos. Algunas pantallas y contenidos todavía están en español.").font(.caption).foregroundStyle(.secondary)
+    Picker("Idioma preferido", selection: $language) {
+     ForEach(PawlyLanguage.allCases) { option in Text(verbatim: option.nativeName).tag(option.rawValue) }
+    }
    }
    Section("Avisos") {
     Toggle("Notificaciones de Pawly",isOn:$notificationsEnabled).onChange(of:notificationsEnabled){enabled in Task{

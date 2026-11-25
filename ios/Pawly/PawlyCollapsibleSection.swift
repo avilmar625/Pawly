@@ -46,9 +46,9 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
                         .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 11))
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.headline).foregroundStyle(PawlyColors.ink)
+                    Text(LocalizedStringKey(title)).font(.headline).foregroundStyle(PawlyColors.ink)
                     if let subtitle, !subtitle.isEmpty {
-                        Text(subtitle).font(.caption).foregroundStyle(PawlyColors.muted)
+                        Text(LocalizedStringKey(subtitle)).font(.caption).foregroundStyle(PawlyColors.muted)
                     }
                 }
                 Spacer(minLength: 8)

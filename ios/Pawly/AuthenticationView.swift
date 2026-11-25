@@ -53,7 +53,7 @@ struct AuthenticationView: View {
                             Button { showPassword.toggle() } label: {
                                 Image(systemName: showPassword ? "eye.slash" : "eye")
                                     .foregroundStyle(PawlyColors.muted)
-                            }.buttonStyle(.plain)
+                            }.frame(minWidth: 44, minHeight: 44).buttonStyle(.plain)
                             .accessibilityLabel(showPassword ? "Ocultar contraseña" : "Mostrar contraseña")
                         }
                         .padding(16)
@@ -122,7 +122,7 @@ struct AuthenticationView: View {
     private func field(_ title: String, text: Binding<String>, icon: String) -> some View {
         HStack {
             Image(systemName: icon).foregroundStyle(PawlyColors.muted)
-            TextField(title, text: text)
+            TextField(LocalizedStringKey(title), text: text)
         }
         .padding(16)
         .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))

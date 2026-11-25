@@ -1737,5 +1737,5 @@ struct AccountView:View {
 }
 struct PawlyEmptyState:View {
     let icon:String;let title:String;let detail:String
-    var body:some View{VStack(spacing:12){Image(systemName:icon).font(.system(size:38)).foregroundStyle(PawlyColors.primary).padding(20).background(PawlyColors.mint,in:Circle());Text(title).font(.title3.bold()).foregroundStyle(PawlyColors.ink);Text(detail).font(.subheadline).multilineTextAlignment(.center).foregroundStyle(PawlyColors.muted).padding(.horizontal,28)}.frame(maxWidth:.infinity,maxHeight:.infinity).background(PawlyColors.canvas)}
+    var body:some View{VStack(spacing:12){Image(systemName:icon).font(.system(size:38)).foregroundStyle(PawlyColors.primary).padding(20).background(PawlyColors.mint,in:Circle());Text(LocalizedStringKey(title)).font(.title3.bold()).foregroundStyle(PawlyColors.ink);Text(LocalizedStringKey(detail)).font(.subheadline).multilineTextAlignment(.center).foregroundStyle(PawlyColors.muted).padding(.horizontal,28)}.frame(maxWidth:.infinity,maxHeight:.infinity).background(PawlyColors.canvas)}
 }
