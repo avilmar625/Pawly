@@ -77,7 +77,7 @@ struct PawlyPublicProfile: View {
                 HStack {
                     if let url = URL(string: user.photoURL), !user.photoURL.isEmpty {
                         AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { PawlyAvatarPlaceholder() }
-                            .frame(width: 48, height: 48).clipShape(Circle())
+                            .frame(width: 48, height: 48).clipShape(Circle()).pawlyPhoto(url)
                     }
                     VStack(alignment: .leading) { Text(verbatim: user.displayName).font(.headline); Text(verbatim: "@" + user.username) }
                 }

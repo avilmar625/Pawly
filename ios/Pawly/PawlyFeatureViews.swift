@@ -181,7 +181,7 @@ struct PetFormSheet:View {
                         } placeholder: {
                             ProgressView()
                         }
-                        .frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))
+                        .frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14)).pawlyPhoto(url)
                     }
                 }
                 if let error {Text(LocalizedStringKey(error)).foregroundStyle(.red)}
@@ -1002,7 +1002,7 @@ struct DiaryView:View {
                                                     ForEach(entry.photos,id:\.self){url in
                                                         AsyncImage(url:URL(string:url)){image in image.resizable().scaledToFill()}
                                                             placeholder:{RoundedRectangle(cornerRadius:12).fill(PawlyColors.mint)}
-                                                            .frame(width:150,height:115).clipShape(RoundedRectangle(cornerRadius:12))
+                                                            .frame(width:150,height:115).clipShape(RoundedRectangle(cornerRadius:12)).pawlyPhoto(URL(string: url), gallery: entry.photos)
                                                     }
                                                 }
                                             }
@@ -1417,10 +1417,10 @@ struct FeedPostCard:View {
             if !post.text.isEmpty { Text(post.text).frame(maxWidth:.infinity,alignment:.leading) }
             if !post.imageURL.isEmpty, let url=URL(string:post.imageURL) {
                 AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
-                    .frame(maxWidth:.infinity).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
+                    .frame(maxWidth:.infinity).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14)).pawlyPhoto(url)
             }
             if !post.videoURL.isEmpty, let url=URL(string:post.videoURL) {
-                VideoPlayer(player:AVPlayer(url:url)).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
+                PawlyVideoPreview(url: url).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
             }
             HStack(spacing:20){Button(action:onLike){Label("\(post.likeCount)",systemImage:post.likedByMe ? "heart.fill":"heart")}.foregroundStyle(post.likedByMe ? .pink:PawlyColors.muted);Button(action:onComment){Label("\(post.commentCount)",systemImage:"bubble.right")}.foregroundStyle(PawlyColors.muted)}
                 .font(.subheadline.weight(.semibold))
@@ -1495,10 +1495,10 @@ struct CommentsView:View {
                             if !post.text.isEmpty { Text(post.text).font(.body) }
                             if !post.imageURL.isEmpty,let url=URL(string:post.imageURL) {
                                 AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{ProgressView()}
-                                    .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:12))
+                                    .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:12)).pawlyPhoto(url)
                             }
                             if !post.videoURL.isEmpty,let url=URL(string:post.videoURL) {
-                                VideoPlayer(player:AVPlayer(url:url)).frame(height:190).clipShape(RoundedRectangle(cornerRadius:12))
+                                PawlyVideoPreview(url: url).frame(height:190).clipShape(RoundedRectangle(cornerRadius:12))
                             }
                         }.padding(.vertical,5)
                     } header: { Text("Publicación") }
@@ -1691,10 +1691,10 @@ struct ChatView:View {
                 }
                 if !message.imageURL.isEmpty, let url=URL(string:message.imageURL) {
                     AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
-                        .frame(width:190,height:150).clipShape(RoundedRectangle(cornerRadius:10))
+                        .frame(width:190,height:150).clipShape(RoundedRectangle(cornerRadius:10)).pawlyPhoto(url)
                 }
                 if !message.videoURL.isEmpty, let url=URL(string:message.videoURL) {
-                    VideoPlayer(player:AVPlayer(url:url)).frame(width:205,height:150)
+                    PawlyVideoPreview(url: url).frame(width:205,height:150)
                         .clipShape(RoundedRectangle(cornerRadius:10))
                 }
                 if message.senderID == store.uid && message.readBy.contains(chat.otherUserID) {

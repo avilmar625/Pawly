@@ -365,7 +365,7 @@ private struct PawlyEventDetailsSheet: View {
                 Section {
                     if let url = URL(string: event.photoURL), !event.photoURL.isEmpty {
                         AsyncImage(url: url) { image in image.resizable().scaledToFit() } placeholder: { ProgressView() }
-                            .frame(maxHeight: 240)
+                            .frame(maxHeight: 240).pawlyPhoto(url)
                     }
                     Text(event.title).font(.title2.bold())
                     Text(event.description)

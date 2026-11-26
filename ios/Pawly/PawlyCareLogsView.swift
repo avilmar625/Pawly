@@ -59,7 +59,7 @@ struct PawlyCareLogsView: View {
                                                 RoundedRectangle(cornerRadius: 10).fill(PawlyColors.mint)
                                             }
                                             .frame(width: 130, height: 100)
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                                            .clipShape(RoundedRectangle(cornerRadius: 10)).pawlyPhoto(URL(string: url), gallery: entry.photoURLs)
                                         }
                                     }
                                 }

@@ -24,7 +24,7 @@ La rama de entrega es `codex/ios-auditoria-integral-2026-11`, desde `bcc39e10`. 
 | Bloque solicitado | Estado y evidencia |
 |---|---|
 | 1. Mensajes, Más, cartel y zona | Implementado. El avatar consulta el perfil permitido mientras está visible y muestra iniciales si es privado o inaccesible. Más usa una lista sin el margen superior de la primera sección agrupada. El cartel se genera con el nombre, datos disponibles y consentimiento para el contacto. Se puede previsualizar y enviar como imagen a la hoja nativa, con acciones de guardado e impresión según el dispositivo. El mapa muestra un marcador redondeado y abre Apple Maps. El icono y la firma gratuita ya están verificados. |
-| 2. Visor multimedia | Pendiente. |
+| 2. Visor multimedia | Incorporado a publicaciones, mensajes, Diario, historial de cuidados, eventos, perfil público/editor y cartel. Pantalla completa con cierre, páginas, zoom y desplazamiento. El vídeo carga el reproductor nativo al abrir, pausa al salir y ofrece reintento. El visor limita la resolución de las imágenes decodificadas y cancela la carga al cerrar. |
 | 3. Búsqueda y filtros de Comunidad | Pendiente. |
 | 4. Respuestas a comentarios | Pendiente. |
 | 5. Eventos | Pendiente. |
@@ -33,3 +33,5 @@ La rama de entrega es `codex/ios-auditoria-integral-2026-11`, desde `bcc39e10`. 
 | 8. Integración | En curso. Sintaxis Swift y 663 claves en los siete idiomas comprobadas tras el primer bloque. Para pruebas visuales usar Xcode y un dispositivo de pruebas. |
 
 **Comprobación manual del bloque 1.** Abrir Más con texto grande. Cambiar la foto de un perfil público desde otra cuenta y comprobar el avatar en Mensajes y la cabecera. Repetir con un perfil privado. Crear un cartel con y sin contacto, guardarlo o imprimirlo desde Compartir y abrir la zona aproximada en Mapas.
+
+**Prueba manual del visor.** Abrir una galería de Diario por la segunda foto, ampliar, desplazar y pasar de página. Reproducir y adelantar un vídeo en chat, cerrar y comprobar que cesa el sonido. Repetir sin conexión. Validada la sintaxis Swift y la paridad de catálogos. Bloque anterior d37d2b58.

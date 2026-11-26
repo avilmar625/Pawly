@@ -145,7 +145,7 @@ struct PawlyProfileEditorView:View {
   Form {
    Section("Tu identidad") {
     HStack(spacing:14) {
-     if let url=URL(string:photoURL),!photoURL.isEmpty{AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { PawlyAvatarPlaceholder() }.frame(width:76,height:76).clipShape(Circle())}
+     if let url=URL(string:photoURL),!photoURL.isEmpty{AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { PawlyAvatarPlaceholder() }.frame(width:76,height:76).clipShape(Circle()).pawlyPhoto(url)}
      else{PawlyAvatarPlaceholder().frame(width:76,height:76)}
      VStack(alignment:.leading,spacing:6){Text(displayName.isEmpty ? "Tu nombre":displayName).font(.headline);Text(session.user?.email ?? "").font(.caption).foregroundStyle(.secondary)
       PhotosPicker(selection:$imageItem,matching:.images){Label("Elegir foto",systemImage:"photo")}.font(.caption)
@@ -717,7 +717,7 @@ struct PawlyLostPetView: View {
        .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))
      }
      if posterURL != nil {
-      if let posterImage { Image(uiImage: posterImage).resizable().scaledToFit().frame(maxHeight: 260).accessibilityLabel("Cartel de mascota perdida") }
+      if let posterImage { Image(uiImage: posterImage).resizable().scaledToFit().frame(maxHeight: 260).accessibilityLabel("Cartel de mascota perdida").pawlyPhoto(posterURL) }
       Button { showingPosterActions=true } label: {
        Label("Compartir cartel JPG",systemImage:"square.and.arrow.up")
       }
