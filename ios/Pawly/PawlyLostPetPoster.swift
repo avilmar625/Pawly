@@ -94,7 +94,7 @@ struct PawlyLostPetPoster: View {
             .padding(18)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 360, height: 450)
+        .frame(width: 360).fixedSize(horizontal: false, vertical: true)
         .background(paper)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
@@ -102,10 +102,18 @@ struct PawlyLostPetPoster: View {
     @ViewBuilder private func detailLine(_ label: String, _ value: String) -> some View {
         if !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.system(size: 9, weight: .bold)).tracking(0.7).foregroundStyle(muted)
-                Text(value).font(.system(size: 11, weight: .medium)).foregroundStyle(ink).lineLimit(2)
+                Text(LocalizedStringKey(label)).font(.system(size: 9, weight: .bold)).tracking(0.7).foregroundStyle(muted)
+                Text(verbatim: value).font(.system(size: 13, weight: .medium)).foregroundStyle(ink).fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
+}
+
+struct PawlyPosterShareSheet: UIViewControllerRepresentable {
+    let image: UIImage
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [image], applicationActivities: nil)
+    }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

@@ -18,3 +18,18 @@ La rama de entrega es `codex/ios-auditoria-integral-2026-11`, desde `bcc39e10`. 
 
 
 **Estado de la rama en GitHub.** Los indicadores se actualizan tras el push que toca la app. [![iOS CI](https://github.com/avilmar625/Pawly/actions/workflows/ios.yml/badge.svg?branch=codex%2Fios-auditoria-integral-2026-11)](https://github.com/avilmar625/Pawly/actions/workflows/ios.yml?query=branch%3Acodex%2Fios-auditoria-integral-2026-11) · [![Reglas Firestore](https://github.com/avilmar625/Pawly/actions/workflows/pawly-validation.yml/badge.svg?branch=codex%2Fios-auditoria-integral-2026-11)](https://github.com/avilmar625/Pawly/actions/workflows/pawly-validation.yml?query=branch%3Acodex%2Fios-auditoria-integral-2026-11)
+
+## Ampliación de Comunidad y multimedia
+
+| Bloque solicitado | Estado y evidencia |
+|---|---|
+| 1. Mensajes, Más, cartel y zona | Implementado. El avatar consulta el perfil permitido mientras está visible y muestra iniciales si es privado o inaccesible. Más usa una lista sin el margen superior de la primera sección agrupada. El cartel se genera con el nombre, datos disponibles y consentimiento para el contacto. Se puede previsualizar y enviar como imagen a la hoja nativa, con acciones de guardado e impresión según el dispositivo. El mapa muestra un marcador redondeado y abre Apple Maps. El icono y la firma gratuita ya están verificados. |
+| 2. Visor multimedia | Pendiente. |
+| 3. Búsqueda y filtros de Comunidad | Pendiente. |
+| 4. Respuestas a comentarios | Pendiente. |
+| 5. Eventos | Pendiente. |
+| 6. Vídeos de mascotas perdidas | Pendiente. |
+| 7. Compartir perfil | Pendiente. |
+| 8. Integración | En curso. Sintaxis Swift y 663 claves en los siete idiomas comprobadas tras el primer bloque. Para pruebas visuales usar Xcode y un dispositivo de pruebas. |
+
+**Comprobación manual del bloque 1.** Abrir Más con texto grande. Cambiar la foto de un perfil público desde otra cuenta y comprobar el avatar en Mensajes y la cabecera. Repetir con un perfil privado. Crear un cartel con y sin contacto, guardarlo o imprimirlo desde Compartir y abrir la zona aproximada en Mapas.

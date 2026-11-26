@@ -1542,9 +1542,7 @@ struct MessagesView:View {
                         selected = chat
                     } label: {
                         HStack(spacing:12) {
-                            Image(systemName:"person.crop.circle.fill")
-                                .font(.largeTitle)
-                                .foregroundStyle(PawlyColors.primary)
+                            PawlyChatAvatar(userID: chat.otherUserID, name: chat.otherUserName)
                             VStack(alignment:.leading,spacing:4) {
                                 HStack {
                                     Text(chat.otherUserName)
@@ -1659,7 +1657,7 @@ struct ChatView:View {
             }
             .background(PawlyColors.canvas)
             .navigationTitle(chat.otherUserName)
-            .toolbar { ToolbarItem(placement: .principal) { NavigationLink { PawlyPublicProfile(userID: chat.otherUserID) } label: { Text(verbatim: chat.otherUserName).font(.headline) } } }
+            .toolbar { ToolbarItem(placement: .principal) { NavigationLink { PawlyPublicProfile(userID: chat.otherUserID) } label: { HStack { PawlyChatAvatar(userID: chat.otherUserID, name: chat.otherUserName, size: 30); Text(verbatim: chat.otherUserName).font(.headline) } } } }
             .toolbar { ToolbarItem(placement:.confirmationAction) { Button("Cerrar") { dismiss() } } }
             .onAppear { listen() }
             .onDisappear { store.stopMessages() }

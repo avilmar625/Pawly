@@ -14,7 +14,6 @@ struct PawlyMoreHubView: View {
  var body:some View {
   NavigationStack {
    List {
-    Section {
      HStack(spacing:12) {
       PawlyAvatarPlaceholder().frame(width:50,height:50)
       VStack(alignment:.leading,spacing:3) {
@@ -22,8 +21,8 @@ struct PawlyMoreHubView: View {
        Text(session.user?.displayName ?? session.user?.email ?? "Tu compañero y todos vuestros recursos")
         .font(.caption).foregroundStyle(.secondary)
       }
-     }.padding(.vertical,6)
-    }
+     }
+     .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 4, trailing: 16))
     Section {
      PawlyPersistentDisclosureGroup(
       title:"Tu día a día", subtitle:"Diario, agenda, eventos y recursos", icon:"pawprint.fill",
@@ -63,6 +62,7 @@ struct PawlyMoreHubView: View {
      Button(role:.destructive){try? session.signOut()} label:{Label("Cerrar sesión",systemImage:"rectangle.portrait.and.arrow.right")}
     }
    }
+   .listStyle(.plain)
    .navigationTitle("Más")
    .navigationBarTitleDisplayMode(.inline)
   }
@@ -687,7 +687,10 @@ struct PawlyLostPetView: View {
  @State private var subscriptionSaved=false
  @State private var posterImage: UIImage?
  @State private var posterURL:URL?
+ @State private var showingPosterActions=false
  @State private var generatingPoster=false
+ @State private var includeContact=false
+ @Environment(\.locale) private var posterLocale
  @Environment(\.dismiss) private var dismiss
  private var posterPreferenceKey:String { "pawly.lostPet.\(session.user?.uid ?? "guest").alertsExpanded" }
 
@@ -696,13 +699,14 @@ struct PawlyLostPetView: View {
    Form {
     Section("Datos del aviso") {
      if let pet=pets.selectedPet {
-      Button(pet.name){name=pet.name}.foregroundStyle(PawlyColors.primary)
+      Button(pet.name){name=pet.name;breed=pet.breed;details=pet.description}.foregroundStyle(PawlyColors.primary)
      }
      TextField("Nombre de la mascota",text:$name)
      TextField("Especie o raza (opcional)",text:$breed)
      TextField("Zona donde se perdió",text:$area)
      TextField("Cuándo se vio por última vez",text:$lastSeen)
      TextField("Teléfono o contacto (opcional)",text:$contact).keyboardType(.phonePad)
+     if !contact.isEmpty { Toggle("Compartir el contacto en el cartel y el aviso", isOn: $includeContact) }
      TextField("Rasgos y otra información útil",text:$details,axis:.vertical).lineLimit(3...7)
      PhotosPicker(selection:$photoItem,matching:.images) {
       Label("Elegir de la galería",systemImage:"photo")
@@ -712,16 +716,16 @@ struct PawlyLostPetView: View {
       Image(uiImage:image).resizable().scaledToFill()
        .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))
      }
-     if let posterURL {
+     if posterURL != nil {
       if let posterImage { Image(uiImage: posterImage).resizable().scaledToFit().frame(maxHeight: 260).accessibilityLabel("Cartel de mascota perdida") }
-      ShareLink(item:posterURL) {
+      Button { showingPosterActions=true } label: {
        Label("Compartir cartel JPG",systemImage:"square.and.arrow.up")
       }
-      Button("Volver a crear el cartel") { generatePoster() }
+      Button("Volver a crear el cartel") { Task { await generatePoster() } }
        .disabled(generatingPoster)
      } else {
       Button {
-       generatePoster()
+       Task { await generatePoster() }
       } label: {
        HStack {
         if generatingPoster { ProgressView() }
@@ -729,8 +733,7 @@ struct PawlyLostPetView: View {
        }
       }
       .disabled(generatingPoster || name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ||
-                area.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ||
-                details.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+                photoItem != nil && photoData == nil)
      }
     }
     Section("Ubicación aproximada del aviso") {
@@ -745,8 +748,7 @@ struct PawlyLostPetView: View {
       }
      }.disabled(geocoding || area.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
      if let lostLocation {
-      Text(String(format:"Ubicación aproximada: %.2f, %.2f",lostLocation.latitude,lostLocation.longitude))
-       .font(.caption).foregroundStyle(.secondary)
+      PawlyLostAreaMap(coordinate: lostLocation, name: area).id(area)
      }
     }
     Section {
@@ -801,7 +803,7 @@ struct PawlyLostPetView: View {
                area.trimmingCharacters(in:.whitespaces).isEmpty ||
                details.trimmingCharacters(in:.whitespaces).isEmpty)
     }
-    if let status { Section { Text(status).font(.caption).foregroundStyle(PawlyColors.primary) } }
+    if let status { Section { Text(LocalizedStringKey(status)).font(.caption).foregroundStyle(PawlyColors.primary) } }
     if let error { Section { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) } }
     Section {
      Text("El aviso queda publicado en Comunidad. Las notificaciones por proximidad requieren que el servicio Cloudflare esté desplegado y que las personas cercanas hayan dado su consentimiento.")
@@ -816,6 +818,7 @@ struct PawlyLostPetView: View {
      Button("Cerrar") { dismiss() }
     }
    }
+   .sheet(isPresented: $showingPosterActions) { if let posterImage { PawlyPosterShareSheet(image: posterImage) } }
    .onChange(of:photoItem){item in
     guard let item else{return}
     Task { photoData=try? await item.loadTransferable(type:Data.self);posterURL=nil }
@@ -825,7 +828,8 @@ struct PawlyLostPetView: View {
    .onChange(of:area){_ in posterURL=nil; lostLocation=nil}
    .onChange(of:lastSeen){_ in posterURL=nil}
    .onChange(of:details){_ in posterURL=nil}
-   .onChange(of:contact){_ in posterURL=nil}
+   .onChange(of:contact){_ in posterURL=nil;includeContact=false}
+   .onChange(of:includeContact){_ in posterURL=nil}
    .onReceive(locationProvider.$location){location in
     if receiveNearbyAlerts, let location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
    }
@@ -834,28 +838,28 @@ struct PawlyLostPetView: View {
   }
  }
 
- @MainActor private func generatePoster() {
-  guard !name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,
-        !area.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,
-        !details.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {
-   error="Añade el nombre, la zona y una descripción para crear el cartel."
-   return
-  }
+ @MainActor private func generatePoster() async {
+  guard !generatingPoster, !name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else { return }
   generatingPoster=true
   defer { generatingPoster=false }
   do {
+   var image = photoData.flatMap(UIImage.init(data:))
+   if image == nil, let pet = pets.selectedPet, name == pet.name,
+      let url = URL(string: pet.photoURL), url.scheme == "https",
+      let (bytes, response) = try? await URLSession.shared.data(from: url),
+      (response as? HTTPURLResponse)?.statusCode == 200 { image = UIImage(data: bytes) }
    let poster=PawlyLostPetPoster(
     name:name,
     breed:breed,
     area:area,
     lastSeen:lastSeen,
     description:details,
-    contact:contact,
-    photo:photoData.flatMap(UIImage.init(data:))
+    contact:includeContact ? contact : "",
+    photo:image
    )
-   let renderer=ImageRenderer(content:poster)
+   let renderer=ImageRenderer(content:poster.environment(\.locale, posterLocale))
    renderer.scale=3
-   guard let image=renderer.uiImage,let data=image.jpegData(compressionQuality:0.92) else {
+   guard let rendered=renderer.uiImage,let data=rendered.jpegData(compressionQuality:0.92) else {
     throw NSError(domain:"PawlyPoster",code:1,userInfo:[NSLocalizedDescriptionKey:"No se pudo generar la imagen del cartel."])
    }
    let directory=FileManager.default.temporaryDirectory.appendingPathComponent("PawlyShared",isDirectory:true)
@@ -863,7 +867,7 @@ struct PawlyLostPetView: View {
    let safeName=name.replacingOccurrences(of:"[^A-Za-z0-9_-]",with:"_",options:.regularExpression)
    let url=directory.appendingPathComponent("pawly-se-busca-\(safeName.isEmpty ? "mascota":safeName)-\(UUID().uuidString).jpg")
    try data.write(to:url,options:.atomic)
-   posterImage=image
+   posterImage=rendered
    posterURL=url
    error=nil
    status="Cartel creado en este dispositivo. Puedes compartir el JPG."
@@ -934,7 +938,7 @@ struct PawlyLostPetView: View {
    if let photoData {
     imageURL=try await PawlyCloudinaryUploader().uploadImage(photoData,folder:"post-photos",ownerUID:uid)
    }
-   let message="MASCOTA PERDIDA · \(name)\nZona: \(area)\nÚltima vez vista: \(lastSeen.isEmpty ? "No indicada":lastSeen)\nContacto: \(contact.isEmpty ? "No indicado":contact)\n\n\(details)"
+   let message="MASCOTA PERDIDA · \(name)\nZona: \(area)\nÚltima vez vista: \(lastSeen.isEmpty ? "No indicada":lastSeen)\nContacto: \(!includeContact || contact.isEmpty ? "No indicado":contact)\n\n\(details)"
    let postID=try await community.publish(text:message,petName:name,category:"LOST",imageURL:imageURL)
    guard let lostLocation else {
     status="La publicación se ha creado, pero no se han enviado alertas por proximidad porque falta localizar la zona del aviso."
