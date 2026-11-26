@@ -59,8 +59,8 @@ private struct PawlyMyPetView: View {
                             Text(LocalizedStringKey(label))
                                 .font(.subheadline.weight(section == index ? .semibold : .regular))
                                 .lineLimit(1).minimumScaleFactor(0.8)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                                .contentShape(Rectangle())
                                 .foregroundStyle(section == index ? PawlyColors.primary : PawlyColors.ink)
                                 .background(section == index ? PawlyColors.mint : Color.clear, in: RoundedRectangle(cornerRadius: 12))
                         }

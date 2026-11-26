@@ -17,12 +17,6 @@ final class PawlyPetNavigationUITests: XCTestCase {
 
     @MainActor func testSwitchPetInCalendarAndChangeLanguageWithoutLosingSelection() async throws {
         continueAfterFailure = false
-        addUIInterruptionMonitor(withDescription: "System password prompt") { alert in
-            let action = alert.buttons.matching(NSPredicate(format: "label IN %@", ["Ahora no", "Not Now"])).firstMatch
-            guard action.exists else { return false }
-            action.tap()
-            return true
-        }
         let email = "ui-\(UUID().uuidString)@example.test"
         let password = "local-fixture-123"
         let signup = URL(string: "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local")!
@@ -48,23 +42,24 @@ final class PawlyPetNavigationUITests: XCTestCase {
         app.buttons["auth.submit"].tap()
         let header = app.buttons["pet.selection"]
         XCTAssertTrue(header.waitForExistence(timeout: 20))
-        // iOS may offer to store the synthetic credential after the first successful login.
-        let dismissPassword = NSPredicate(format: "label IN %@", ["Ahora no", "Not Now"])
-        let sheetAction = app.buttons.matching(dismissPassword).firstMatch
-        if sheetAction.waitForExistence(timeout: 3) {
-            sheetAction.tap()
-            XCTAssertTrue(sheetAction.waitForNonExistence(timeout: 5))
-        }
+        // Reopen the authenticated session to test persistence and dismiss the OS credential sheet.
+        app.terminate()
+        app.launchArguments = ["-PawlyLocalEmulators"]
+        app.launch()
+        XCTAssertTrue(header.waitForExistence(timeout: 20))
         let loaded = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "Uma", "Nora")
         let petReady = XCTNSPredicateExpectation(predicate: loaded, object: header)
         XCTAssertEqual(XCTWaiter.wait(for: [petReady], timeout: 12), .completed)
         let target = header.label.contains("Nora") ? "Uma" : "Nora"
-        app.buttons["pet.section.3"].tap()
-        let nextMonth = app.buttons["calendar.nextMonth"]
-        if !nextMonth.waitForExistence(timeout: 2) {
-            app.buttons["pet.section.3"].tap()
+        let agenda = app.buttons["pet.section.3"]
+        let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: agenda)
+        guard XCTWaiter.wait(for: [hittable], timeout: 10) == .completed else {
+            XCTFail("Agenda is not accessible after restoring the session. " + app.debugDescription)
+            return
         }
-        XCTAssertTrue(nextMonth.waitForExistence(timeout: 6), app.debugDescription)
+        agenda.tap()
+        let nextMonth = app.buttons["calendar.nextMonth"]
+        XCTAssertTrue(nextMonth.waitForExistence(timeout: 10), app.debugDescription)
         header.tap()
         app.buttons[target].tap()
         XCTAssertTrue(header.label.contains(target))
