@@ -110,9 +110,10 @@ struct PawlySettingsView:View {
      }
     }}
     NavigationLink{PawlyRemindersView()}label:{Label("Gestionar recordatorios",systemImage:"bell.badge")}
-    Button("Activar notificaciones push"){notificationsEnabled=true;Task{
-     message=await reminders.requestPermission()
-    }}
+    Button("Activar avisos"){
+     if notificationsEnabled { Task { message=await reminders.requestPermission() } }
+     else { notificationsEnabled=true }
+    }
     if let message{Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
    }
    Section("Privacidad"){Text("La apariencia se guarda en este dispositivo. Los avisos locales dependen del permiso de notificaciones de iOS.").font(.caption).foregroundStyle(.secondary)}

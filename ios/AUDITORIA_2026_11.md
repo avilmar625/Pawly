@@ -31,7 +31,7 @@ Rama de entrega `codex/ios-auditoria-integral-2026-11`. La base iOS es `bcc39e10
 | 3.19 Más y cuenta | Implementado | Reorganizados Ajustes, privacidad, perfil, compartir, copias y cierre de sesión. Los accesos repetidos de Agenda, comunidad y mensajes se concentran en los destinos principales. |
 | 3.20 Copias | Parcial | JSON v2 validado con límite de 25 MB e identidad de cuenta. Al restaurar se conservan datos actuales y se insertan los documentos ausentes. Se combinan favoritos y avisos por identificador. Los archivos multimedia son referencias externas. Los registros inmutables de actividad se exportan para consulta. Quedan pruebas con históricos grandes y compatibilidad explícita con otros formatos. |
 | 3.21 Login | Parcial | El ojo usa el mismo valor de contraseña en acceso y registro. XCTest cubre el formulario real. El alta interrumpida puede retomarse acreditando las credenciales. La configuración local de Google se comprueba en el producto compilado. Faltan Google OAuth real, entrega del correo de recuperación y renovación de sesión en dispositivo. |
-| 3.22 Otros módulos | Parcial | Los gastos conservan autor al editar y el chat muestra los últimos 200 mensajes y permite ampliar el historial desde la conversación. La prueba de integración confirma que un mensaje entrante sigue llegando con la ventana llena y que se recuperan los anteriores en orden. Se revisaron profesionales, Market, avisos y sus permisos. Quedan coste de consultas de contadores con tráfico real, accesibilidad y tema en todas las pantallas, apertura de enlaces externos y APNs real. |
+| 3.22 Otros módulos | Parcial | Los gastos conservan autor al editar y el chat muestra los últimos 200 mensajes y permite ampliar el historial desde la conversación. La prueba de integración confirma que un mensaje entrante sigue llegando con la ventana llena y que se recuperan los anteriores en orden. Se revisaron profesionales, Market, avisos y sus permisos. Quedan coste de consultas de contadores con tráfico real, accesibilidad y tema en todas las pantallas, apertura de enlaces externos y entrega física de recordatorios locales. APNs está pospuesto para esta edición gratuita. |
 
 ## Arquitectura, contratos y archivos
 
@@ -48,14 +48,14 @@ Rama de entrega `codex/ios-auditoria-integral-2026-11`. La base iOS es `bcc39e10
 | Nivel | Resultado comprobado | Alcance |
 |---|---|---|
 | Compilación | XcodeGen genera el proyecto. Xcode 27.2 compila Debug y Release para simulador arm64. | Se validan el plist procesado, HTTPS completo, identificadores Google, parámetros Cloudinary y siete idiomas. |
-| Firma y push | El target de dispositivo resuelve el entitlement APNs de desarrollo en Debug y de producción en Release. | La auditoría detectó el archivo de entitlements vacío pese a las variables de Xcode; la rama lo corrige. Pendientes firma, aprovisionamiento y entrega física. |
+| Firma y push | El target para iPhone conserva su identificador y omite el entitlement APNs en Debug y Release. | Firma gratuita con Personal Team. Firebase Messaging no inicia el registro remoto; los avisos locales mantienen su permiso y presentación. Pendiente entrega física de un recordatorio. |
 | Swift | Cinco ejecutables de prueba superados. | Petición/respuesta multimedia, reintentos concurrentes, aislamiento de agenda y recurrencias, copias/versionado y lectura de pesos. |
-| Idiomas | 658 claves equivalentes por idioma. Cubiertas las 499 claves extraídas por Xcode 27.2, 393 literales directos y 68 opciones de listas. | El compilador permite comprobar también interpolaciones y etiquetas de accesibilidad. Las opciones persistidas mantienen el valor que espera Android. Los permisos del sistema tienen recursos en los siete idiomas. |
+| Idiomas | 658 claves equivalentes por idioma. Cubiertas las 498 claves extraídas por Xcode 27.2, 392 literales directos y 68 opciones de listas. | El compilador permite comprobar también interpolaciones y etiquetas de accesibilidad. Las opciones persistidas mantienen el valor que espera Android. Los permisos del sistema tienen recursos en los siete idiomas. |
 | XCTest, iPhone 17e | Cinco pruebas superadas con Auth y Firestore locales y cuentas ficticias. | Ojo y valor de contraseña en acceso/registro; inicio de sesión, cambio de mascota en Agenda, cambio a inglés y conservación del calendario; exportación/restauración repetida con colección eliminada, perfil más reciente y favoritos privados; preparación de foto y muestra de vídeo con respuesta HTTP controlada e índices Firestore de propietario; historial del chat y recepción de mensajes con la ventana llena. |
 | Firestore | 23 pruebas de reglas superadas en el emulador. | Incluyen documentos antiguos, foto de evento vinculada al organizador, roles y aislamiento de favoritos. |
 | Cloudflare Worker | TypeScript sin errores y 50 pruebas en nueve archivos superadas. | Contratos de backend con datos de prueba. |
 | GitHub Actions | El checkpoint público `dc0f2e38` pasó ambos flujos. El estado del último commit se puede consultar por rama. | [Compilación y Worker](https://github.com/avilmar625/Pawly/actions/runs/45693056331) · [Reglas](https://github.com/avilmar625/Pawly/actions/runs/45693056239) · [Ejecuciones de la rama](https://github.com/avilmar625/Pawly/actions?query=branch%3Acodex%2Fios-auditoria-integral-2026-11) |
-| Dispositivo y servicios | Pendientes los recorridos físicos y en staging de la matriz manual. | Siguen abiertos la entrega real de APNs, la captura, la disponibilidad del archivo remoto, el flujo OAuth externo y la sincronización Android–iOS con dos dispositivos. |
+| Dispositivo y servicios | Pendientes los recorridos físicos y en staging de la matriz manual. | Siguen abiertos la entrega física de un aviso local, la captura, la disponibilidad del archivo remoto, el flujo OAuth externo y la sincronización Android–iOS con dos dispositivos. |
 
 ## Historial de implementación
 
@@ -100,7 +100,7 @@ xcodegen generate
 open Pawly.xcodeproj
 ```
 
-Selecciona el esquema **Pawly**, elige un iPhone simulador y pulsa **Run**. En un iPhone físico configura tu equipo de firma y el identificador del proyecto. Para verificar la app procesada puedes ejecutar lo siguiente desde `ios`.
+Selecciona el esquema **Pawly**, elige un iPhone simulador y pulsa **Run**. En un iPhone físico selecciona **Automatically manage signing** y tu **Personal Team**. Conserva el identificador existente. Para verificar la app procesada puedes ejecutar lo siguiente desde `ios`.
 
 ```bash
 xcodebuild -project Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/PawlyAuditBuild CODE_SIGNING_ALLOWED=NO build
@@ -126,7 +126,7 @@ npm --prefix backend/cloudflare-worker test
 2. En `Config.local.xcconfig` introduce los valores que ya correspondan a tu proyecto. Para conservar `https://` en xcconfig usa la forma `https:/$()/host`. El script de verificación lee el plist procesado sin imprimir las credenciales. Configura los presets unsigned separados para imagen y vídeo, sus formatos y límites, y la convención de carpetas que usa Android. Conserva la restricción de identificadores públicos elegidos por el cliente. [Configuración del proyecto](../docs/FIREBASE_SETUP.md) · [Referencia de subidas de Cloudinary](https://cloudinary.com/documentation/image_upload_api_reference)
 3. Valida las reglas de esta rama en un proyecto de pruebas antes de decidir su despliegue. La versión desplegada puede rechazar las fotos de evento o el nuevo documento de favoritos. Verifica con una cuenta propietaria, una editora y una lectora. Las URLs de entrega de medios unsigned pueden estar accesibles para quien tenga el enlace.
 4. Revisa URL, rutas y secretos del Worker en el entorno de pruebas. Verifica autenticación de solicitudes, publicación de propuestas, perfiles autorizados de asistentes y notificaciones. Conserva los secretos en el servidor. Los límites por consulta de mapas, eventos y chats están acotados. Quedan por medir subpeticiones, lecturas de relaciones por elemento y consumo de medios con tráfico representativo. [Configuración del Worker](../docs/CLOUDFLARE_SETUP.md)
-5. En Apple Developer y Firebase configura la capacidad Push Notifications, perfil de firma y clave APNs compatibles. Comprueba `aps-environment` y entrega en dispositivo de desarrollo y en una distribución de prueba. Ajusta los permisos desde iOS para ensayar denegación y reactivación. [Configuración oficial de FCM para Apple](https://firebase.google.com/docs/cloud-messaging/ios/client)
+5. En el iPhone concede el permiso de notificaciones al crear un aviso local. Programa un aviso a unos minutos, deja la app en segundo plano y comprueba su entrega. La instalación con Personal Team utiliza la firma gratuita; APNs queda pospuesto. [Capacidades por tipo de cuenta](https://developer.apple.com/help/account/reference/supported-capabilities-ios/)
 
 ## Pruebas manuales priorizadas y salida a producción
 

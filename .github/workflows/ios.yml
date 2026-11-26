@@ -73,7 +73,7 @@ jobs:
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project ios/Pawly.xcodeproj -scheme Pawly
 
-      - name: Check device push entitlements
+      - name: Check Personal Team device signing settings
         run: |
           for config in Debug Release; do
             xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -configuration "$config" -sdk iphoneos -showBuildSettings -json | python3 ios/Tests/check-push-config.py "$config"

@@ -8,12 +8,20 @@ import FirebaseMessaging
 final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
     private var authHandle: AuthStateDidChangeListenerHandle?
 
-    private static let pushPreferenceKey = "pawly.notificationsEnabled"
+    private static let notificationPreferenceKey = "pawly.notificationsEnabled"
     private static let registeredUIDKey = "pawly.push.registeredUID"
     private static let registeredTokenKey = "pawly.push.registeredToken"
 
+    private static var remoteNotificationsAvailable: Bool {
+        Bundle.main.object(forInfoDictionaryKey: "FirebaseMessagingAutoInitEnabled") as? Bool == true
+    }
+
+    private static var notificationsEnabled: Bool {
+        UserDefaults.standard.object(forKey: notificationPreferenceKey) as? Bool ?? true
+    }
+
     private static var pushNotificationsEnabled: Bool {
-        UserDefaults.standard.object(forKey: pushPreferenceKey) as? Bool ?? true
+        remoteNotificationsAvailable && notificationsEnabled
     }
 
     func application(
@@ -28,9 +36,11 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
             FirebaseApp.configure()
         }
 
-        guard FirebaseApp.app() != nil else { return true }
         UNUserNotificationCenter.current().delegate = self
-        Messaging.messaging().delegate = self
+        guard FirebaseApp.app() != nil else { return true }
+        if Self.remoteNotificationsAvailable {
+            Messaging.messaging().delegate = self
+        }
 
         if Self.pushNotificationsEnabled {
             UNUserNotificationCenter.current().getNotificationSettings { settings in
@@ -170,8 +180,10 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
     @MainActor
     static func disableRemoteNotifications() {
         let defaults = UserDefaults.standard
-        defaults.set(false, forKey: pushPreferenceKey)
-        UIApplication.shared.unregisterForRemoteNotifications()
+        defaults.set(false, forKey: notificationPreferenceKey)
+        if remoteNotificationsAvailable {
+            UIApplication.shared.unregisterForRemoteNotifications()
+        }
 
         let uid = defaults.string(forKey: registeredUIDKey) ?? Auth.auth().currentUser?.uid
         let token = defaults.string(forKey: registeredTokenKey)
@@ -190,7 +202,8 @@ final class PawlyAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificatio
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        guard Self.pushNotificationsEnabled else {
+        let isRemote = notification.request.trigger is UNPushNotificationTrigger
+        guard Self.notificationsEnabled, !isRemote || Self.remoteNotificationsAvailable else {
             completionHandler([])
             return
         }

@@ -13,6 +13,10 @@ required = ["GIDClientID", "PAWLY_BACKEND_URL", "CLOUDINARY_CLOUD_NAME",
             "NSPhotoLibraryUsageDescription", "NSLocationWhenInUseUsageDescription"]
 errors = [key for key in required if not isinstance(config.get(key), str)
           or not config[key].strip() or "$(" in config[key]]
+if config.get("FirebaseMessagingAutoInitEnabled") is not False:
+    errors.append("Firebase Messaging automatic registration must be off for Personal Team")
+if "remote-notification" in config.get("UIBackgroundModes", []):
+    errors.append("unexpected remote-notification background mode")
 url = urlparse(config.get("PAWLY_BACKEND_URL", ""))
 if url.scheme != "https" or not url.hostname:
     errors.append("PAWLY_BACKEND_URL (HTTPS)")

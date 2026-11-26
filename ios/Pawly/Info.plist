@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict><key>CFBundleURLTypes</key><array><dict><key>CFBundleTypeRole</key><string>Editor</string><key>CFBundleURLSchemes</key><array><string>$(GOOGLE_REVERSED_CLIENT_ID)</string></array></dict></array><key>GIDClientID</key><string>$(GOOGLE_CLIENT_ID)</string>
+<key>FirebaseMessagingAutoInitEnabled</key><false/>
 <key>PAWLY_BACKEND_URL</key><string>$(PAWLY_BACKEND_URL)</string>
 <key>CLOUDINARY_CLOUD_NAME</key><string>$(CLOUDINARY_CLOUD_NAME)</string>
 <key>CLOUDINARY_IMAGE_UPLOAD_PRESET</key><string>$(CLOUDINARY_IMAGE_UPLOAD_PRESET)</string>

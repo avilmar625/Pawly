@@ -215,16 +215,9 @@ Vuelve a `ios/project.yml` y coloca esa URL HTTPS en `PAWLY_BACKEND_URL`. Genera
 
 Documentación oficial: [Secretos de Cloudflare Workers](https://developers.cloudflare.com/workers/configuration/secrets/) y [variables de entorno](https://developers.cloudflare.com/workers/configuration/environment-variables/).
 
-## 8. Activar las notificaciones push de Apple (APNs)
+## 8. Firma gratuita y recordatorios locales
 
-Firebase Messaging no puede entregar notificaciones push a iPhone hasta que esté configurado APNs. Se necesita una cuenta del programa Apple Developer y un dispositivo físico para comprobar el flujo real.
-
-1. En Apple Developer, registra el App ID `com.pawly.ios` y habilita **Push Notifications**.
-2. Crea una clave APNs (`.p8`) y guarda de forma segura el archivo, el **Key ID** y el **Team ID**.
-3. En Firebase Console → Configuración del proyecto → Cloud Messaging, sube esa clave APNs e introduce Key ID y Team ID.
-4. En Xcode → target Pawly → **Signing & Capabilities**, habilita **Push Notifications** y **Background Modes → Remote notifications**. Comprueba que tu Team y provisioning profile corresponden al App ID.
-
-No subas el archivo `.p8` a GitHub. El entitlement y los ajustes de desarrollo/producción ya están en el proyecto; la firma y la clave APNs deben pertenecer a tu cuenta Apple.
+En el target **Pawly → Signing & Capabilities**, usa **Automatically manage signing** y selecciona tu equipo personal. Mantén el identificador `com.alexvilarrubla.pawly`. La rama se genera con los entitlements de un equipo personal y con el registro automático de Firebase Messaging desactivado. Para probar los avisos, permite las notificaciones de Pawly, programa un recordatorio de Agenda y lleva la app a segundo plano. Las notificaciones remotas en iOS quedan pospuestas. [Capacidades de Apple](https://developer.apple.com/help/account/reference/supported-capabilities-ios/)
 
 ## 9. Orden recomendado para probar Pawly
 
@@ -235,15 +228,15 @@ Haz las comprobaciones en este orden para localizar los errores antes de probar 
 3. **Google Sign-In:** pruébalo después de confirmar los valores OAuth y el URL scheme de iOS.
 4. **Mascotas compartidas:** utiliza dos cuentas verificadas. Crea una mascota con la primera, invita a la segunda como editor y vuelve a probar con rol lector. Comprueba que editor puede modificar y lector solo consultar.
 5. **Cloudinary:** añade una foto de mascota y envía una foto y un vídeo de prueba en Comunidad o Mensajes. Comprueba que la URL se guarda y que aparece el índice `cloudinaryAssets` asociado al UID.
-6. **Worker:** comprueba primero `/health`. Después, con dos dispositivos/cuentas y APNs configurado, envía un mensaje y verifica que llega la push y que al tocarla se abre la conversación correcta.
-7. **Estados de notificación:** prueba con la app abierta, en segundo plano y cerrada; prueba también desactivar notificaciones y cerrar sesión para comprobar que se elimina el token de esa cuenta.
+6. **Worker:** comprueba primero `/health`. Con dos cuentas de pruebas verifica que el mensaje aparece en la conversación abierta.
+7. **Estados de notificación:** prueba con la app abierta, en segundo plano y cerrada; prueba desactivar y reactivar los avisos locales desde Ajustes.
 8. **Regresión:** prueba muro, comentarios, likes, seguimiento, bloqueo, agenda, diario, pasaporte, gastos y copia de seguridad con dos usuarios cuando corresponda.
 
-En Firebase, los tokens iOS deben aparecer bajo `users/{uid}/fcmTokens` con `platform: "ios"`. No basta con que iOS muestre permiso de notificaciones: comprueba que el token se registra y que el Worker puede enviar una push real.
+La compilación gratuita programa recordatorios locales. APNs y los tokens remotos de iOS quedan reservados para una futura configuración compatible.
 
 ## 10. Qué no debes dar por terminado todavía
 
-- La app iOS compila para simulador, pero las credenciales reales, OAuth, APNs y Cloudinary se tienen que probar con tu configuración.
+- La app iOS compila para simulador, pero las credenciales reales, OAuth y Cloudinary se tienen que probar con tu configuración.
 - El Worker está versionado, no se considera operativo hasta desplegarlo y añadir sus secretos.
 - La búsqueda por número de teléfono utiliza el flujo PNV de Android; no está implementada como flujo equivalente en iOS. No actives verificación telefónica de producción ni servicios facturables para esta prueba.
 - La eliminación integral de una cuenta (Firebase Authentication + todas las subcolecciones y recursos Cloudinary) sigue pendiente en el backend. La app registra una solicitud, pero no completa el borrado.
