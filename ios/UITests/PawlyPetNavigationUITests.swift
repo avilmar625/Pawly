@@ -16,6 +16,13 @@ final class PawlyPetNavigationUITests: XCTestCase {
     }
 
     @MainActor func testSwitchPetInCalendarAndChangeLanguageWithoutLosingSelection() async throws {
+        continueAfterFailure = false
+        addUIInterruptionMonitor(withDescription: "System password prompt") { alert in
+            let action = alert.buttons.matching(NSPredicate(format: "label IN %@", ["Ahora no", "Not Now"])).firstMatch
+            guard action.exists else { return false }
+            action.tap()
+            return true
+        }
         let email = "ui-\(UUID().uuidString)@example.test"
         let password = "local-fixture-123"
         let signup = URL(string: "http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=local")!

@@ -64,6 +64,12 @@ jobs:
           sed -i '' 's/^GOOGLE_CLIENT_ID =$/GOOGLE_CLIENT_ID = fixture.apps.example.invalid/; s/^GOOGLE_REVERSED_CLIENT_ID =$/GOOGLE_REVERSED_CLIENT_ID = invalid.example.apps.fixture/; s/^CLOUDINARY_CLOUD_NAME =$/CLOUDINARY_CLOUD_NAME = fixture/; s/^CLOUDINARY_IMAGE_UPLOAD_PRESET =$/CLOUDINARY_IMAGE_UPLOAD_PRESET = image-fixture/; s/^CLOUDINARY_VIDEO_UPLOAD_PRESET =$/CLOUDINARY_VIDEO_UPLOAD_PRESET = video-fixture/' Config.local.xcconfig
           xcodegen generate
 
+      - name: Start test iPhone
+        run: |
+          device=$(python3 ios/Tests/simulator-id.py)
+          echo "PAWLY_SIMULATOR_ID=$device" >> "$GITHUB_ENV"
+          xcrun simctl bootstatus "$device" -b
+
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project ios/Pawly.xcodeproj -scheme Pawly
 
@@ -96,5 +102,4 @@ jobs:
 
       - name: Test authentication and pet navigation on iPhone
         run: |
-          export PAWLY_SIMULATOR_ID="$(python3 ios/Tests/simulator-id.py)"
           firebase emulators:exec --config firebase.ios-tests.json --only auth,firestore --project demo-pawly 'xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -destination "platform=iOS Simulator,id=$PAWLY_SIMULATOR_ID" -derivedDataPath build -parallel-testing-enabled NO test'

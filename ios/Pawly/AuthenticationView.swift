@@ -13,6 +13,14 @@ struct AuthenticationView: View {
     @State private var isWorking = false
     @State private var isGoogleWorking = false
 
+    private var passwordContentType: UITextContentType {
+        #if DEBUG && targetEnvironment(simulator)
+        // Keep synthetic credentials out of the simulator user's Passwords keychain.
+        if PawlyApp.usesLocalEmulators { return .oneTimeCode }
+        #endif
+        return isRegistering ? .newPassword : .password
+    }
+
     var body: some View {
         ZStack {
             PawlyColors.canvas.ignoresSafeArea()
@@ -49,7 +57,7 @@ struct AuthenticationView: View {
                                 }
                             }
                             .accessibilityIdentifier("auth.password")
-                            .textContentType(isRegistering ? .newPassword : .password)
+                            .textContentType(passwordContentType)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
                             Button { showPassword.toggle() } label: {
                                 Image(systemName: showPassword ? "eye.slash" : "eye")

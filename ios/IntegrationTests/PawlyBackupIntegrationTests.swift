@@ -10,8 +10,18 @@ final class PawlyBackupIntegrationTests: XCTestCase {
         guard FirebaseApp.app()?.options.projectID == "demo-pawly", PawlyApp.usesLocalEmulators else {
             throw XCTSkip("Run this test using the Pawly scheme and local Auth and Firestore emulators")
         }
-        let session = PawlySession()
+        // A freshly booted CI simulator can receive UNAVAILABLE while its first gRPC channel opens.
+        let warmup = try await Auth.auth().signInAnonymously().user.uid
+        let ownDocument = Firestore.firestore().collection("users").document(warmup)
+        for attempt in 1...3 {
+            do { _ = try await ownDocument.getDocument(source: .server); break }
+            catch let error as NSError where attempt < 3 && error.domain == FirestoreErrorDomain &&
+                error.code == FirestoreErrorCode.unavailable.rawValue {
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+        }
         try Auth.auth().signOut()
+        let session = PawlySession()
         let handle = "test" + UUID().uuidString.replacingOccurrences(of: "-", with: "").prefix(12).lowercased()
         try await session.register(email: handle + "@example.test", password: "fixture-pawly-123", displayName: "Fixture", username: handle)
         let uid = try XCTUnwrap(Auth.auth().currentUser?.uid)
