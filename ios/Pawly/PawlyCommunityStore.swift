@@ -123,7 +123,8 @@ final class PawlyCommunityStore: ObservableObject {
     }
     private func refreshVisibleFeed() {
         let hiddenIDs = blockedFeedIDs.union(blockedByFeedIDs)
-        posts = cachedFeed.filter { !hiddenIDs.contains($0.authorId) }
+        feedPrivacyReady = receivedBlocked && receivedBlockedBy
+        posts = feedPrivacyReady ? cachedFeed.filter { !hiddenIDs.contains($0.authorId) } : []
     }
 
     func loadPost(_ id:String) async throws -> PawlyFeedPost? {
@@ -156,6 +157,20 @@ final class PawlyCommunityStore: ObservableObject {
         )
     }
 
+    var hiddenFeedAuthors: Set<String> { blockedFeedIDs.union(blockedByFeedIDs) }
+    @Published private(set) var feedPrivacyReady = false
+    private var receivedBlocked = false
+    private var receivedBlockedBy = false
+    static func feedPost(_ d: DocumentSnapshot, uid: String) -> PawlyFeedPost {
+        let x = d.data() ?? [:], likes = x["likedBy"] as? [String] ?? []
+        return PawlyFeedPost(id:d.documentID,authorId:x["authorId"] as? String ?? "",
+            authorName:x["authorName"] as? String ?? "Usuario Pawly",authorPhoto:x["authorPhoto"] as? String ?? "",
+            petName:x["dogName"] as? String ?? "",text:x["text"] as? String ?? "",
+            imageURL:x["imageUrl"] as? String ?? "",videoURL:x["videoUrl"] as? String ?? "",
+            category:x["category"] as? String ?? "STORY",likeCount:x["likeCount"] as? Int ?? 0,
+            commentCount:x["commentCount"] as? Int ?? 0,likedByMe:likes.contains(uid),
+            createdAt:(x["createdAt"] as? Timestamp)?.dateValue())
+    }
     func listenFeed() {
         guard let uid else { return }
         feedListener?.remove()
@@ -166,32 +181,28 @@ final class PawlyCommunityStore: ObservableObject {
             guard let self else { return }
             if let error { self.statusMessage = error.localizedDescription; return }
             self.cachedFeed = snap?.documents.compactMap { d in
-                let x = d.data(), likes = x["likedBy"] as? [String] ?? []
-                return PawlyFeedPost(id:d.documentID,authorId:x["authorId"] as? String ?? "",
-                    authorName:x["authorName"] as? String ?? "Usuario Pawly",authorPhoto:x["authorPhoto"] as? String ?? "",
-                    petName:x["dogName"] as? String ?? "",text:x["text"] as? String ?? "",
-                    imageURL:x["imageUrl"] as? String ?? "",videoURL:x["videoUrl"] as? String ?? "",
-                    category:x["category"] as? String ?? "STORY",likeCount:x["likeCount"] as? Int ?? 0,
-                    commentCount:x["commentCount"] as? Int ?? 0,likedByMe:likes.contains(uid),
-                    createdAt:(x["createdAt"] as? Timestamp)?.dateValue())
+                Self.feedPost(d, uid: uid)
             } ?? []
             self.refreshVisibleFeed()
         }
         blockedFeedListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
             guard let self else { return }
             if let error { self.statusMessage = error.localizedDescription; return }
+            self.receivedBlocked = snap != nil
             self.blockedFeedIDs = Set(snap?.documents.map { $0.documentID } ?? [])
             self.refreshVisibleFeed()
         }
         blockedByFeedListener = db.collection("users").document(uid).collection("blockedBy").addSnapshotListener { [weak self] snap,error in
             guard let self else { return }
             if let error { self.statusMessage = error.localizedDescription; return }
+            self.receivedBlockedBy = snap != nil
             self.blockedByFeedIDs = Set(snap?.documents.map { $0.documentID } ?? [])
             self.refreshVisibleFeed()
         }
     }
 
     func stopFeed() {
+        feedPrivacyReady = false; receivedBlocked = false; receivedBlockedBy = false; posts = []
         feedListener?.remove()
         blockedFeedListener?.remove()
         blockedByFeedListener?.remove()
@@ -209,6 +220,7 @@ final class PawlyCommunityStore: ObservableObject {
         try await reference.setData([
             "authorId":uid,"authorName":profile.get("displayName") as? String ?? profile.get("username") as? String ?? "Usuario Pawly",
             "authorPhoto":profile.get("photoUrl") as? String ?? "","dogName":String(petName.prefix(40)),
+            "searchTokens":PawlyFeedFilter.tokens([clean, petName, profile.get("displayName") as? String ?? profile.get("username") as? String ?? "", category]),
             "category":category,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"likeCount":0,"commentCount":0,
             "likedBy":[String](),"createdAt":FieldValue.serverTimestamp()
         ])

@@ -1085,12 +1085,9 @@ struct CommunityView:View {
     @EnvironmentObject private var pets:PawlyPetStore
     @EnvironmentObject private var pushRouter:PawlyPushRouter
     @State private var composer=false
-    @State private var feedCategory = ""
-    @State private var newestFirst = true
-    private var visiblePosts: [PawlyFeedPost] {
-        let filtered = store.posts.filter { feedCategory.isEmpty || $0.category == feedCategory }
-        return newestFirst ? filtered : Array(filtered.reversed())
-    }
+    @State private var filter = PawlyFeedFilter()
+    @State private var searching = false
+    @State private var browsing = false
     @State private var composerCategory="STORY"
     @State private var people=false
     @State private var inbox=false
@@ -1108,11 +1105,7 @@ struct CommunityView:View {
                             Text("La comunidad")
                                 .font(.title2.bold())
                                 .foregroundStyle(PawlyColors.ink)
-                            Text("Historias y aventuras Pawly")
-                                .font(.caption)
-                                .foregroundStyle(PawlyColors.muted)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.85)
+
                         }
                         Spacer(minLength: 4)
 
@@ -1165,8 +1158,11 @@ struct CommunityView:View {
                             Label("Crear publicación", systemImage: "plus")
                         }.buttonStyle(.borderedProminent)
                         Spacer()
+                        Button { searching.toggle(); if !searching { filter.query = "" } } label: {
+                            Label("Buscar publicaciones", systemImage: "text.magnifyingglass").labelStyle(.iconOnly)
+                        }
                         Menu {
-                            Picker("Tipo", selection: $feedCategory) {
+                            Picker("Tipo", selection: $filter.category) {
                                 Text("Todos").tag("")
                                 Text("Historia").tag("STORY")
                                 Text("Adopción").tag("ADOPTION")
@@ -1174,14 +1170,33 @@ struct CommunityView:View {
                                 Text("Encontrado").tag("FOUND")
                                 Text("Acogida").tag("FOSTER")
                             }
-                            Toggle("Más recientes primero", isOn: $newestFirst)
-                        } label: { Label("Filtrar", systemImage: "line.3.horizontal.decrease.circle") }
+                            Picker("Ordenar", selection: $filter.order) {
+                                ForEach(PawlyFeedOrder.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
+                            }
+                            Picker("Archivo adjunto", selection: $filter.media) {
+                                Text("Todos").tag(""); Text("Fotografía").tag("image"); Text("Vídeo").tag("video")
+                            }
+                            Toggle("Cuentas que sigo", isOn: $filter.following)
+                            Button("Restablecer filtros") { filter = PawlyFeedFilter(); browsing = false }
+
+                        } label: { Label("Filtrar", systemImage: filter == PawlyFeedFilter() ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill").labelStyle(.iconOnly) }
                     }
                     if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
-                    if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
-                    if !store.posts.isEmpty && visiblePosts.isEmpty { Text("No hay publicaciones de este tipo.") }
-                    ForEach(visiblePosts){post in
-                        FeedPostCard(post:post,onLike:{Task{do{try await store.toggleLike(post)}catch { store.statusMessage = PawlyServiceMessage.key(for: error) }}},onComment:{comments=post})
+                    if searching {
+                        HStack {
+                            TextField("Buscar publicaciones", text: $filter.query).textFieldStyle(.roundedBorder)
+                            Button { filter.query = "" } label: { Label("Borrar", systemImage: "xmark.circle.fill").labelStyle(.iconOnly) }
+                        }
+                    }
+                    if !store.feedPrivacyReady { ProgressView() }
+                    else if filter != PawlyFeedFilter() || browsing {
+                        PawlyFeedBrowser(filter: filter, store: store) { comments = $0 }.id(filter)
+                    } else {
+                        if store.posts.isEmpty { Text("Todavía no hay historias") }
+                        ForEach(store.posts) { post in
+                            FeedPostCard(post:post,onLike:{Task{do{try await store.toggleLike(post)}catch { store.statusMessage = PawlyServiceMessage.key(for: error) }}},onComment:{comments=post})
+                        }
+                        Button("Cargar más") { browsing = true }
                     }
                 }.padding(15)
             }.background(PawlyColors.canvas).navigationBarHidden(true)
@@ -1409,11 +1424,13 @@ struct FeedPostCard:View {
     var body:some View {
         VStack(alignment:.leading,spacing:11){
             HStack{
-                if let url=URL(string:post.authorPhoto),!post.authorPhoto.isEmpty {
-                    AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{PawlyAvatarPlaceholder()}
-                        .frame(width:38,height:38).clipShape(Circle())
-                } else { PawlyAvatarPlaceholder().frame(width:38,height:38) }
-                VStack(alignment:.leading,spacing:2){NavigationLink { PawlyPublicProfile(userID: post.authorId) } label: { Text(verbatim: post.authorName).font(.subheadline.weight(.semibold)) };post.categoryCaption.font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
+                NavigationLink { PawlyPublicProfile(userID: post.authorId) } label: {
+                    HStack {
+                        PawlyChatAvatar(userID: post.authorId, name: post.authorName)
+                        Text(verbatim: post.authorName).font(.subheadline.weight(.semibold))
+                    }
+                }
+                VStack(alignment:.leading,spacing:2){post.categoryCaption.font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
             if !post.text.isEmpty { Text(post.text).frame(maxWidth:.infinity,alignment:.leading) }
             if !post.imageURL.isEmpty, let url=URL(string:post.imageURL) {
                 AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }

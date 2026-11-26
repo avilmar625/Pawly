@@ -77,7 +77,14 @@
           "order": "DESCENDING"
         }
       ]
-    }
+    },
+    {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "createdAt", "order": "ASCENDING"}]},
+    {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "createdAt", "order": "DESCENDING"}]},
+    {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "likeCount", "order": "DESCENDING"}]},
+    {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "commentCount", "order": "DESCENDING"}]},
+    {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "authorId", "order": "ASCENDING"}, {"fieldPath": "createdAt", "order": "ASCENDING"}]},
+    {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "authorId", "order": "ASCENDING"}, {"fieldPath": "likeCount", "order": "DESCENDING"}]},
+    {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "authorId", "order": "ASCENDING"}, {"fieldPath": "commentCount", "order": "DESCENDING"}]}
   ],
   "fieldOverrides": []
 }
