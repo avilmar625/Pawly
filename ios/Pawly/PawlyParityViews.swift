@@ -466,7 +466,7 @@ struct PawlyLearningHubView:View{
    guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
    articles = PawlyRSSParser.parse(data)
    if articles.isEmpty { error = "No hay noticias disponibles ahora." }
-  } catch { if !Task.isCancelled { articles = []; error = "No se han podido cargar las noticias. Comprueba la conexión." } }
+  } catch { if !Task.isCancelled { articles = []; self.error = "No se han podido cargar las noticias. Comprueba la conexión." } }
  }
 }
 struct PawlyGuideDetailView:View{
