@@ -43,7 +43,7 @@ import FirebaseFirestore
         agendaListener = db.collection(path).order(by: "date").addSnapshotListener(includeMetadataChanges: true) { [weak self] snapshot, error in
             Task { @MainActor in
                 guard let self, self.agendaPath == path, self.activeUID == Auth.auth().currentUser?.uid else { return }
-                if let error { self.statusMessage = error.localizedDescription; return }
+                if let error { self.statusMessage = PawlyServiceMessage.key(for: error); return }
                 guard let snapshot, !snapshot.metadata.isFromCache, !snapshot.metadata.hasPendingWrites else { return }
                 let remote = snapshot.documents.compactMap { document -> PawlyLocalReminder? in
                     guard let title = document.get("title") as? String,
@@ -64,7 +64,7 @@ import FirebaseFirestore
     }
     func requestPermission() async -> String {
         do { let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge]); statusMessage = granted ? "Notificaciones activadas en este dispositivo." : "Permiso denegado. Actívalo en Ajustes de iOS."; if granted { rescheduleAll(); PawlyAppDelegate.registerForRemoteNotifications() } }
-        catch { statusMessage = error.localizedDescription }
+        catch { statusMessage = PawlyServiceMessage.key(for: error) }
         refreshAuthorizationStatus()
         return statusMessage ?? ""
     }
@@ -142,7 +142,7 @@ import FirebaseFirestore
             content.sound = .default
             let trigger = UNCalendarNotificationTrigger(dateMatching: occurrence.components, repeats: occurrence.repeats)
             center.add(UNNotificationRequest(identifier: occurrence.identifier, content: content, trigger: trigger)) { [weak self] error in
-                if let error { Task { @MainActor in self?.statusMessage = error.localizedDescription } }
+                if let error { Task { @MainActor in self?.statusMessage = PawlyServiceMessage.key(for: error) } }
             }
         }
     }
@@ -167,7 +167,7 @@ struct PawlyRemindersView: View {
                         Spacer(); Button { editing = item } label: { Label("Editar", systemImage: "pencil").labelStyle(.iconOnly) }.buttonStyle(.borderless)
                         Button(role: .destructive) {
                             guard let pet = pets.selectedPet else { return }
-                            Task { do { try await store.remove(id: item.id, pet: pet) } catch { store.statusMessage = error.localizedDescription } }
+                            Task { do { try await store.remove(id: item.id, pet: pet) } catch { store.statusMessage = PawlyServiceMessage.key(for: error) } }
                         } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
                     }.padding(.vertical, 4)
                 }
@@ -186,8 +186,8 @@ struct PawlyRemindersView: View {
                     }.buttonStyle(.borderless)
                 }
                 Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Label("Abrir ajustes de notificaciones",systemImage:"gear") }.buttonStyle(.borderless) }
-            if let permissionMessage { Section { Text(permissionMessage).font(.caption).foregroundStyle(.secondary) } }
-            if let message = store.statusMessage { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
+            if let permissionMessage { Section { Text(LocalizedStringKey(permissionMessage)).font(.caption).foregroundStyle(.secondary) } }
+            if let message = store.statusMessage { Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) } }
         }
         .navigationTitle("Agenda")
         .sheet(isPresented: $showAdd) { if let pet = pets.selectedPet { form(for: pet) } }
@@ -231,10 +231,10 @@ struct PawlyReminderForm: View {
             Form {
                 TextField("Qué hay que recordar", text: $title)
                 DatePicker("Fecha y hora", selection: $date, in: Date()...)
-                Picker("Categoría", selection: $category) { ForEach(["Personal", "Veterinario", "Cuidado", "Paseo", "Viaje"], id: \.self) { Text($0) } }
+                Picker("Categoría", selection: $category) { ForEach(["Personal", "Veterinario", "Cuidado", "Paseo", "Viaje"], id: \.self) { Text(LocalizedStringKey($0)) } }
                 TextField("Notas (opcional)", text: $notes, axis: .vertical).lineLimit(2...4)
-                Picker("Repetición", selection: $repeatRule) { ForEach(["Nunca", "Cada día", "Cada semana", "Cada mes", "Cada año"], id: \.self) { Text($0) } }
-                if let error { Text(error).foregroundStyle(.red) }
+                Picker("Repetición", selection: $repeatRule) { ForEach(["Nunca", "Cada día", "Cada semana", "Cada mes", "Cada año"], id: \.self) { Text(LocalizedStringKey($0)) } }
+                if let error { Text(LocalizedStringKey(error)).foregroundStyle(.red) }
                 LabeledContent("Mascota", value: petName)
             }.disabled(busy).interactiveDismissDisabled(busy).navigationTitle("Recordatorio").toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.disabled(busy) }
@@ -243,7 +243,7 @@ struct PawlyReminderForm: View {
                     Task {
                         defer { busy = false }
                         do { try await onSave(title.trimmingCharacters(in: .whitespacesAndNewlines), date, notes, repeatRule, category); dismiss() }
-                        catch { self.error = error.localizedDescription }
+                        catch { self.error = PawlyServiceMessage.key(for: error) }
                     }
                 }.disabled(busy || title.count > 100 || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 2 || date <= Date()) }
             }

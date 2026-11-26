@@ -34,11 +34,12 @@ struct PawlyPetHeader: View {
                     Image(systemName: "chevron.down").font(.caption)
                 }.font(.headline).foregroundStyle(PawlyColors.ink)
             }
+            .accessibilityIdentifier("pet.selection")
             Spacer()
             Button { notifications = true } label: { Image(systemName: "bell").frame(width: 44, height: 44) }
                 .accessibilityLabel("Notificaciones")
             Button { settings = true } label: { Image(systemName: "gearshape").frame(width: 44, height: 44) }
-                .accessibilityLabel("Ajustes")
+                .accessibilityLabel("Ajustes").accessibilityIdentifier("pet.settings")
         }
         .sheet(isPresented: $adding) { PetFormSheet() }
         .sheet(item: $editing) { PetFormSheet(pet: $0) }
@@ -46,7 +47,7 @@ struct PawlyPetHeader: View {
         .sheet(isPresented: $settings) {
             NavigationStack {
                 PawlySettingsView().toolbar {
-                    ToolbarItem(placement: .confirmationAction) { Button("Cerrar") { settings = false } }
+                    ToolbarItem(placement: .confirmationAction) { Button("Cerrar") { settings = false }.accessibilityIdentifier("settings.close") }
                 }
             }
         }
@@ -55,7 +56,7 @@ struct PawlyPetHeader: View {
             Button("Eliminar perfil", role: .destructive) {
                 Task {
                     do { try await pets.deletePet(pet) }
-                    catch { pets.errorMessage = error.localizedDescription }
+                    catch { pets.errorMessage = PawlyServiceMessage.key(for: error) }
                 }
             }
             Button("Cancelar", role: .cancel) {}

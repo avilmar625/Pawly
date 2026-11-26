@@ -39,7 +39,7 @@ struct PawlyTabView: View {
                 try await pets.ensureSharedPet(pet)
                 try Task.checkCancellation()
                 reminders.listenAgenda(ownerUID: pet.ownerUID ?? user.uid, petID: pet.id, petName: pet.name)
-            } catch { if !Task.isCancelled { reminders.statusMessage = error.localizedDescription } }
+            } catch { if !Task.isCancelled { reminders.statusMessage = PawlyServiceMessage.key(for: error) } }
         }
         .onDisappear { pets.stopListening(); PawlyReminderStore.shared.stopListening() }
     }
@@ -47,7 +47,7 @@ struct PawlyTabView: View {
 
 private struct PawlyMyPetView: View {
     @EnvironmentObject private var pets: PawlyPetStore
-    @State private var section = 0
+    @SceneStorage("pawly.myPet.section") private var section = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -65,6 +65,7 @@ private struct PawlyMyPetView: View {
                                 .background(section == index ? PawlyColors.mint : Color.clear, in: RoundedRectangle(cornerRadius: 12))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("pet.section." + String(index))
                         .accessibilityAddTraits(section == index ? .isSelected : [])
                     }
                 }
@@ -105,7 +106,7 @@ struct HomeView: View {
                     }
 
                     if let error = pets.errorMessage {
-                        Text(error)
+                        Text(LocalizedStringKey(error))
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
@@ -167,7 +168,7 @@ struct PetFormSheet:View {
                     TextField("Nombre",text:$name)
                     TextField("Raza",text:$breed)
                     TextField("Edad",text:$age)
-                    Picker("Especie",selection:$species){ForEach(["Perro","Gato","Conejo","Ave","Roedor","Reptil","Otro"],id:\.self){Text($0)}}
+                    Picker("Especie",selection:$species){ForEach(["Perro","Gato","Conejo","Ave","Roedor","Reptil","Otro"],id:\.self){Text(LocalizedStringKey($0))}}
                     TextField("Descripción",text:$description,axis:.vertical).lineLimit(2...4)
                 }
                 Section("Fotografía") {
@@ -183,7 +184,7 @@ struct PetFormSheet:View {
                         .frame(height:150).clipped().clipShape(RoundedRectangle(cornerRadius:14))
                     }
                 }
-                if let error {Text(error).foregroundStyle(.red)}
+                if let error {Text(LocalizedStringKey(error)).foregroundStyle(.red)}
             }
             .navigationTitle(pet == nil ? "Añadir mascota":"Editar mascota")
             .toolbar {
@@ -203,7 +204,7 @@ struct PetFormSheet:View {
                                     try await pets.savePet(name:name,breed:breed,age:age,species:species,description:description,photoURL:finalURL)
                                 }
                                 dismiss()
-                            } catch {self.error=error.localizedDescription}
+                            } catch {self.error=PawlyServiceMessage.key(for: error)}
                             saving=false
                         }
                     }.disabled(saving || name.trimmingCharacters(in:.whitespaces).isEmpty)
@@ -211,7 +212,7 @@ struct PetFormSheet:View {
             }
             .onChange(of:photoItem){item in
                 guard let item else{return}
-                Task {do{photoData=try await item.loadTransferable(type:Data.self)}catch{self.error=error.localizedDescription}}
+                Task {do{photoData=try await item.loadTransferable(type:Data.self)}catch{self.error=PawlyServiceMessage.key(for: error)}}
             }
         }
     }
@@ -475,7 +476,7 @@ struct CareView:View {
                                 }
                             }.id(sectionKey("routines"))
                         }
-                        if let error { Section { Text(error).font(.caption).foregroundStyle(.red) } }
+                        if let error { Section { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) } }
                     }.refreshable { await load() }
                 }
             }
@@ -520,7 +521,7 @@ struct CareView:View {
                 guard pets.selectedPet == pet, exportReady else { return }
                 exportURL = file
                 error = nil
-            } catch { self.error = error.localizedDescription }
+            } catch { self.error = PawlyServiceMessage.key(for: error) }
         }
     }
     @MainActor private func load() async {
@@ -535,7 +536,7 @@ struct CareView:View {
             (passport, tasks) = values
             exportReady = true
             error = nil
-        } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+        } catch { if !Task.isCancelled { self.error = PawlyServiceMessage.key(for: error) } }
     }
     private func savePassportEntry(_ entry:PawlyPassportEntry) async throws {
         guard let pet=pets.selectedPet else { throw NSError(domain:"Pawly",code:1,userInfo:[NSLocalizedDescriptionKey:"Selecciona una mascota."]) }
@@ -553,7 +554,7 @@ struct CareView:View {
                 try await PawlyReminderStore.shared.remove(id: reminderID, pet: pet)
             }
             await load()
-        } catch { self.error=error.localizedDescription; throw error }
+        } catch { self.error=PawlyServiceMessage.key(for: error); throw error }
     }
     private func healthReminderDate(nextDoseDate:String,time:String)->Date? {
         let formatter=DateFormatter()
@@ -566,7 +567,7 @@ struct CareView:View {
     private func save(_ task:PawlyCareTask) async {
         guard let pet=pets.selectedPet else{return}
         do{try await pets.saveTask(task,pet:pet);await load()}
-        catch{self.error=error.localizedDescription}
+        catch{self.error=PawlyServiceMessage.key(for: error)}
     }
     private func removeEntry(_ entry:PawlyPassportEntry) {
         guard let pet=pets.selectedPet else{return}
@@ -575,12 +576,12 @@ struct CareView:View {
                 try await pets.deletePassport(entry.id,pet:pet)
                 try await PawlyReminderStore.shared.remove(id:"health-\(pet.id)-\(entry.id)", pet: pet)
                 await load()
-            } catch { self.error=error.localizedDescription }
+            } catch { self.error=PawlyServiceMessage.key(for: error) }
         }
     }
     private func removeTask(_ task:PawlyCareTask) {
         guard let pet=pets.selectedPet else{return}
-        Task { do{try await pets.deleteTask(task.id,pet:pet);await load()}catch{self.error=error.localizedDescription} }
+        Task { do{try await pets.deleteTask(task.id,pet:pet);await load()}catch{self.error=PawlyServiceMessage.key(for: error)} }
     }
     private func toggle(_ task:PawlyCareTask) {
         guard let pet=pets.selectedPet else{return}
@@ -593,7 +594,7 @@ struct CareView:View {
             dayFormatter.dateFormat="yyyy-MM-dd"
             updated.completedOn=updated.completed ? dayFormatter.string(from:Date()) : ""
             do{try await pets.saveTask(updated,pet:pet);await load()}
-            catch{self.error=error.localizedDescription}
+            catch{self.error=PawlyServiceMessage.key(for: error)}
         }
     }
     private var weightEntries:[(PawlyPassportEntry,Double)] {
@@ -647,7 +648,7 @@ struct PassportEntrySheet:View {
             Form {
                 Section(type == "Peso" ? "Peso" : "Registro sanitario") {
                     if !fixedWeight {
-                        Picker("Tipo",selection:$type){ForEach(["Vacuna","Desparasitación","Medicación","Visita veterinaria","Revisión","Tratamiento","Alergia","Intervención","Peso","Microchip","Seguro","Veterinario habitual","Contacto de emergencia","Otro"],id:\.self){Text($0)}}
+                        Picker("Tipo",selection:$type){ForEach(["Vacuna","Desparasitación","Medicación","Visita veterinaria","Revisión","Tratamiento","Alergia","Intervención","Peso","Microchip","Seguro","Veterinario habitual","Contacto de emergencia","Otro"],id:\.self){Text(LocalizedStringKey($0))}}
                     }
                     if type == "Peso" {
                         HStack(spacing: 20) {
@@ -716,7 +717,7 @@ struct PassportEntrySheet:View {
                                 reminderEnabled:type != "Peso" && reminderEnabled,reminderTime:timeFormatter.string(from:reminderTime)
                             ))
                             dismiss()
-                            } catch { saveError = error.localizedDescription }
+                            } catch { saveError = PawlyServiceMessage.key(for: error) }
                         }
                     }.disabled(saving || (type == "Peso" ? !((0.1...150).contains(weight)) : title.trimmingCharacters(in:.whitespaces).isEmpty))
                 }
@@ -746,10 +747,10 @@ struct CareTaskSheet:View {
                     TextField("Tarea",text:$title)
                     TextField("Responsable",text:$responsible)
                     Picker("Tipo de cuidado",selection:$action) {
-                        ForEach(actions,id:\.self) { Text($0) }
+                        ForEach(actions,id:\.self) { Text(LocalizedStringKey($0)) }
                     }
                     Picker("Frecuencia",selection:$frequency) {
-                        ForEach(["Diaria","Semanal","Mensual","Cada 3 meses","Cada 6 meses","Anual","Cuando sea necesario"],id:\.self) { Text($0) }
+                        ForEach(["Diaria","Semanal","Mensual","Cada 3 meses","Cada 6 meses","Anual","Cuando sea necesario"],id:\.self) { Text(LocalizedStringKey($0)) }
                     }
                     if frequency == "Semanal" {
                         HStack(spacing: 5) {
@@ -846,19 +847,19 @@ struct PetSharingSheet:View {
         }
     }
     @MainActor private func load() async {
-        do{pending=try await pets.pendingInvitations()}catch{status=error.localizedDescription}
+        do{pending=try await pets.pendingInvitations()}catch{status=PawlyServiceMessage.key(for: error)}
     }
     @MainActor private func invite() async {
         guard let pet=pets.selectedPet else{return}
         busy=true
         do{try await pets.invite(username,role:role,pet:pet);username="";status="Invitación enviada."}
-        catch{status=error.localizedDescription}
+        catch{status=PawlyServiceMessage.key(for: error)}
         busy=false
     }
     private func respond(_ invitation:PawlyPetInvitation,_ accept:Bool) {
         Task {
             do{try await pets.respondToInvitation(invitation,accept:accept);await pets.loadPets();pending.removeAll{$0.id==invitation.id};status=accept ? "Perfil compartido añadido a tu cuenta.":"Invitación rechazada."}
-            catch{status=error.localizedDescription}
+            catch{status=PawlyServiceMessage.key(for: error)}
         }
     }
 }
@@ -923,7 +924,7 @@ struct DiaryView:View {
                                     TextField("Cuenta qué habéis hecho y qué lo hizo especial…",text:$note,axis:.vertical)
                                         .lineLimit(3...7).textFieldStyle(.roundedBorder)
                                     Picker("Categoría",selection:$category) {
-                                        ForEach(["Paseos","Viajes","Juegos","Amigos","Celebraciones","Otros"],id:\.self){Text($0)}
+                                        ForEach(["Paseos","Viajes","Juegos","Amigos","Celebraciones","Otros"],id:\.self){Text(LocalizedStringKey($0))}
                                     }
                                     .pickerStyle(.menu).buttonStyle(.borderless)
                                     DatePicker("Fecha del recuerdo",selection:$date,displayedComponents:.date)
@@ -937,7 +938,7 @@ struct DiaryView:View {
                                         LabeledContent("Fotografías seleccionadas",value:"\(selectedPhotos.count+cameraPhotos.count)/8")
                                         Button("Quitar selección",role:.destructive){selectedPhotos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                                     }
-                                    if let error { Text(error).font(.caption).foregroundStyle(.red) }
+                                    if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
                                     Button { Task { await add() } } label:{
                                         HStack {
                                             Spacer()
@@ -1033,7 +1034,7 @@ struct DiaryView:View {
     @MainActor private func load() async {
         guard let pet=pets.selectedPet else { entries=[];return }
         do { entries=try await pets.loadDiary(pet);error=nil }
-        catch { self.error=error.localizedDescription }
+        catch { self.error=PawlyServiceMessage.key(for: error) }
     }
     @MainActor private func add() async {
         guard let pet=pets.selectedPet,let uid=Auth.auth().currentUser?.uid else{return}
@@ -1177,7 +1178,7 @@ struct CommunityView:View {
                     if store.posts.isEmpty{PawlyEmptyState(icon:"person.3",title:"Todavía no hay historias",detail:"Comparte una aventura para iniciar el muro.").frame(minHeight:260)}
                     if !store.posts.isEmpty && visiblePosts.isEmpty { Text("No hay publicaciones de este tipo.") }
                     ForEach(visiblePosts){post in
-                        FeedPostCard(post:post,onLike:{Task{do{try await store.toggleLike(post)}catch { store.statusMessage = error.localizedDescription }}},onComment:{comments=post})
+                        FeedPostCard(post:post,onLike:{Task{do{try await store.toggleLike(post)}catch { store.statusMessage = PawlyServiceMessage.key(for: error) }}},onComment:{comments=post})
                     }
                 }.padding(15)
             }.background(PawlyColors.canvas).navigationBarHidden(true)
@@ -1233,7 +1234,7 @@ struct CommunityView:View {
                 }
             } catch {
                 notifications=true
-                store.statusMessage=error.localizedDescription
+                store.statusMessage=PawlyServiceMessage.key(for: error)
             }
         default:
             notifications=true
@@ -1257,7 +1258,7 @@ struct PawlyNotificationsView:View {
     var body:some View {
         NavigationStack {
             List {
-                if let message {Text(message).font(.caption).foregroundStyle(.red)}
+                if let message {Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.red)}
                 if notices.isEmpty {VStack(spacing:8){Image(systemName:"bell").font(.largeTitle).foregroundStyle(PawlyColors.primary);Text("Aún no hay avisos").font(.headline);Text("Aquí aparecerán las novedades de Comunidad.").font(.caption).foregroundStyle(.secondary)}.frame(maxWidth:.infinity).padding(.vertical,30).listRowSeparator(.hidden)}
                 ForEach(notices) { notice in
                     Button { markRead(notice) } label: {
@@ -1279,7 +1280,7 @@ struct PawlyNotificationsView:View {
     private func startListening() {
         guard let collection else {message="Inicia sesión para ver tus avisos.";return}
         listener=collection.order(by:"createdAt",descending:true).limit(to:60).addSnapshotListener{snapshot,error in
-            if let error {DispatchQueue.main.async{message=error.localizedDescription};return}
+            if let error {DispatchQueue.main.async{message=PawlyServiceMessage.key(for: error)};return}
             let loaded=snapshot?.documents.map{doc in
                 PawlyNotice(id:doc.documentID,actorName:doc.get("actorName") as? String ?? "Usuario Pawly",actorID:doc.get("actorId") as? String ?? "",type:doc.get("type") as? String ?? "",message:doc.get("message") as? String ?? "",createdAt:(doc.get("createdAt") as? Timestamp)?.dateValue(),isRead:doc.get("read") as? Bool ?? false)
             } ?? []
@@ -1288,14 +1289,14 @@ struct PawlyNotificationsView:View {
     }
     private func markRead(_ notice:PawlyNotice) {
         guard !notice.isRead,let collection else{return}
-        collection.document(notice.id).updateData(["read":true]){error in if let error{DispatchQueue.main.async{message=error.localizedDescription}}}
+        collection.document(notice.id).updateData(["read":true]){error in if let error{DispatchQueue.main.async{message=PawlyServiceMessage.key(for: error)}}}
     }
     private func markAllRead() {
         guard let collection else{return}
         collection.whereField("read",isEqualTo:false).limit(to:60).getDocuments{snapshot,error in
-            if let error {DispatchQueue.main.async{message=error.localizedDescription};return}
+            if let error {DispatchQueue.main.async{message=PawlyServiceMessage.key(for: error)};return}
             let batch=Firestore.firestore().batch();snapshot?.documents.forEach{batch.updateData(["read":true],forDocument:$0.reference)}
-            batch.commit{error in if let error{DispatchQueue.main.async{message=error.localizedDescription}}}
+            batch.commit{error in if let error{DispatchQueue.main.async{message=PawlyServiceMessage.key(for: error)}}}
         }
     }
 }
@@ -1348,11 +1349,11 @@ struct PeopleSearchSheet:View {
                             Button(user.following ? "Siguiendo" : "Seguir") {
                                 Task {
                                     do {try await store.setFollowing(user,follow:!user.following);await searchNow()}
-                                    catch {status=error.localizedDescription}
+                                    catch {status=PawlyServiceMessage.key(for: error)}
                                 }
                             }.buttonStyle(.borderedProminent).tint(PawlyColors.primary)
                             Button("Mensaje") {
-                                Task {do{_ = try await store.startConversation(username:user.username);status="Conversación creada. Ya aparece en la pestaña Mensajes."}catch{status=error.localizedDescription}}
+                                Task {do{_ = try await store.startConversation(username:user.username);status="Conversación creada. Ya aparece en la pestaña Mensajes."}catch{status=PawlyServiceMessage.key(for: error)}}
                             }.buttonStyle(.bordered)
                             Menu {
                                 Button(role:.destructive){blockCandidate=user} label:{Label("Bloquear",systemImage:"hand.raised")}
@@ -1365,11 +1366,11 @@ struct PeopleSearchSheet:View {
             .navigationTitle("Personas Pawly")
             .toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
             .confirmationDialog("¿Bloquear a @\(blockCandidate?.username ?? "")?",isPresented:Binding(get:{blockCandidate != nil},set:{if !$0{blockCandidate=nil}}),titleVisibility:.visible) {
-                Button("Bloquear",role:.destructive){if let user=blockCandidate{Task{do{try await store.blockUser(user);results.removeAll{$0.id==user.id};status="Cuenta bloqueada."}catch{status=error.localizedDescription}}};blockCandidate=nil}
+                Button("Bloquear",role:.destructive){if let user=blockCandidate{Task{do{try await store.blockUser(user);results.removeAll{$0.id==user.id};status="Cuenta bloqueada."}catch{status=PawlyServiceMessage.key(for: error)}}};blockCandidate=nil}
             }
             .confirmationDialog("Motivo de la denuncia",isPresented:Binding(get:{reportCandidate != nil},set:{if !$0{reportCandidate=nil}}),titleVisibility:.visible) {
                 ForEach(["Acoso o comportamiento abusivo","Spam o publicidad","Contenido inapropiado","Suplantación de identidad"],id:\.self){reason in
-                    Button(reason){if let user=reportCandidate{Task{do{try await store.reportUser(user,reason:reason);status="Denuncia enviada para revisión."}catch{status=error.localizedDescription}}};reportCandidate=nil}
+                    Button(reason){if let user=reportCandidate{Task{do{try await store.reportUser(user,reason:reason);status="Denuncia enviada para revisión."}catch{status=PawlyServiceMessage.key(for: error)}}};reportCandidate=nil}
                 }
             }
         }
@@ -1378,7 +1379,7 @@ struct PeopleSearchSheet:View {
     @MainActor private func searchNow() async {
         loading=true
         do{results=try await store.searchUsers(query.trimmingCharacters(in:.whitespacesAndNewlines).trimmingCharacters(in:CharacterSet(charactersIn:"@")));status=results.isEmpty ? "No se han encontrado perfiles públicos.":nil}
-        catch{status=error.localizedDescription}
+        catch{status=PawlyServiceMessage.key(for: error)}
         loading=false
     }
 }
@@ -1427,7 +1428,7 @@ struct PostComposerSheet:View {
                 Section("Archivo adjunto") { PawlyAttachmentPicker(draft: attachment) }
                 if busy { ProgressView("Publicando…") }
                 if !petName.isEmpty{LabeledContent("Mascota",value:petName)}
-                if let error{Text(error).foregroundStyle(.red)}
+                if let error{Text(LocalizedStringKey(error)).foregroundStyle(.red)}
                 Text("Para publicar necesitas verificar tu correo.").font(.caption).foregroundStyle(.secondary)
             }
             .disabled(busy)
@@ -1443,7 +1444,7 @@ struct PostComposerSheet:View {
                             let media = try await attachment.upload(owner: uid, forPost: true)
                             try await onPublish(text, category, media.image, media.video)
                             dismiss()
-                        } catch { self.error=error.localizedDescription }
+                        } catch { self.error=PawlyServiceMessage.key(for: error) }
                         busy=false
                     }
                 }.disabled(busy || attachment.loading || text.count > 2000 || (text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && !attachment.hasAttachment))}
@@ -1495,8 +1496,8 @@ struct CommentsView:View {
                         }
                     }
                 }
-                HStack{TextField("Escribe un comentario",text:$draft).textFieldStyle(.roundedBorder);Button("Enviar"){let v=draft;Task{do{try await store.addComment(postID:post.id,text:v);draft=""}catch { self.error = error.localizedDescription }}}.disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty)}.padding()
-                if let error{Text(error).font(.caption).foregroundStyle(.red)}
+                HStack{TextField("Escribe un comentario",text:$draft).textFieldStyle(.roundedBorder);Button("Enviar"){let v=draft;Task{do{try await store.addComment(postID:post.id,text:v);draft=""}catch { self.error = PawlyServiceMessage.key(for: error) }}}.disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty)}.padding()
+                if let error{Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red)}
             }.navigationTitle("Comentarios").toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
                 .onAppear{listener=store.listenComments(postID:post.id){comments=$0}}.onDisappear{listener?.remove()}
         }
@@ -1590,8 +1591,8 @@ struct NewChatSheet:View {
     @State private var busy=false
     @State private var error:String?
     var body:some View{
-        NavigationStack{Form{TextField("Nombre de usuario de Pawly",text:$username).textInputAutocapitalization(.never).autocorrectionDisabled();if let error{Text(error).foregroundStyle(.red)};Text("Puedes escribir a una cuenta pública ya registrada.").font(.caption).foregroundStyle(.secondary)}
-            .navigationTitle("Nuevo mensaje").toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}};ToolbarItem(placement:.confirmationAction){Button("Continuar"){Task{busy=true;do{try await onStart(username);dismiss()}catch{self.error=error.localizedDescription};busy=false}}.disabled(busy || username.trimmingCharacters(in:.whitespaces).count<3)}}}
+        NavigationStack{Form{TextField("Nombre de usuario de Pawly",text:$username).textInputAutocapitalization(.never).autocorrectionDisabled();if let error{Text(LocalizedStringKey(error)).foregroundStyle(.red)};Text("Puedes escribir a una cuenta pública ya registrada.").font(.caption).foregroundStyle(.secondary)}
+            .navigationTitle("Nuevo mensaje").toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}};ToolbarItem(placement:.confirmationAction){Button("Continuar"){Task{busy=true;do{try await onStart(username);dismiss()}catch{self.error=PawlyServiceMessage.key(for: error)};busy=false}}.disabled(busy || username.trimmingCharacters(in:.whitespaces).count<3)}}}
     }
 }
 struct ChatView:View {
@@ -1621,7 +1622,7 @@ struct ChatView:View {
                         Task { await store.markRead(conversationID:chat.id) }
                     }
                 }
-                if let error { Text(error).font(.caption).foregroundStyle(.red) }
+                if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
                 composer
             }
             .background(PawlyColors.canvas)
@@ -1689,7 +1690,7 @@ struct ChatView:View {
                 draft = ""
                 attachment.clear()
                 error = nil
-            } catch { self.error=error.localizedDescription }
+            } catch { self.error=PawlyServiceMessage.key(for: error) }
         }
     }
 }
@@ -1716,8 +1717,8 @@ struct AccountView:View {
                     Button("Solicitar eliminación de cuenta",role:.destructive){showDeletionConfirmation=true}
                     if let deletionStatus { Text(deletionStatus).font(.footnote).foregroundStyle(PawlyColors.muted) }
                 }
-                Section { Button("Cerrar sesión",role:.destructive){do{try session.signOut()}catch{self.error=error.localizedDescription}} }
-                if let error { Text(error).foregroundStyle(.red) }
+                Section { Button("Cerrar sesión",role:.destructive){do{try session.signOut()}catch{self.error=PawlyServiceMessage.key(for: error)}} }
+                if let error { Text(LocalizedStringKey(error)).foregroundStyle(.red) }
             }
             .navigationTitle("Mi cuenta")
             .confirmationDialog("¿Solicitar la eliminación de tu cuenta?",isPresented:$showDeletionConfirmation,titleVisibility:.visible) {
@@ -1726,10 +1727,10 @@ struct AccountView:View {
                         try await session.requestAccountDeletion()
                         deletionStatus="Solicitud registrada. El backend completará el borrado cuando esté desplegado."
                         error=nil
-                    } catch { self.error=error.localizedDescription } }
+                    } catch { self.error=PawlyServiceMessage.key(for: error) } }
                 }
                 Button("Cancelar",role:.cancel){}
-            } message:{Text("La solicitud se procesa automáticamente solo cuando se ha desplegado la función de eliminación de Firebase.")}
+            } message:{Text("La solicitud queda registrada para su revisión. El borrado de la cuenta y sus archivos está pendiente de confirmación.")}
         }
     }
 }

@@ -263,7 +263,7 @@ struct PawlyHomeCareSection: View {
             }
 
             if let error {
-                Text(error).font(.caption).foregroundStyle(.red)
+                Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red)
             }
         }
         .task(id: scope) { await load() }
@@ -415,7 +415,7 @@ struct PawlyHomeCareSection: View {
             careLogs = (try? await loadedLogs) ?? []
             error = nil
         } catch {
-            self.error = error.localizedDescription
+            self.error = PawlyServiceMessage.key(for: error)
         }
     }
 
@@ -478,7 +478,7 @@ struct PawlyHomeCareSection: View {
             }
             await load()
         } catch {
-            self.error = error.localizedDescription
+            self.error = PawlyServiceMessage.key(for: error)
         }
     }
 }

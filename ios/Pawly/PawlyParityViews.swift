@@ -82,8 +82,6 @@ struct PawlySettingsView:View {
  var body:some View {
   Form {
    Section("Diseño") {
-    Text("El diseño de Pawly se adapta al color principal y al modo de apariencia que elijas.")
-     .font(.caption).foregroundStyle(.secondary)
     Toggle("Modo oscuro",isOn:$darkMode)
     VStack(alignment:.leading,spacing:12) {
      Text("Color principal")
@@ -92,14 +90,14 @@ struct PawlySettingsView:View {
       Button{accent=item.0}label:{Circle().fill(item.2).frame(width:38,height:38)
        .overlay{if accent==item.0{Image(systemName:"checkmark").foregroundStyle(.white).font(.headline.bold())}}
        .overlay(Circle().stroke(accent==item.0 ? Color.primary:.clear,lineWidth:2).padding(-4))
-       .accessibilityLabel(item.1)}.buttonStyle(.plain)
+       .accessibilityLabel(LocalizedStringKey(item.1))}.buttonStyle(.plain)
      }}
     }.padding(.vertical,5)
    }
    Section("Idioma") {
     Picker("Idioma preferido", selection: $language) {
      ForEach(PawlyLanguage.allCases) { option in Text(verbatim: option.nativeName).tag(option.rawValue) }
-    }
+    }.accessibilityIdentifier("settings.language")
    }
    Section("Avisos") {
     Toggle("Notificaciones de Pawly",isOn:$notificationsEnabled).onChange(of:notificationsEnabled){enabled in Task{
@@ -115,10 +113,10 @@ struct PawlySettingsView:View {
     Button("Activar notificaciones push"){notificationsEnabled=true;Task{
      message=await reminders.requestPermission()
     }}
-    if let message{Text(message).font(.caption).foregroundStyle(.secondary)}
+    if let message{Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
    }
-   Section("Privacidad"){Text("Los ajustes de apariencia se guardan en este dispositivo. Los recordatorios son locales; las notificaciones entre usuarios requieren APNs y las funciones de Firebase.").font(.caption).foregroundStyle(.secondary)}
-  }.navigationTitle("Ajustes")
+   Section("Privacidad"){Text("La apariencia se guarda en este dispositivo. Los avisos locales dependen del permiso de notificaciones de iOS.").font(.caption).foregroundStyle(.secondary)}
+  }.navigationTitle(Text(verbatim: PawlyLanguage.text("Ajustes", language: language)))
  }
 }
 
@@ -166,7 +164,7 @@ struct PawlyProfileEditorView:View {
     }.pickerStyle(.segmented)
     if accountType == "professional" {
      Picker("Actividad profesional",selection:$professionalCategory) {
-      ForEach(professionalCategories,id:\.self) { Text($0) }
+      ForEach(professionalCategories,id:\.self) { Text(LocalizedStringKey($0)) }
      }
      TextField("Ciudad o zona",text:$professionalLocation)
      TextField("Descripción de tus servicios",text:$professionalDescription,axis:.vertical).lineLimit(3...6)
@@ -183,7 +181,7 @@ struct PawlyProfileEditorView:View {
     Text("El nombre de usuario es tu identificador y no se cambia desde esta pantalla.")
      .font(.caption).foregroundStyle(.secondary)
    }
-   if let message { Section { Text(message).foregroundStyle(hasError ? .red:PawlyColors.primary) } }
+   if let message { Section { Text(LocalizedStringKey(message)).foregroundStyle(hasError ? .red:PawlyColors.primary) } }
    Section {
     Button { Task { await save() } } label: {
      HStack { Spacer(); if busy { ProgressView() }; Text(busy ? "Guardando…":"Guardar perfil"); Spacer() }
@@ -200,7 +198,7 @@ struct PawlyProfileEditorView:View {
     do {
      guard let data=try await item.loadTransferable(type:Data.self),let uid=session.user?.uid else{return}
      await uploadProfilePhoto(data,uid:uid)
-    } catch { message=error.localizedDescription;hasError=true }
+    } catch { message=PawlyServiceMessage.key(for: error);hasError=true }
    }
   }
  }
@@ -211,7 +209,7 @@ struct PawlyProfileEditorView:View {
   do {
    photoURL=try await PawlyCloudinaryUploader().uploadImage(data,folder:"profile-photos",ownerUID:uid)
    message="Fotografía subida. Guarda el perfil para aplicar el cambio.";hasError=false
-  } catch { message=error.localizedDescription;hasError=true }
+  } catch { message=PawlyServiceMessage.key(for: error);hasError=true }
  }
  @MainActor private func load() async {
   guard let uid=session.user?.uid else{return}
@@ -232,7 +230,7 @@ struct PawlyProfileEditorView:View {
    professionalContactPublic=d["professionalContactPublic"] as? Bool ?? false
    let privateDoc=try await userRef.collection("privateData").document("professionalContact").getDocument()
    professionalContact=privateDoc.get("value") as? String ?? ""
-  } catch { message=error.localizedDescription;hasError=true }
+  } catch { message=PawlyServiceMessage.key(for: error);hasError=true }
  }
 
  @MainActor private func save() async {
@@ -270,7 +268,7 @@ struct PawlyProfileEditorView:View {
    try await change.commitChanges()
    message=professional ? "Perfil profesional actualizado." : "Perfil actualizado."
    hasError=false
-  } catch { message=error.localizedDescription;hasError=true }
+  } catch { message=PawlyServiceMessage.key(for: error);hasError=true }
  }
 }
 
@@ -280,7 +278,7 @@ struct PawlyAvatarPlaceholder:View{
 struct PawlyAboutView:View{
  var body:some View{List{
   Section{HStack{Spacer();PawlyLogo();Spacer()}.padding(.vertical,18)}
-  Section("Pawly"){LabeledContent("Versión",value:Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0");Text("Más vida juntos. Un espacio para cuidar, recordar y compartir la vida con tus animales.")}
+  Section("Pawly"){LabeledContent("Versión",value:Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")}
   Section("Uso responsable"){Text("Pawly organiza información y recordatorios, pero no sustituye el diagnóstico ni las pautas de un profesional veterinario.");Text("Los avisos comunitarios de animales perdidos o encontrados no garantizan respuesta inmediata.")}
  }.navigationTitle("Acerca de Pawly")}
 }
@@ -296,7 +294,8 @@ struct PawlyExploreView:View{
  @State private var results:[PawlyPlaceResult]=[]
  @StateObject private var savedStore = PawlySavedPlacesStore()
  @State private var region=MKCoordinateRegion(center:CLLocationCoordinate2D(latitude:40.4168,longitude:-3.7038),span:MKCoordinateSpan(latitudeDelta:0.12,longitudeDelta:0.12))
- @State private var isSearching=false
+ @StateObject private var mapSearch = PawlyPlaceSearch()
+ private var isSearching: Bool { mapSearch.searching }
  @State private var error:String?
  @StateObject private var locationProvider=PawlyLocationProvider()
  private let categories=["Veterinarios","Urgencias veterinarias","Parques caninos","Protectoras","Playas para perros","Restaurantes pet-friendly","Alojamientos pet-friendly","Rutas y senderos","Tiendas de animales"]
@@ -323,16 +322,15 @@ struct PawlyExploreView:View{
     default:
     VStack(spacing:0) {
     VStack(alignment:.leading,spacing:9){
-     Text("Encuentra lugares para compartir más aventuras.").font(.subheadline).foregroundStyle(.secondary)
-     Picker("Categoría",selection:$category){ForEach(categories,id:\.self){Text($0)}}.pickerStyle(.menu)
+     Picker("Categoría",selection:$category){ForEach(categories,id:\.self){Text(LocalizedStringKey($0))}}.pickerStyle(.menu)
      TextField("Ciudad o zona (ej. Málaga)",text:$area).textFieldStyle(.roundedBorder).onChange(of:area){_ in nearMe=false}
      Button{nearMe=true;locationProvider.request()}label:{Label("Usar mi ubicación actual",systemImage:"location.fill").font(.caption.weight(.semibold))}
      TextField("Búsqueda concreta (opcional)",text:$query).textFieldStyle(.roundedBorder)
      Button{Task{await search()}}label:{HStack{Spacer();if isSearching{ProgressView().tint(.white)};Label("Buscar lugares",systemImage:"magnifyingglass");Spacer()}}.buttonStyle(.borderedProminent).tint(PawlyColors.primary).disabled(isSearching)
     }.padding()
     if !results.isEmpty{Map(coordinateRegion:$region,annotationItems:results){p in MapMarker(coordinate:p.coordinate,tint:.green)}.frame(height:205)}
-    if let error{Text(error).font(.caption).foregroundStyle(.red).padding(.horizontal)}
-    if let message=savedStore.message { Text(message).font(.caption).foregroundStyle(.secondary) }
+    if let error{Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red).padding(.horizontal)}
+    if let message=savedStore.message { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) }
     if let locationMessage=locationProvider.message{Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary).padding(.horizontal)}
     List(results){p in VStack(alignment:.leading,spacing:6){
      HStack{VStack(alignment:.leading,spacing:3){Text(p.name).font(.headline);Text(p.subtitle).font(.caption).foregroundStyle(.secondary)}
@@ -354,6 +352,9 @@ struct PawlyExploreView:View{
      savedIdeas=Set(UserDefaults.standard.stringArray(forKey:ideaKey) ?? [])
      await savedStore.load();await collections.load()
     }
+    .onDisappear { mapSearch.cancel(); locationProvider.cancel() }
+    .onChange(of: [category, query, area]) { _ in mapSearch.cancel(); results = []; error = nil }
+    .onChange(of: page) { _ in mapSearch.cancel() }
     .onChange(of:savedIdeas){value in UserDefaults.standard.set(Array(value),forKey:ideaKey)}
     .onReceive(locationProvider.$location){value in
      if nearMe,let value {
@@ -365,20 +366,20 @@ struct PawlyExploreView:View{
  }
  private var ideaKey:String { "pawly.ideas.\(Auth.auth().currentUser?.uid ?? "guest")" }
  @MainActor private func search()async{
-  isSearching=true;error=nil;defer{isSearching=false}
+  error=nil
   let term=query.trimmingCharacters(in:.whitespacesAndNewlines),place=area.trimmingCharacters(in:.whitespacesAndNewlines)
   let request=MKLocalSearch.Request()
   request.naturalLanguageQuery=[term.isEmpty ? category:term,nearMe ? "":place].filter{!$0.isEmpty}.joined(separator:" ")
   if nearMe {
-   guard locationProvider.location != nil else {error="Esperando ubicación. Comprueba el permiso de iOS.";return}
-   request.region=region
+   guard let coordinate = locationProvider.location?.coordinate else {error="Esperando ubicación. Comprueba el permiso de iOS.";return}
+   request.region = MKCoordinateRegion(center: coordinate, latitudinalMeters: 20000, longitudinalMeters: 20000)
   }
-  do{let response=try await MKLocalSearch(request:request).start()
-   results=response.mapItems.prefix(35).map{item in let address=[item.placemark.thoroughfare,item.placemark.locality].compactMap{$0}.joined(separator:", ")
+  do{let found = try await mapSearch.results(for: request)
+   results=found.prefix(35).map{item in let address=[item.placemark.thoroughfare,item.placemark.locality].compactMap{$0}.joined(separator:", ")
     return PawlyPlaceResult(id:"\(item.placemark.coordinate.latitude):\(item.placemark.coordinate.longitude)",name:item.name ?? "Lugar",subtitle:address,coordinate:item.placemark.coordinate,phone:item.phoneNumber,mapItem:item)}
    if let first=results.first{region=MKCoordinateRegion(center:first.coordinate,span:MKCoordinateSpan(latitudeDelta:0.07,longitudeDelta:0.07))}
    if results.isEmpty{error="No se han encontrado resultados. Prueba con otra zona o término."}
-  }catch{self.error=error.localizedDescription}
+  } catch is CancellationError { return } catch { self.error="No se pudo buscar ahora. Comprueba la conexión y vuelve a intentarlo." }
  }
 }
 struct PawlySavedPlacesView:View{
@@ -396,6 +397,8 @@ struct PawlySavedPlacesView:View{
 struct PawlyPlaceResult:Identifiable{let id:String;let name:String;let subtitle:String;let coordinate:CLLocationCoordinate2D;let phone:String?;let mapItem:MKMapItem}
 
 struct PawlyLearningHubView:View{
+ @Environment(\.locale) private var locale
+ @State private var refresh = 0
  @State private var articles:[PawlyNewsArticle]=[]
  @State private var loading=false
  @State private var error:String?
@@ -403,7 +406,7 @@ struct PawlyLearningHubView:View{
  @State private var searchText=""
  @AppStorage("pawly.learning.guidesExpanded") private var guidesExpanded=false
  private var matchingGuides:[Int] {
-  guides.indices.filter { searchText.isEmpty || [guides[$0].0,guides[$0].1,guides[$0].3].joined(separator:" ").localizedCaseInsensitiveContains(searchText) }
+  guides.indices.filter { searchText.isEmpty || [guides[$0].0,guides[$0].1,guides[$0].3].map { PawlyLanguage.text($0, language: locale.identifier) }.joined(separator:" ").localizedCaseInsensitiveContains(searchText) }
  }
  private var matchingArticles:[PawlyNewsArticle] {
   articles.filter { searchText.isEmpty || $0.title.localizedCaseInsensitiveContains(searchText) || $0.source.localizedCaseInsensitiveContains(searchText) }
@@ -421,38 +424,54 @@ struct PawlyLearningHubView:View{
    HStack {
     TextField("Buscar guías o noticias",text:$searchText).textFieldStyle(.roundedBorder)
     Menu {
-     ForEach(topics,id:\.self) { t in Button { topic=t;Task{await loadNews()} } label:{ if topic==t { Label(t,systemImage:"checkmark") } else { Text(t) } } }
-    } label:{ Label("Filtrar",systemImage:"line.3.horizontal.decrease.circle") }.buttonStyle(.bordered)
+     ForEach(topics,id:\.self) { t in Button { topic=t } label:{ if topic==t { Label(LocalizedStringKey(t),systemImage:"checkmark") } else { Text(LocalizedStringKey(t)) } } }
+    } label:{ Label(LocalizedStringKey(topic),systemImage:"line.3.horizontal.decrease.circle") }.buttonStyle(.bordered)
    }
-   Text("Noticias: \(topic)").font(.caption).foregroundStyle(.secondary)
    DisclosureGroup(isExpanded:$guidesExpanded) {
    ForEach(matchingGuides,id:\.self){index in
     let g=guides[index]
     NavigationLink{PawlyGuideDetailView(title:g.0,subtitle:g.1,icon:g.2,content:g.3)}label:{
     HStack(spacing:12){Image(systemName:g.2).font(.title2).foregroundStyle(PawlyColors.primary).frame(width:45,height:45).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:14))
-     VStack(alignment:.leading,spacing:3){Text(g.0).font(.headline).foregroundStyle(.primary);Text(g.1).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"chevron.right").font(.caption).foregroundStyle(.secondary)
+     VStack(alignment:.leading,spacing:3){Text(LocalizedStringKey(g.0)).font(.headline).foregroundStyle(.primary);Text(LocalizedStringKey(g.1)).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"chevron.right").font(.caption).foregroundStyle(.secondary)
     }.padding(12).background(PawlyColors.canvas,in:RoundedRectangle(cornerRadius:16))
    }.buttonStyle(.plain)}
    if matchingGuides.isEmpty { Text("No hay guías que coincidan.").font(.caption).foregroundStyle(.secondary) }
    } label: { Text("Guías de Pawly").font(.title3.bold()).foregroundStyle(PawlyColors.ink) }
    .padding(13).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:16))
-   HStack{Text("Noticias").font(.title3.bold());Spacer();Button("Actualizar"){Task{await loadNews()}}.font(.caption.weight(.semibold))}
+   HStack{Text(locale.identifier == "ca" || locale.identifier == "eu" ? "Noticias en español" : "Noticias").font(.title3.bold());Spacer();Button("Actualizar"){refresh += 1}.font(.caption.weight(.semibold))}
    if loading{ProgressView().frame(maxWidth:.infinity)}
-   if let error{Text(error).font(.caption).foregroundStyle(.secondary)}
+   if let error{Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.secondary)}
    ForEach(matchingArticles){a in Link(destination:a.url){VStack(alignment:.leading,spacing:5){Text(a.title).font(.subheadline.weight(.semibold)).foregroundStyle(.primary);Text(a.source).font(.caption).foregroundStyle(.secondary)}.padding(13).frame(maxWidth:.infinity,alignment:.leading).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:14))}}
-  }.padding(18)}.background(PawlyColors.canvas).navigationTitle("Aprender").task{await loadNews()}}
+  }.padding(18)}.background(PawlyColors.canvas).navigationTitle("Aprender").task(id: [topic, locale.identifier, String(refresh)]) { await loadNews() }}
  }
  @MainActor private func loadNews()async{
-  loading=true;error=nil;defer{loading=false}
-  let term=topic=="Actualidad" ? "bienestar animal mascotas":"mascotas \(topic.lowercased())"
-  guard let q=term.addingPercentEncoding(withAllowedCharacters:.urlQueryAllowed),let url=URL(string:"https://news.google.com/rss/search?q=\(q)&hl=es&gl=ES&ceid=ES:es")else{return}
-  do{let(data,_)=try await URLSession.shared.data(from:url);articles=PawlyRSSParser.parse(data);if articles.isEmpty{error="No hay noticias disponibles ahora."}}
-  catch{self.error="No se han podido cargar las noticias. Comprueba la conexión."}
+  let edition: (language: String, country: String, query: String)
+  switch locale.identifier {
+  case "en": edition = ("en", "US", "pets")
+  case "fr": edition = ("fr", "FR", "animaux de compagnie")
+  case "de": edition = ("de", "DE", "Haustiere")
+  case "pt": edition = ("pt", "PT", "animais de estimação")
+  default: edition = ("es", "ES", "mascotas")
+  }
+  var url = URLComponents(string: "https://news.google.com/rss/search")
+  let term = topic == "Actualidad" ? edition.query : edition.query + " " + PawlyLanguage.text(topic, language: edition.language)
+  url?.queryItems = [URLQueryItem(name: "q", value: term), URLQueryItem(name: "hl", value: edition.language),
+                     URLQueryItem(name: "gl", value: edition.country), URLQueryItem(name: "ceid", value: edition.country + ":" + edition.language)]
+  guard let endpoint = url?.url else { return }
+  loading = true; error = nil
+  defer { if !Task.isCancelled { loading = false } }
+  do {
+   let (data, response) = try await URLSession.shared.data(from: endpoint)
+   guard !Task.isCancelled else { return }
+   guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
+   articles = PawlyRSSParser.parse(data)
+   if articles.isEmpty { error = "No hay noticias disponibles ahora." }
+  } catch { if !Task.isCancelled { articles = []; error = "No se han podido cargar las noticias. Comprueba la conexión." } }
  }
 }
 struct PawlyGuideDetailView:View{
  let title:String;let subtitle:String;let icon:String;let content:String
- var body:some View{ScrollView{VStack(alignment:.leading,spacing:16){Image(systemName:icon).font(.system(size:38)).foregroundStyle(PawlyColors.primary).frame(width:76,height:76).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:22));Text(subtitle).font(.title3.bold());Text(content).font(.body).lineSpacing(5);Text("Información general. Adapta las recomendaciones a tu animal y consulta a profesionales cuando sea necesario.").font(.caption).foregroundStyle(.secondary).padding(14).background(PawlyColors.canvas,in:RoundedRectangle(cornerRadius:14))}.padding(22)}.navigationTitle(title).navigationBarTitleDisplayMode(.inline)}
+ var body:some View{ScrollView{VStack(alignment:.leading,spacing:16){Image(systemName:icon).font(.system(size:38)).foregroundStyle(PawlyColors.primary).frame(width:76,height:76).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:22));Text(LocalizedStringKey(subtitle)).font(.title3.bold());Text(LocalizedStringKey(content)).font(.body).lineSpacing(5);Text("Información general. Adapta las recomendaciones a tu animal y consulta a profesionales cuando sea necesario.").font(.caption).foregroundStyle(.secondary).padding(14).background(PawlyColors.canvas,in:RoundedRectangle(cornerRadius:14))}.padding(22)}.navigationTitle(LocalizedStringKey(title)).navigationBarTitleDisplayMode(.inline)}
 }
 
 private struct PawlyMarketCategory: Identifiable {
@@ -482,7 +501,7 @@ struct PawlyMarketView: View {
      HStack {
       Label("Categoría",systemImage:"line.3.horizontal.decrease")
       Spacer()
-      Picker("Categoría",selection:$category){ForEach(["Todo"]+categories.map(\.id),id:\.self){Text($0).tag($0)}}.pickerStyle(.menu)
+      Picker("Categoría",selection:$category){ForEach(["Todo"]+categories.map(\.id),id:\.self){Text(LocalizedStringKey($0)).tag($0)}}.pickerStyle(.menu)
      }.padding(10).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:14))
      ForEach(visible) { item in
       Button { openSearch(search.isEmpty ? item.query:search) } label: {
@@ -490,7 +509,7 @@ struct PawlyMarketView: View {
       }.buttonStyle(.plain)
      }
      Text("Compara ingredientes, necesidades veterinarias y precio antes de comprar.").font(.caption).foregroundStyle(.secondary)
-     if let message { Text(message).font(.caption).foregroundStyle(.secondary) }
+     if let message { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) }
     }.padding(18)
    }.background(PawlyColors.canvas).navigationTitle("Pawly Market").navigationBarTitleDisplayMode(.inline)
   }
@@ -530,7 +549,8 @@ struct PawlyProfessionalDirectoryView: View {
  @State private var area=""
  @State private var results:[MKMapItem]=[]
  @State private var pawlyProfessionals:[PawlyProfessionalProfile]=[]
- @State private var busy=false
+ @StateObject private var mapSearch = PawlyPlaceSearch()
+ private var busy: Bool { mapSearch.searching }
  @State private var loadingPawly=false
  @State private var message:String?
  private let categories=["Veterinario","Urgencias veterinarias","Adiestramiento","Peluquería canina","Guardería para mascotas","Fisioterapia","Nutrición animal","Tiendas de mascotas"]
@@ -539,7 +559,7 @@ struct PawlyProfessionalDirectoryView: View {
    VStack(spacing:0) {
     Form {
      Section("Encuentra profesionales cerca") {
-      Picker("Servicio",selection:$category){ForEach(categories,id:\.self){Text($0)}}
+      Picker("Servicio",selection:$category){ForEach(categories,id:\.self){Text(LocalizedStringKey($0))}}
       TextField("Ciudad o zona",text:$area).onChange(of:area){_ in nearMe=false}
       TextField("Nombre o servicio concreto",text:$query)
       Button { nearMe=true;locationProvider.request() } label:{Label("Buscar cerca de mi ubicación",systemImage:"location.circle")}
@@ -547,7 +567,7 @@ struct PawlyProfessionalDirectoryView: View {
     if let locationMessage=locationProvider.message { Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary) }
       Button { Task { await search() } } label:{HStack{Spacer();if busy{ProgressView()};Label("Buscar en Mapas",systemImage:"magnifyingglass");Spacer()}}.disabled(busy)
      }
-     if let message { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
+     if let message { Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) } }
      Section("Profesionales de Pawly") {
       if loadingPawly { ProgressView("Buscando profesionales de Pawly…") }
       else if pawlyProfessionals.isEmpty { Text("Todavía no hay perfiles profesionales públicos de esta categoría.").font(.caption).foregroundStyle(.secondary) }
@@ -573,6 +593,8 @@ struct PawlyProfessionalDirectoryView: View {
      }
     }
    }.navigationTitle("Profesionales").task { await loadPawlyProfessionals() }
+    .onDisappear { mapSearch.cancel(); locationProvider.cancel() }
+    .onChange(of: [category, query, area]) { _ in mapSearch.cancel(); results = []; message = nil }
     .onChange(of:category){_ in Task { await loadPawlyProfessionals() }}
     .onReceive(locationProvider.$location){value in if nearMe && value != nil { Task { await search() } } }
   }
@@ -619,12 +641,12 @@ struct PawlyProfessionalDirectoryView: View {
     }
    }
   } catch {
-   message = "No se pudieron cargar los perfiles de Pawly: \(error.localizedDescription)"
+   message = "No se pudieron cargar los perfiles de Pawly: \(PawlyServiceMessage.key(for: error))"
   }
  }
 
  @MainActor private func search() async {
-  busy=true;message=nil;defer{busy=false}
+  message=nil
   let term=query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? category:query
   let request=MKLocalSearch.Request()
   request.naturalLanguageQuery=nearMe ? term : [term,area].filter{!$0.isEmpty}.joined(separator:" ")
@@ -632,7 +654,8 @@ struct PawlyProfessionalDirectoryView: View {
    guard let coordinate=locationProvider.location?.coordinate else { message="Esperando la ubicación. Comprueba el permiso de iOS.";return }
    request.region=MKCoordinateRegion(center:coordinate,latitudinalMeters:20000,longitudinalMeters:20000)
   }
-  do { results=try await MKLocalSearch(request:request).start().mapItems; if results.isEmpty{message="No se encontraron resultados. Prueba otra zona o servicio."} }
+  do { results=try await mapSearch.results(for: request); if results.isEmpty{message="No se encontraron resultados. Prueba otra zona o servicio."} }
+  catch is CancellationError { return }
   catch { message="No se pudo buscar ahora. Comprueba la conexión y vuelve a intentarlo." }
  }
 }
@@ -777,7 +800,7 @@ struct PawlyLostPetView: View {
                details.trimmingCharacters(in:.whitespaces).isEmpty)
     }
     if let status { Section { Text(status).font(.caption).foregroundStyle(PawlyColors.primary) } }
-    if let error { Section { Text(error).font(.caption).foregroundStyle(.red) } }
+    if let error { Section { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) } }
     Section {
      Text("El aviso queda publicado en Comunidad. Las notificaciones por proximidad requieren que el servicio Cloudflare esté desplegado y que las personas cercanas hayan dado su consentimiento.")
       .font(.caption).foregroundStyle(.secondary)
@@ -843,7 +866,7 @@ struct PawlyLostPetView: View {
    error=nil
    status="Cartel creado en este dispositivo. Puedes compartir el JPG."
   } catch {
-   self.error=error.localizedDescription
+   self.error=PawlyServiceMessage.key(for: error)
   }
  }
 
@@ -921,7 +944,7 @@ struct PawlyLostPetView: View {
       ? "Aviso publicado. Se han entregado \(delivered) notificaciones push a dispositivos cercanos."
       : "Aviso publicado y zona registrada. No había dispositivos cercanos habilitados para recibir alertas."
    } catch {
-    status="La publicación y la zona aproximada se han guardado en Pawly, pero no se pudo completar el envío de avisos: \(error.localizedDescription)"
+    status="La publicación y la zona aproximada se han guardado en Pawly, pero no se pudo completar el envío de avisos: \(PawlyServiceMessage.key(for: error))"
    }
   } catch let publishError { self.error="No se pudo publicar: \(publishError.localizedDescription)" }
  }

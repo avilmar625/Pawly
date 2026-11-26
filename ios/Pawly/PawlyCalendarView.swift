@@ -110,7 +110,7 @@ struct PawlyCalendarView: View {
                             }
                         }
                     } header: { Text(day, format: .dateTime.weekday(.wide).day().month(.wide)) }
-                    if let error { Text(error).foregroundStyle(.red) }
+                    if let error { Text(LocalizedStringKey(error)).foregroundStyle(.red) }
                 }
                 .refreshable { await load(pet) }
                 .task(id: pet) { await load(pet) }
@@ -133,7 +133,7 @@ struct PawlyCalendarView: View {
                                 Button("Eliminar recordatorio", role: .destructive) {
                                     Task {
                                         do { try await reminders.remove(id: reminder.id, pet: pet); selected = nil }
-                                        catch { selected = nil; self.error = error.localizedDescription }
+                                        catch { selected = nil; self.error = PawlyServiceMessage.key(for: error) }
                                     }
                                 }
                             }
@@ -155,6 +155,7 @@ struct PawlyCalendarView: View {
             }
         } label: { Image(systemName: step < 0 ? "chevron.left" : "chevron.right").frame(width: 44, height: 44) }
         .buttonStyle(.borderless).accessibilityLabel(step < 0 ? "Mes anterior" : "Mes siguiente")
+        .accessibilityIdentifier(step < 0 ? "calendar.previousMonth" : "calendar.nextMonth")
     }
 
     private var monthDays: [Date] {
@@ -218,6 +219,6 @@ struct PawlyCalendarView: View {
             guard !Task.isCancelled, pets.selectedPet == pet else { return }
             (passport, tasks, diary, logs) = result
             error = nil
-        } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+        } catch { if !Task.isCancelled { self.error = PawlyServiceMessage.key(for: error) } }
     }
 }

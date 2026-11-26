@@ -67,7 +67,9 @@ struct PawlyPetInvitation:Identifiable {
 final class PawlyPetStore: ObservableObject {
     @Published private(set) var pets: [PawlyPet] = []
     @Published var selectedPetID: String? {
-        didSet { if let selectedPetID { UserDefaults.standard.set(selectedPetID, forKey: "pawly.selectedPetID") } }
+        didSet {
+            if let uid { UserDefaults.standard.set(selectedPetID, forKey: Self.selectionKey(uid)) }
+        }
     }
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -81,7 +83,13 @@ final class PawlyPetStore: ObservableObject {
     private var applyingRemoteSelection = false
     var selectedPet: PawlyPet? { pets.first(where: { $0.id == selectedPetID }) ?? pets.first }
 
-    init() { selectedPetID = UserDefaults.standard.string(forKey: "pawly.selectedPetID") }
+    private static func selectionKey(_ uid: String) -> String { "pawly.selectedPetID." + uid }
+
+    init() {
+        if let uid = Auth.auth().currentUser?.uid {
+            selectedPetID = UserDefaults.standard.string(forKey: Self.selectionKey(uid))
+        }
+    }
 
     deinit {
         petListener?.remove()

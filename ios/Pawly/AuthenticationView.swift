@@ -62,7 +62,7 @@ struct AuthenticationView: View {
                         .background(PawlyColors.surface, in: RoundedRectangle(cornerRadius: 15))
                     }
                     if let message {
-                        Text(message).font(.footnote).foregroundStyle(isError ? .red : PawlyColors.primary)
+                        Text(LocalizedStringKey(message)).font(.footnote).foregroundStyle(isError ? .red : PawlyColors.primary)
                     }
                     Button {
                         Task { await submit() }
@@ -85,7 +85,7 @@ struct AuthenticationView: View {
                             Task {
                                 isGoogleWorking = true
                                 do { try await PawlyGoogleSignIn.signIn(); message = nil }
-                                catch { message = error.localizedDescription; isError = true }
+                                catch { message = PawlyServiceMessage.key(for: error); isError = true }
                                 isGoogleWorking = false
                             }
                         } label: {
@@ -144,7 +144,7 @@ struct AuthenticationView: View {
                 try await session.signIn(email: email, password: password)
             }
         } catch {
-            message = error.localizedDescription
+            message = PawlyServiceMessage.key(for: error)
             isError = true
         }
     }
@@ -160,7 +160,7 @@ struct AuthenticationView: View {
             message = "Te hemos enviado un enlace para restablecer la contraseña."
             isError = false
         } catch {
-            message = error.localizedDescription
+            message = PawlyServiceMessage.key(for: error)
             isError = true
         }
     }

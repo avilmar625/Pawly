@@ -55,7 +55,7 @@ final class PawlySavedPlacesStore: ObservableObject {
         defer { busy = false }
         places = PawlySavedPlace.cached(for: uid)
         do { try accept(try await Self.snapshot(for: uid), for: uid) }
-        catch { if Auth.auth().currentUser?.uid == uid { message = error.localizedDescription } }
+        catch { if Auth.auth().currentUser?.uid == uid { message = PawlyServiceMessage.key(for: error) } }
     }
 
     func toggle(_ place: PawlySavedPlace) {
@@ -76,7 +76,7 @@ final class PawlySavedPlacesStore: ObservableObject {
                         PawlyBackupPolicy.addingMissing([place], to: existing) { $0.id }
                 }
                 try accept(updated, for: uid)
-            } catch { if Auth.auth().currentUser?.uid == uid { message = error.localizedDescription } }
+            } catch { if Auth.auth().currentUser?.uid == uid { message = PawlyServiceMessage.key(for: error) } }
         }
     }
 

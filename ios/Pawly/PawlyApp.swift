@@ -23,7 +23,16 @@ struct PawlyApp: App {
             options.apiKey = "A" + String(repeating: "0", count: 38)
             FirebaseApp.configure(options: options)
             Auth.auth().useEmulator(withHost: "127.0.0.1", port: 9099)
-            Firestore.firestore().useEmulator(withHost: "127.0.0.1", port: 8080)
+            if ProcessInfo.processInfo.arguments.contains("-PawlyResetTestSession") {
+                try? Auth.auth().signOut()
+                UserDefaults.standard.set("es", forKey: "pawly.language")
+            }
+            let database = Firestore.firestore()
+            let settings = database.settings
+            settings.host = "127.0.0.1:8080"
+            settings.isSSLEnabled = false
+            settings.cacheSettings = MemoryCacheSettings()
+            database.settings = settings
         }
         #endif
         if Bundle.main.url(forResource: "GoogleService-Info", withExtension: "plist") != nil,
@@ -52,8 +61,8 @@ struct PawlyApp: App {
                     FirebaseSetupView()
                 } else if session.isLoading {
                     LoadingView()
-                } else if session.user != nil {
-                    PawlyTabView()
+                } else if let user = session.user {
+                    PawlyTabView().id(user.uid)
                         .environmentObject(session)
                 } else {
                     AuthenticationView()

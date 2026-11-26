@@ -40,7 +40,7 @@ struct PawlyExploreCollection:Identifiable {
                 return PawlyExploreCollection(id:doc.documentID,name:name,description:doc.get("description") as? String ?? "",entries:doc.get("entries") as? [String] ?? [])
             }.sorted{$0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending}
             message=nil
-        } catch {message=error.localizedDescription}
+        } catch {message=PawlyServiceMessage.key(for: error)}
     }
     func create(name:String,description:String) async -> Bool {
         let clean=name.trimmingCharacters(in:.whitespacesAndNewlines)
@@ -63,7 +63,7 @@ struct PawlyExploreCollection:Identifiable {
             }
             guard created as? Bool == true else { message="Ya existe esta colección."; return false }
             await load();return true
-        } catch {message=error.localizedDescription;return false}
+        } catch {message=PawlyServiceMessage.key(for: error);return false}
     }
     func change(_ entry:String,in collection:PawlyExploreCollection,add:Bool) async {
         guard let root else{return}
@@ -72,11 +72,11 @@ struct PawlyExploreCollection:Identifiable {
             let update:FieldValue=add ? .arrayUnion([entry]):.arrayRemove([entry])
             try await root.document(collection.id).updateData(["entries":update,"updatedAt":FieldValue.serverTimestamp()])
             await load()
-        } catch {message=error.localizedDescription}
+        } catch {message=PawlyServiceMessage.key(for: error)}
     }
     func remove(_ collection:PawlyExploreCollection) async {
         guard let root else{return}
-        do {try await root.document(collection.id).delete();await load()} catch {message=error.localizedDescription}
+        do {try await root.document(collection.id).delete();await load()} catch {message=PawlyServiceMessage.key(for: error)}
     }
 }
 
@@ -147,7 +147,7 @@ struct PawlyExploreIdeasView:View {
                     }.background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:18)).clipShape(RoundedRectangle(cornerRadius:18))
                 }
                 if visible.isEmpty{Text("No hay ideas que coincidan.").font(.caption).foregroundStyle(.secondary)}
-                if let message=collections.message{Text(message).font(.caption).foregroundStyle(.secondary)}
+                if let message=collections.message{Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
             }.padding(16)
         }
     }
@@ -180,7 +180,7 @@ struct PawlyExploreSavedView:View {
                     }.swipeActions{Button(role:.destructive){savedPlaces.remove(place)}label:{Label("Eliminar",systemImage:"trash")}}
                 }
             }
-            if let message=savedPlaces.message{Text(message).font(.caption).foregroundStyle(.secondary)}
+            if let message=savedPlaces.message{Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
         }.refreshable{await savedPlaces.load()}
     }
 }
@@ -206,14 +206,14 @@ struct PawlyExploreCollectionsView:View {
                     }label:{VStack(alignment:.leading){Text(collection.name).font(.headline);Text(collection.description).font(.caption).foregroundStyle(.secondary);Text("\(collection.entries.count) elementos").font(.caption)}}
                 }
             }
-            if let message=store.message {Text(message).font(.caption).foregroundStyle(.secondary)}
+            if let message=store.message {Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
         }.refreshable{await store.load()}
         .sheet(isPresented:$create) {
             NavigationStack {
                 Form {
                     TextField("Nombre de la colección",text:$name).onChange(of:name){name=String($0.prefix(32))}
                     TextField("Descripción (opcional)",text:$description,axis:.vertical).onChange(of:description){description=String($0.prefix(120))}
-                    if let message=store.message{Text(message).font(.caption).foregroundStyle(.red)}
+                    if let message=store.message{Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.red)}
                 }.navigationTitle("Nueva colección").toolbar {
                     ToolbarItem(placement:.cancellationAction){Button("Cancelar"){create=false}}
                     ToolbarItem(placement:.confirmationAction){Button("Crear"){

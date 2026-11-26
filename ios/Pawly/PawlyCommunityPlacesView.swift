@@ -42,7 +42,7 @@ final class PawlyCommunityPlacesStore: ObservableObject {
                 .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = PawlyServiceMessage.key(for: error)
         }
     }
 
@@ -220,14 +220,14 @@ struct PawlyCommunityPlacesView: View {
                         Button(role: .destructive) {
                             Task {
                                 do { try await store.deleteOwn(place) }
-                                catch { actionError = error.localizedDescription }
+                                catch { actionError = PawlyServiceMessage.key(for: error) }
                             }
                         } label: { Label("Eliminar", systemImage: "trash") }
                     }
                 }
             }
             if let error = store.errorMessage ?? actionError {
-                Section { Text(error).font(.caption).foregroundStyle(.red) }
+                Section { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
             }
         }
         .navigationTitle("Lugares de la comunidad")
@@ -350,7 +350,7 @@ private struct PawlyCommunityPlaceForm: View {
                     TextField("Nombre", text: $name).onChange(of: name) { name = String($0.prefix(80)) }
                     Picker("Categoría", selection: $category) {
                         ForEach(["Parque", "Playa", "Restaurante", "Alojamiento", "Ruta", "Veterinario", "Otro"], id: \.self) {
-                            Text($0)
+                            Text(LocalizedStringKey($0))
                         }
                     }
                     TextField("Dirección o municipio", text: $location)
@@ -373,7 +373,7 @@ private struct PawlyCommunityPlaceForm: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                if let error { Section { Text(error).foregroundStyle(.red) } }
+                if let error { Section { Text(LocalizedStringKey(error)).foregroundStyle(.red) } }
                 Section {
                     Text("La propuesta se enviará a revisión. Se requiere una ubicación concreta del lugar; no se utiliza ni se guarda tu posición personal.")
                         .font(.caption).foregroundStyle(.secondary)

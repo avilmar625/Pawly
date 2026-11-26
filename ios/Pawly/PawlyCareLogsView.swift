@@ -175,7 +175,7 @@ struct PawlyCareLogForm: View {
                 Section(action == "Paseo" ? "Vuestro paseo" : "Acción realizada") {
                     if !fixedAction {
                         Picker("Tipo", selection: $action) {
-                        ForEach(actions, id: \.self) { Text($0) }
+                        ForEach(actions, id: \.self) { Text(LocalizedStringKey($0)) }
                         }.onChange(of: action) { next in if actions.contains(title) { title = next } }
                     }
                     TextField(action == "Paseo" ? "Nombre del paseo" : "Qué se ha hecho", text: $title)

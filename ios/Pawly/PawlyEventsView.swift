@@ -79,7 +79,7 @@ final class PawlyEventsStore: ObservableObject {
             events = values.sorted { $0.startAt < $1.startAt }
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = PawlyServiceMessage.key(for: error)
         }
     }
 
@@ -315,7 +315,7 @@ struct PawlyEventsView: View {
                 }
             }
             if let message = store.errorMessage {
-                Section { Text(message).font(.caption).foregroundStyle(.red) }
+                Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.red) }
             }
 
         }
@@ -386,7 +386,7 @@ private struct PawlyEventDetailsSheet: View {
                     Button {
                         Task {
                             do { try await store.toggleInterest(event); dismiss() }
-                            catch { message = error.localizedDescription }
+                            catch { message = PawlyServiceMessage.key(for: error) }
                         }
                     } label: {
                         Label(event.interestedByMe ? "Ya no me interesa" : "Me interesa",
@@ -428,7 +428,7 @@ private struct PawlyEventDetailsSheet: View {
                         Label("Denunciar evento", systemImage: "flag")
                     }
                 }
-                if let message { Section { Text(message).font(.caption).foregroundStyle(.secondary) } }
+                if let message { Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) } }
             }
             .navigationTitle("Evento")
             .navigationBarTitleDisplayMode(.inline)
@@ -438,7 +438,7 @@ private struct PawlyEventDetailsSheet: View {
                     Button(reason) {
                         Task {
                             do { try await store.report(event, reason: reason); message = "Denuncia enviada." }
-                            catch { message = error.localizedDescription }
+                            catch { message = PawlyServiceMessage.key(for: error) }
                         }
                     }
                 }
@@ -455,7 +455,7 @@ private struct PawlyEventDetailsSheet: View {
             else { attendees += result.attendees }
             nextPage = result.nextPageToken
             message = nil
-        } catch { message = error.localizedDescription }
+        } catch { message = PawlyServiceMessage.key(for: error) }
     }
 }
 
@@ -481,7 +481,7 @@ private struct PawlyEventCreateSheet: View {
                     TextField("Nombre del evento", text: $title)
                         .onChange(of: title) { title = String($0.prefix(90)) }
                     Picker("Tipo", selection: $category) {
-                        ForEach(["Quedada", "Ruta", "Taller", "Adopción"], id: \.self) { Text($0) }
+                        ForEach(["Quedada", "Ruta", "Taller", "Adopción"], id: \.self) { Text(LocalizedStringKey($0)) }
                     }
                     TextField("Descripción", text: $description, axis: .vertical).lineLimit(3...7)
                     TextField("Lugar o dirección", text: $location)
@@ -507,7 +507,7 @@ private struct PawlyEventCreateSheet: View {
                     Text("Solo se guardan coordenadas del lugar del evento si lo localizas. No se comparte tu ubicación personal.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                if let error { Section { Text(error).foregroundStyle(.red) } }
+                if let error { Section { Text(LocalizedStringKey(error)).foregroundStyle(.red) } }
             }
             .disabled(saving).interactiveDismissDisabled(saving)
             .navigationTitle("Crear evento")
@@ -529,7 +529,7 @@ private struct PawlyEventCreateSheet: View {
                                 try await onSave(title, description, category, location, date,
                                                  location == resolvedLocation ? coordinate : nil, media.image)
                                 dismiss()
-                            } catch { self.error = error.localizedDescription }
+                            } catch { self.error = PawlyServiceMessage.key(for: error) }
                         }
                     }
                     .disabled(attachment.loading || saving || description.count > 1200 || location.count > 160 || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 ||
@@ -563,7 +563,7 @@ private struct PawlyEventLocationPicker:View {
                     Button {Task{await search()}}label:{Label("Buscar en el mapa",systemImage:"magnifyingglass")}
                         .disabled(busy || query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
                     if busy { ProgressView() }
-                    if let message {Text(message).font(.caption).foregroundStyle(.secondary)}
+                    if let message {Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
                 }
                 if let selected {
                     Section("Ajusta el punto del evento") {
@@ -602,6 +602,6 @@ private struct PawlyEventLocationPicker:View {
                 selected=first
                 region=MKCoordinateRegion(center:first.placemark.coordinate,latitudinalMeters:1200,longitudinalMeters:1200)
             } else {message="No se encontraron lugares. Prueba una dirección más concreta."}
-        } catch { message=error.localizedDescription }
+        } catch { message=PawlyServiceMessage.key(for: error) }
     }
 }

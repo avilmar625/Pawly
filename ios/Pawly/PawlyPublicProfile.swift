@@ -27,7 +27,7 @@ struct PawlyRelationshipList: View {
                 }
             }
             if loading { ProgressView() }
-            else if let error { Text(error); Button("Reintentar") { Task { await nextPage() } } }
+            else if let error { Text(LocalizedStringKey(error)); Button("Reintentar") { Task { await nextPage() } } }
             else if more { Button("Cargar más") { Task { await nextPage() } } }
             else if users.isEmpty { Text("No hay perfiles públicos disponibles.") }
         }
@@ -56,7 +56,7 @@ struct PawlyRelationshipList: View {
             cursor = page.documents.last
             more = page.documents.count == size
             error = nil
-        } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
+        } catch { if !Task.isCancelled { self.error = PawlyServiceMessage.key(for: error) } }
     }
 }
 
@@ -118,7 +118,7 @@ struct PawlyPublicProfile: View {
         working = true
         Task { @MainActor in
             defer { working = false }
-            do { try await action() } catch { message = error.localizedDescription }
+            do { try await action() } catch { message = PawlyServiceMessage.key(for: error) }
         }
     }
 }

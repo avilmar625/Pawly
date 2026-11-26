@@ -20,20 +20,21 @@ final class PawlyExpensesStore: ObservableObject {
     private var activePath: String?
 
     func listen(pet: PawlyPet, pets: PawlyPetStore) async {
+        guard let uid = Auth.auth().currentUser?.uid else { stop(); return }
+        let path = "sharedPets/\(pet.ownerUID ?? uid)_\(pet.id)/expenses"
+        guard path != activePath || listener == nil else { return }
+        stop()
+        entries = []
+        activePath = path
         do {
             try await pets.ensureSharedPet(pet)
-            guard let uid = Auth.auth().currentUser?.uid else { return }
-            let ownerUID = pet.ownerUID ?? uid
-            let path = "sharedPets/\(ownerUID)_\(pet.id)/expenses"
-            guard activePath != path else { return }
-            listener?.remove()
-            activePath = path
+            guard !Task.isCancelled, activePath == path, Auth.auth().currentUser?.uid == uid else { return }
             listener = db.collection(path).order(by: "date", descending: true).limit(to: 500)
                 .addSnapshotListener { [weak self] snapshot, error in
                     Task { @MainActor in
-                        guard let self else { return }
+                        guard let self, self.activePath == path, Auth.auth().currentUser?.uid == uid else { return }
                         if let error {
-                            self.errorMessage = error.localizedDescription
+                            self.errorMessage = PawlyServiceMessage.key(for: error)
                             return
                         }
                         self.entries = snapshot?.documents.compactMap { document in
@@ -56,7 +57,7 @@ final class PawlyExpensesStore: ObservableObject {
                     }
                 }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = PawlyServiceMessage.key(for: error)
         }
     }
 
@@ -78,16 +79,21 @@ final class PawlyExpensesStore: ObservableObject {
         let ownerUID = pet.ownerUID ?? uid
         let ref = db.collection("sharedPets").document("\(ownerUID)_\(pet.id)")
             .collection("expenses").document(entry.id)
-        try await ref.setData([
-            "id": entry.id,
+        let fields: [String: Any] = [
             "kind": entry.kind,
             "title": entry.title.trimmingCharacters(in: .whitespacesAndNewlines),
             "detail": entry.detail.trimmingCharacters(in: .whitespacesAndNewlines),
             "amount": entry.amount,
             "date": Int64(entry.date.timeIntervalSince1970 * 1000),
-            "createdBy": uid,
             "updatedAt": FieldValue.serverTimestamp()
-        ])
+        ]
+        _ = try await db.runTransaction { transaction, failure -> Any? in
+            do {
+                if try transaction.getDocument(ref).exists { transaction.updateData(fields, forDocument: ref) }
+                else { transaction.setData(fields.merging(["createdBy": uid, "id": entry.id]) { existing, _ in existing }, forDocument: ref) }
+            } catch { failure?.pointee = error as NSError }
+            return nil
+        }
     }
 
     func remove(_ entry: PawlyExpense, pet: PawlyPet) async throws {
@@ -176,7 +182,7 @@ struct PawlyExpensesView: View {
                     }
                     Section("Movimientos") {
                         Picker("Categoría", selection: $categoryFilter) {
-                            ForEach(["Todo"] + kinds, id: \.self) { Text($0).tag($0) }
+                            ForEach(["Todo"] + kinds, id: \.self) { Text(LocalizedStringKey($0)).tag($0) }
                         }
                         if filteredEntries.isEmpty {
                             Text("No hay movimientos registrados.").foregroundStyle(.secondary)
@@ -207,7 +213,7 @@ struct PawlyExpensesView: View {
                         }
                     }
                     if let error = store.errorMessage {
-                        Section { Text(error).font(.caption).foregroundStyle(.red) }
+                        Section { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
                     }
                 }
                 .navigationTitle("Gastos de \(pet.name)")
@@ -226,11 +232,11 @@ struct PawlyExpensesView: View {
                     PawlyExpenseForm { entry in
                         Task {
                             do { try await store.add(entry, pet: pet); showAdd = false }
-                            catch { store.errorMessage = error.localizedDescription }
+                            catch { store.errorMessage = PawlyServiceMessage.key(for: error) }
                         }
                     }
                 }
-                .task(id: pet.id) { await store.listen(pet: pet, pets: pets) }
+                .task(id: pet) { await store.listen(pet: pet, pets: pets) }
                 .onDisappear { store.stop() }
             } else {
                 PawlyEmptyState(icon: "receipt", title: "Añade una mascota", detail: "Aquí podrás registrar y consultar sus gastos.")
@@ -267,13 +273,13 @@ private struct PawlyExpenseForm: View {
         NavigationStack {
             Form {
                 Picker("Categoría", selection: $kind) {
-                    ForEach(["Alimentación", "Higiene", "Gasto veterinario", "Accesorios", "Otros"], id: \.self) { Text($0) }
+                    ForEach(["Alimentación", "Higiene", "Gasto veterinario", "Accesorios", "Otros"], id: \.self) { Text(LocalizedStringKey($0)) }
                 }
                 TextField("Concepto", text: $title)
                 TextField("Importe (€)", text: $amount).keyboardType(.decimalPad)
                 DatePicker("Fecha", selection: $date, displayedComponents: .date)
                 TextField("Detalles (opcional)", text: $detail, axis: .vertical).lineLimit(2...4)
-                if let error { Text(error).foregroundStyle(.red) }
+                if let error { Text(LocalizedStringKey(error)).foregroundStyle(.red) }
             }
             .navigationTitle("Nuevo gasto")
             .toolbar {

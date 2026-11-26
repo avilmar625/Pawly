@@ -22,3 +22,10 @@ for language in languages:
 for language, entries in catalogs.items():
     assert entries.keys() == catalogs["es"].keys(), language
 print(f"{len(catalogs['es'])} catalog keys validated in {len(languages)} languages")
+
+# User-entered values and interpolated messages are deliberately outside this static check.
+literal = re.compile(r'(?:Text|Button|Label|Section|Picker|TextField|navigationTitle|accessibilityLabel|LabeledContent|ProgressView|Toggle|DatePicker|alert)\(\s*"([^"\\\n]{2,})"')
+used = {key for source in root.glob("*.swift") for key in literal.findall(source.read_text())}
+missing = sorted(used - catalogs["es"].keys())
+assert not missing, f"Visible literal keys missing from the catalogs: {missing}"
+print(f"{len(used)} direct UI literals covered")

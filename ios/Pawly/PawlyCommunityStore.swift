@@ -55,6 +55,7 @@ final class PawlyCommunityStore: ObservableObject {
     private var blockedChatsListener:ListenerRegistration?
     private var blockedByChatsListener:ListenerRegistration?
     private var notificationListener:ListenerRegistration?
+    private var messagePath: String?
     private var messageListener:ListenerRegistration?
     private var cachedFeed:[PawlyFeedPost]=[]
     private var blockedFeedIDs:Set<String>=[]
@@ -609,14 +610,23 @@ final class PawlyCommunityStore: ObservableObject {
         }
     }
     func listenMessages(conversationID:String,onUpdate:@escaping([PawlyChatMessage])->Void) {
-        messageListener?.remove()
-        messageListener=db.collection("conversations").document(conversationID).collection("messages").order(by:"createdAt").limit(to:200).addSnapshotListener { snap,_ in
-            onUpdate(snap?.documents.map { d in
-                let x=d.data();return PawlyChatMessage(id:d.documentID,senderID:x["senderId"] as? String ?? "",text:x["text"] as? String ?? "",
-                    imageURL:x["imageUrl"] as? String ?? "",videoURL:x["videoUrl"] as? String ?? "",readBy:x["readBy"] as? [String] ?? [],
-                    createdAt:(x["createdAt"] as? Timestamp)?.dateValue())
-            } ?? [])
-        }
+        stopMessages()
+        guard let uid else { return }
+        messagePath = conversationID
+        messageListener = db.collection("conversations").document(conversationID).collection("messages")
+            .order(by: "createdAt", descending: true).limit(to: 200).addSnapshotListener { [weak self] snapshot, error in
+                guard let self, self.uid == uid, self.messagePath == conversationID else { return }
+                if let error { self.statusMessage = PawlyServiceMessage.key(for: error); return }
+                guard let snapshot else { return }
+                let messages = snapshot.documents.reversed().map { document in
+                    let fields = document.data()
+                    return PawlyChatMessage(id: document.documentID, senderID: fields["senderId"] as? String ?? "",
+                        text: fields["text"] as? String ?? "", imageURL: fields["imageUrl"] as? String ?? "",
+                        videoURL: fields["videoUrl"] as? String ?? "", readBy: fields["readBy"] as? [String] ?? [],
+                        createdAt: (fields["createdAt"] as? Timestamp)?.dateValue())
+                }
+                onUpdate(messages)
+            }
     }
     func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "") async throws {
         try requireVerified();guard let uid else{throw PawlyCommunityError.notSignedIn}
@@ -668,7 +678,7 @@ final class PawlyCommunityStore: ObservableObject {
         blockedByChatsListener = nil
         stopNotifications()
     }
-    func stopMessages(){messageListener?.remove();messageListener=nil}
+    func stopMessages(){messagePath=nil;messageListener?.remove();messageListener=nil}
 }
 private extension String { var nilIfEmpty:String? { isEmpty ? nil : self } }
 enum PawlyCommunityError:LocalizedError {

@@ -384,7 +384,7 @@ struct PawlyBackupView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             if let message {
-                Section { Text(message).foregroundStyle(isError ? .red : PawlyColors.primary) }
+                Section { Text(LocalizedStringKey(message)).foregroundStyle(isError ? .red : PawlyColors.primary) }
             }
         }
         .navigationTitle("Copias de seguridad")
@@ -394,7 +394,7 @@ struct PawlyBackupView: View {
                 guard let url = urls.first else { return }
                 Task { await restoreBackup(url) }
             case .failure(let error):
-                message = error.localizedDescription
+                message = PawlyServiceMessage.key(for: error)
                 isError = true
             }
         }
@@ -408,7 +408,7 @@ struct PawlyBackupView: View {
             message = "Copia creada correctamente. Guárdala en un lugar seguro."
             isError = false
         } catch {
-            message = error.localizedDescription
+            message = PawlyServiceMessage.key(for: error)
             isError = true
         }
     }
@@ -426,7 +426,7 @@ struct PawlyBackupView: View {
             message = "Restauración finalizada: \(report.petCount) mascotas revisadas y \(report.restoredDocuments) registros incorporados. \(report.skippedCareLogs) registros de actividad no se han recreado por seguridad."
             isError = false
         } catch {
-            message = error.localizedDescription
+            message = PawlyServiceMessage.key(for: error)
             isError = true
         }
     }
