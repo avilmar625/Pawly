@@ -6,6 +6,15 @@ import UniformTypeIdentifiers
 import FirebaseFirestore
 
 struct PawlyCloudinaryUploader {
+    private let setting: (String) -> String
+    private let send: (URLRequest) async throws -> (Data, URLResponse)
+
+    init(setting: @escaping (String) -> String = { Bundle.main.object(forInfoDictionaryKey: $0) as? String ?? "" },
+         send: @escaping (URLRequest) async throws -> (Data, URLResponse) = { try await URLSession.shared.data(for: $0) }) {
+        self.setting = setting
+        self.send = send
+    }
+
     static func indexID(for url: String) -> String {
         SHA256.hash(data: Data(url.utf8)).map { String(format: "%02x", $0) }.joined()
     }
@@ -35,7 +44,6 @@ struct PawlyCloudinaryUploader {
     }
 
     private func configuration(resource: String, folder: String, owner: String) throws -> PawlyUploadContract {
-        func setting(_ key: String) -> String { Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "" }
         return try PawlyUploadContract(cloud: setting("CLOUDINARY_CLOUD_NAME"),
                                        preset: setting("CLOUDINARY_\(resource.uppercased())_UPLOAD_PRESET"),
                                        resource: resource, folder: folder, owner: owner)
@@ -47,7 +55,7 @@ struct PawlyCloudinaryUploader {
         let key = "\(contract.endpoint)/\(contract.folder)/\(contract.preset)/\(digest)"
         return try await PawlyUploadCache.shared.resolve(key: key) {
             let request = contract.request(data: data, filename: filename, mime: mime)
-            let (responseData, response) = try await URLSession.shared.data(for: request)
+            let (responseData, response) = try await send(request)
             guard let http = response as? HTTPURLResponse else { throw PawlyMediaError.invalidResponse }
             guard (200..<300).contains(http.statusCode) else { throw PawlyMediaError.uploadFailed(http.statusCode) }
             return try contract.asset(from: responseData)

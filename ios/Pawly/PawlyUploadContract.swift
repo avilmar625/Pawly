@@ -22,12 +22,14 @@ enum PawlyMediaError: LocalizedError {
 
 struct PawlyUploadContract {
     let endpoint: URL
+    private let cloudName: String
     let folder: String
     let preset: String
     let resource: String
 
     init(cloud: String, preset: String, resource: String, folder: String, owner: String) throws {
         let cloud = cloud.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.cloudName = cloud
         self.preset = preset.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cloud.isEmpty, !self.preset.isEmpty, !self.preset.contains("$(") else { throw PawlyMediaError.notConfigured }
         guard cloud.range(of: #"^[a-zA-Z0-9_-]+$"#, options: .regularExpression) != nil,
@@ -74,7 +76,9 @@ struct PawlyUploadContract {
               asset.resource_type == resource, asset.public_id.hasPrefix(folder + "/"),
               asset.public_id.count > folder.count + 1, asset.public_id.count <= 255,
               let url = URL(string: asset.secure_url), url.scheme == "https",
-              url.host?.isEmpty == false, url.user == nil, url.password == nil else {
+              url.host?.lowercased() == "res.cloudinary.com", url.port == nil, url.user == nil, url.password == nil,
+              url.path.hasPrefix("/" + cloudName + "/" + resource + "/upload/"),
+              url.path.hasSuffix("/" + asset.public_id) || url.deletingPathExtension().path.hasSuffix("/" + asset.public_id) else {
             throw PawlyMediaError.invalidResponse
         }
         return asset
