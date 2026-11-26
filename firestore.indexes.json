@@ -78,6 +78,7 @@
         }
       ]
     },
+    {"collectionGroup": "comments", "queryScope": "COLLECTION", "fields": [{"fieldPath": "threadId", "order": "ASCENDING"}, {"fieldPath": "createdAt", "order": "ASCENDING"}]},
     {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "createdAt", "order": "ASCENDING"}]},
     {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "createdAt", "order": "DESCENDING"}]},
     {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "likeCount", "order": "DESCENDING"}]},

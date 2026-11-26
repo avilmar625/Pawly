@@ -506,3 +506,31 @@ test("map favourites are private and survive collection synchronisation", async 
   const result = await assertSucceeds(getDoc(doc(owner, path)));
   assert.deepEqual(result.data().entries, ["test-place"]);
 });
+
+test("replies bind the thread, target, count and notification to the actual comments", async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    await setDoc(doc(db, "users/writer"), { displayName: "Writer", username: "writer" });
+    await setDoc(doc(db, "posts/thread"), { authorId: "owner", commentCount: 1 });
+    await setDoc(doc(db, "posts/thread/comments/root"), { authorId: "reader", authorName: "Reader", text: "Hi" });
+  });
+  const db = env.authenticatedContext("writer", { email_verified: true }).firestore();
+  const post = doc(db, "posts/thread");
+  const root = doc(post, "comments/root");
+  const send = (id, changes = {}) => {
+    const batch = writeBatch(db);
+    batch.set(doc(post, "comments/" + id), { authorId: "writer", authorName: "Writer", text: "Reply",
+      threadId: "root", replyToId: "root", replyToAuthorId: "reader", replyToName: "Reader", createdAt: serverTimestamp(), ...changes });
+    batch.update(root, { replyCount: 1, lastReplyId: id });
+    batch.update(post, { commentCount: 2, lastCommentId: id });
+    return batch.commit();
+  };
+  await assertFails(send("wrong-author", { replyToAuthorId: "stranger" }));
+  await assertFails(send("missing", { replyToId: "elsewhere" }));
+  await assertSucceeds(send("reply"));
+  await assertFails(updateDoc(root, { replyCount: 2, lastReplyId: "reply" }));
+  const notification = { actorId: "writer", actorName: "Writer", type: "COMMENT", message: "Ha respondido a tu comentario.",
+    relatedId: "thread", sourceEventId: "reply", createdAt: serverTimestamp(), read: false };
+  await assertFails(setDoc(doc(db, "users/stranger/notifications/COMMENT-writer-reply"), notification));
+  await assertSucceeds(setDoc(doc(db, "users/reader/notifications/COMMENT-writer-reply"), notification));
+});

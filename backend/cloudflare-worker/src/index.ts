@@ -385,11 +385,11 @@ async function verifyFirebaseUser(token: string, env: Env): Promise<string> {
   return payload.sub;
 }
 
-function notificationCopy(type: ActivityType, actorName: string): { title: string; body: string } {
+function notificationCopy(type: ActivityType, actorName: string, reply = false): { title: string; body: string } {
   const name = actorName.trim().slice(0, 80) || "Alguien";
   switch (type) {
     case "LIKE": return { title: "Nueva interacción en Pawly", body: `${name} ha indicado que le gusta tu publicación.` };
-    case "COMMENT": return { title: "Nuevo comentario en Pawly", body: `${name} ha comentado tu publicación.` };
+    case "COMMENT": return { title: "Nuevo comentario en Pawly", body: reply ? `${name} ha respondido a tu comentario.` : `${name} ha comentado tu publicación.` };
     case "FOLLOW": return { title: "Nuevo seguidor en Pawly", body: `${name} ha empezado a seguirte.` };
     case "MESSAGE": return { title: "Nuevo mensaje en Pawly", body: `${name} te ha enviado un mensaje.` };
   }
@@ -400,7 +400,8 @@ async function verifyActivity(
   accessToken: string,
   actorUid: string,
   input: ActivityRequest
-): Promise<{ actorName: string } | null> {
+): Promise<{ actorName: string; reply: boolean } | null> {
+  let reply = false;
   const recipientUid = input.recipientUid;
   if (actorUid === recipientUid) return null;
 
@@ -435,9 +436,10 @@ async function verifyActivity(
   } else {
     if (!input.relatedId || input.relatedId.length > 128) return null;
     const post = await readDocument(env, accessToken, `posts/${input.relatedId}`);
-    if (!post || decodeFirestoreString(post.fields?.authorId) !== recipientUid) return null;
+    if (!post) return null;
 
     if (input.type === "LIKE") {
+      if (decodeFirestoreString(post.fields?.authorId) !== recipientUid) return null;
       if (input.sourceEventId !== input.relatedId) return null;
       if (!decodeFirestoreStrings(post.fields?.likedBy).includes(actorUid)) return null;
     } else {
@@ -446,6 +448,9 @@ async function verifyActivity(
         env, accessToken, `posts/${input.relatedId}/comments/${input.sourceEventId}`
       );
       if (!comment || decodeFirestoreString(comment.fields?.authorId) !== actorUid) return null;
+      const target = decodeFirestoreString(comment.fields?.replyToAuthorId);
+      if ((target || decodeFirestoreString(post.fields?.authorId)) !== recipientUid) return null;
+      reply = !!target;
       if (!isCurrentComment(decodeFirestoreString(post.fields?.lastCommentId), input.sourceEventId)) return null;
     }
   }
@@ -453,7 +458,7 @@ async function verifyActivity(
   const actorName = decodeFirestoreString(actorProfile.fields?.displayName)
     || decodeFirestoreString(actorProfile.fields?.username)
     || "Usuario Pawly";
-  return { actorName };
+  return { actorName, reply };
 }
 
 async function listDeviceTokens(env: Env, accessToken: string, uid: string): Promise<Array<{ id: string; token: string }>> {
@@ -663,7 +668,7 @@ async function handleActivityNotification(request: Request, env: Env): Promise<R
     const claim = await claimDispatch(env, accessToken, actorUid, input);
     if (claim.duplicate) return json({ accepted: true, delivered: 0, duplicate: true });
 
-    const copy = notificationCopy(input.type, verified.actorName);
+    const copy = notificationCopy(input.type, verified.actorName, verified.reply);
     let delivered = 0;
     try {
       for (const device of devices) {

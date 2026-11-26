@@ -25,6 +25,18 @@ struct PawlyBlockedUser: Identifiable {
 }
 struct PawlyFeedComment: Identifiable {
     var id:String; var authorId:String; var authorName:String; var text:String; var createdAt:Date?
+    var threadID:String? = nil
+    var replyToName:String? = nil
+    var replyCount:Int = 0
+}
+private extension PawlyFeedComment {
+    init(_ document: DocumentSnapshot) {
+        let data = document.data() ?? [:]
+        self.init(id: document.documentID, authorId: data["authorId"] as? String ?? "",
+                  authorName: data["authorName"] as? String ?? "Pawly", text: data["text"] as? String ?? "",
+                  createdAt: (data["createdAt"] as? Timestamp)?.dateValue(), threadID: data["threadId"] as? String,
+                  replyToName: data["replyToName"] as? String, replyCount: data["replyCount"] as? Int ?? 0)
+    }
 }
 struct PawlyChat: Identifiable {
     var id:String
@@ -74,7 +86,8 @@ final class PawlyCommunityStore: ObservableObject {
         targetUID: String,
         type: String,
         relatedID: String = "",
-        sourceEventID: String = ""
+        sourceEventID: String = "",
+        reply: Bool = false
     ) async {
         guard let actorUID = uid, !targetUID.isEmpty, targetUID != actorUID else { return }
 
@@ -85,7 +98,7 @@ final class PawlyCommunityStore: ObservableObject {
             message = "Le ha gustado tu publicación."
             notificationID = "LIKE-\(actorUID)-\(relatedID)"
         case "COMMENT":
-            message = "Ha comentado tu publicación."
+            message = reply ? "Ha respondido a tu comentario." : "Ha comentado tu publicación."
             notificationID = "COMMENT-\(actorUID)-\(sourceEventID)"
         case "FOLLOW":
             message = "Ha empezado a seguirte."
@@ -303,12 +316,21 @@ final class PawlyCommunityStore: ObservableObject {
                                              relatedID: post.id, sourceEventID: post.id)
         }
     }
-    func listenComments(postID:String,onUpdate:@escaping([PawlyFeedComment])->Void)->ListenerRegistration {
-        db.collection("posts").document(postID).collection("comments").order(by:"createdAt").limit(to:100).addSnapshotListener { snap,_ in
-            onUpdate(snap?.documents.map { d in let x=d.data(); return PawlyFeedComment(id:d.documentID,authorId:x["authorId"] as? String ?? "",authorName:x["authorName"] as? String ?? "Usuario",text:x["text"] as? String ?? "",createdAt:(x["createdAt"] as? Timestamp)?.dateValue()) } ?? [])
+    func listenComments(postID: String, threadID: String? = nil, limit: Int,
+                        onUpdate: @escaping (Result<([PawlyFeedComment], Bool), Error>) -> Void) -> ListenerRegistration {
+        var query: Query = db.collection("posts").document(postID).collection("comments")
+        if let threadID { query = query.whereField("threadId", isEqualTo: threadID) }
+        return query.order(by: "createdAt").limit(to: limit + 1).addSnapshotListener { snapshot, error in
+            if let error { onUpdate(.failure(error)); return }
+            guard let docs = snapshot?.documents else { return }
+            onUpdate(.success((docs.prefix(limit).map { PawlyFeedComment($0) }, docs.count > limit)))
         }
     }
-    func addComment(postID:String,text:String) async throws {
+    func comment(postID: String, id: String) async throws -> PawlyFeedComment? {
+        let document = try await db.collection("posts").document(postID).collection("comments").document(id).getDocument()
+        return document.exists ? PawlyFeedComment(document) : nil
+    }
+    func addComment(postID:String,text:String, replyingTo target: PawlyFeedComment? = nil) async throws {
         try requireVerified()
         let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !clean.isEmpty, clean.count <= 1000, let uid else {
@@ -322,19 +344,27 @@ final class PawlyCommunityStore: ObservableObject {
         }
         let comment = post.collection("comments").document()
         let batch = db.batch()
-        batch.setData([
-            "authorId": uid,
-            "authorName": profile.get("displayName") as? String ?? "Usuario Pawly",
-            "text": clean,
-            "createdAt": FieldValue.serverTimestamp()
-        ], forDocument: comment)
+        var fields: [String: Any] = [
+            "authorId": uid, "authorName": profile.get("displayName") as? String ?? "Usuario Pawly",
+            "text": clean, "createdAt": FieldValue.serverTimestamp()
+        ]
+        if let target {
+            let root = target.threadID ?? target.id
+            fields["threadId"] = root
+            fields["replyToId"] = target.id
+            fields["replyToAuthorId"] = target.authorId
+            fields["replyToName"] = target.authorName
+            batch.updateData(["replyCount": FieldValue.increment(Int64(1)), "lastReplyId": comment.documentID],
+                             forDocument: post.collection("comments").document(root))
+        }
+        batch.setData(fields, forDocument: comment)
         batch.updateData([
             "commentCount": FieldValue.increment(Int64(1)),
             "lastCommentId": comment.documentID
         ], forDocument: post)
         try await batch.commit()
-        await createActivityNotification(targetUID: postAuthorID, type: "COMMENT",
-                                         relatedID: postID, sourceEventID: comment.documentID)
+        await createActivityNotification(targetUID: target?.authorId ?? postAuthorID, type: "COMMENT",
+                                         relatedID: postID, sourceEventID: comment.documentID, reply: target != nil)
     }
     func publicUser(_ id: String) async throws -> PawlyPublicUser? {
         guard let me = uid, !id.isEmpty else { throw PawlyCommunityError.notSignedIn }

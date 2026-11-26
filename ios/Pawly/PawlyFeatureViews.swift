@@ -1283,7 +1283,7 @@ struct PawlyNotificationsView:View {
                         HStack(alignment:.top,spacing:11) {
                             Image(systemName:notice.type == "FOLLOW" ? "person.badge.plus":notice.type == "COMMENT" ? "text.bubble.fill":"heart.fill")
                                 .foregroundStyle(PawlyColors.primary).frame(width:36,height:36).background(PawlyColors.mint,in:Circle())
-                            VStack(alignment:.leading,spacing:4){Text(notice.message.isEmpty ? notice.actorName:notice.message).font(.subheadline.weight(notice.isRead ? .regular:.semibold)).foregroundStyle(.primary);Text(notice.createdAt?.formatted(date:.abbreviated,time:.shortened) ?? "Actividad reciente").font(.caption).foregroundStyle(.secondary)}
+                            VStack(alignment:.leading,spacing:4){Text(LocalizedStringKey(notice.message.isEmpty ? notice.actorName:notice.message)).font(.subheadline.weight(notice.isRead ? .regular:.semibold)).foregroundStyle(.primary);Text(notice.createdAt?.formatted(date:.abbreviated,time:.shortened) ?? "Actividad reciente").font(.caption).foregroundStyle(.secondary)}
                             Spacer(minLength:0)
                             if !notice.isRead {Circle().fill(PawlyColors.primary).frame(width:8,height:8)}
                         }.padding(.vertical,4)
@@ -1497,6 +1497,21 @@ struct CommentsView:View {
     @State private var draft=""
     @State private var listener:ListenerRegistration?
     @State private var error:String?
+    @State private var limit = 40
+    @State private var more = false
+    @State private var loading = true
+    @State private var sending = false
+    @State private var expanded = Set<String>()
+    @State private var target: PawlyFeedComment?
+    @State private var focused: PawlyFeedComment?
+    @FocusState private var composing: Bool
+
+    private var roots: [String] {
+        var seen = Set<String>()
+        let ids = comments.map { $0.threadID ?? $0.id }
+        return ((focused.map { [$0.threadID ?? $0.id] } ?? []) + ids).filter { seen.insert($0).inserted }
+    }
+
     var body:some View {
         NavigationStack {
             VStack {
@@ -1520,21 +1535,122 @@ struct CommentsView:View {
                         }.padding(.vertical,5)
                     } header: { Text("Publicación") }
                     Section("Comentarios") {
-                        ForEach(comments){c in
-                            VStack(alignment:.leading,spacing:4){
-                                Text(c.authorName).font(.caption.bold()).foregroundStyle(PawlyColors.primary)
-                                Text(c.text)
-                            }
-                            .padding(8)
-                            .background(c.id == highlightedCommentID ? PawlyColors.mint : Color.clear,in:RoundedRectangle(cornerRadius:10))
-                            .id(c.id)
+                        if loading { ProgressView() }
+                        ForEach(roots, id: \.self) { id in
+                            thread(id)
                         }
+                        if more { Button("Cargar más") { limit += 40; listen() } }
                     }
                 }
-                HStack{TextField("Escribe un comentario",text:$draft).textFieldStyle(.roundedBorder);Button("Enviar"){let v=draft;Task{do{try await store.addComment(postID:post.id,text:v);draft=""}catch { self.error = PawlyServiceMessage.key(for: error) }}}.disabled(draft.trimmingCharacters(in:.whitespaces).isEmpty)}.padding()
+                if let target {
+                    HStack {
+                        Image(systemName: "arrowshape.turn.up.left")
+                        Text(verbatim: target.authorName)
+                        Spacer()
+                        Button("Cancelar") { self.target = nil }
+                    }.font(.caption).padding(.horizontal)
+                }
+                HStack {
+                    TextField("Escribe un comentario", text: $draft).textFieldStyle(.roundedBorder).focused($composing)
+                    if sending { ProgressView() } else {
+                        Button("Enviar") { Task { await send() } }
+                            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }.padding().disabled(sending)
                 if let error{Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red)}
             }.navigationTitle("Comentarios").toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
-                .onAppear{listener=store.listenComments(postID:post.id){comments=$0}}.onDisappear{listener?.remove()}
+                .onAppear { listen() }.onDisappear { listener?.remove() }
+                .task(id: highlightedCommentID) {
+                    guard let id = highlightedCommentID else { return }
+                    do {
+                        focused = try await store.comment(postID: post.id, id: id)
+                        if let root = focused?.threadID { expanded.insert(root) }
+                    } catch { self.error = PawlyServiceMessage.key(for: error) }
+                }
+        }
+    }
+    @ViewBuilder private func thread(_ id: String) -> some View {
+        let root = comments.first { $0.id == id } ?? (focused?.id == id ? focused : nil)
+        let count = root?.replyCount ?? comments.filter { $0.threadID == id }.count
+        VStack(alignment: .leading, spacing: 8) {
+            if let root { row(root) } else { Text("Comentario anterior no disponible").foregroundStyle(.secondary) }
+            if count > 0 || focused?.threadID == id {
+                Button {
+                    if !expanded.insert(id).inserted { expanded.remove(id) }
+                } label: {
+                    HStack { Image(systemName: expanded.contains(id) ? "chevron.up" : "chevron.down")
+                        Text("Respuestas"); Text(verbatim: String(count)) }
+                }.font(.caption).buttonStyle(.borderless)
+                if expanded.contains(id) {
+                    PawlyThreadReplies(store: store, postID: post.id, threadID: id,
+                                       focused: focused?.threadID == id ? focused : nil, row: row)
+                        .padding(.leading, 18)
+                }
+            }
+        }.padding(.vertical, 4)
+    }
+    private func row(_ comment: PawlyFeedComment) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            NavigationLink { PawlyPublicProfile(userID: comment.authorId) } label: {
+                Text(verbatim: comment.authorName).font(.subheadline.bold())
+            }.buttonStyle(.borderless)
+            if let name = comment.replyToName {
+                Label { Text(verbatim: name) } icon: { Image(systemName: "arrowshape.turn.up.left") }
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Text(verbatim: comment.text)
+            Button("Responder") { target = comment; composing = true }
+                .font(.caption).buttonStyle(.borderless).disabled(sending)
+        }.padding(4).background(comment.id == highlightedCommentID ? PawlyColors.mint : .clear,
+                                in: RoundedRectangle(cornerRadius: 8))
+    }
+    private func listen() {
+        listener?.remove()
+        listener = store.listenComments(postID: post.id, limit: limit) { result in
+            loading = false
+            switch result {
+            case .success(let page): comments = page.0; more = page.1
+            case .failure(let failure): error = PawlyServiceMessage.key(for: failure)
+            }
+        }
+    }
+    @MainActor private func send() async {
+        guard !sending else { return }
+        sending = true; defer { sending = false }
+        do {
+            try await store.addComment(postID: post.id, text: draft, replyingTo: target)
+            if let target { expanded.insert(target.threadID ?? target.id) }
+            draft = ""; target = nil; error = nil; composing = false
+        } catch { self.error = PawlyServiceMessage.key(for: error) }
+    }
+}
+
+private struct PawlyThreadReplies<Row: View>: View {
+    let store: PawlyCommunityStore
+    let postID: String
+    let threadID: String
+    let focused: PawlyFeedComment?
+    let row: (PawlyFeedComment) -> Row
+    @State private var replies: [PawlyFeedComment] = []
+    @State private var limit = 30
+    @State private var more = false
+    @State private var listener: ListenerRegistration?
+    @State private var error: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let focused, !replies.contains(where: { $0.id == focused.id }) { row(focused) }
+            ForEach(replies) { row($0) }
+            if more { Button("Cargar más") { limit += 30; listen() }.buttonStyle(.borderless) }
+            if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.secondary) }
+        }.onAppear { listen() }.onDisappear { listener?.remove() }
+    }
+    private func listen() {
+        listener?.remove()
+        listener = store.listenComments(postID: postID, threadID: threadID, limit: limit) { result in
+            switch result {
+            case .success(let page): replies = page.0; more = page.1; error = nil
+            case .failure(let failure): error = PawlyServiceMessage.key(for: failure)
+            }
         }
     }
 }
