@@ -55,8 +55,9 @@ final class PawlyCommunityStore: ObservableObject {
     private var blockedChatsListener:ListenerRegistration?
     private var blockedByChatsListener:ListenerRegistration?
     private var notificationListener:ListenerRegistration?
-    private var messagePath: String?
+    private var messageSubscription: UUID?
     private var messageListener:ListenerRegistration?
+    private var pendingReadReceipts = Set<DocumentReference>()
     private var cachedFeed:[PawlyFeedPost]=[]
     private var blockedFeedIDs:Set<String>=[]
     private var blockedByFeedIDs:Set<String>=[]
@@ -609,23 +610,27 @@ final class PawlyCommunityStore: ObservableObject {
             Task { await self.refreshUnreadMessageCounts() }
         }
     }
-    func listenMessages(conversationID:String,onUpdate:@escaping([PawlyChatMessage])->Void) {
+    func listenMessages(conversationID: String, limit: Int,
+                        onUpdate: @escaping (Result<([PawlyChatMessage], Bool), Error>) -> Void) {
         stopMessages()
-        guard let uid else { return }
-        messagePath = conversationID
+        guard let uid else { onUpdate(.failure(PawlyCommunityError.notSignedIn)); return }
+        let subscription = UUID()
+        messageSubscription = subscription
         messageListener = db.collection("conversations").document(conversationID).collection("messages")
-            .order(by: "createdAt", descending: true).limit(to: 200).addSnapshotListener { [weak self] snapshot, error in
-                guard let self, self.uid == uid, self.messagePath == conversationID else { return }
-                if let error { self.statusMessage = PawlyServiceMessage.key(for: error); return }
+            .order(by: "createdAt", descending: true).limit(to: limit + 1).addSnapshotListener { [weak self] snapshot, error in
+                guard let self, self.messageSubscription == subscription else { return }
+                guard self.uid == uid else { onUpdate(.failure(PawlyCommunityError.notSignedIn)); return }
+                if let error { onUpdate(.failure(error)); return }
                 guard let snapshot else { return }
-                let messages = snapshot.documents.reversed().map { document in
+                let documents = snapshot.documents
+                let messages = documents.prefix(limit).reversed().map { document in
                     let fields = document.data()
                     return PawlyChatMessage(id: document.documentID, senderID: fields["senderId"] as? String ?? "",
                         text: fields["text"] as? String ?? "", imageURL: fields["imageUrl"] as? String ?? "",
                         videoURL: fields["videoUrl"] as? String ?? "", readBy: fields["readBy"] as? [String] ?? [],
                         createdAt: (fields["createdAt"] as? Timestamp)?.dateValue())
                 }
-                onUpdate(messages)
+                onUpdate(.success((messages, documents.count > limit)))
             }
     }
     func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "") async throws {
@@ -653,21 +658,30 @@ final class PawlyCommunityStore: ObservableObject {
             )
         }
     }
-    func markRead(conversationID:String) async {
-        guard let uid else{return}
+    func markRead(conversationID: String, messages: [PawlyChatMessage]) async {
+        guard let uid, isVerified else { return }
+        let collection = db.collection("conversations").document(conversationID).collection("messages")
+        let pending = messages.filter { $0.senderID != uid && !$0.readBy.contains(uid) }
+            .map { collection.document($0.id) }.filter { !pendingReadReceipts.contains($0) }
+        guard !pending.isEmpty else { return }
+        pendingReadReceipts.formUnion(pending)
+        defer { pendingReadReceipts.subtract(pending) }
         do {
-            let ref=db.collection("conversations").document(conversationID), conv=try await ref.getDocument()
-            let participants=conv.get("participants") as? [String] ?? []
-            guard let other=participants.first(where:{$0 != uid}) else{return}
-            let docs=try await ref.collection("messages").whereField("senderId",isEqualTo:other).order(by:"createdAt",descending:true).limit(to:200).getDocuments()
-            let unread=docs.documents.filter{!((($0.get("readBy") as? [String]) ?? []).contains(uid))}
-            for chunk in stride(from:0,to:unread.count,by:400) {
-                let batch=db.batch()
-                for d in unread[chunk..<min(chunk+400,unread.count)] { batch.updateData(["readBy":FieldValue.arrayUnion([uid])],forDocument:d.reference) }
-                try await batch.commit()
+            for offset in stride(from: 0, to: pending.count, by: 400) {
+                let group = pending[offset..<min(offset + 400, pending.count)]
+                _ = try await db.runTransaction { transaction, failure -> Any? in
+                    do {
+                        // Another device may have acknowledged a message since this snapshot.
+                        let snapshots = try group.map { try transaction.getDocument($0) }
+                        for document in snapshots where document.exists && !((document.get("readBy") as? [String] ?? []).contains(uid)) {
+                            transaction.updateData(["readBy": FieldValue.arrayUnion([uid])], forDocument: document.reference)
+                        }
+                    } catch { failure?.pointee = error as NSError }
+                    return nil
+                }
             }
             await refreshUnreadMessageCounts()
-        } catch { statusMessage=error.localizedDescription }
+        } catch { statusMessage = PawlyServiceMessage.key(for: error) }
     }
     func stopChats() {
         chatsListener?.remove()
@@ -678,7 +692,11 @@ final class PawlyCommunityStore: ObservableObject {
         blockedByChatsListener = nil
         stopNotifications()
     }
-    func stopMessages(){messagePath=nil;messageListener?.remove();messageListener=nil}
+    func stopMessages() {
+        messageSubscription = nil
+        messageListener?.remove()
+        messageListener = nil
+    }
 }
 private extension String { var nilIfEmpty:String? { isEmpty ? nil : self } }
 enum PawlyCommunityError:LocalizedError {

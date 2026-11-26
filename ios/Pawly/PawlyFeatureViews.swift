@@ -1602,7 +1602,11 @@ struct ChatView:View {
     @State private var messages:[PawlyChatMessage]=[]
     @State private var draft=""
     @State private var error:String?
-    @State private var listener:ListenerRegistration?
+    private static let pageSize = 200
+    @State private var messageLimit = ChatView.pageSize
+    @State private var hasOlderMessages = false
+    @State private var historyError: String?
+    @State private var historyLoading = false
     @StateObject private var attachment = PawlyAttachmentDraft()
     @State private var sending=false
 
@@ -1612,14 +1616,24 @@ struct ChatView:View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing:9) {
+                            if let historyError {
+                                Text(LocalizedStringKey(historyError)).foregroundStyle(.secondary)
+                                Button("Reintentar") { listen() }
+                            } else if historyLoading {
+                                ProgressView()
+                            } else if hasOlderMessages {
+                                Button("Cargar más") {
+                                    messageLimit += Self.pageSize
+                                    listen()
+                                }
+                            }
                             ForEach(messages) { message in
                                 messageRow(message).id(message.id)
                             }
                         }.padding(14)
                     }
-                    .onChange(of:messages.count) { _ in
-                        if let last=messages.last { proxy.scrollTo(last.id,anchor:.bottom) }
-                        Task { await store.markRead(conversationID:chat.id) }
+                    .onChange(of: messages.last?.id) { newestID in
+                        if let newestID { proxy.scrollTo(newestID, anchor: .bottom) }
                     }
                 }
                 if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
@@ -1629,11 +1643,26 @@ struct ChatView:View {
             .navigationTitle(chat.otherUserName)
             .toolbar { ToolbarItem(placement: .principal) { NavigationLink { PawlyPublicProfile(userID: chat.otherUserID) } label: { Text(verbatim: chat.otherUserName).font(.headline) } } }
             .toolbar { ToolbarItem(placement:.confirmationAction) { Button("Cerrar") { dismiss() } } }
-            .onAppear {
-                store.listenMessages(conversationID:chat.id) { messages=$0 }
-                Task { await store.markRead(conversationID:chat.id) }
-            }
+            .onAppear { listen() }
             .onDisappear { store.stopMessages() }
+        }
+    }
+
+    private func listen() {
+        historyLoading = true
+        historyError = nil
+        store.listenMessages(conversationID: chat.id, limit: messageLimit) { result in
+            historyLoading = false
+            switch result {
+            case .success(let page):
+                messages = page.0
+                hasOlderMessages = page.1
+                Task { await store.markRead(conversationID: chat.id, messages: page.0) }
+            case .failure(let error):
+                messages = []
+                hasOlderMessages = false
+                historyError = PawlyServiceMessage.key(for: error)
+            }
         }
     }
 
