@@ -20,7 +20,8 @@ schemes = [value for item in config.get("CFBundleURLTypes", []) for value in ite
 if not any(value and "$(" not in value for value in schemes):
     errors.append("GOOGLE_REVERSED_CLIENT_ID")
 for language in ["ca", "de", "en", "es", "eu", "fr", "pt"]:
-    if not (bundle / f"{language}.lproj/Localizable.strings").is_file():
+    folder = bundle / f"{language}.lproj"
+    if not (folder / "Localizable.strings").is_file() or not (folder / "InfoPlist.strings").is_file():
         errors.append(language)
 if errors:
     raise SystemExit("Missing or invalid app settings: " + ", ".join(errors))

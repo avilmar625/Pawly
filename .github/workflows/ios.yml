@@ -67,6 +67,12 @@ jobs:
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project ios/Pawly.xcodeproj -scheme Pawly
 
+      - name: Check device push entitlements
+        run: |
+          for config in Debug Release; do
+            xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -configuration "$config" -sdk iphoneos -showBuildSettings -json | python3 ios/Tests/check-push-config.py "$config"
+          done
+
       - name: Test Swift contracts and translations
         run: bash ios/Tests/run.sh
 
