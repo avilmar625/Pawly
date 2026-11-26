@@ -1421,6 +1421,7 @@ struct FeedPostCard:View {
     let post:PawlyFeedPost
     var onLike:()->Void
     var onComment:()->Void
+    var onEdited: (PawlyFeedPost) -> Void = { _ in }
     var body:some View {
         VStack(alignment:.leading,spacing:11){
             HStack{
@@ -1439,6 +1440,7 @@ struct FeedPostCard:View {
             if !post.videoURL.isEmpty, let url=URL(string:post.videoURL) {
                 PawlyVideoPreview(url: url).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
             }
+            if post.category == "LOST" { PawlyLostPostActions(post: post, onEdited: onEdited) }
             HStack(spacing:20){Button(action:onLike){Label("\(post.likeCount)",systemImage:post.likedByMe ? "heart.fill":"heart")}.foregroundStyle(post.likedByMe ? .pink:PawlyColors.muted);Button(action:onComment){Label("\(post.commentCount)",systemImage:"bubble.right")}.foregroundStyle(PawlyColors.muted)}
                 .font(.subheadline.weight(.semibold))
         }.padding(15).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:19))

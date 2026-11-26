@@ -693,3 +693,8 @@
 "Aplicar" = "Appliquer";
 "Filtros activos" = "Filtres actifs";
 "Usar mi ubicación" = "Utiliser ma position";
+"Editar aviso" = "Modifier l’alerte";
+"Aviso publicado. No se pudo confirmar el envío de alertas cercanas." = "Alerte publiée. L’envoi des alertes à proximité n’a pas pu être confirmé.";
+"No hay una ubicación disponible para este aviso." = "Aucune position disponible pour cette alerte.";
+"El vídeo debe durar como máximo 60 segundos." = "La vidéo doit durer 60 secondes au maximum.";
+"No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto." = "Zone introuvable. Essayez une adresse ou une commune plus précise.";

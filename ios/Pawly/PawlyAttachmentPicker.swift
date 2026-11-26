@@ -19,12 +19,19 @@ private struct PickedMovie: Transferable {
     @Published private(set) var thumbnail: UIImage?
     @Published private(set) var loading = false
     @Published private(set) var error: String?
+    private let maximumDuration: Double?
+    init(maximumDuration: Double? = nil) { self.maximumDuration = maximumDuration }
     private var data: Data?
     private var kind: PawlyCameraKind = .photo
     private var uploadedURL: String?
     private var uploadedScope: String?
     private var preparation: Task<Void, Never>?
     var hasAttachment: Bool { data != nil }
+    func posterPhoto() async -> UIImage? {
+        if kind == .video { return thumbnail }
+        guard let data, let image = UIImage(data: data) else { return nil }
+        return await image.byPreparingThumbnail(ofSize: CGSize(width: 1200, height: 1200))
+    }
 
     func select(_ item: PhotosPickerItem) {
         let kind: PawlyCameraKind = item.supportedContentTypes.contains { $0.conforms(to: .movie) } ? .video : .photo
@@ -60,7 +67,7 @@ private struct PickedMovie: Transferable {
             do {
                 let raw = try await bytes()
                 try Task.checkCancellation()
-                let preview = try await Self.preview(raw, kind: newKind)
+                let preview = try await Self.preview(raw, kind: newKind, maximumDuration: maximumDuration)
                 try Task.checkCancellation()
                 data = raw
                 kind = newKind
@@ -73,7 +80,7 @@ private struct PickedMovie: Transferable {
         }
     }
 
-    nonisolated private static func preview(_ bytes: Data, kind: PawlyCameraKind) async throws -> UIImage {
+    nonisolated private static func preview(_ bytes: Data, kind: PawlyCameraKind, maximumDuration: Double?) async throws -> UIImage {
         if kind == .photo {
             guard let image = UIImage(data: bytes), let preview = await image.byPreparingThumbnail(ofSize: CGSize(width: 420, height: 300)) else {
                 throw PawlyMediaError.invalidImage
@@ -84,7 +91,12 @@ private struct PickedMovie: Transferable {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(format.ext)
         try bytes.write(to: file, options: .atomic)
         defer { try? FileManager.default.removeItem(at: file) }
-        let generator = AVAssetImageGenerator(asset: AVURLAsset(url: file))
+        let asset = AVURLAsset(url: file)
+        if let maximumDuration {
+            let seconds = try await asset.load(.duration).seconds
+            guard seconds.isFinite, seconds > 0, seconds <= maximumDuration else { throw PawlyMediaError.videoTooLong }
+        }
+        let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.maximumSize = CGSize(width: 420, height: 300)
         let frame = try await generator.image(at: .zero)
@@ -123,7 +135,7 @@ struct PawlyAttachmentPicker: View {
                 PawlyCameraButton { draft.capture($0, kind: .photo) }
                 if allowsVideo { PawlyCameraButton(kind: .video, label: "Grabar vídeo") { draft.capture($0, kind: .video) } }
                 if draft.loading { ProgressView() }
-                if draft.hasAttachment || draft.loading {
+                if draft.hasAttachment || draft.loading || draft.error != nil {
                     Spacer()
                     Button(role: .destructive) { draft.clear() } label: { Label("Quitar", systemImage: "trash") }
                 }

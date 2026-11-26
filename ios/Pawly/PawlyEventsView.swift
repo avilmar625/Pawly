@@ -600,7 +600,7 @@ private struct PawlyEventCreateSheet: View {
     @State private var coordinate: CLLocationCoordinate2D?
     @State private var resolvedLocation = ""
     @State private var showLocationPicker = false
-    @StateObject private var attachment = PawlyAttachmentDraft()
+    @StateObject private var attachment = PawlyAttachmentDraft(maximumDuration: 60)
     @State private var saving = false
     @State private var error: String?
 

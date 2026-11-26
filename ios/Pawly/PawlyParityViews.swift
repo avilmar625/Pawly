@@ -673,8 +673,8 @@ struct PawlyLostPetView: View {
  @State private var lastSeen=""
  @State private var contact=""
  @State private var details=""
- @State private var photoItem:PhotosPickerItem?
- @State private var photoData:Data?
+ @StateObject private var attachment = PawlyAttachmentDraft(maximumDuration: 60)
+ @State private var published = false
  @State private var busy=false
  @State private var geocoding=false
  @State private var savingSubscription=false
@@ -708,14 +708,7 @@ struct PawlyLostPetView: View {
      TextField("Teléfono o contacto (opcional)",text:$contact).keyboardType(.phonePad)
      if !contact.isEmpty { Toggle("Compartir el contacto en el cartel y el aviso", isOn: $includeContact) }
      TextField("Rasgos y otra información útil",text:$details,axis:.vertical).lineLimit(3...7)
-     PhotosPicker(selection:$photoItem,matching:.images) {
-      Label("Elegir de la galería",systemImage:"photo")
-     }
-     PawlyCameraButton { data in photoItem=nil;photoData=data;posterURL=nil }
-     if let photoData,let image=UIImage(data:photoData) {
-      Image(uiImage:image).resizable().scaledToFill()
-       .frame(maxWidth:.infinity).frame(height:190).clipShape(RoundedRectangle(cornerRadius:14))
-     }
+     PawlyAttachmentPicker(draft: attachment)
      if posterURL != nil {
       if let posterImage { Image(uiImage: posterImage).resizable().scaledToFit().frame(maxHeight: 260).accessibilityLabel("Cartel de mascota perdida").pawlyPhoto(posterURL) }
       Button { showingPosterActions=true } label: {
@@ -733,7 +726,7 @@ struct PawlyLostPetView: View {
        }
       }
       .disabled(generatingPoster || name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ||
-                photoItem != nil && photoData == nil)
+                attachment.loading)
      }
     }
     Section("Ubicación aproximada del aviso") {
@@ -799,7 +792,7 @@ struct PawlyLostPetView: View {
      } label: {
       HStack { Spacer();if busy{ProgressView()};Text(busy ? "Publicando aviso…":"Publicar aviso en Comunidad");Spacer() }
      }
-     .disabled(busy || name.trimmingCharacters(in:.whitespaces).isEmpty ||
+     .disabled(published || attachment.loading || attachment.error != nil || busy || name.trimmingCharacters(in:.whitespaces).isEmpty ||
                area.trimmingCharacters(in:.whitespaces).isEmpty ||
                details.trimmingCharacters(in:.whitespaces).isEmpty)
     }
@@ -810,6 +803,7 @@ struct PawlyLostPetView: View {
       .font(.caption).foregroundStyle(.secondary)
     }
    }
+   .disabled(busy || generatingPoster)
    .buttonStyle(.borderless)
    .navigationTitle("Mascota perdida")
    .navigationBarTitleDisplayMode(.inline)
@@ -819,10 +813,7 @@ struct PawlyLostPetView: View {
     }
    }
    .sheet(isPresented: $showingPosterActions) { if let posterImage { PawlyPosterShareSheet(image: posterImage) } }
-   .onChange(of:photoItem){item in
-    guard let item else{return}
-    Task { photoData=try? await item.loadTransferable(type:Data.self);posterURL=nil }
-   }
+   .onReceive(attachment.$thumbnail) { _ in posterURL = nil }
    .onChange(of:name){_ in posterURL=nil}
    .onChange(of:breed){_ in posterURL=nil}
    .onChange(of:area){_ in posterURL=nil; lostLocation=nil}
@@ -843,7 +834,7 @@ struct PawlyLostPetView: View {
   generatingPoster=true
   defer { generatingPoster=false }
   do {
-   var image = photoData.flatMap(UIImage.init(data:))
+   var image = await attachment.posterPhoto()
    if image == nil, let pet = pets.selectedPet, name == pet.name,
       let url = URL(string: pet.photoURL), url.scheme == "https",
       let (bytes, response) = try? await URLSession.shared.data(from: url),
@@ -934,12 +925,10 @@ struct PawlyLostPetView: View {
   status=nil
   error=nil
   do {
-   var imageURL=""
-   if let photoData {
-    imageURL=try await PawlyCloudinaryUploader().uploadImage(photoData,folder:"post-photos",ownerUID:uid)
-   }
+   let media = try await attachment.upload(owner: uid, forPost: true)
    let message="MASCOTA PERDIDA · \(name)\nZona: \(area)\nÚltima vez vista: \(lastSeen.isEmpty ? "No indicada":lastSeen)\nContacto: \(!includeContact || contact.isEmpty ? "No indicado":contact)\n\n\(details)"
-   let postID=try await community.publish(text:message,petName:name,category:"LOST",imageURL:imageURL)
+   let postID=try await community.publish(text:message,petName:name,category:"LOST",imageURL:media.image,videoURL:media.video)
+   published = true
    guard let lostLocation else {
     status="La publicación se ha creado, pero no se han enviado alertas por proximidad porque falta localizar la zona del aviso."
     return
@@ -950,9 +939,9 @@ struct PawlyLostPetView: View {
       ? "Aviso publicado. Se han entregado \(delivered) notificaciones push a dispositivos cercanos."
       : "Aviso publicado y zona registrada. No había dispositivos cercanos habilitados para recibir alertas."
    } catch {
-    status="La publicación y la zona aproximada se han guardado en Pawly, pero no se pudo completar el envío de avisos: \(PawlyServiceMessage.key(for: error))"
+    status="Aviso publicado. No se pudo confirmar el envío de alertas cercanas."
    }
-  } catch let publishError { self.error="No se pudo publicar: \(publishError.localizedDescription)" }
+  } catch let publishError { self.error=PawlyServiceMessage.key(for: publishError) }
  }
 }
 

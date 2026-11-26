@@ -693,3 +693,8 @@
 "Aplicar" = "Anwenden";
 "Filtros activos" = "Aktive Filter";
 "Usar mi ubicación" = "Meinen Standort verwenden";
+"Editar aviso" = "Meldung bearbeiten";
+"Aviso publicado. No se pudo confirmar el envío de alertas cercanas." = "Meldung veröffentlicht. Der Versand in der Umgebung konnte nicht bestätigt werden.";
+"No hay una ubicación disponible para este aviso." = "Für diese Meldung ist kein Standort verfügbar.";
+"El vídeo debe durar como máximo 60 segundos." = "Das Video darf höchstens 60 Sekunden lang sein.";
+"No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto." = "Gebiet nicht gefunden. Versuche eine genauere Adresse oder einen Ort.";

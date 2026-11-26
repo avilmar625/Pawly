@@ -693,3 +693,8 @@
 "Aplicar" = "Aplicar";
 "Filtros activos" = "Filtros activos";
 "Usar mi ubicación" = "Usar mi ubicación";
+"Editar aviso" = "Editar aviso";
+"Aviso publicado. No se pudo confirmar el envío de alertas cercanas." = "Aviso publicado. No se pudo confirmar el envío de alertas cercanas.";
+"No hay una ubicación disponible para este aviso." = "No hay una ubicación disponible para este aviso.";
+"El vídeo debe durar como máximo 60 segundos." = "El vídeo debe durar como máximo 60 segundos.";
+"No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto." = "No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto.";

@@ -693,3 +693,8 @@
 "Aplicar" = "Aplikatu";
 "Filtros activos" = "Iragazki aktiboak";
 "Usar mi ubicación" = "Erabili nire kokapena";
+"Editar aviso" = "Editatu abisua";
+"Aviso publicado. No se pudo confirmar el envío de alertas cercanas." = "Abisua argitaratu da. Ezin izan da inguruko abisuen bidalketa baieztatu.";
+"No hay una ubicación disponible para este aviso." = "Abisu honek ez du kokapenik eskuragarri.";
+"El vídeo debe durar como máximo 60 segundos." = "Bideoak gehienez 60 segundo iraun dezake.";
+"No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto." = "Ezin izan da eremua aurkitu. Saiatu helbide edo herri zehatzago batekin.";

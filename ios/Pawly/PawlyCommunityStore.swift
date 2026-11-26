@@ -8,6 +8,7 @@ struct PawlyFeedPost: Identifiable {
     var id:String; var authorId:String; var authorName:String; var authorPhoto:String; var petName:String
     var text:String; var imageURL:String; var videoURL:String; var category:String
     var likeCount:Int; var commentCount:Int; var likedByMe:Bool; var createdAt:Date?
+    var areaChanged = false
 }
 struct PawlyPublicUser:Identifiable {
     var id:String;var username:String;var displayName:String;var bio:String;var photoURL:String;var followersCount:Int;var following:Bool
@@ -166,7 +167,7 @@ final class PawlyCommunityStore: ObservableObject {
             likeCount:data["likeCount"] as? Int ?? 0,
             commentCount:data["commentCount"] as? Int ?? 0,
             likedByMe:likes.contains(currentUID),
-            createdAt:(data["createdAt"] as? Timestamp)?.dateValue()
+            createdAt:(data["createdAt"] as? Timestamp)?.dateValue(), areaChanged: data["lostAreaEdited"] as? Bool ?? false
         )
     }
 
@@ -182,7 +183,7 @@ final class PawlyCommunityStore: ObservableObject {
             imageURL:x["imageUrl"] as? String ?? "",videoURL:x["videoUrl"] as? String ?? "",
             category:x["category"] as? String ?? "STORY",likeCount:x["likeCount"] as? Int ?? 0,
             commentCount:x["commentCount"] as? Int ?? 0,likedByMe:likes.contains(uid),
-            createdAt:(x["createdAt"] as? Timestamp)?.dateValue())
+            createdAt:(x["createdAt"] as? Timestamp)?.dateValue(), areaChanged: x["lostAreaEdited"] as? Bool ?? false)
     }
     func listenFeed() {
         guard let uid else { return }

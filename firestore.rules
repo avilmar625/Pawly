@@ -666,6 +666,19 @@ service cloud.firestore {
           || request.resource.data.imageUrl.size() > 0
           || ('videoUrl' in request.resource.data && request.resource.data.videoUrl.size() > 0))
         && (!('category' in request.resource.data) || request.resource.data.category in ['STORY', 'ADOPTION', 'LOST', 'FOUND', 'FOSTER']);
+      function validLostMedia(d) {
+        return d.imageUrl is string && d.get('videoUrl','') is string
+          && ((d.imageUrl == '' && d.get('videoUrl','') == '' && !('lostMediaAssetId' in d))
+          || (d.lostMediaAssetId.matches('^[a-f0-9]{64}$')
+          && ((d.imageUrl == '' && ownedPostAsset(d.lostMediaAssetId, d.videoUrl, 'video','post-videos'))
+          || (d.get('videoUrl','') == '' && ownedPostAsset(d.lostMediaAssetId, d.imageUrl, 'image','post-photos')))));
+      }
+      allow update: if verified() && resource.data.authorId == request.auth.uid && resource.data.category == 'LOST'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','imageUrl','videoUrl','searchTokens','lostMediaAssetId','lostAreaEdited'])
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
+        && request.resource.data.get('lostAreaEdited',false) is bool
+        && request.resource.data.searchTokens is list && request.resource.data.searchTokens.size() <= 2048
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['imageUrl','videoUrl','lostMediaAssetId']) || validLostMedia(request.resource.data));
       allow update: if signedIn()
         && (
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'likeCount'])

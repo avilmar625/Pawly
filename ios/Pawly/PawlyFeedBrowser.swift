@@ -49,7 +49,9 @@ struct PawlyFeedBrowser: View {
                             posts[i].likeCount += posts[i].likedByMe ? 1 : -1
                         }
                     } catch { self.error = PawlyServiceMessage.key(for: error) }
-                } }, onComment: { comment(post) })
+                } }, onComment: { comment(post) }, onEdited: { updated in
+                    if let i = posts.firstIndex(where: { $0.id == updated.id }) { posts[i] = updated }
+                })
             }
             if busy { ProgressView() }
             if let error { Text(LocalizedStringKey(error)); Button("Reintentar") { refresh += 1 } }

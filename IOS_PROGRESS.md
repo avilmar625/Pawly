@@ -28,7 +28,7 @@ La rama de entrega es `codex/ios-auditoria-integral-2026-11`, desde `bcc39e10`. 
 | 3. Búsqueda y filtros de Comunidad | Implementado. La búsqueda por palabras o frase usa el índice de términos de toda la colección, con normalización de acentos, cursor y páginas de 40. Un @usuario exacto consulta la reserva de nombre y el índice de autor. El menú combina antigüedad, Me gusta o comentarios, categoría, seguidos y tipo de adjunto. Avatar y nombre abren el perfil autorizado. |
 | 4. Respuestas a comentarios | Implementado. Respuesta directa, dos niveles visuales, contador atómico, plegado, paginación y una notificación al destinatario. Los clientes antiguos pueden leer el texto en su lista plana. Desplegar reglas, índice comments y Worker para habilitar las respuestas. |
 | 5. Eventos | Implementado. Crear y editar con foto o vídeo, cámara, galería y visor. Solo el organizador puede editar. El selector admite GPS a petición, búsqueda, ajuste del punto y geocodificación inversa. Filtros de fechas, autoría, seguidos, interés, zona y distancia. Consulta paginada de 30 con orden por fecha, creación o participación. La distancia se calcula localmente sobre las páginas cargadas. |
-| 6. Vídeos de mascotas perdidas | Pendiente. |
+| 6. Vídeos de mascotas perdidas | Implementado. Adjuntar, sustituir y retirar foto o vídeo al crear o editar avisos propios; los eventos y los avisos limitan el vídeo a 60 segundos y 40 MB. El cartel puede incluir un fotograma. El mapa de la publicación carga la celda aproximada guardada o localiza el texto público de la zona. Una edición de la zona deja de usar la celda anterior. |
 | 7. Compartir perfil | Pendiente. |
 | 8. Integración | En curso. Sintaxis Swift y 663 claves en los siete idiomas comprobadas tras el primer bloque. Para pruebas visuales usar Xcode y un dispositivo de pruebas. |
 
@@ -41,3 +41,5 @@ La rama de entrega es `codex/ios-auditoria-integral-2026-11`, desde `bcc39e10`. 
 **Comentarios.** Validada la sintaxis y los siete catálogos (678 claves). Se añadieron casos de reglas para hilos, destinatario falso y repetición del contador. Ejecutar junto con las reglas de eventos y mensajería. Probar con dos cuentas y un comentario antiguo. Commit anterior del muro 5c56034a.
 
 **Eventos.** Validar en dispositivo permiso denegado y concedido, mover el mapa antes de confirmar, editar un evento con vídeo y comprobar que conserva asistentes. La consulta de asistencia individual se difiere al detalle o al filtro Me interesa. El Worker del bloque de comentarios a02e6859 pasó TypeScript y sus 50 pruebas. Para eventos se ampliaron las reglas y los índices de organizador.
+
+**Avisos.** Comprobados los 700 textos de catálogo y la sintaxis de las vistas. Probar un aviso antiguo con foto, cambiar a vídeo desde el iPhone y abrir el mapa desde otra cuenta. Commit anterior de eventos 90c5b59b.

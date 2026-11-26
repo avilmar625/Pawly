@@ -2,7 +2,7 @@ import Foundation
 
 enum PawlyMediaError: LocalizedError {
     case notConfigured, invalidConfiguration, invalidFolder, invalidImage, unsupportedVideo
-    case imageTooLarge, videoTooLarge, invalidResponse, indexFailed, uploadFailed(Int)
+    case imageTooLarge, videoTooLong, videoTooLarge, invalidResponse, indexFailed, uploadFailed(Int)
 
     var errorDescription: String? {
         switch self {
@@ -12,6 +12,7 @@ enum PawlyMediaError: LocalizedError {
         case .invalidImage: return "No se ha podido leer la imagen seleccionada."
         case .unsupportedVideo: return "Selecciona un vídeo MOV, MP4, WebM o 3GP."
         case .imageTooLarge: return "La imagen comprimida supera los 8 MB."
+        case .videoTooLong: return "El vídeo debe durar como máximo 60 segundos."
         case .videoTooLarge: return "El vídeo supera el límite de 40 MB."
         case .invalidResponse: return "Cloudinary ha devuelto un recurso fuera de la carpeta esperada."
         case .indexFailed: return "El archivo ha llegado a Cloudinary, pero no se ha podido registrar su propietario."

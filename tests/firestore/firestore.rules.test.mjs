@@ -544,3 +544,22 @@ test("replies bind the thread, target, count and notification to the actual comm
   await assertFails(setDoc(doc(db, "users/stranger/notifications/COMMENT-writer-reply"), notification));
   await assertSucceeds(setDoc(doc(db, "users/reader/notifications/COMMENT-writer-reply"), notification));
 });
+
+test("only a lost notice owner can edit the text or replace its registered media", async () => {
+  await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(), "posts/lost"),
+    { authorId: "author", category: "LOST", text: "old", imageUrl: "", commentCount: 0 }));
+  const db = env.authenticatedContext("author", { email_verified: true }).firestore();
+  const other = env.authenticatedContext("other", { email_verified: true }).firestore();
+  const changes = { text: "Perdido en Málaga", searchTokens: ["malaga"], lostAreaEdited: true };
+  await assertFails(updateDoc(doc(other, "posts/lost"), changes));
+  const post = doc(db, "posts/lost");
+  await assertSucceeds(updateDoc(post, changes));
+  await assertFails(updateDoc(post, { ...changes, commentCount: 10 }));
+  const url = "https://res.cloudinary.com/test/video/upload/v1/pawly/post-videos/author/lost.mp4";
+  const id = "c".repeat(64);
+  await assertFails(updateDoc(post, { ...changes, videoUrl: url, lostMediaAssetId: id }));
+  await assertSucceeds(setDoc(doc(db, "cloudinaryAssets", id), {
+    uid: "author", resourceType: "video", publicId: "pawly/post-videos/author/lost", secureUrl: url, createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(post, { ...changes, videoUrl: url, lostMediaAssetId: id }));
+});
