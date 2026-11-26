@@ -3,7 +3,7 @@ import XCTest
 final class PawlyAuthenticationUITests: XCTestCase {
     func testPasswordSurvivesVisibilityAndModeChanges() {
         let app = XCUIApplication()
-        app.launchArguments = ["-PawlyLocalEmulators", "-pawly.language", "es"]
+        app.launchArguments = ["-PawlyLocalEmulators", "-PawlyResetTestSession"]
         app.launch()
         let password = app.secureTextFields["auth.password"]
         XCTAssertTrue(password.waitForExistence(timeout: 12))

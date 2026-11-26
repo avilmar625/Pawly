@@ -73,10 +73,22 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.alexvilarrubla.pawly.uitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: Pawly
+  PawlyIntegrationTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [IntegrationTests]
+    dependencies:
+      - target: Pawly
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alexvilarrubla.pawly.integrationtests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Pawly:
     build:
       targets:
         Pawly: all
     test:
-      targets: [PawlyUITests]
+      commandLineArguments:
+        "-PawlyLocalEmulators": true
+      targets: [PawlyIntegrationTests, PawlyUITests]
