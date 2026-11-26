@@ -491,6 +491,16 @@ test("events accept legacy documents and an optional registered organizer photo"
   await assertFails(setDoc(doc(db, "events/mismatch"), { ...event, photoUrl: photoUrl + "x", photoAssetId }));
   const other = env.authenticatedContext("other", { email_verified: true }).firestore();
   await assertFails(setDoc(doc(other, "events/wrong-owner"), { ...event, organizerUid: "other", photoUrl, photoAssetId }));
+  const videoUrl = "https://res.cloudinary.com/test/video/upload/v1/pawly/post-videos/author/clip.mp4";
+  const videoAssetId = "b".repeat(64);
+  const edit = { videoUrl, videoAssetId };
+  await assertFails(updateDoc(doc(db, "events/legacy"), edit));
+  await assertSucceeds(setDoc(doc(db, "cloudinaryAssets", videoAssetId), {
+    uid: "author", resourceType: "video", publicId: "pawly/post-videos/author/clip", secureUrl: videoUrl, createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(doc(db, "events/legacy"), { ...edit, title: "Paseo actualizado" }));
+  await assertFails(updateDoc(doc(other, "events/legacy"), { title: "Otro evento" }));
+  await assertFails(updateDoc(doc(db, "events/legacy"), { ...edit, organizerUid: "other" }));
 });
 
 test("map favourites are private and survive collection synchronisation", async () => {

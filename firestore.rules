@@ -4,6 +4,12 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function verified() { return signedIn() && request.auth.token.email_verified == true; }
     function owner(uid) { return signedIn() && request.auth.uid == uid; }
+    function ownedPostAsset(id, url, kind, folder) {
+      let asset = get(/databases/$(database)/documents/cloudinaryAssets/$(id)).data;
+      return asset.uid == request.auth.uid && asset.resourceType == kind
+        && asset.publicId.matches('^pawly/' + folder + '/' + request.auth.uid + '/.+$')
+        && asset.secureUrl == url;
+    }
     function blockedEitherWay(uid) {
       return signedIn() && (
         exists(/databases/$(database)/documents/users/$(uid)/blocked/$(request.auth.uid)) ||
@@ -968,42 +974,44 @@ service cloud.firestore {
 
     // Public events are tied to their venue, not to the private location of a person.
     match /events/{eventId} {
-      function validOptionalPhoto(data) {
-        return !data.keys().hasAny(['photoUrl', 'photoAssetId']) || (
-          data.keys().hasAll(['photoUrl', 'photoAssetId'])
-          && data.photoAssetId is string && data.photoAssetId.matches('^[a-f0-9]{64}$')
-          && data.photoUrl is string && data.photoUrl.size() <= 2048
-          && data.photoUrl.matches('^https://res[.]cloudinary[.]com/[^/]+/image/upload/.*')
-          && validEventAsset(data.photoAssetId, data.photoUrl)
+      function validMedia(data, urlKey, idKey, kind, folder) {
+        return !data.keys().hasAny([urlKey, idKey]) || (
+          data.keys().hasAll([urlKey, idKey]) && data[idKey] is string && data[idKey].matches('^[a-f0-9]{64}$')
+          && data[urlKey] is string && data[urlKey].size() <= 2048
+          && data[urlKey].matches('^https://res[.]cloudinary[.]com/[^/]+/' + kind + '/upload/.+')
+          && ownedPostAsset(data[idKey], data[urlKey], kind, folder)
         );
       }
-      function validEventAsset(id, url) {
-        let asset = get(/databases/$(database)/documents/cloudinaryAssets/$(id)).data;
-        return asset.uid == request.auth.uid && asset.resourceType == 'image'
-          && asset.publicId.matches('^pawly/post-photos/' + request.auth.uid + '/.+$')
-          && asset.secureUrl == url;
+      function validEventContent(data) {
+        return data.title is string && data.title.size() >= 4 && data.title.size() <= 90
+        && data.description is string && data.description.size() >= 10 && data.description.size() <= 1200
+        && data.category in ['Quedada', 'Ruta', 'Taller', 'Adopción']
+        && data.location is string && data.location.size() >= 3 && data.location.size() <= 160
+        && data.dateText is string && data.dateText.size() >= 4 && data.dateText.size() <= 80
+        && data.startAt is timestamp && data.startAt > request.time
+        && data.timeZoneId is string && data.timeZoneId.size() <= 64
+        && ((!('latitude' in data) && !('longitude' in data))
+          || ('latitude' in data && 'longitude' in data
+            && data.latitude is number
+            && data.latitude >= -90 && data.latitude <= 90
+            && data.longitude is number
+            && data.longitude >= -180 && data.longitude <= 180));
       }
       allow get, list: if signedIn();
       allow create: if verified()
-        && request.resource.data.keys().hasOnly(['title', 'description', 'category', 'location', 'dateText', 'startAt', 'timeZoneId', 'latitude', 'longitude', 'organizerUid', 'organizerName', 'interestedCount', 'createdAt', 'photoUrl', 'photoAssetId'])
-        && validOptionalPhoto(request.resource.data)
-        && request.resource.data.title is string && request.resource.data.title.size() >= 4 && request.resource.data.title.size() <= 90
-        && request.resource.data.description is string && request.resource.data.description.size() >= 10 && request.resource.data.description.size() <= 1200
-        && request.resource.data.category in ['Quedada', 'Ruta', 'Taller', 'Adopción']
-        && request.resource.data.location is string && request.resource.data.location.size() >= 3 && request.resource.data.location.size() <= 160
-        && request.resource.data.dateText is string && request.resource.data.dateText.size() >= 4 && request.resource.data.dateText.size() <= 80
-        && request.resource.data.startAt is timestamp && request.resource.data.startAt > request.time
-        && request.resource.data.timeZoneId is string && request.resource.data.timeZoneId.size() <= 64
-        && ((!('latitude' in request.resource.data) && !('longitude' in request.resource.data))
-          || ('latitude' in request.resource.data && 'longitude' in request.resource.data
-            && request.resource.data.latitude is number
-            && request.resource.data.latitude >= -90 && request.resource.data.latitude <= 90
-            && request.resource.data.longitude is number
-            && request.resource.data.longitude >= -180 && request.resource.data.longitude <= 180))
+        && request.resource.data.keys().hasOnly(['title', 'description', 'category', 'location', 'dateText', 'startAt', 'timeZoneId', 'latitude', 'longitude', 'organizerUid', 'organizerName', 'interestedCount', 'createdAt', 'photoUrl', 'photoAssetId', 'videoUrl', 'videoAssetId'])
+        && validMedia(request.resource.data, 'photoUrl','photoAssetId','image','post-photos')
+        && validMedia(request.resource.data, 'videoUrl','videoAssetId','video','post-videos')
+        && validEventContent(request.resource.data)
         && request.resource.data.organizerUid == request.auth.uid
         && request.resource.data.organizerName is string && request.resource.data.organizerName.size() <= 60
         && request.resource.data.interestedCount == 0
         && request.resource.data.createdAt == request.time;
+      allow update: if verified() && resource.data.organizerUid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title','description','location','category','dateText','startAt','timeZoneId','latitude','longitude','photoUrl','photoAssetId','videoUrl','videoAssetId'])
+        && validEventContent(request.resource.data)
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['photoUrl','photoAssetId']) || validMedia(request.resource.data,'photoUrl','photoAssetId','image','post-photos'))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['videoUrl','videoAssetId']) || validMedia(request.resource.data,'videoUrl','videoAssetId','video','post-videos'));
       allow update: if verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['interestedCount'])
         && request.resource.data.interestedCount is int

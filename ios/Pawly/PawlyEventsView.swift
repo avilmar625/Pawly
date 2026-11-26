@@ -20,6 +20,7 @@ struct PawlyEventItem: Identifiable {
     var interestedCount: Int
     var interestedByMe: Bool
     var photoURL: String = ""
+    var videoURL: String = ""
 }
 
 struct PawlyEventAttendee: Identifiable {
@@ -36,17 +37,39 @@ final class PawlyEventsStore: ObservableObject {
     private let db = Firestore.firestore()
     private let categories = ["Quedada", "Ruta", "Taller", "Adopción"]
 
-    func load() async {
+    @Published private(set) var more = false
+    @Published private(set) var loading = false
+    private var cursor: DocumentSnapshot?
+    private var request = UUID()
+    private var followed = Set<String>()
+    func load(_ filter: PawlyEventFilter, next: Bool = false) async {
         guard let uid = Auth.auth().currentUser?.uid else {
-            errorMessage = "Inicia sesión para consultar los eventos."
-            return
+            events = []; errorMessage = "Inicia sesión para consultar los eventos."; return
         }
+        if next && (loading || !more) { return }
+        let token = UUID(); request = token
+        if !next { events = []; cursor = nil; more = false }
+        loading = true
+        defer { if request == token { loading = false } }
         do {
-            let snapshot = try await db.collection("events")
-                .order(by: "createdAt", descending: true)
-                .limit(to: 60)
-                .getDocuments()
-
+            if filter.following && !next {
+                let docs = try await db.collection("users").document(uid).collection("following").getDocuments()
+                guard request == token else { return }
+                followed = Set(docs.documents.map(\.documentID))
+            }
+            var query: Query = db.collection("events")
+            if filter.mine { query = query.whereField("organizerUid", isEqualTo: uid) }
+            switch filter.order {
+            case .recent: query = query.order(by: "createdAt", descending: true)
+            case .participation: query = query.order(by: "interestedCount", descending: true)
+            case .date, .distance:
+                if let start = filter.bounds.0 { query = query.whereField("startAt", isGreaterThanOrEqualTo: Timestamp(date: start)) }
+                if let end = filter.bounds.1 { query = query.whereField("startAt", isLessThan: Timestamp(date: end)) }
+                query = query.order(by: "startAt", descending: filter.period == .past)
+            }
+            if next, let cursor { query = query.start(afterDocument: cursor) }
+            let snapshot = try await query.limit(to: 30).getDocuments()
+            guard request == token else { return }
             var values: [PawlyEventItem] = []
             for document in snapshot.documents {
                 guard
@@ -56,8 +79,12 @@ final class PawlyEventsStore: ObservableObject {
                     let location = document.get("location") as? String
                 else { continue }
 
-                let interest = try await document.reference.collection("interested")
-                    .document(uid).getDocument()
+                if filter.following && !followed.contains(document.get("organizerUid") as? String ?? "") { continue }
+                var interested = false
+                if filter.interested {
+                    interested = try await document.reference.collection("interested").document(uid).getDocument().exists
+                    if !interested { continue }
+                }
 
                 values.append(PawlyEventItem(
                     id: document.documentID,
@@ -73,24 +100,30 @@ final class PawlyEventsStore: ObservableObject {
                     organizerName: document.get("organizerName") as? String ?? "Comunidad Pawly",
                     organizerUID: document.get("organizerUid") as? String ?? "",
                     interestedCount: document.get("interestedCount") as? Int ?? 0,
-                    interestedByMe: interest.exists, photoURL: document.get("photoUrl") as? String ?? ""
+                    interestedByMe: interested, photoURL: document.get("photoUrl") as? String ?? "",
+                    videoURL: document.get("videoUrl") as? String ?? ""
                 ))
             }
-            events = values.sorted { $0.startAt < $1.startAt }
+            guard request == token, !Task.isCancelled else { return }
+            cursor = snapshot.documents.last
+            more = snapshot.documents.count == 30
+            let seen = Set(events.map(\.id))
+            events += values.filter { !seen.contains($0.id) }
             errorMessage = nil
         } catch {
-            errorMessage = PawlyServiceMessage.key(for: error)
+            if request == token { errorMessage = PawlyServiceMessage.key(for: error) }
         }
     }
 
-    func create(
+    func save(
+        editing: PawlyEventItem?,
         title: String,
         description: String,
         category: String,
         location: String,
         date: Date,
         coordinate: CLLocationCoordinate2D?,
-        photoURL: String
+        photoURL: String, videoURL: String
     ) async throws {
         guard let user = Auth.auth().currentUser, user.isEmailVerified else {
             throw PawlyEventError.emailVerificationRequired
@@ -111,11 +144,6 @@ final class PawlyEventsStore: ObservableObject {
             }
         }
 
-        let profile = try await db.collection("users").document(user.uid).getDocument()
-        let displayName = (profile.get("displayName") as? String).flatMap { $0.isEmpty ? nil : $0 }
-            ?? (profile.get("username") as? String).flatMap { $0.isEmpty ? nil : $0 }
-            ?? "Usuario Pawly"
-
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "es_ES")
         formatter.timeZone = TimeZone.current
@@ -127,11 +155,7 @@ final class PawlyEventsStore: ObservableObject {
             "location": cleanLocation,
             "dateText": formatter.string(from: date),
             "startAt": Timestamp(date: date),
-            "timeZoneId": TimeZone.current.identifier,
-            "organizerUid": user.uid,
-            "organizerName": String(displayName.prefix(60)),
-            "interestedCount": 0,
-            "createdAt": FieldValue.serverTimestamp()
+            "timeZoneId": TimeZone.current.identifier
         ]
         if let coordinate {
             data["latitude"] = coordinate.latitude
@@ -141,6 +165,27 @@ final class PawlyEventsStore: ObservableObject {
             data["photoUrl"] = photoURL
             data["photoAssetId"] = PawlyCloudinaryUploader.indexID(for: photoURL)
         }
+        if !videoURL.isEmpty {
+            data["videoUrl"] = videoURL
+            data["videoAssetId"] = PawlyCloudinaryUploader.indexID(for: videoURL)
+        }
+        if let editing {
+            guard editing.organizerUID == user.uid else { throw PawlyEventError.invalidEvent }
+            for key in ["latitude", "longitude", "photoUrl", "photoAssetId", "videoUrl", "videoAssetId"] where data[key] == nil {
+                data[key] = FieldValue.delete()
+            }
+            try await db.collection("events").document(editing.id).updateData(data)
+            return
+        }
+        let profile = try await db.collection("users").document(user.uid).getDocument()
+        let displayName = (profile.get("displayName") as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? (profile.get("username") as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? "Usuario Pawly"
+
+        data["organizerUid"] = user.uid
+        data["organizerName"] = String(displayName.prefix(60))
+        data["interestedCount"] = 0
+        data["createdAt"] = FieldValue.serverTimestamp()
         _ = try await db.collection("events").addDocument(data: data)
     }
 
@@ -178,7 +223,11 @@ final class PawlyEventsStore: ObservableObject {
                 else { continuation.resume(returning: ()) }
             })
         }
-        await load()
+    }
+
+    func interested(in event: PawlyEventItem) async throws -> Bool {
+        guard let uid = Auth.auth().currentUser?.uid else { return false }
+        return try await db.collection("events").document(event.id).collection("interested").document(uid).getDocument().exists
     }
 
     func loadAttendees(event: PawlyEventItem, pageToken: String = "") async throws -> (attendees: [PawlyEventAttendee], nextPageToken: String) {
@@ -242,9 +291,37 @@ enum PawlyEventError: LocalizedError {
     }
 }
 
+enum PawlyEventOrder: String, CaseIterable { case date = "Fecha", recent = "Más recientes", participation = "Mayor participación", distance = "Distancia" }
+enum PawlyEventPeriod: String, CaseIterable { case upcoming = "Próximos", past = "Pasados", range = "Intervalo de fechas", all = "Todas las fechas" }
+
+struct PawlyEventFilter: Equatable {
+    var period = PawlyEventPeriod.upcoming
+    var order = PawlyEventOrder.date
+    var from = Calendar.current.startOfDay(for: Date())
+    var until = Calendar.current.startOfDay(for: Date())
+    var category = "Todos"
+    var zone = ""
+    var radius = 0
+    var mine = false
+    var interested = false
+    var following = false
+    var bounds: (Date?, Date?) {
+        switch period {
+        case .upcoming: return (Date(), nil)
+        case .past: return (nil, Date())
+        case .all: return (nil, nil)
+        case .range: return (Calendar.current.startOfDay(for: from), Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: until)))
+        }
+    }
+    var active: Bool { self != PawlyEventFilter() }
+}
+
 struct PawlyEventsView: View {
     @StateObject private var store = PawlyEventsStore()
-    @State private var selectedCategory = "Todos"
+    @State private var filter = PawlyEventFilter()
+    @State private var draft = PawlyEventFilter()
+    @State private var filtersOpen = false
+    @StateObject private var gps = PawlyLocationProvider()
     @State private var selectedEvent: PawlyEventItem?
     @State private var showCreate = false
     @State private var createMessage: String?
@@ -252,35 +329,36 @@ struct PawlyEventsView: View {
     @State private var showReport = false
 
     @State private var query = ""
-    @State private var days = 0
-    @State private var ascending = true
-
+    private func distance(_ event: PawlyEventItem) -> Double? {
+        guard let point = gps.location, let lat = event.latitude, let lon = event.longitude else { return nil }
+        return point.distance(from: CLLocation(latitude: lat, longitude: lon)) / 1000
+    }
+    private func contains(_ text: String, _ term: String) -> Bool {
+        term.isEmpty || text.range(of: term, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+    }
     private var visibleEvents: [PawlyEventItem] {
-        let cutoff = Calendar.current.date(byAdding: .day, value: days, to: Date()) ?? Date()
-        return store.events.filter { event in
-            (selectedCategory == "Todos" || event.category == selectedCategory)
-                && (days == 0 || event.startAt <= cutoff)
-                && (query.isEmpty || [event.title, event.description, event.location].contains { $0.localizedCaseInsensitiveContains(query) })
-        }.sorted { ascending ? $0.startAt < $1.startAt : $0.startAt > $1.startAt }
+        let bounds = filter.bounds
+        let matches = store.events.filter { event in
+            (filter.category == "Todos" || event.category == filter.category)
+                && (bounds.0.map { event.startAt >= $0 } ?? true) && (bounds.1.map { event.startAt < $0 } ?? true)
+                && contains(event.location, filter.zone)
+                && [event.title, event.description, event.location, event.organizerName].contains { contains($0, query) }
+                && (filter.radius == 0 || (distance(event) ?? .infinity) <= Double(filter.radius))
+        }
+        if filter.order == .distance { return matches.sorted { (distance($0) ?? .infinity) < (distance($1) ?? .infinity) } }
+        return matches
     }
 
     var body: some View {
         List {
-            Section {
-                Menu {
-                    Picker("Tipo de evento", selection: $selectedCategory) {
-                        ForEach(["Todos", "Quedada", "Ruta", "Taller", "Adopción"], id: \.self) { Text(LocalizedStringKey($0)).tag($0) }
-                    }
-                    Picker("Fecha", selection: $days) {
-                        Text("Todas las fechas").tag(0)
-                        Text("Próximos 7 días").tag(7)
-                        Text("Próximos 30 días").tag(30)
-                    }
-                    Toggle("Más próximos primero", isOn: $ascending)
-                } label: { Label("Filtrar", systemImage: "line.3.horizontal.decrease.circle") }
+            Button {
+                draft = filter; filtersOpen = true
+            } label: {
+                Label(filter.active ? "Filtros activos" : "Filtrar", systemImage: "line.3.horizontal.decrease.circle")
             }
-            Section("Próximos planes") {
-                if visibleEvents.isEmpty {
+            Section("Eventos y quedadas") {
+                if store.loading { ProgressView() }
+                if visibleEvents.isEmpty && !store.loading {
                     PawlyEmptyState(
                         icon: "calendar",
                         title: "Todavía no hay eventos",
@@ -291,7 +369,7 @@ struct PawlyEventsView: View {
                     Button { selectedEvent = event } label: {
                         VStack(alignment: .leading, spacing: 7) {
                             HStack {
-                                Text(event.category.uppercased())
+                                Text(LocalizedStringKey(event.category))
                                     .font(.caption2.weight(.bold))
                                     .foregroundStyle(PawlyColors.primary)
                                 Spacer()
@@ -304,6 +382,7 @@ struct PawlyEventsView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                             HStack {
                                 Label(event.organizerName, systemImage: "person")
+                                if let km = distance(event) { Text(verbatim: Measurement(value: km, unit: UnitLength.kilometers).formatted(.measurement(width: .abbreviated, usage: .road))) }
                                 Spacer()
                                 Label("\(event.interestedCount)", systemImage: "person.2")
                             }
@@ -314,6 +393,7 @@ struct PawlyEventsView: View {
                     .buttonStyle(.plain)
                 }
             }
+            if store.more { Button("Cargar más") { Task { await store.load(filter, next: true) } }.disabled(store.loading) }
             if let message = store.errorMessage {
                 Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.red) }
             }
@@ -326,22 +406,57 @@ struct PawlyEventsView: View {
         .navigationTitle("Eventos y quedadas")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showCreate = true } label: { Image(systemName: "plus") }
+                Button { showCreate = true } label: { Image(systemName: "plus") }.accessibilityLabel("Crear evento")
             }
         }
-        .task { await store.load() }
-        .refreshable { await store.load() }
+        .task(id: filter) { await store.load(filter) }
+        .refreshable { await store.load(filter) }
         .sheet(isPresented: $showCreate, onDismiss: {
-            if created { createMessage = "Evento publicado."; created = false; Task { await store.load() } }
+            if created { createMessage = "Evento publicado."; created = false; Task { await store.load(filter) } }
         }) {
-            PawlyEventCreateSheet { title, description, category, location, date, coordinate, photoURL in
-                try await store.create(title: title, description: description, category: category,
-                                       location: location, date: date, coordinate: coordinate, photoURL: photoURL)
-                created = true
-            }
+            PawlyEventCreateSheet(editing: nil, store: store) { created = true }
+        }
+        .sheet(isPresented: $filtersOpen) {
+            NavigationStack {
+                Form {
+                    Picker("Ordenar", selection: $draft.order) {
+                        ForEach(PawlyEventOrder.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
+                    }
+                    Picker("Fecha", selection: $draft.period) {
+                        ForEach(PawlyEventPeriod.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
+                    }
+                    if draft.period == .range {
+                        DatePicker("Desde", selection: $draft.from, displayedComponents: .date)
+                        DatePicker("Hasta", selection: $draft.until, in: draft.from..., displayedComponents: .date)
+                    }
+                    Picker("Tipo de evento", selection: $draft.category) {
+                        ForEach(["Todos", "Quedada", "Ruta", "Taller", "Adopción"], id: \.self) { Text(LocalizedStringKey($0)).tag($0) }
+                    }
+                    TextField("Localidad o zona", text: $draft.zone)
+                    Picker("Radio de búsqueda", selection: $draft.radius) {
+                        Text("Sin límite").tag(0)
+                        ForEach([5, 10, 25, 50, 100], id: \.self) { Text(verbatim: "\($0) km").tag($0) }
+                    }
+                    if draft.radius > 0 || draft.order == .distance {
+                        Button { gps.request() } label: { Label("Usar mi ubicación", systemImage: "location") }
+                        if let status = gps.message { Text(LocalizedStringKey(status)).font(.caption) }
+                    }
+                    Toggle("Organizados por mí", isOn: $draft.mine)
+                    Toggle("Cuentas que sigo", isOn: $draft.following)
+                    Toggle("Me interesa", isOn: $draft.interested)
+                    Button("Restablecer") { draft = PawlyEventFilter() }
+                }.navigationTitle("Filtrar").toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { filtersOpen = false } }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Aplicar") { filter = draft; filtersOpen = false }
+                            .disabled(((draft.radius > 0 || draft.order == .distance) && gps.location == nil)
+                                      || (draft.period == .range && draft.until < draft.from))
+                    }
+                }
+            }.onDisappear { gps.cancel() }
         }
         .sheet(item: $selectedEvent) { event in
-            PawlyEventDetailsSheet(event: event, store: store)
+            PawlyEventDetailsSheet(event: event, store: store) { Task { await store.load(filter) } }
         }
     }
 }
@@ -350,6 +465,11 @@ private struct PawlyEventDetailsSheet: View {
     @Environment(\.dismiss) private var dismiss
     let event: PawlyEventItem
     @ObservedObject var store: PawlyEventsStore
+    var onChange: () -> Void
+    @State private var edited = false
+    @State private var edit = false
+    @State private var interest: Bool?
+    @State private var changingInterest = false
     @State private var attendees: [PawlyEventAttendee] = []
     @State private var nextPage = ""
     @State private var loadingAttendees = false
@@ -367,6 +487,7 @@ private struct PawlyEventDetailsSheet: View {
                         AsyncImage(url: url) { image in image.resizable().scaledToFit() } placeholder: { ProgressView() }
                             .frame(maxHeight: 240).pawlyPhoto(url)
                     }
+                    if let url = URL(string: event.videoURL), !event.videoURL.isEmpty { PawlyVideoPreview(url: url).frame(height: 200) }
                     Text(event.title).font(.title2.bold())
                     Text(event.description)
                     Label(event.category, systemImage: "calendar")
@@ -385,15 +506,17 @@ private struct PawlyEventDetailsSheet: View {
                 Section {
                     Button {
                         Task {
-                            do { try await store.toggleInterest(event); dismiss() }
+                            changingInterest = true; defer { changingInterest = false }
+                            do { try await store.toggleInterest(event); onChange(); dismiss() }
                             catch { message = PawlyServiceMessage.key(for: error) }
                         }
                     } label: {
-                        Label(event.interestedByMe ? "Ya no me interesa" : "Me interesa",
-                              systemImage: event.interestedByMe ? "person.badge.minus" : "person.badge.plus")
-                    }
+                        Label(interest == true ? "Ya no me interesa" : "Me interesa",
+                              systemImage: interest == true ? "person.badge.minus" : "person.badge.plus")
+                    }.disabled(interest == nil || changingInterest)
                 }
                 if isOrganizer {
+                    Button("Editar evento") { edit = true }
                     Section("Personas interesadas") {
                         Button {
                             Task { await loadAttendees() }
@@ -430,6 +553,10 @@ private struct PawlyEventDetailsSheet: View {
                 }
                 if let message { Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) } }
             }
+            .task { do { interest = try await store.interested(in: event) } catch { message = PawlyServiceMessage.key(for: error) } }
+            .sheet(isPresented: $edit, onDismiss: { if edited { onChange(); dismiss() } }) {
+                PawlyEventCreateSheet(editing: event, store: store) { edited = true }
+            }
             .navigationTitle("Evento")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cerrar") { dismiss() } } }
@@ -461,7 +588,10 @@ private struct PawlyEventDetailsSheet: View {
 
 private struct PawlyEventCreateSheet: View {
     @Environment(\.dismiss) private var dismiss
-    var onSave: (String, String, String, String, Date, CLLocationCoordinate2D?, String) async throws -> Void
+    let editing: PawlyEventItem?
+    let store: PawlyEventsStore
+    var onSave: () -> Void
+    @State private var keepMedia = true
     @State private var title = ""
     @State private var description = ""
     @State private var category = "Quedada"
@@ -473,6 +603,16 @@ private struct PawlyEventCreateSheet: View {
     @StateObject private var attachment = PawlyAttachmentDraft()
     @State private var saving = false
     @State private var error: String?
+
+    init(editing: PawlyEventItem?, store: PawlyEventsStore, onSave: @escaping () -> Void) {
+        self.editing = editing; self.store = store; self.onSave = onSave
+        if let e = editing {
+            _title = State(initialValue: e.title); _description = State(initialValue: e.description)
+            _location = State(initialValue: e.location); _resolvedLocation = State(initialValue: e.location)
+            _date = State(initialValue: e.startAt); _category = State(initialValue: e.category)
+            if let lat = e.latitude, let lon = e.longitude { _coordinate = State(initialValue: .init(latitude: lat, longitude: lon)) }
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -486,7 +626,16 @@ private struct PawlyEventCreateSheet: View {
                     TextField("Descripción", text: $description, axis: .vertical).lineLimit(3...7)
                     TextField("Lugar o dirección", text: $location)
                 }
-                Section("Fotografía") { PawlyAttachmentPicker(draft: attachment, allowsVideo: false) }
+                Section("Foto o vídeo") {
+                    if keepMedia, !attachment.hasAttachment, let event = editing, !event.photoURL.isEmpty || !event.videoURL.isEmpty {
+                        if let url = URL(string: event.photoURL), !event.photoURL.isEmpty {
+                            AsyncImage(url: url) { $0.resizable().scaledToFit() } placeholder: { ProgressView() }.frame(maxHeight: 160).pawlyPhoto(url)
+                        } else if let url = URL(string: event.videoURL) { PawlyVideoPreview(url: url).frame(height: 160) }
+                        Button("Quitar", role: .destructive) { keepMedia = false }
+                    }
+                    PawlyAttachmentPicker(draft: attachment)
+                    if saving { ProgressView() }
+                }
                 Section("Fecha y hora") {
                     DatePicker("Comienza", selection: $date, in: Date()..., displayedComponents: [.date, .hourAndMinute])
                 }
@@ -510,29 +659,33 @@ private struct PawlyEventCreateSheet: View {
                 if let error { Section { Text(LocalizedStringKey(error)).foregroundStyle(.red) } }
             }
             .disabled(saving).interactiveDismissDisabled(saving)
-            .navigationTitle("Crear evento")
+            .navigationTitle(editing == nil ? "Crear evento" : "Editar evento")
             .sheet(isPresented:$showLocationPicker) {
-                PawlyEventLocationPicker(initialQuery:location){name,point in
+                PawlyEventLocationPicker(initialQuery:location, initialPoint: location == resolvedLocation ? coordinate : nil){name,point in
                     location=name;resolvedLocation=name;coordinate=point
                 }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.disabled(saving) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(saving ? "Guardando…" : "Publicar") {
+                    Button(saving ? "Guardando…" : (editing == nil ? "Publicar" : "Guardar")) {
                         saving = true
                         Task {
                             defer { saving = false }
                             do {
                                 guard let user = Auth.auth().currentUser, user.isEmailVerified else { throw PawlyEventError.emailVerificationRequired }
                                 let media = try await attachment.upload(owner: user.uid, forPost: true)
-                                try await onSave(title, description, category, location, date,
-                                                 location == resolvedLocation ? coordinate : nil, media.image)
+                                let retain = !attachment.hasAttachment && keepMedia
+                                try await store.save(editing: editing, title: title, description: description, category: category,
+                                                     location: location, date: date, coordinate: location == resolvedLocation ? coordinate : nil,
+                                                     photoURL: retain ? editing?.photoURL ?? "" : media.image,
+                                                     videoURL: retain ? editing?.videoURL ?? "" : media.video)
+                                onSave()
                                 dismiss()
                             } catch { self.error = PawlyServiceMessage.key(for: error) }
                         }
                     }
-                    .disabled(attachment.loading || saving || description.count > 1200 || location.count > 160 || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 ||
+                    .disabled(attachment.error != nil || attachment.loading || saving || description.count > 1200 || location.count > 160 || title.trimmingCharacters(in: .whitespacesAndNewlines).count < 4 ||
                               description.trimmingCharacters(in: .whitespacesAndNewlines).count < 10 ||
                               location.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 || date <= Date())
                 }
@@ -550,10 +703,12 @@ private struct PawlyEventLocationPicker:View {
     @State private var region=MKCoordinateRegion()
     @State private var busy=false
     @State private var message:String?
+    @StateObject private var gps = PawlyLocationProvider()
+    let initialPoint: CLLocationCoordinate2D?
     let onSelect:(String,CLLocationCoordinate2D)->Void
 
-    init(initialQuery:String,onSelect:@escaping(String,CLLocationCoordinate2D)->Void) {
-        _query=State(initialValue:initialQuery);self.onSelect=onSelect
+    init(initialQuery:String, initialPoint: CLLocationCoordinate2D?, onSelect:@escaping(String,CLLocationCoordinate2D)->Void) {
+        _query=State(initialValue:initialQuery);self.onSelect=onSelect;self.initialPoint=initialPoint
     }
     var body:some View {
         NavigationStack {
@@ -562,6 +717,8 @@ private struct PawlyEventLocationPicker:View {
                     TextField("Lugar, calle o localidad",text:$query).onSubmit{Task{await search()}}
                     Button {Task{await search()}}label:{Label("Buscar en el mapa",systemImage:"magnifyingglass")}
                         .disabled(busy || query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+                    Button { gps.request() } label: { Label("Usar mi ubicación", systemImage: "location.fill") }.disabled(busy)
+                    if let status = gps.message { Text(LocalizedStringKey(status)).font(.caption) }
                     if busy { ProgressView() }
                     if let message {Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
                 }
@@ -572,9 +729,17 @@ private struct PawlyEventLocationPicker:View {
                             .overlay { Image(systemName:"mappin.circle.fill").font(.largeTitle).foregroundStyle(PawlyColors.primary).allowsHitTesting(false) }
                         Text("Desplaza el mapa para ajustar el punto central. Solo se guardará la ubicación del evento.").font(.caption)
                         Button("Usar este punto") {
-                            let name=selected.placemark.title ?? selected.name ?? query
-                            onSelect(name,region.center);dismiss()
-                        }.buttonStyle(.borderedProminent)
+                            let point = region.center
+                            busy = true
+                            Task {
+                                let mark = try? await CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: point.latitude, longitude: point.longitude)).first
+                                let address = [mark?.name, mark?.locality].compactMap { $0 }.joined(separator: ", ")
+                                let fallback = String(format: "%.4f, %.4f", point.latitude, point.longitude)
+                                let same = CLLocation(latitude: point.latitude, longitude: point.longitude).distance(from: selected.placemark.location ?? CLLocation(latitude: 0, longitude: 0)) < 150
+                                onSelect(address.isEmpty ? (same ? selected.name ?? fallback : fallback) : address, point)
+                                busy = false; dismiss()
+                            }
+                        }.buttonStyle(.borderedProminent).disabled(busy)
                     }
                 }
                 Section("Resultados") {
@@ -589,8 +754,15 @@ private struct PawlyEventLocationPicker:View {
                 }
             }.navigationTitle("Ubicación del evento")
             .toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}}
-            .task {if !query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty {await search()}}
+            .onReceive(gps.$location) { if let fix = $0 { center(fix.coordinate) } }
+            .onDisappear { gps.cancel() }
+            .task { if let initialPoint { center(initialPoint) }
+                    else if !query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { await search() } }
         }
+    }
+    private func center(_ point: CLLocationCoordinate2D) {
+        selected = MKMapItem(placemark: MKPlacemark(coordinate: point))
+        region = MKCoordinateRegion(center: point, latitudinalMeters: 1200, longitudinalMeters: 1200)
     }
     @MainActor private func search() async {
         guard !busy,!query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else{return}

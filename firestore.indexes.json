@@ -78,6 +78,10 @@
         }
       ]
     },
+    {"collectionGroup": "events", "queryScope": "COLLECTION", "fields": [{"fieldPath": "organizerUid", "order": "ASCENDING"}, {"fieldPath": "createdAt", "order": "DESCENDING"}]},
+    {"collectionGroup": "events", "queryScope": "COLLECTION", "fields": [{"fieldPath": "organizerUid", "order": "ASCENDING"}, {"fieldPath": "interestedCount", "order": "DESCENDING"}]},
+    {"collectionGroup": "events", "queryScope": "COLLECTION", "fields": [{"fieldPath": "organizerUid", "order": "ASCENDING"}, {"fieldPath": "startAt", "order": "ASCENDING"}]},
+    {"collectionGroup": "events", "queryScope": "COLLECTION", "fields": [{"fieldPath": "organizerUid", "order": "ASCENDING"}, {"fieldPath": "startAt", "order": "DESCENDING"}]},
     {"collectionGroup": "comments", "queryScope": "COLLECTION", "fields": [{"fieldPath": "threadId", "order": "ASCENDING"}, {"fieldPath": "createdAt", "order": "ASCENDING"}]},
     {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "createdAt", "order": "ASCENDING"}]},
     {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "searchTokens", "arrayConfig": "CONTAINS"}, {"fieldPath": "createdAt", "order": "DESCENDING"}]},
