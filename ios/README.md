@@ -1,5 +1,7 @@
 # Pawly para iOS
 
+[Auditoría por requisito, configuración y pruebas de noviembre de 2026](AUDITORIA_2026_11.md)
+
 Port nativo SwiftUI que comparte Firebase/Firestore y Cloudinary con Android. La rama iOS más reciente de trabajo es `codex/ios-android-parity-2026-11`; las ramas nativas de Android e iOS siguen separadas. El cliente iOS vive en `ios/` y el código Android continúa en sus carpetas actuales. Para preparar el entorno completo en macOS, sigue [la guía de Mac, Firebase y Cloudflare](../docs/IOS_MAC_FIREBASE_CLOUDFLARE.md).
 
 ## Funciones iOS incorporadas
@@ -43,9 +45,9 @@ xcodebuild -project Pawly.xcodeproj -scheme Pawly -destination 'generic/platform
 CI compila el simulador; Firebase/Google/Cloudinary/APNs reales y las pruebas con dos cuentas deben validarse en dispositivo.
 
 ## Límites que deben validarse
-- Los recordatorios son locales al dispositivo; no se sincronizan con Android ni con otros iPhones.
+- En mascotas compartidas, la agenda sincroniza el título, la fecha y la categoría. Notas, repetición, finalización y programación de avisos se conservan por dispositivo.
 - Las push requieren APNs, Firebase Messaging, tokens registrados y el Worker de Cloudflare desplegado/configurado. Los avisos de mensajes validan la conversación y no incluyen el texto privado.
-- La eliminación integral requiere Functions y secretos Cloudinary configurados.
+- El flujo registra la solicitud de eliminación. El procesador integral de Firebase Auth, subcolecciones y medios sigue pendiente.
 - Cloudinary unsigned no ofrece privacidad de archivos ni cifrado E2E.
 - Explorar usa MapKit; los resultados dependen de Apple Maps y de la zona.
 - El idioma preferido queda guardado, pero no se ha traducido todavía todo el contenido.
