@@ -219,6 +219,7 @@ struct PetFormSheet:View {
 }
 
 struct CareView:View {
+    @Environment(\.locale) private var locale
     private let startWithNewEntry: Bool
     private let initialEntryType: String?
 
@@ -329,7 +330,7 @@ struct CareView:View {
                                                 HStack(alignment:.firstTextBaseline) {
                                                     Text(entry.title).font(.subheadline.weight(.semibold))
                                                     Spacer()
-                                                    Text(entry.type).font(.caption.weight(.semibold)).foregroundStyle(PawlyColors.primary)
+                                                    Text(LocalizedStringKey(entry.type)).font(.caption.weight(.semibold)).foregroundStyle(PawlyColors.primary)
                                                 }
                                                 Text("\(entry.date) · \(entry.detail)").font(.caption).foregroundStyle(.secondary)
                                                 if !entry.product.isEmpty { Text("Producto: \(entry.product)").font(.caption) }
@@ -371,7 +372,7 @@ struct CareView:View {
                                             Image(systemName:"calendar").foregroundStyle(PawlyColors.primary).frame(width:22)
                                             VStack(alignment:.leading,spacing:3) {
                                                 Text(entry.title).font(.subheadline.weight(.semibold))
-                                                Text("\(entry.type) · \(entry.nextDoseDate.isEmpty ? entry.date : entry.nextDoseDate)")
+                                                Text("\(Text(LocalizedStringKey(entry.type))) · \(entry.nextDoseDate.isEmpty ? entry.date : entry.nextDoseDate)")
                                                     .font(.caption).foregroundStyle(.secondary)
                                             }
                                             Spacer()
@@ -393,7 +394,7 @@ struct CareView:View {
                                         .font(.subheadline).foregroundStyle(.secondary)
                                 } else {
                                     ForEach(emergencyEntries) { entry in
-                                        LabeledContent(entry.type,value:entry.detail.isEmpty ? entry.title : entry.detail)
+                                        LabeledContent(LocalizedStringKey(entry.type),value:entry.detail.isEmpty ? entry.title : entry.detail)
                                     }
                                 }
                                 ShareLink(item:emergencyShareText) {
@@ -426,7 +427,7 @@ struct CareView:View {
                                         }.padding(.vertical,6)
                                     }
                                     if let latest=weightEntries.first {
-                                        Text("Último peso: \(String(format:"%.1f",latest.1)) kg")
+                                        Text("Último peso: \(latest.1.formatted(.number.precision(.fractionLength(1)).locale(locale))) kg")
                                             .font(.subheadline.weight(.semibold)).foregroundStyle(PawlyColors.primary)
                                     }
                                     Text("La gráfica utiliza únicamente registros de tipo Peso con fecha y valor numérico.")
@@ -462,7 +463,7 @@ struct CareView:View {
                                             }.buttonStyle(.plain)
                                             VStack(alignment:.leading,spacing:3) {
                                                 Text(task.title).strikethrough(task.completed)
-                                                Text([task.frequency,task.responsible].filter{!$0.isEmpty}.joined(separator:" · "))
+                                                Text([PawlyLanguage.text(task.frequency, language: locale.identifier), task.responsible].filter{!$0.isEmpty}.joined(separator:" · "))
                                                     .font(.caption).foregroundStyle(.secondary)
                                             }
                                         }.swipeActions {
@@ -501,7 +502,7 @@ struct CareView:View {
         }
     }
 
-    private func statusLabel(_ status:String)->String {
+    private func statusLabel(_ status:String)->LocalizedStringKey {
         switch status {
         case "PENDIENTE": return "Pendiente"
         case "VENCIDO": return "Vencido"
@@ -738,7 +739,7 @@ struct CareTaskSheet:View {
     @State private var action="Otro"
     @State private var selectedDays:Set<Int> = [1,2,3,4,5,6,7]
     private let actions=["Paseo","Comida","Medicación","Higiene","Otro"]
-    private let weekdays=["L","M","X","J","V","S","D"]
+    @Environment(\.calendar) private var calendar
 
     var body:some View {
         NavigationStack {
@@ -759,7 +760,7 @@ struct CareTaskSheet:View {
                                     if selectedDays.contains(day) { selectedDays.remove(day) }
                                     else { selectedDays.insert(day) }
                                 } label: {
-                                    Text(weekdays[day - 1])
+                                    Text(verbatim: calendar.veryShortStandaloneWeekdaySymbols[day % 7])
                                         .font(.caption.weight(.semibold))
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 9)
@@ -767,6 +768,8 @@ struct CareTaskSheet:View {
                                                     in: Circle())
                                         .foregroundStyle(selectedDays.contains(day) ? .white : PawlyColors.ink)
                                 }.buttonStyle(.plain)
+                                .accessibilityLabel(Text(verbatim: calendar.standaloneWeekdaySymbols[day % 7]))
+                                .accessibilityAddTraits(selectedDays.contains(day) ? .isSelected : [])
                             }
                         }
                         Text("Selecciona los días de la semana.").font(.caption).foregroundStyle(.secondary)
@@ -985,7 +988,7 @@ struct DiaryView:View {
                                         HStack {
                                             VStack(alignment:.leading,spacing:3) {
                                                 Text(entry.title.isEmpty ? "Un recuerdo especial":entry.title).font(.headline)
-                                                Text("\(entry.category) · \((entry.date ?? entry.updatedAt ?? Date()).formatted(date:.abbreviated,time:.omitted))")
+                                                Text("\(Text(LocalizedStringKey(entry.category))) · \(entry.date ?? entry.updatedAt ?? Date(), format: .dateTime.day().month(.abbreviated).year())")
                                                     .font(.caption).foregroundStyle(PawlyColors.primary)
                                             }
                                             Spacer()
@@ -1370,7 +1373,7 @@ struct PeopleSearchSheet:View {
             }
             .confirmationDialog("Motivo de la denuncia",isPresented:Binding(get:{reportCandidate != nil},set:{if !$0{reportCandidate=nil}}),titleVisibility:.visible) {
                 ForEach(["Acoso o comportamiento abusivo","Spam o publicidad","Contenido inapropiado","Suplantación de identidad"],id:\.self){reason in
-                    Button(reason){if let user=reportCandidate{Task{do{try await store.reportUser(user,reason:reason);status="Denuncia enviada para revisión."}catch{status=PawlyServiceMessage.key(for: error)}}};reportCandidate=nil}
+                    Button(LocalizedStringKey(reason)){if let user=reportCandidate{Task{do{try await store.reportUser(user,reason:reason);status="Denuncia enviada para revisión."}catch{status=PawlyServiceMessage.key(for: error)}}};reportCandidate=nil}
                 }
             }
         }
@@ -1381,6 +1384,21 @@ struct PeopleSearchSheet:View {
         do{results=try await store.searchUsers(query.trimmingCharacters(in:.whitespacesAndNewlines).trimmingCharacters(in:CharacterSet(charactersIn:"@")));status=results.isEmpty ? "No se han encontrado perfiles públicos.":nil}
         catch{status=PawlyServiceMessage.key(for: error)}
         loading=false
+    }
+}
+
+private extension PawlyFeedPost {
+    var categoryCaption: Text {
+        let key: LocalizedStringKey
+        switch category {
+        case "STORY": key = "Historia"
+        case "ADOPTION": key = "Adopción"
+        case "LOST": key = "Perdido"
+        case "FOUND": key = "Encontrado"
+        case "FOSTER": key = "Acogida"
+        default: key = LocalizedStringKey(category)
+        }
+        return petName.isEmpty ? Text(key) : Text("\(petName) · \(Text(key))")
     }
 }
 
@@ -1395,7 +1413,7 @@ struct FeedPostCard:View {
                     AsyncImage(url:url){image in image.resizable().scaledToFill()}placeholder:{PawlyAvatarPlaceholder()}
                         .frame(width:38,height:38).clipShape(Circle())
                 } else { PawlyAvatarPlaceholder().frame(width:38,height:38) }
-                VStack(alignment:.leading,spacing:2){NavigationLink { PawlyPublicProfile(userID: post.authorId) } label: { Text(verbatim: post.authorName).font(.subheadline.weight(.semibold)) };Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)").font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
+                VStack(alignment:.leading,spacing:2){NavigationLink { PawlyPublicProfile(userID: post.authorId) } label: { Text(verbatim: post.authorName).font(.subheadline.weight(.semibold)) };post.categoryCaption.font(.caption).foregroundStyle(PawlyColors.muted)};Spacer();if let d=post.createdAt{Text(d.formatted(date:.abbreviated,time:.omitted)).font(.caption2).foregroundStyle(.secondary)}}
             if !post.text.isEmpty { Text(post.text).frame(maxWidth:.infinity,alignment:.leading) }
             if !post.imageURL.isEmpty, let url=URL(string:post.imageURL) {
                 AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
@@ -1471,7 +1489,7 @@ struct CommentsView:View {
                             HStack(spacing:8) {
                                 NavigationLink { PawlyPublicProfile(userID: post.authorId) } label: { Text(verbatim: post.authorName).font(.subheadline.weight(.semibold)) }
                                 Spacer()
-                                Text(post.petName.isEmpty ? post.category : "\(post.petName) · \(post.category)")
+                                post.categoryCaption
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                             if !post.text.isEmpty { Text(post.text).font(.body) }
@@ -1540,7 +1558,7 @@ struct MessagesView:View {
                                     }
                                 }
                                 HStack(spacing:8) {
-                                    Text(chat.lastMessage.isEmpty ? "Iniciar conversación" : chat.lastMessage)
+                                    (chat.lastMessage.isEmpty ? Text("Iniciar conversación") : Text(verbatim: chat.lastMessage))
                                         .font(.caption)
                                         .fontWeight(unread > 0 ? .bold : .regular)
                                         .foregroundStyle(PawlyColors.muted)

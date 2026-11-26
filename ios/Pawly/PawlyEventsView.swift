@@ -435,7 +435,7 @@ private struct PawlyEventDetailsSheet: View {
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Cerrar") { dismiss() } } }
             .confirmationDialog("Denunciar evento", isPresented: $showReport, titleVisibility: .visible) {
                 ForEach(["Contenido inapropiado", "Spam o fraude", "Información falsa", "Bienestar animal", "Otro"], id: \.self) { reason in
-                    Button(reason) {
+                    Button(LocalizedStringKey(reason)) {
                         Task {
                             do { try await store.report(event, reason: reason); message = "Denuncia enviada." }
                             catch { message = PawlyServiceMessage.key(for: error) }

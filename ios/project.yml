@@ -30,6 +30,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alexvilarrubla.pawly
         PRODUCT_NAME: Pawly
+        SWIFT_EMIT_LOC_STRINGS: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_VERSION: 5.0
         TARGETED_DEVICE_FAMILY: "1,2"

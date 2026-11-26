@@ -542,6 +542,7 @@ struct PawlyProfessionalProfile: Identifiable {
 }
 
 struct PawlyProfessionalDirectoryView: View {
+ @Environment(\.locale) private var locale
  @StateObject private var locationProvider=PawlyLocationProvider()
  @State private var nearMe=false
  @State private var category="Veterinario"
@@ -574,7 +575,7 @@ struct PawlyProfessionalDirectoryView: View {
       ForEach(pawlyProfessionals) { professional in
        VStack(alignment:.leading,spacing:5) {
         Text(professional.displayName).font(.headline)
-        Text([professional.category,professional.location].filter { !$0.isEmpty }.joined(separator:" · "))
+        Text([PawlyLanguage.text(professional.category, language: locale.identifier), professional.location].filter { !$0.isEmpty }.joined(separator:" · "))
          .font(.caption).foregroundStyle(.secondary)
         if !professional.description.isEmpty { Text(professional.description).font(.subheadline) }
         if !professional.contact.isEmpty {

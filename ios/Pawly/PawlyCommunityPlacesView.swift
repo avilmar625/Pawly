@@ -207,7 +207,7 @@ struct PawlyCommunityPlacesView: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(place.status == "approved" ? PawlyColors.primary : PawlyColors.muted)
                         }
-                        Text("\(place.category) · \(place.location)")
+                        Text("\(Text(LocalizedStringKey(place.category))) · \(place.location)")
                             .font(.caption).foregroundStyle(.secondary)
                         Text(place.description).font(.subheadline).lineLimit(3)
                     }
@@ -255,11 +255,11 @@ struct PawlyCommunityPlacesView: View {
         }
     }
 
-    private func statusLabel(_ status: String) -> String {
+    private func statusLabel(_ status: String) -> LocalizedStringKey {
         switch status {
-        case "approved": return "APROBADO"
-        case "rejected": return "RECHAZADO"
-        default: return "PENDIENTE"
+        case "approved": return "Aprobado"
+        case "rejected": return "Rechazado"
+        default: return "Pendiente"
         }
     }
 }
@@ -272,7 +272,7 @@ private struct PawlyCommunityPlaceRow: View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(place.name).font(.headline).foregroundStyle(.primary)
-                Text("\(place.category) · \(place.location)")
+                Text("\(Text(LocalizedStringKey(place.category))) · \(place.location)")
                     .font(.caption).foregroundStyle(.secondary)
                 Text(place.description).font(.subheadline).foregroundStyle(.primary).lineLimit(3)
             }
@@ -291,7 +291,7 @@ private struct PawlyCommunityPlaceDetailView: View {
             List {
                 Section {
                     Text(place.name).font(.title2.bold())
-                    Text(place.category).font(.caption.weight(.semibold)).foregroundStyle(PawlyColors.primary)
+                    Text(LocalizedStringKey(place.category)).font(.caption.weight(.semibold)).foregroundStyle(PawlyColors.primary)
                     Text(place.description)
                     Label(place.location, systemImage: "mappin.and.ellipse")
                     if let latitude = place.latitude, let longitude = place.longitude {

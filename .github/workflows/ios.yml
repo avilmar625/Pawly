@@ -86,7 +86,9 @@ jobs:
         run: xcodebuild -project ios/Pawly.xcodeproj -scheme Pawly -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
 
       - name: Check processed Debug configuration
-        run: python3 ios/Tests/check-built-config.py build/Build/Products/Debug-iphonesimulator/Pawly.app
+        run: |
+          python3 ios/Tests/check-built-config.py build/Build/Products/Debug-iphonesimulator/Pawly.app
+          python3 ios/Tests/check-localizations.py --compiled build/Build/Intermediates.noindex/Pawly.build/Debug-iphonesimulator/Pawly.build/Objects-normal
 
       - uses: actions/setup-node@v4
         with:
