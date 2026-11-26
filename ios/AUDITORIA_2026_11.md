@@ -51,7 +51,7 @@ Rama de entrega `codex/ios-auditoria-integral-2026-11`. La base iOS es `bcc39e10
 | Firma y push | El target de dispositivo resuelve el entitlement APNs de desarrollo en Debug y de producción en Release. | La auditoría detectó el archivo de entitlements vacío pese a las variables de Xcode; la rama lo corrige. Pendientes firma, aprovisionamiento y entrega física. |
 | Swift | Cinco ejecutables de prueba superados. | Petición/respuesta multimedia, reintentos concurrentes, aislamiento de agenda y recurrencias, copias/versionado y lectura de pesos. |
 | Idiomas | 552 claves equivalentes por idioma y 392 literales de interfaz verificados automáticamente. | El inventario estático comprueba los constructores enumerados en el script. Los permisos del sistema tienen recursos en los siete idiomas. |
-| XCTest, iPhone 17e | Tres pruebas superadas con Auth y Firestore locales y cuentas ficticias. | Ojo y valor de contraseña en acceso/registro; inicio de sesión, cambio de mascota en Agenda, cambio a inglés y conservación del calendario; exportación/restauración repetida con colección eliminada, perfil más reciente y favoritos privados. |
+| XCTest, iPhone 17e | Cuatro pruebas superadas con Auth y Firestore locales y cuentas ficticias. | Ojo y valor de contraseña en acceso/registro; inicio de sesión, cambio de mascota en Agenda, cambio a inglés y conservación del calendario; exportación/restauración repetida con colección eliminada, perfil más reciente y favoritos privados; preparación de foto y muestra de vídeo con respuesta HTTP controlada e índices Firestore de propietario. |
 | Firestore | 23 pruebas de reglas superadas en el emulador. | Incluyen documentos antiguos, foto de evento vinculada al organizador, roles y aislamiento de favoritos. |
 | Cloudflare Worker | TypeScript sin errores y 50 pruebas en nueve archivos superadas. | Contratos de backend con datos de prueba. |
 | GitHub Actions | El checkpoint público `dc0f2e38` pasó ambos flujos. El estado del último commit se puede consultar por rama. | [Compilación y Worker](https://github.com/avilmar625/Pawly/actions/runs/45693056331) · [Reglas](https://github.com/avilmar625/Pawly/actions/runs/45693056239) · [Ejecuciones de la rama](https://github.com/avilmar625/Pawly/actions?query=branch%3Acodex%2Fios-auditoria-integral-2026-11) |
@@ -78,6 +78,12 @@ Rama de entrega `codex/ios-auditoria-integral-2026-11`. La base iOS es `bcc39e10
 | `9a78853f` | Pruebas integradas de navegación y copias con los emuladores locales. |
 | `b5191079` | Entitlement de APNs y comprobaciones de Debug/Release. |
 | `e83eaa57` | Gestión de errores al recargar noticias. |
+
+## Icono de instalación
+
+El target compila el catálogo `Pawly/Assets.xcassets/AppIcon.appiconset` con `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`. Se reutilizó la silueta del vector oficial `ic_pawly.xml` de la rama Android. La variante principal conserva la huella crema sobre verde bosque. La oscura tiene el fondo transparente que compone iOS, y la tintada usa escala de grises. Las tres son PNG cuadrados de 1024 × 1024 sin máscara de esquinas incorporada. [Especificación de Apple](https://developer.apple.com/documentation/xcode/configuring-your-app-icon)
+
+El plist instalado identifica AppIcon en iPhone y iPad. El catálogo compilado contiene las tres representaciones. En la pantalla de inicio del iPhone 17e simulado se comprobó visualmente el icono de la aplicación. La comprobación física pendiente incluye Biblioteca de apps, Spotlight y la personalización de apariencia del dispositivo.
 
 ## Actualizar y ejecutar en el Mac
 
@@ -134,4 +140,4 @@ npm --prefix backend/cloudflare-worker test
 | P1 | Alternar idioma y apariencia con un borrador abierto. Recorrer cada pantalla con VoiceOver, Dynamic Type grande e iPhone pequeño. | El foco, el texto escrito y la mascota se conservan. Los controles siguen cabiendo y tienen nombre accesible. |
 | P1 | Medir PDF extenso y desplazamiento en muro, chat, mapas y calendario con Instruments. | Anotar latencia, memoria máxima, lecturas y cancelación antes de fijar presupuestos de rendimiento. |
 
-Para App Review quedan por resolver el mecanismo efectivo de eliminación de cuenta y datos asociados, la equivalencia de las alternativas de autenticación cuando procede la regla 4.8, y la operación real de moderación para contenido generado por usuarios. Verificar también icono de distribución, metadatos, enlaces de privacidad y condiciones definitivos, declaraciones de privacidad de dependencias, firma y archivo para dispositivo. Las directrices relevantes incluyen 1.2, 4.8 y 5.1.1(v). [Directrices de Apple](https://developer.apple.com/app-store/review/guidelines/) · [Operación de borrado de cuenta](../docs/ACCOUNT_DELETION_OPERATIONS.md)
+Para App Review quedan por resolver el mecanismo efectivo de eliminación de cuenta y datos asociados, la equivalencia de las alternativas de autenticación cuando procede la regla 4.8, y la operación real de moderación para contenido generado por usuarios. Verificar también metadatos, enlaces de privacidad y condiciones definitivos, declaraciones de privacidad de dependencias, firma y archivo para dispositivo. Las directrices relevantes incluyen 1.2, 4.8 y 5.1.1(v). [Directrices de Apple](https://developer.apple.com/app-store/review/guidelines/) · [Operación de borrado de cuenta](../docs/ACCOUNT_DELETION_OPERATIONS.md)

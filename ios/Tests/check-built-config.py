@@ -19,6 +19,12 @@ if url.scheme != "https" or not url.hostname:
 schemes = [value for item in config.get("CFBundleURLTypes", []) for value in item.get("CFBundleURLSchemes", [])]
 if not any(value and "$(" not in value for value in schemes):
     errors.append("GOOGLE_REVERSED_CLIENT_ID")
+for key in ("CFBundleIcons", "CFBundleIcons~ipad"):
+    primary = config.get(key, {}).get("CFBundlePrimaryIcon", {})
+    if primary.get("CFBundleIconName") != "AppIcon" or not primary.get("CFBundleIconFiles"):
+        errors.append(key + " (AppIcon)")
+if not (bundle / "Assets.car").is_file():
+    errors.append("compiled asset catalog")
 for language in ["ca", "de", "en", "es", "eu", "fr", "pt"]:
     folder = bundle / f"{language}.lproj"
     if not (folder / "Localizable.strings").is_file() or not (folder / "InfoPlist.strings").is_file():
