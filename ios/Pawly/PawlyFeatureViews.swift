@@ -1190,7 +1190,7 @@ struct CommunityView:View {
                     }
                     if !store.feedPrivacyReady { ProgressView() }
                     else if filter != PawlyFeedFilter() || browsing {
-                        PawlyFeedBrowser(filter: filter, store: store) { comments = $0 }.id(filter)
+                        PawlyFeedBrowser(filter: filter, store: store, initialPageSize: filter == PawlyFeedFilter() ? 90 : 40) { comments = $0 }.id(filter)
                     } else {
                         if store.posts.isEmpty { Text("Todavía no hay historias") }
                         ForEach(store.posts) { post in

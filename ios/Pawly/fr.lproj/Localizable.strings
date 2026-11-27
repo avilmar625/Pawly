@@ -706,3 +706,7 @@
 "Enviado" = "Envoyé";
 "Buscar por nombre o usuario" = "Rechercher par nom ou identifiant";
 "Solo se pueden compartir perfiles públicos." = "Seuls les profils publics peuvent être partagés.";
+"Dirección o coordenadas" = "Adresse ou coordonnées";
+"Mapa de selección" = "Carte de sélection";
+"Acerca o mueve el mapa y confirma el punto central." = "Zoomez ou déplacez la carte, puis confirmez le point central.";
+"No se encontró la dirección. Puedes elegir el punto en el mapa." = "Adresse introuvable. Vous pouvez choisir le point sur la carte.";

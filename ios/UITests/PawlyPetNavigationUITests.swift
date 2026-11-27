@@ -15,7 +15,7 @@ final class PawlyPetNavigationUITests: XCTestCase {
         return result
     }
 
-    @MainActor func testSwitchPetInCalendarAndChangeLanguageWithoutLosingSelection() async throws {
+    @MainActor private func launchSignedIn() async throws -> (XCUIApplication, XCUIElement) {
         continueAfterFailure = false
         let email = "ui-\(UUID().uuidString)@example.test"
         let password = "local-fixture-123"
@@ -50,6 +50,34 @@ final class PawlyPetNavigationUITests: XCTestCase {
         let loaded = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@", "Uma", "Nora")
         let petReady = XCTNSPredicateExpectation(predicate: loaded, object: header)
         XCTAssertEqual(XCTWaiter.wait(for: [petReady], timeout: 12), .completed)
+        return (app, header)
+    }
+
+    @MainActor func testLostMapAcceptsCoordinatesWithoutAddressOrLocationPermission() async throws {
+        let (app, _) = try await launchSignedIn()
+        app.tabBars.buttons.element(boundBy: 3).tap()
+        let lost = app.buttons["more.lostPet"]
+        XCTAssertTrue(lost.waitForExistence(timeout: 6))
+        if !lost.isHittable { app.swipeUp() }
+        lost.tap()
+        let area = app.buttons["lost.selectArea"]
+        XCTAssertTrue(area.waitForExistence(timeout: 6))
+        if !area.isHittable { app.swipeUp() }
+        area.tap()
+        let address = app.textFields["map.address"]
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        address.tap()
+        address.typeText("41.3874, 2.1686\n")
+        let confirm = app.buttons["map.confirm"]
+        let valid = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true AND isHittable == true"), object: confirm)
+        XCTAssertEqual(XCTWaiter.wait(for: [valid], timeout: 8), .completed)
+        confirm.tap()
+        let rounded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "41.39, 2.17"), object: area)
+        XCTAssertEqual(XCTWaiter.wait(for: [rounded], timeout: 6), .completed)
+    }
+
+    @MainActor func testSwitchPetInCalendarAndChangeLanguageWithoutLosingSelection() async throws {
+        let (app, header) = try await launchSignedIn()
         let target = header.label.contains("Nora") ? "Uma" : "Nora"
         let agenda = app.buttons["pet.section.3"]
         let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: agenda)

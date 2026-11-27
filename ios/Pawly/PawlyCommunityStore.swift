@@ -9,6 +9,12 @@ struct PawlyFeedPost: Identifiable {
     var text:String; var imageURL:String; var videoURL:String; var category:String
     var likeCount:Int; var commentCount:Int; var likedByMe:Bool; var createdAt:Date?
     var areaChanged = false
+    var lostLatCell: Int?
+    var lostLonCell: Int?
+    var publishedPoint: CLLocationCoordinate2D? {
+        guard !areaChanged, let lat = lostLatCell, let lon = lostLonCell, (-9000...9000).contains(lat), (-18000...18000).contains(lon) else { return nil }
+        return .init(latitude: Double(lat)/100, longitude: Double(lon)/100)
+    }
 }
 struct PawlyPublicUser:Identifiable {
     var id:String;var username:String;var displayName:String;var bio:String;var photoURL:String;var followersCount:Int;var following:Bool
@@ -168,7 +174,8 @@ final class PawlyCommunityStore: ObservableObject {
             likeCount:data["likeCount"] as? Int ?? 0,
             commentCount:data["commentCount"] as? Int ?? 0,
             likedByMe:likes.contains(currentUID),
-            createdAt:(data["createdAt"] as? Timestamp)?.dateValue(), areaChanged: data["lostAreaEdited"] as? Bool ?? false
+            createdAt:(data["createdAt"] as? Timestamp)?.dateValue(), areaChanged: data["lostAreaEdited"] as? Bool ?? false,
+            lostLatCell: data["lostLatCell"] as? Int, lostLonCell: data["lostLonCell"] as? Int
         )
     }
 
@@ -184,7 +191,8 @@ final class PawlyCommunityStore: ObservableObject {
             imageURL:x["imageUrl"] as? String ?? "",videoURL:x["videoUrl"] as? String ?? "",
             category:x["category"] as? String ?? "STORY",likeCount:x["likeCount"] as? Int ?? 0,
             commentCount:x["commentCount"] as? Int ?? 0,likedByMe:likes.contains(uid),
-            createdAt:(x["createdAt"] as? Timestamp)?.dateValue(), areaChanged: x["lostAreaEdited"] as? Bool ?? false)
+            createdAt:(x["createdAt"] as? Timestamp)?.dateValue(), areaChanged: x["lostAreaEdited"] as? Bool ?? false,
+            lostLatCell: x["lostLatCell"] as? Int, lostLonCell: x["lostLonCell"] as? Int)
     }
     func listenFeed() {
         guard let uid else { return }
@@ -200,18 +208,20 @@ final class PawlyCommunityStore: ObservableObject {
             } ?? []
             self.refreshVisibleFeed()
         }
-        blockedFeedListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
-            guard let self else { return }
-            if let error { self.statusMessage = error.localizedDescription; return }
-            self.receivedBlocked = snap != nil
-            self.blockedFeedIDs = Set(snap?.documents.map { $0.documentID } ?? [])
+        blockedFeedListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener(includeMetadataChanges: true) { [weak self] snap,error in
+            guard let self, self.uid == uid else { return }
+            if let error { self.receivedBlocked = false; self.refreshVisibleFeed(); self.statusMessage = PawlyServiceMessage.key(for: error); return }
+            guard let snap, !snap.metadata.isFromCache else { return }
+            self.receivedBlocked = true
+            self.blockedFeedIDs = Set(snap.documents.map { $0.documentID })
             self.refreshVisibleFeed()
         }
-        blockedByFeedListener = db.collection("users").document(uid).collection("blockedBy").addSnapshotListener { [weak self] snap,error in
-            guard let self else { return }
-            if let error { self.statusMessage = error.localizedDescription; return }
-            self.receivedBlockedBy = snap != nil
-            self.blockedByFeedIDs = Set(snap?.documents.map { $0.documentID } ?? [])
+        blockedByFeedListener = db.collection("users").document(uid).collection("blockedBy").addSnapshotListener(includeMetadataChanges: true) { [weak self] snap,error in
+            guard let self, self.uid == uid else { return }
+            if let error { self.receivedBlockedBy = false; self.refreshVisibleFeed(); self.statusMessage = PawlyServiceMessage.key(for: error); return }
+            guard let snap, !snap.metadata.isFromCache else { return }
+            self.receivedBlockedBy = true
+            self.blockedByFeedIDs = Set(snap.documents.map { $0.documentID })
             self.refreshVisibleFeed()
         }
     }
@@ -225,20 +235,25 @@ final class PawlyCommunityStore: ObservableObject {
         blockedFeedListener = nil
         blockedByFeedListener = nil
     }
-    func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "") async throws -> String {
+    func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "", lostArea: CLLocationCoordinate2D? = nil) async throws -> String {
         try requireVerified()
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
         guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidPost}
         guard let uid else{throw PawlyCommunityError.notSignedIn}
         let profile=try await db.collection("users").document(uid).getDocument()
         let reference = db.collection("posts").document()
-        try await reference.setData([
+        var data: [String: Any] = [
             "authorId":uid,"authorName":profile.get("displayName") as? String ?? profile.get("username") as? String ?? "Usuario Pawly",
             "authorPhoto":profile.get("photoUrl") as? String ?? "","dogName":String(petName.prefix(40)),
             "searchTokens":PawlyFeedFilter.tokens([clean, petName, profile.get("displayName") as? String ?? profile.get("username") as? String ?? "", category]),
             "category":category,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"likeCount":0,"commentCount":0,
             "likedBy":[String](),"createdAt":FieldValue.serverTimestamp()
-        ])
+        ]
+        if category == "LOST", let point = lostArea, CLLocationCoordinate2DIsValid(point) {
+            data["lostLatCell"] = Int((point.latitude * 100).rounded())
+            data["lostLonCell"] = Int((point.longitude * 100).rounded())
+        }
+        try await reference.setData(data)
         return reference.documentID
     }
 

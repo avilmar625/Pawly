@@ -40,13 +40,26 @@ private struct PawlyPublishedArea: View {
     var body: some View {
         NavigationStack {
             VStack {
-                if let point { PawlyLostAreaMap(coordinate: point, name: post.publishedArea.isEmpty ? post.petName : post.publishedArea) }
+                if let point = post.publishedPoint ?? point { PawlyLostAreaMap(coordinate: point, name: post.publishedArea.isEmpty ? post.petName : post.publishedArea) }
                 else if let message { Text(LocalizedStringKey(message)) } else { ProgressView() }
+                if post.publishedPoint == nil, point == nil, !post.publishedArea.isEmpty {
+                    Text(verbatim: post.publishedArea)
+                    if let link = Self.mapsSearch(post.publishedArea) {
+                        Link(destination: link) { Label("Buscar en el mapa", systemImage: "map") }
+                    }
+                }
             }.padding().navigationTitle("Ubicación aproximada del aviso")
                 .toolbar { Button("Cerrar") { dismiss() } }.task { await locate() }
         }.presentationDetents([.medium, .large])
     }
+    private static func mapsSearch(_ query: String) -> URL? {
+        var link = URLComponents(); link.scheme = "https"; link.host = "maps.apple.com"; link.path = "/"
+        link.queryItems = [URLQueryItem(name: "q", value: query)]
+        return link.url
+    }
     private func locate() async {
+        if post.publishedPoint != nil { return }
+        if let known = PawlyMapPoint.parse(post.publishedArea) { point = PawlyMapPoint.approximate(known); return }
         do {
             if !post.areaChanged, Auth.auth().currentUser?.isEmailVerified == true,
                let alert = try? await Firestore.firestore().collection("lostPetAlerts").document(post.id).getDocument(),

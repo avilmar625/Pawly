@@ -27,6 +27,7 @@ struct PawlyFeedFilter: Hashable {
 struct PawlyFeedBrowser: View {
     let filter: PawlyFeedFilter
     @ObservedObject var store: PawlyCommunityStore
+    var initialPageSize = 40
     let comment: (PawlyFeedPost) -> Void
     @State private var posts = [PawlyFeedPost]()
     @State private var cursor: DocumentSnapshot?
@@ -67,12 +68,14 @@ struct PawlyFeedBrowser: View {
                 let db = Firestore.firestore()
                 if filter.following {
                     let docs = try await db.collection("users").document(uid).collection("following").getDocuments()
+                    guard request == id, !Task.isCancelled else { return }
                     followed = Set(docs.documents.map(\.documentID))
                 }
                 if filter.query.hasPrefix("@") {
                     let handle = String(filter.query.dropFirst()).lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !handle.isEmpty, !handle.contains("/") else { busy = false; return }
                     let result = try await db.collection("usernames").document(handle).getDocument()
+                    guard request == id, !Task.isCancelled else { return }
                     author = result.get("uid") as? String
                     if author == nil { busy = false; return }
                 }
@@ -95,7 +98,8 @@ struct PawlyFeedBrowser: View {
             else if let term = words.max(by: { $0.count < $1.count }) {
                 q = q.whereField("searchTokens", arrayContains: String(term.prefix(64)))
             }
-            q = q.order(by: filter.order.field, descending: filter.order != .oldest).limit(to: 40)
+            let size = cursor == nil ? initialPageSize : 40
+            q = q.order(by: filter.order.field, descending: filter.order != .oldest).limit(to: size)
             if let cursor { q = q.start(afterDocument: cursor) }
             let result = try await q.getDocuments()
             guard request == id, !Task.isCancelled, store.uid == uid else { return }
@@ -109,7 +113,7 @@ struct PawlyFeedBrowser: View {
                     && (author != nil || words.isEmpty || content.contains { $0.contains(words.joined(separator: " ")) })
             }
             posts += matching
-            cursor = result.documents.last; more = result.documents.count == 40
+            cursor = result.documents.last; more = result.documents.count == size
             error = nil
         } catch { if request == id { self.error = PawlyServiceMessage.key(for: error) } }
     }

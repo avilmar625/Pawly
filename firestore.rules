@@ -652,6 +652,10 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if signedIn();
       allow create: if verified()
+        && (!request.resource.data.keys().hasAny(['lostLatCell','lostLonCell']) ||
+          (request.resource.data.category == 'LOST' && request.resource.data.lostLatCell is int && request.resource.data.lostLonCell is int
+           && request.resource.data.lostLatCell >= -9000 && request.resource.data.lostLatCell <= 9000
+           && request.resource.data.lostLonCell >= -18000 && request.resource.data.lostLonCell <= 18000))
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 2000

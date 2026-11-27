@@ -326,7 +326,8 @@ private struct PawlyCommunityPlaceForm: View {
     @State private var location = ""
     @State private var description = ""
     @State private var coordinate: CLLocationCoordinate2D?
-    @State private var geocoding = false
+    @State private var choosingPoint = false
+    @State private var locatedAddress = ""
     @State private var saving = false
     @State private var error: String?
 
@@ -337,6 +338,7 @@ private struct PawlyCommunityPlaceForm: View {
         _name = State(initialValue: place?.name ?? "")
         _category = State(initialValue: place?.category ?? "Parque")
         _location = State(initialValue: place?.location ?? "")
+        _locatedAddress = State(initialValue: place?.location ?? "")
         _description = State(initialValue: place?.description ?? "")
         if let latitude = place?.latitude, let longitude = place?.longitude {
             _coordinate = State(initialValue: CLLocationCoordinate2D(latitude: latitude, longitude: longitude))
@@ -354,20 +356,13 @@ private struct PawlyCommunityPlaceForm: View {
                         }
                     }
                     TextField("Dirección o municipio", text: $location)
-                        .onChange(of: location, perform: { _ in coordinate = nil })
+                        .onChange(of: location) { if $0 != locatedAddress { coordinate = nil } }
                     TextField("Qué lo hace recomendable", text: $description, axis: .vertical)
                         .lineLimit(3...6)
                         .onChange(of: description) { description = String($0.prefix(500)) }
-                    Button {
-                        Task { await geocode() }
-                    } label: {
-                        HStack {
-                            if geocoding { ProgressView() }
-                            Label(coordinate == nil ? "Localizar dirección" : "Ubicación lista",
-                                  systemImage: "mappin.and.ellipse")
-                        }
+                    Button { choosingPoint = true } label: {
+                        Label(coordinate == nil ? "Localizar dirección" : "Cambiar ubicación en el mapa", systemImage: "mappin.and.ellipse")
                     }
-                    .disabled(geocoding || location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     if let coordinate {
                         Text(String(format: "Coordenadas: %.5f, %.5f", coordinate.latitude, coordinate.longitude))
                             .font(.caption).foregroundStyle(.secondary)
@@ -396,6 +391,11 @@ private struct PawlyCommunityPlaceForm: View {
                               description.trimmingCharacters(in: .whitespacesAndNewlines).count < 10)
                 }
             }
+            .sheet(isPresented: $choosingPoint) {
+                PawlyMapPointPicker(query: location, point: coordinate, title: "Localizar dirección") { label, point in
+                    locatedAddress = label; location = label; coordinate = point; error = nil
+                }
+            }
             .navigationTitle(existing == nil ? "Proponer un lugar" : "Editar propuesta")
         }
     }
@@ -415,19 +415,5 @@ private struct PawlyCommunityPlaceForm: View {
         }
     }
 
-    @MainActor private func geocode() async {
-        geocoding = true
-        defer { geocoding = false }
-        do {
-            let results = try await CLGeocoder().geocodeAddressString(location)
-            guard let result = results.first?.location?.coordinate else {
-                error = "No se ha podido localizar la dirección. Añade una calle y un municipio."
-                return
-            }
-            coordinate = result
-            error = nil
-        } catch let geocodingError {
-            self.error = geocodingError.localizedDescription
-        }
-    }
+
 }

@@ -583,3 +583,15 @@ test("profile cards require a public profile accessible to both conversation par
   await assertFails(send("blocked"));
   await assertFails(send("missing"));
 });
+
+test("lost map positions accept a complete bounded integer cell, including zero", async () => {
+  const db = env.authenticatedContext("author", { email_verified: true }).firestore();
+  const post = { authorId: "author", text: "Aviso", category: "LOST", imageUrl: "" };
+  const create = changes => setDoc(doc(collection(db, "posts")), { ...post, ...changes });
+  await assertSucceeds(create({ lostLatCell: 0, lostLonCell: 0 }));
+  await assertSucceeds(create({ lostLatCell: 4139, lostLonCell: 217 }));
+  await assertFails(create({ lostLatCell: 41.3874, lostLonCell: 2.1686 }));
+  await assertFails(create({ lostLatCell: 4139 }));
+  await assertFails(create({ lostLatCell: -9001, lostLonCell: 18001 }));
+  await assertFails(create({ category: "STORY", lostLatCell: 4139, lostLonCell: 217 }));
+});

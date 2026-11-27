@@ -706,3 +706,7 @@
 "Enviado" = "Enviado";
 "Buscar por nombre o usuario" = "Buscar por nombre o usuario";
 "Solo se pueden compartir perfiles públicos." = "Solo se pueden compartir perfiles públicos.";
+"Dirección o coordenadas" = "Dirección o coordenadas";
+"Mapa de selección" = "Mapa de selección";
+"Acerca o mueve el mapa y confirma el punto central." = "Acerca o mueve el mapa y confirma el punto central.";
+"No se encontró la dirección. Puedes elegir el punto en el mapa." = "No se encontró la dirección. Puedes elegir el punto en el mapa.";

@@ -33,7 +33,7 @@ struct PawlyMoreHubView: View {
       NavigationLink { PawlyExpensesView() } label:{Label("Gastos de mi mascota",systemImage:"receipt")}
       NavigationLink { PawlyProfessionalDirectoryView() } label:{Label("Profesionales",systemImage:"stethoscope")}
       NavigationLink { PawlyMarketView() } label:{Label("Pawly Market",systemImage:"bag.fill")}
-      NavigationLink { PawlyLostPetView() } label:{Label("He perdido mi mascota",systemImage:"pawprint")}
+      NavigationLink { PawlyLostPetView() } label:{Label("He perdido mi mascota",systemImage:"pawprint")}.accessibilityIdentifier("more.lostPet")
      }.id(sectionKey("daily"))
     }
     Section {
@@ -679,7 +679,8 @@ struct PawlyLostPetView: View {
  @StateObject private var attachment = PawlyAttachmentDraft(maximumDuration: 60)
  @State private var published = false
  @State private var busy=false
- @State private var geocoding=false
+ @State private var choosingArea = false
+ @State private var locatedAddress = ""
  @State private var savingSubscription=false
  @State private var status:String?
  @State private var error:String?
@@ -735,16 +736,12 @@ struct PawlyLostPetView: View {
     Section("Ubicación aproximada del aviso") {
      Text("La zona del aviso se localiza a partir de la dirección o barrio que escribas. Pawly redondea la posición a una celda de aproximadamente 1 km antes de guardarla.")
       .font(.caption).foregroundStyle(.secondary)
-     Button {
-      Task { await resolveLostLocation() }
-     } label: {
-      HStack {
-       if geocoding { ProgressView() }
-       Label(lostLocation == nil ? "Localizar la zona del aviso":"Zona localizada",systemImage:"mappin.and.ellipse")
-      }
-     }.disabled(geocoding || area.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
+     Button { choosingArea = true } label: {
+      Label(lostLocation == nil ? "Localizar la zona del aviso" : "Cambiar ubicación en el mapa", systemImage: "mappin.and.ellipse")
+     }.accessibilityIdentifier("lost.selectArea")
+      .accessibilityValue(Text(verbatim: lostLocation.map { PawlyMapPoint.label($0, approximate: true) } ?? ""))
      if let lostLocation {
-      PawlyLostAreaMap(coordinate: lostLocation, name: area).id(area)
+      PawlyLostAreaMap(coordinate: lostLocation, name: area).id(PawlyMapPoint.label(lostLocation, approximate: true))
      }
     }
     Section {
@@ -819,7 +816,12 @@ struct PawlyLostPetView: View {
    .onReceive(attachment.$thumbnail) { _ in posterURL = nil }
    .onChange(of:name){_ in posterURL=nil}
    .onChange(of:breed){_ in posterURL=nil}
-   .onChange(of:area){_ in posterURL=nil; lostLocation=nil}
+   .sheet(isPresented: $choosingArea) {
+    PawlyMapPointPicker(query: area, point: lostLocation, title: "Ubicación aproximada del aviso", approximate: true) { label, point in
+     locatedAddress = label; area = label; lostLocation = point; error = nil
+    }
+   }
+   .onChange(of:area){ value in posterURL=nil; if value != locatedAddress { lostLocation=nil } }
    .onChange(of:lastSeen){_ in posterURL=nil}
    .onChange(of:details){_ in posterURL=nil}
    .onChange(of:contact){_ in posterURL=nil;includeContact=false}
@@ -902,22 +904,6 @@ struct PawlyLostPetView: View {
   } catch let saveError { self.error=saveError.localizedDescription }
  }
 
- @MainActor private func resolveLostLocation() async {
-  geocoding=true
-  defer { geocoding=false }
-  do {
-   let query = area
-   let results=try await CLGeocoder().geocodeAddressString(query)
-   guard query == area else { return }
-   guard let coordinate=results.first?.location?.coordinate else {
-    error="No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto."
-    return
-   }
-   lostLocation=CLLocationCoordinate2D(latitude: (coordinate.latitude * 100).rounded() / 100, longitude: (coordinate.longitude * 100).rounded() / 100)
-   error=nil
-  } catch { self.error="No se ha podido localizar la zona. Prueba con el barrio y el municipio." }
- }
-
  @MainActor private func publish() async {
   guard let uid=session.user?.uid else {
    error="Inicia sesión para publicar el aviso."
@@ -930,7 +916,7 @@ struct PawlyLostPetView: View {
   do {
    let media = try await attachment.upload(owner: uid, forPost: true)
    let message="MASCOTA PERDIDA · \(name)\nZona: \(area)\nÚltima vez vista: \(lastSeen.isEmpty ? "No indicada":lastSeen)\nContacto: \(!includeContact || contact.isEmpty ? "No indicado":contact)\n\n\(details)"
-   let postID=try await community.publish(text:message,petName:name,category:"LOST",imageURL:media.image,videoURL:media.video)
+   let postID=try await community.publish(text:message,petName:name,category:"LOST",imageURL:media.image,videoURL:media.video,lostArea:lostLocation)
    published = true
    guard let lostLocation else {
     status="La publicación se ha creado, pero no se han enviado alertas por proximidad porque falta localizar la zona del aviso."

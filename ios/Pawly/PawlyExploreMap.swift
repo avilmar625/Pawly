@@ -44,6 +44,7 @@ private struct ExplorePin: Identifiable {
 struct PawlyExploreMap: View {
     let saved: [PawlySavedPlace]
     let nearby: [PawlyPlaceResult]
+    @StateObject private var gps = PawlyLocationProvider()
     @State var region: MKCoordinateRegion
     @State private var enabled = Set(ExploreLayer.allCases)
     @State private var remote: [ExplorePin] = []
@@ -72,10 +73,12 @@ struct PawlyExploreMap: View {
                 } label: { Label("Filtros", systemImage: "line.3.horizontal.decrease.circle") }
                 Spacer()
                 if loading { ProgressView() }
+                Button { gps.request() } label: { Image(systemName: "location.fill") }.accessibilityLabel("Usar mi ubicación")
                 Button { fit() } label: { Label("Mostrar todos", systemImage: "arrow.up.left.and.arrow.down.right") }
                     .disabled(visible.isEmpty)
             }.padding(.horizontal)
-            Map(coordinateRegion: $region, annotationItems: visible) { pin in
+            if let message = gps.message { Text(LocalizedStringKey(message)).font(.caption) }
+            Map(coordinateRegion: $region, showsUserLocation: gps.location != nil, annotationItems: visible) { pin in
                 MapAnnotation(coordinate: pin.coordinate) {
                     Button { selected = pin } label: {
                         Image(systemName: pin.layer.symbol).foregroundStyle(.white).padding(8)
@@ -99,7 +102,10 @@ struct PawlyExploreMap: View {
             }
         }
         .navigationTitle("Mapa de Pawly").navigationBarTitleDisplayMode(.inline)
-        .task { await load(); if !Task.isCancelled { fit() } }
+        .onReceive(gps.$location) { fix in
+            if let fix { region = MKCoordinateRegion(center: fix.coordinate, latitudinalMeters: 8000, longitudinalMeters: 8000) }
+        }.onDisappear { gps.cancel() }
+        .task { await load() }
     }
 
     @MainActor private func load() async {

@@ -706,3 +706,7 @@
 "Enviado" = "Bidalia";
 "Buscar por nombre o usuario" = "Bilatu izenaren edo erabiltzaile-izenaren arabera";
 "Solo se pueden compartir perfiles públicos." = "Profil publikoak bakarrik parteka daitezke.";
+"Dirección o coordenadas" = "Helbidea edo koordenatuak";
+"Mapa de selección" = "Kokapena hautatzeko mapa";
+"Acerca o mueve el mapa y confirma el punto central." = "Handiagotu edo mugitu mapa eta baieztatu erdiko puntua.";
+"No se encontró la dirección. Puedes elegir el punto en el mapa." = "Ez da helbidea aurkitu. Puntua mapan hauta dezakezu.";

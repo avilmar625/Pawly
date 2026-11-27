@@ -706,3 +706,7 @@
 "Enviado" = "Sent";
 "Buscar por nombre o usuario" = "Search by name or username";
 "Solo se pueden compartir perfiles públicos." = "Only public profiles can be shared.";
+"Dirección o coordenadas" = "Address or coordinates";
+"Mapa de selección" = "Location selection map";
+"Acerca o mueve el mapa y confirma el punto central." = "Zoom or pan the map, then confirm its center point.";
+"No se encontró la dirección. Puedes elegir el punto en el mapa." = "Address not found. You can choose the point on the map.";

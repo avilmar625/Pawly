@@ -706,3 +706,7 @@
 "Enviado" = "Gesendet";
 "Buscar por nombre o usuario" = "Nach Name oder Benutzername suchen";
 "Solo se pueden compartir perfiles públicos." = "Nur öffentliche Profile können geteilt werden.";
+"Dirección o coordenadas" = "Adresse oder Koordinaten";
+"Mapa de selección" = "Karte zur Standortauswahl";
+"Acerca o mueve el mapa y confirma el punto central." = "Zoome oder verschiebe die Karte und bestätige den Mittelpunkt.";
+"No se encontró la dirección. Puedes elegir el punto en el mapa." = "Adresse nicht gefunden. Du kannst den Punkt auf der Karte wählen.";

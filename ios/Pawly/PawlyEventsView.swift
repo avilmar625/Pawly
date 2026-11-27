@@ -661,7 +661,7 @@ private struct PawlyEventCreateSheet: View {
             .disabled(saving).interactiveDismissDisabled(saving)
             .navigationTitle(editing == nil ? "Crear evento" : "Editar evento")
             .sheet(isPresented:$showLocationPicker) {
-                PawlyEventLocationPicker(initialQuery:location, initialPoint: location == resolvedLocation ? coordinate : nil){name,point in
+                PawlyMapPointPicker(query: location, point: location == resolvedLocation ? coordinate : nil, title: "Ubicación del evento"){name,point in
                     location=name;resolvedLocation=name;coordinate=point
                 }
             }
@@ -693,87 +693,4 @@ private struct PawlyEventCreateSheet: View {
         }
     }
 
-}
-
-private struct PawlyEventLocationPicker:View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var query:String
-    @State private var results:[MKMapItem]=[]
-    @State private var selected:MKMapItem?
-    @State private var region=MKCoordinateRegion()
-    @State private var busy=false
-    @State private var message:String?
-    @StateObject private var gps = PawlyLocationProvider()
-    let initialPoint: CLLocationCoordinate2D?
-    let onSelect:(String,CLLocationCoordinate2D)->Void
-
-    init(initialQuery:String, initialPoint: CLLocationCoordinate2D?, onSelect:@escaping(String,CLLocationCoordinate2D)->Void) {
-        _query=State(initialValue:initialQuery);self.onSelect=onSelect;self.initialPoint=initialPoint
-    }
-    var body:some View {
-        NavigationStack {
-            List {
-                Section("Buscar lugar o dirección") {
-                    TextField("Lugar, calle o localidad",text:$query).onSubmit{Task{await search()}}
-                    Button {Task{await search()}}label:{Label("Buscar en el mapa",systemImage:"magnifyingglass")}
-                        .disabled(busy || query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty)
-                    Button { gps.request() } label: { Label("Usar mi ubicación", systemImage: "location.fill") }.disabled(busy)
-                    if let status = gps.message { Text(LocalizedStringKey(status)).font(.caption) }
-                    if busy { ProgressView() }
-                    if let message {Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary)}
-                }
-                if let selected {
-                    Section("Ajusta el punto del evento") {
-                        Map(coordinateRegion:$region)
-                            .frame(height:230)
-                            .overlay { Image(systemName:"mappin.circle.fill").font(.largeTitle).foregroundStyle(PawlyColors.primary).allowsHitTesting(false) }
-                        Text("Desplaza el mapa para ajustar el punto central. Solo se guardará la ubicación del evento.").font(.caption)
-                        Button("Usar este punto") {
-                            let point = region.center
-                            busy = true
-                            Task {
-                                let mark = try? await CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: point.latitude, longitude: point.longitude)).first
-                                let address = [mark?.name, mark?.locality].compactMap { $0 }.joined(separator: ", ")
-                                let fallback = String(format: "%.4f, %.4f", point.latitude, point.longitude)
-                                let same = CLLocation(latitude: point.latitude, longitude: point.longitude).distance(from: selected.placemark.location ?? CLLocation(latitude: 0, longitude: 0)) < 150
-                                onSelect(address.isEmpty ? (same ? selected.name ?? fallback : fallback) : address, point)
-                                busy = false; dismiss()
-                            }
-                        }.buttonStyle(.borderedProminent).disabled(busy)
-                    }
-                }
-                Section("Resultados") {
-                    ForEach(Array(results.enumerated()),id:\.offset){_,item in
-                        Button {
-                            selected=item
-                            region=MKCoordinateRegion(center:item.placemark.coordinate,latitudinalMeters:1200,longitudinalMeters:1200)
-                        } label: {
-                            VStack(alignment:.leading){Text(item.name ?? "Lugar");Text(item.placemark.title ?? "").font(.caption).foregroundStyle(.secondary)}
-                        }.buttonStyle(.borderless)
-                    }
-                }
-            }.navigationTitle("Ubicación del evento")
-            .toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}}}
-            .onReceive(gps.$location) { if let fix = $0 { center(fix.coordinate) } }
-            .onDisappear { gps.cancel() }
-            .task { if let initialPoint { center(initialPoint) }
-                    else if !query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { await search() } }
-        }
-    }
-    private func center(_ point: CLLocationCoordinate2D) {
-        selected = MKMapItem(placemark: MKPlacemark(coordinate: point))
-        region = MKCoordinateRegion(center: point, latitudinalMeters: 1200, longitudinalMeters: 1200)
-    }
-    @MainActor private func search() async {
-        guard !busy,!query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else{return}
-        busy=true;message=nil;selected=nil;results=[];defer{busy=false}
-        let request=MKLocalSearch.Request();request.naturalLanguageQuery=query
-        do {
-            results=try await MKLocalSearch(request:request).start().mapItems
-            if let first=results.first {
-                selected=first
-                region=MKCoordinateRegion(center:first.placemark.coordinate,latitudinalMeters:1200,longitudinalMeters:1200)
-            } else {message="No se encontraron lugares. Prueba una dirección más concreta."}
-        } catch { message=PawlyServiceMessage.key(for: error) }
-    }
 }

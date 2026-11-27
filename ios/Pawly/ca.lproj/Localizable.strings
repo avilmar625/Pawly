@@ -706,3 +706,7 @@
 "Enviado" = "Enviat";
 "Buscar por nombre o usuario" = "Cerca per nom o usuari";
 "Solo se pueden compartir perfiles públicos." = "Només es poden compartir perfils públics.";
+"Dirección o coordenadas" = "Adreça o coordenades";
+"Mapa de selección" = "Mapa de selecció";
+"Acerca o mueve el mapa y confirma el punto central." = "Apropa o mou el mapa i confirma el punt central.";
+"No se encontró la dirección. Puedes elegir el punto en el mapa." = "No s’ha trobat l’adreça. Pots triar el punt al mapa.";
