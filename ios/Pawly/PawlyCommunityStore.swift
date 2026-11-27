@@ -256,6 +256,71 @@ final class PawlyCommunityStore: ObservableObject {
         return reference.documentID
     }
 
+    func editLostPost(_ original: PawlyFeedPost, text: String, pin: PawlyLostPinEdit,
+                      media: (image: String, video: String)?) async throws -> PawlyFeedPost {
+        try requireVerified()
+        guard let uid, original.authorId == uid, original.category == "LOST" else { throw PawlyCommunityError.invalidPost }
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty, clean.count <= 2000 else { throw PawlyCommunityError.invalidPost }
+        let textEdited = clean != original.text
+        let post = db.collection("posts").document(original.id)
+        let alert = db.collection("lostPetAlerts").document(original.id)
+        let result = try await db.runTransaction { transaction, failure -> Any? in
+            do {
+                let current = try transaction.getDocument(post)
+                guard current.exists, current.get("authorId") as? String == uid, current.get("category") as? String == "LOST" else {
+                    throw PawlyCommunityError.invalidPost
+                }
+                let currentText = current.get("text") as? String ?? ""
+                if textEdited && currentText != original.text && currentText != clean { throw PawlyLostEditError.changed }
+                var fields: [String: Any] = [:]
+                if textEdited { fields["text"] = clean }
+                if textEdited || current.get("searchTokens") == nil {
+                    fields["searchTokens"] = PawlyFeedFilter.tokens([textEdited ? clean : currentText,
+                        current.get("authorName") as? String ?? "", current.get("dogName") as? String ?? "", "LOST"])
+                }
+                if let media {
+                    let oldImage = current.get("imageUrl") as? String ?? "", oldVideo = current.get("videoUrl") as? String ?? ""
+                    guard (oldImage == original.imageURL && oldVideo == original.videoURL) ||
+                            (oldImage == media.image && oldVideo == media.video) else { throw PawlyLostEditError.changed }
+                    fields["imageUrl"] = media.image; fields["videoUrl"] = media.video
+                    let url = media.image.isEmpty ? media.video : media.image
+                    fields["lostMediaAssetId"] = url.isEmpty ? FieldValue.delete() as Any : PawlyCloudinaryUploader.indexID(for: url)
+                }
+                if pin != .keep {
+                    let priorLat = current.get("lostLatCell") as? Int, priorLon = current.get("lostLonCell") as? Int
+                    let invalidated = current.get("lostAreaEdited") as? Bool ?? false
+                    let samePin = priorLat == original.lostLatCell && priorLon == original.lostLonCell && invalidated == original.areaChanged
+                    guard (samePin && PawlyLostNoticeText.area(in: currentText) == original.publishedArea) ||
+                          (pin.matches(priorLat, priorLon, invalidated: invalidated) && PawlyLostNoticeText.area(in: currentText) == PawlyLostNoticeText.area(in: clean))
+                    else { throw PawlyLostEditError.changed }
+                    let existing = try transaction.getDocument(alert)
+                    let latitude: Any = pin.latitude.map { $0 as Any } ?? FieldValue.delete()
+                    let longitude: Any = pin.longitude.map { $0 as Any } ?? FieldValue.delete()
+                    fields["lostLatCell"] = latitude
+                    fields["lostLonCell"] = longitude
+                    fields["lostAreaEdited"] = pin == .clear
+                    if existing.get("status") as? String == "active" {
+                        var change: [String: Any] = ["latCell": latitude, "lonCell": longitude]
+                        if pin == .clear { change["status"] = "paused" }
+                        transaction.updateData(change, forDocument: alert)
+                    }
+                }
+                if !fields.isEmpty { transaction.updateData(fields, forDocument: post) }
+                return current
+            } catch { failure?.pointee = error as NSError; return nil }
+        }
+        guard let snapshot = result as? DocumentSnapshot else { throw PawlyCommunityError.invalidPost }
+        var updated = Self.feedPost(snapshot, uid: uid)
+        if textEdited { updated.text = clean }
+        if let media { updated.imageURL = media.image; updated.videoURL = media.video }
+        if pin != .keep {
+            updated.areaChanged = pin == .clear
+            updated.lostLatCell = pin.latitude; updated.lostLonCell = pin.longitude
+        }
+        return updated
+    }
+
     func loadLostPetSubscription() async throws -> PawlyLostPetSubscription? {
         guard let uid else { throw PawlyCommunityError.notSignedIn }
         let document = try await db.collection("lostPetSubscriptions").document(uid).getDocument()

@@ -10,6 +10,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -606,4 +607,58 @@ test("lost map positions accept a complete bounded integer cell, including zero"
   await assertFails(create({ lostLatCell: 4139 }));
   await assertFails(create({ lostLatCell: -9001, lostLonCell: 18001 }));
   await assertFails(create({ category: "STORY", lostLatCell: 4139, lostLonCell: 217 }));
+});
+
+test("a lost area moves atomically, and removing it pauses the linked proximity alert", async () => {
+  const author = env.authenticatedContext("author", { email_verified: true }).firestore();
+  const reader = env.authenticatedContext("reader", { email_verified: true }).firestore();
+  const ref = doc(author, "posts/area");
+  const alert = doc(author, "lostPetAlerts/area");
+  await assertSucceeds(setDoc(ref, {
+    authorId: "author", category: "LOST", text: "Zona: Centro", imageUrl: "", searchTokens: ["centro"]
+  }));
+  // Before an alert exists the owner may check just this notice during a transaction.
+  assert.equal((await assertSucceeds(getDoc(alert))).exists(), false);
+  await assertFails(getDoc(doc(reader, "lostPetAlerts/area")));
+  const record = { postId: "area", authorUid: "author", dogName: "Nora", latCell: 4000, lonCell: -300,
+    status: "active", createdAt: serverTimestamp() };
+  await assertSucceeds(setDoc(alert, record));
+  const next = { lostLatCell: 4139, lostLonCell: 217, lostAreaEdited: false };
+  await assertFails(updateDoc(ref, next));
+  await assertFails(updateDoc(alert, { latCell: 4139, lonCell: 217 }));
+  const move = writeBatch(author);
+  move.update(ref, next); move.update(alert, { latCell: 4139, lonCell: 217 });
+  await assertSucceeds(move.commit());
+  const foreign = writeBatch(reader);
+  foreign.update(doc(reader, "posts/area"), { ...next, lostLonCell: 218 });
+  foreign.update(doc(reader, "lostPetAlerts/area"), { lonCell: 218 });
+  await assertFails(foreign.commit());
+  await assertFails(updateDoc(ref, { lostLatCell: deleteField(), lostLonCell: deleteField(), lostAreaEdited: true }));
+  const clear = writeBatch(author);
+  clear.update(ref, { lostLatCell: deleteField(), lostLonCell: deleteField(), lostAreaEdited: true });
+  clear.update(alert, { latCell: deleteField(), lonCell: deleteField(), status: "paused" });
+  await assertSucceeds(clear.commit());
+  const privateAlert = (await assertSucceeds(getDoc(alert))).data();
+  assert.equal(privateAlert.status, "paused");
+  assert.equal(privateAlert.latCell, undefined);
+  assert.equal(privateAlert.lonCell, undefined);
+  await assertFails(getDoc(doc(reader, "lostPetAlerts/area")));
+  await assertFails(updateDoc(alert, { status: "active" }));
+  await assertSucceeds(updateDoc(ref, next));
+  assert.equal((await getDoc(alert)).data().status, "paused");
+});
+
+test("an edited lost area accepts a coarse pin without creating a proximity alert", async () => {
+  const db = env.authenticatedContext("author", { email_verified: true }).firestore();
+  const ref = doc(db, "posts/pin");
+  await assertSucceeds(setDoc(ref, { authorId: "author", category: "LOST", text: "Zona: Centro", imageUrl: "", searchTokens: ["centro"] }));
+  await assertFails(updateDoc(ref, { lostLatCell: 41.5, lostLonCell: 200 }));
+  await assertFails(updateDoc(ref, { lostLatCell: 10000, lostLonCell: 200 }));
+  await assertFails(updateDoc(ref, { lostLatCell: 4139 }));
+  await assertSucceeds(updateDoc(ref, { lostLatCell: 0, lostLonCell: 0 }));
+  const alert = doc(db, "lostPetAlerts/pin");
+  assert.equal((await getDoc(alert)).exists(), false);
+  const fields = { postId: "pin", authorUid: "author", dogName: "Nora", latCell: 4000, lonCell: -300, status: "active", createdAt: serverTimestamp() };
+  await assertFails(setDoc(alert, fields));
+  await assertSucceeds(setDoc(alert, { ...fields, latCell: 0, lonCell: 0 }));
 });

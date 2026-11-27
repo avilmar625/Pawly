@@ -14,6 +14,15 @@ import Foundation
         let negative = PawlyMapPoint.approximate(PawlyMapPoint.parse("-33.8688, -70.6693")!)
         precondition(negative.latitude == -33.87 && negative.longitude == -70.67)
         precondition(PawlyMapPoint.parse("0, 0") != nil)
+        let legacy = "Mascota perdida\n  zOnA: Barrio anterior\nContacto: Ana\n\nSeñas"
+        let moved = PawlyLostNoticeText.replacingArea(in: legacy, with: "Zona nueva")
+        precondition(moved == "Mascota perdida\nZona: Zona nueva\nContacto: Ana\n\nSeñas")
+        precondition(PawlyLostNoticeText.area(in: moved) == "Zona nueva")
+        precondition(PawlyLostNoticeText.replacingArea(in: moved, with: "") == "Mascota perdida\nContacto: Ana\n\nSeñas")
+        precondition(PawlyLostNoticeText.replacingArea(in: "Aviso sin zona", with: "Puerto") == "Aviso sin zona\nZona: Puerto")
+        precondition(PawlyLostPinEdit.set(0, 0).matches(0, 0, invalidated: false))
+        precondition(PawlyLostPinEdit.clear.matches(nil, nil, invalidated: true))
+        precondition(!PawlyLostPinEdit.keep.matches(nil, nil, invalidated: false))
         print("Map coordinate entry, bounds, labels and privacy rounding passed")
     }
 }

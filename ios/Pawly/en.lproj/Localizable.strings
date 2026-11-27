@@ -714,3 +714,6 @@
 "Ha comentado tu publicación." = "Commented on your post.";
 "Le ha gustado tu publicación." = "Liked your post.";
 "Ha empezado a seguirte." = "Started following you.";
+"Retirar zona del aviso" = "Remove the alert area";
+"Otra persona o dispositivo ha modificado el aviso. Tu borrador sigue aquí." = "The alert was edited elsewhere. Your draft is still here.";
+"Descartar borrador y cargar la última versión" = "Discard draft and load latest version";

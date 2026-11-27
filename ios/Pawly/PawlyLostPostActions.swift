@@ -4,14 +4,7 @@ import FirebaseAuth
 import FirebaseFirestore
 
 extension PawlyFeedPost {
-    var publishedArea: String {
-        for line in text.components(separatedBy: .newlines) {
-            if line.lowercased().hasPrefix("zona:") {
-                return String(line.dropFirst(5)).trimmingCharacters(in: .whitespaces)
-            }
-        }
-        return ""
-    }
+    var publishedArea: String { PawlyLostNoticeText.area(in: text) }
 }
 
 struct PawlyLostPostActions: View {
@@ -63,6 +56,7 @@ private struct PawlyPublishedArea: View {
         do {
             if !post.areaChanged, Auth.auth().currentUser?.isEmailVerified == true,
                let alert = try? await Firestore.firestore().collection("lostPetAlerts").document(post.id).getDocument(),
+               alert.get("status") as? String == "active",
                let lat = alert.get("latCell") as? Int, let lon = alert.get("lonCell") as? Int,
                (-9000...9000).contains(lat), (-18000...18000).contains(lon) {
                 point = CLLocationCoordinate2D(latitude: Double(lat)/100, longitude: Double(lon)/100); return
@@ -76,20 +70,50 @@ private struct PawlyPublishedArea: View {
 
 private struct PawlyLostPostEditor: View {
     @Environment(\.dismiss) private var dismiss
-    let post: PawlyFeedPost
+    @State private var post: PawlyFeedPost
     let onEdited: (PawlyFeedPost) -> Void
     @StateObject private var attachment = PawlyAttachmentDraft(maximumDuration: 60)
     @State private var text: String
+    @State private var choosingArea = false
+    @State private var selectedArea: String?
+    @State private var selectedPoint: CLLocationCoordinate2D?
+    @State private var removeArea = false
+    @State private var conflict = false
     @State private var retain = true
+    private var area: String { PawlyLostNoticeText.area(in: text) }
+    private var effectivePoint: CLLocationCoordinate2D? {
+        if area == selectedArea, let selectedPoint { return selectedPoint }
+        return !removeArea && area == post.publishedArea ? post.publishedPoint : nil
+    }
+    private var pinEdit: PawlyLostPinEdit {
+        if area == selectedArea, let point = selectedPoint {
+            return .set(Int((point.latitude * 100).rounded()), Int((point.longitude * 100).rounded()))
+        }
+        return removeArea || area != post.publishedArea ? .clear : .keep
+    }
     @State private var saving = false
     @State private var error: String?
     init(post: PawlyFeedPost, onEdited: @escaping (PawlyFeedPost) -> Void) {
-        self.post = post; self.onEdited = onEdited; _text = State(initialValue: post.text)
+        _post = State(initialValue: post); self.onEdited = onEdited; _text = State(initialValue: post.text)
     }
     var body: some View {
         NavigationStack {
             Form {
                 TextField("Datos del aviso", text: $text, axis: .vertical).lineLimit(4...12)
+                Section("Ubicación aproximada del aviso") {
+                    if let point = effectivePoint {
+                        PawlyLostAreaMap(coordinate: point, name: area).id(PawlyMapPoint.label(point, approximate: true))
+                    } else if !area.isEmpty {
+                        Text(verbatim: area)
+                    }
+                    Button { choosingArea = true } label: { Label("Cambiar ubicación en el mapa", systemImage: "mappin.and.ellipse") }
+                    if !removeArea && (!area.isEmpty || effectivePoint != nil || !post.areaChanged) {
+                        Button("Retirar zona del aviso", role: .destructive) {
+                            selectedArea = nil; selectedPoint = nil; removeArea = true
+                            text = PawlyLostNoticeText.replacingArea(in: text, with: "")
+                        }
+                    }
+                }
                 Section("Foto o vídeo") {
                     if retain, !attachment.hasAttachment, !post.imageURL.isEmpty || !post.videoURL.isEmpty {
                         if !post.imageURL.isEmpty, let url = URL(string: post.imageURL) {
@@ -100,13 +124,22 @@ private struct PawlyLostPostEditor: View {
                     }
                     PawlyAttachmentPicker(draft: attachment)
                 }
+                if conflict {
+                    Button("Descartar borrador y cargar la última versión") { Task { await reload() } }
+                }
                 if saving { ProgressView() }
                 if let error { Text(LocalizedStringKey(error)).foregroundStyle(.red) }
             }.navigationTitle("Editar aviso").interactiveDismissDisabled(saving).disabled(saving)
+                .sheet(isPresented: $choosingArea) {
+                    PawlyMapPointPicker(query: area, point: effectivePoint, title: "Ubicación aproximada del aviso", approximate: true) { label, point in
+                        selectedArea = label; selectedPoint = point; removeArea = false
+                        text = PawlyLostNoticeText.replacingArea(in: text, with: label)
+                    }
+                }
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.disabled(saving) }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Guardar") { Task { await save() } }.disabled(saving || attachment.loading || attachment.error != nil
+                        Button("Guardar") { Task { await save() } }.disabled(conflict || saving || attachment.loading || attachment.error != nil
                             || text.count > 2000 || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
@@ -116,20 +149,23 @@ private struct PawlyLostPostEditor: View {
         guard !saving, let user = Auth.auth().currentUser, user.uid == post.authorId else { return }
         saving = true; defer { saving = false }
         do {
-            var updated = post
-            updated.text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-            updated.areaChanged = post.areaChanged || updated.publishedArea != post.publishedArea
-            var data: [String: Any] = ["text": updated.text, "lostAreaEdited": updated.areaChanged,
-                "searchTokens": PawlyFeedFilter.tokens([updated.text, post.authorName, post.petName, post.category])]
-            if attachment.hasAttachment || !retain {
-                let media = try await attachment.upload(owner: user.uid, forPost: true)
-                updated.imageURL = media.image; updated.videoURL = media.video
-                data["imageUrl"] = media.image; data["videoUrl"] = media.video
-                if media.image.isEmpty && media.video.isEmpty { data["lostMediaAssetId"] = FieldValue.delete() }
-                else { data["lostMediaAssetId"] = PawlyCloudinaryUploader.indexID(for: media.image.isEmpty ? media.video : media.image) }
-            }
-            try await Firestore.firestore().collection("posts").document(post.id).updateData(data)
+            let media = attachment.hasAttachment || !retain ? try await attachment.upload(owner: user.uid, forPost: true) : nil
+            let updated = try await PawlyCommunityStore().editLostPost(post, text: text, pin: pinEdit, media: media)
             onEdited(updated); dismiss()
+        } catch {
+            self.error = PawlyServiceMessage.key(for: error)
+            conflict = (error as NSError).domain == (PawlyLostEditError.changed as NSError).domain
+        }
+    }
+
+    @MainActor private func reload() async {
+        guard !saving else { return }
+        saving = true; defer { saving = false }
+        do {
+            guard let current = try await PawlyCommunityStore().loadPost(post.id) else { throw PawlyCommunityError.invalidPost }
+            post = current; text = current.text; attachment.clear(); retain = true
+            selectedArea = nil; selectedPoint = nil; removeArea = false; conflict = false; error = nil
+            onEdited(current)
         } catch { self.error = PawlyServiceMessage.key(for: error) }
     }
 }

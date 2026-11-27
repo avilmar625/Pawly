@@ -649,13 +649,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function validLostCell(data, lat, lon) {
+      return data.keys().hasAll([lat, lon]) && data[lat] is int && data[lon] is int
+        && data[lat] >= -9000 && data[lat] <= 9000 && data[lon] >= -18000 && data[lon] <= 18000;
+    }
+    function alertMatchesPost(alert, post) {
+      return !post.get('lostAreaEdited', false) && validLostCell(alert, 'latCell', 'lonCell')
+        && alert.latCell == post.lostLatCell && alert.lonCell == post.lostLonCell;
+    }
+
     match /posts/{postId} {
       allow read: if signedIn();
       allow create: if verified()
         && (!request.resource.data.keys().hasAny(['lostLatCell','lostLonCell']) ||
-          (request.resource.data.category == 'LOST' && request.resource.data.lostLatCell is int && request.resource.data.lostLonCell is int
-           && request.resource.data.lostLatCell >= -9000 && request.resource.data.lostLatCell <= 9000
-           && request.resource.data.lostLonCell >= -18000 && request.resource.data.lostLonCell <= 18000))
+          (request.resource.data.category == 'LOST' && validLostCell(request.resource.data,'lostLatCell','lostLonCell')
+           && !request.resource.data.get('lostAreaEdited',false)))
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.text is string
         && request.resource.data.text.size() <= 2000
@@ -677,10 +685,18 @@ service cloud.firestore {
           && ((d.imageUrl == '' && ownedPostAsset(d.lostMediaAssetId, d.videoUrl, 'video','post-videos'))
           || (d.get('videoUrl','') == '' && ownedPostAsset(d.lostMediaAssetId, d.imageUrl, 'image','post-photos')))));
       }
+      function validAreaChange() {
+        let post = request.resource.data;
+        let alert = /databases/$(database)/documents/lostPetAlerts/$(postId);
+        return ((!post.keys().hasAny(['lostLatCell','lostLonCell']) && post.get('lostAreaEdited',false))
+          || (validLostCell(post,'lostLatCell','lostLonCell') && !post.get('lostAreaEdited',false)))
+          && (!existsAfter(alert) || getAfter(alert).data.status != 'active' || alertMatchesPost(getAfter(alert).data, post));
+      }
       allow update: if verified() && resource.data.authorId == request.auth.uid && resource.data.category == 'LOST'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','imageUrl','videoUrl','searchTokens','lostMediaAssetId','lostAreaEdited'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text','imageUrl','videoUrl','searchTokens','lostMediaAssetId','lostAreaEdited','lostLatCell','lostLonCell'])
         && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 2000
         && request.resource.data.get('lostAreaEdited',false) is bool
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['lostLatCell','lostLonCell','lostAreaEdited']) || validAreaChange())
         && request.resource.data.searchTokens is list && request.resource.data.searchTokens.size() <= 2048
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['imageUrl','videoUrl','lostMediaAssetId']) || validLostMedia(request.resource.data));
       allow update: if signedIn()
@@ -929,14 +945,23 @@ service cloud.firestore {
 
     // Alert coordinates are rounded by the app before storage; exact device locations are never saved.
     match /lostPetAlerts/{alertId} {
-      allow get, list: if verified() && resource.data.status == 'active';
+      function parentAfter() {
+        return getAfter(/databases/$(database)/documents/posts/$(alertId)).data;
+      }
+      function ownsPost() {
+        let post = get(/databases/$(database)/documents/posts/$(alertId)).data;
+        return post.authorId == request.auth.uid && post.category == 'LOST';
+      }
+      allow get: if verified() && ((resource != null && resource.data.status == 'active') || ownsPost());
+      allow list: if verified() && resource.data.status == 'active';
       allow create: if verified()
         && request.resource.data.keys().hasOnly(['postId', 'authorUid', 'dogName', 'latCell', 'lonCell', 'status', 'createdAt'])
         && request.resource.data.postId == alertId
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.dogName is string && request.resource.data.dogName.size() <= 40
-        && request.resource.data.latCell is int && request.resource.data.latCell >= -9000 && request.resource.data.latCell <= 9000
-        && request.resource.data.lonCell is int && request.resource.data.lonCell >= -18000 && request.resource.data.lonCell <= 18000
+        && validLostCell(request.resource.data,'latCell','lonCell')
+        && !parentAfter().get('lostAreaEdited',false)
+        && (!('lostLatCell' in parentAfter()) || alertMatchesPost(request.resource.data,parentAfter()))
         && request.resource.data.status == 'active'
         && request.resource.data.createdAt == request.time
         && exists(/databases/$(database)/documents/posts/$(alertId))
@@ -944,7 +969,16 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/posts/$(alertId)).data.category == 'LOST';
       allow update: if verified() && resource.data.authorUid == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-        && request.resource.data.status in ['active', 'resolved'];
+        && (request.resource.data.status == 'resolved'
+          || (request.resource.data.status == 'active' && validLostCell(request.resource.data,'latCell','lonCell')
+            && !parentAfter().get('lostAreaEdited',false)
+            && (!('lostLatCell' in parentAfter()) || alertMatchesPost(request.resource.data,parentAfter()))));
+      allow update: if verified() && resource.data.authorUid == request.auth.uid && resource.data.status == 'active'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['latCell','lonCell','status'])
+        && parentAfter().authorId == request.auth.uid && parentAfter().category == 'LOST'
+        && ((request.resource.data.status == 'active' && alertMatchesPost(request.resource.data,parentAfter()))
+          || (request.resource.data.status == 'paused' && !request.resource.data.keys().hasAny(['latCell','lonCell'])
+            && parentAfter().get('lostAreaEdited',false) && !parentAfter().keys().hasAny(['lostLatCell','lostLonCell'])));
       allow delete: if false;
     }
 
