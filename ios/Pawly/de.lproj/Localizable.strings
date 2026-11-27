@@ -736,3 +736,14 @@
 "Zona guardada" = "Gespeichertes Gebiet";
 "Última actualización" = "Zuletzt aktualisiert";
 "Este lugar ya existe." = "Dieser Ort existiert bereits.";
+"Sin mascota" = "Ohne Haustier";
+"Mencionar" = "Erwähnen";
+"Te ha mencionado." = "Hat dich erwähnt.";
+"Grabar audio" = "Audio aufnehmen";
+"Detener" = "Stoppen";
+"Ubicación" = "Standort";
+"Permite el micrófono en Ajustes." = "Erlaube das Mikrofon in den Einstellungen.";
+"No se pudo grabar el audio." = "Audioaufnahme fehlgeschlagen.";
+"Pausar" = "Pausieren";
+"Reproducir audio" = "Audio abspielen";
+"No se pudo reproducir el audio." = "Audiowiedergabe fehlgeschlagen.";

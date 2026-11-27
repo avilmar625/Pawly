@@ -1,4 +1,4 @@
 "NSCameraUsageDescription" = "Pawly verwendet die Kamera für Fotos und Videos deiner Tiere.";
-"NSMicrophoneUsageDescription" = "Pawly verwendet das Mikrofon, wenn du ein Video aufnimmst.";
+"NSMicrophoneUsageDescription" = "Pawly verwendet das Mikrofon für Videos und Sprachnachrichten.";
 "NSPhotoLibraryUsageDescription" = "Pawly verwendet ausgewählte Fotos zum Erstellen und Teilen von Erinnerungen.";
 "NSLocationWhenInUseUsageDescription" = "Auf Wunsch verwendet Pawly deinen Standort für Orte und Meldungen in der Nähe.";

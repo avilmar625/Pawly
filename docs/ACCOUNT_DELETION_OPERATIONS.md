@@ -32,3 +32,5 @@ Estos valores se configuran con Wrangler y no deben enviarse por chat ni guardar
 ## No desplegar como funcionalidad completada
 
 Hasta que exista el endpoint, las pruebas de integración y la verificación de la eliminación real de Auth, Firestore y Cloudinary, la UI debe seguir describiendo el proceso como una solicitud pendiente. No afirmar que la cuenta o sus fotografías se borran automáticamente.
+
+Los archivos de mensajes nuevos de iOS se guardan en conversations/{chat}/messages/{message}/privateParts. La eliminación administrativa debe recorrer también esos documentos, incluidos los fragmentos huérfanos de un envío interrumpido. Un borrado de un documento padre en Firestore deja sus subcolecciones intactas. El campo owner de cada fragmento identifica al remitente. Los adjuntos antiguos de Cloudinary conservan su tratamiento anterior.

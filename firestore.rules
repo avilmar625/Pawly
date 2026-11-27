@@ -230,6 +230,12 @@ service cloud.firestore {
             && getAfter(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)).data.lastCommentId == request.resource.data.sourceEventId
             && sourceComment().authorId == request.auth.uid
             && notificationId == 'COMMENT-' + request.auth.uid + '-' + request.resource.data.sourceEventId
+          || request.resource.data.type == 'MENTION'
+            && notificationId == 'MENTION-' + request.resource.data.relatedId
+            && request.resource.data.relatedId == request.resource.data.sourceEventId
+            && !exists(/databases/$(database)/documents/posts/$(request.resource.data.relatedId))
+            && getAfter(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)).data.authorId == request.auth.uid
+            && getAfter(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)).data.mentionUid == uid
           || request.resource.data.type == 'FOLLOW'
             && request.resource.data.relatedId == ''
             && request.resource.data.sourceEventId == ''
@@ -251,11 +257,11 @@ service cloud.firestore {
           && request.resource.data.actorName is string
           && request.resource.data.actorName.size() <= 80
           && validActorName()
-          && request.resource.data.type in ['LIKE', 'COMMENT', 'FOLLOW']
+          && request.resource.data.type in ['LIKE', 'COMMENT', 'FOLLOW', 'MENTION']
           && request.resource.data.message == (
             request.resource.data.type == 'LIKE' ? 'Le ha gustado tu publicación.'
               : request.resource.data.type == 'COMMENT' ? ('replyToId' in sourceComment() ? 'Ha respondido a tu comentario.' : 'Ha comentado tu publicación.')
-              : 'Ha empezado a seguirte.'
+              : request.resource.data.type == 'MENTION' ? 'Te ha mencionado.' : 'Ha empezado a seguirte.'
           )
           && request.resource.data.relatedId is string
           && request.resource.data.relatedId.size() <= 128
@@ -693,6 +699,11 @@ service cloud.firestore {
           && (d.get('videoUrl','') == '' || ownedPostAsset(d.videoAssetId,d.videoUrl,'video','post-videos'));
       }
       allow create: if signedIn() && (verified() || limitedPublisher(request.resource.data))
+        && (!('mentionUid' in request.resource.data) || (verified()
+            && request.resource.data.mentionUid.matches('^[a-zA-Z0-9_-]{1,128}$')
+            && request.resource.data.mentionUid != request.auth.uid
+            && get(/databases/$(database)/documents/users/$(request.resource.data.mentionUid)).data.isPublic == true
+            && !blockedEitherWay(request.resource.data.mentionUid)))
         && (!request.resource.data.keys().hasAny(['lostLatCell','lostLonCell']) ||
           (request.resource.data.category == 'LOST' && validLostCell(request.resource.data,'lostLatCell','lostLonCell')
            && !request.resource.data.get('lostAreaEdited',false)))
@@ -851,6 +862,17 @@ service cloud.firestore {
       allow delete: if false;
 
       match /messages/{messageId} {
+        match /privateParts/{part} {
+          function members() { return get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants; }
+          function member() { return signedIn() && request.auth.uid in members() && !blockedEitherWay(members()[0] == request.auth.uid ? members()[1] : members()[0]); }
+          function message() { return /databases/$(database)/documents/conversations/$(conversationId)/messages/$(messageId); }
+          allow get: if member() && exists(message()) && get(message()).data.senderId == resource.data.owner;
+          allow create: if verified() && member() && request.resource.data.keys().hasOnly(['owner','bytes','nonce'])
+            && request.resource.data.owner == request.auth.uid && messageId.size() == request.auth.uid.size() + 37 && messageId == request.auth.uid + '-' + request.resource.data.nonce
+            && part.matches('^([0-9]|[1-7][0-9])$') && !exists(message())
+            && request.resource.data.bytes is bytes && request.resource.data.bytes.size() > 0 && request.resource.data.bytes.size() <= 524288;
+          allow delete: if signedIn() && resource.data.owner == request.auth.uid && !exists(message());
+        }
         function canShareProfile(profileUid) {
           let members = get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
           let recipient = members[0] == request.auth.uid ? members[1] : members[0];
@@ -865,7 +887,11 @@ service cloud.firestore {
           && !blockedEitherWay(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0] == request.auth.uid ? get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[1] : get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0]);
         allow create: if verified()
           && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.keys().hasOnly(['senderId', 'text', 'imageUrl', 'videoUrl', 'readBy', 'createdAt','sharedProfileUid'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'imageUrl', 'videoUrl', 'readBy', 'createdAt','sharedProfileUid','fileKind','partCount'])
+          && (!request.resource.data.keys().hasAny(['fileKind','partCount']) ||
+            (request.resource.data.fileKind in ['jpg','mov','mp4','webm','3gp','m4a'] && request.resource.data.partCount is int
+             && request.resource.data.partCount >= 1 && request.resource.data.partCount <= 80
+             && get(/databases/$(database)/documents/conversations/$(conversationId)/messages/$(messageId)/privateParts/0).data.owner == request.auth.uid))
           && (!('sharedProfileUid' in request.resource.data) || canShareProfile(request.resource.data.sharedProfileUid))
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 2000

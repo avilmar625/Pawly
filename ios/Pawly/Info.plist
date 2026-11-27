@@ -7,7 +7,7 @@
 <key>CLOUDINARY_IMAGE_UPLOAD_PRESET</key><string>$(CLOUDINARY_IMAGE_UPLOAD_PRESET)</string>
 <key>CLOUDINARY_VIDEO_UPLOAD_PRESET</key><string>$(CLOUDINARY_VIDEO_UPLOAD_PRESET)</string>
 <key>NSCameraUsageDescription</key><string>Pawly usa la cámara para fotografiar o grabar a tus mascotas.</string>
-<key>NSMicrophoneUsageDescription</key><string>Pawly usa el micrófono cuando grabas un vídeo.</string>
+<key>NSMicrophoneUsageDescription</key><string>Pawly usa el micrófono para grabar vídeos y mensajes de voz.</string>
 <key>NSPhotoLibraryUsageDescription</key><string>Pawly usa tus fotos seleccionadas para añadir recuerdos y compartirlos.</string>
 <key>NSLocationWhenInUseUsageDescription</key><string>Pawly usa tu ubicación para encontrar lugares y avisos cercanos cuando lo solicitas.</string>
 </dict></plist>

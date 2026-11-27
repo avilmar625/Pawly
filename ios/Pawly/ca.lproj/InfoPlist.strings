@@ -1,4 +1,4 @@
 "NSCameraUsageDescription" = "Pawly fa servir la càmera per fotografiar o gravar les teves mascotes.";
-"NSMicrophoneUsageDescription" = "Pawly fa servir el micròfon quan graves un vídeo.";
+"NSMicrophoneUsageDescription" = "Pawly fa servir el micròfon per gravar vídeos i missatges de veu.";
 "NSPhotoLibraryUsageDescription" = "Pawly fa servir les fotos que tries per afegir i compartir records.";
 "NSLocationWhenInUseUsageDescription" = "Pawly utilitza la teva ubicació per trobar llocs i avisos propers quan ho demanes.";

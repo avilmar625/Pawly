@@ -1,4 +1,4 @@
 "NSCameraUsageDescription" = "Pawlyk kamera erabiltzen du zure maskoten argazkiak eta bideoak egiteko.";
-"NSMicrophoneUsageDescription" = "Pawlyk mikrofonoa erabiltzen du bideo bat grabatzen duzunean.";
+"NSMicrophoneUsageDescription" = "Pawlyk mikrofonoa erabiltzen du bideoak eta ahots-mezuak grabatzeko.";
 "NSPhotoLibraryUsageDescription" = "Pawlyk aukeratutako argazkiak erabiltzen ditu oroitzapenak gehitzeko eta partekatzeko.";
 "NSLocationWhenInUseUsageDescription" = "Pawlyk zure kokapena erabiltzen du, zuk eskatuta, hurbileko lekuak eta abisuak aurkitzeko.";

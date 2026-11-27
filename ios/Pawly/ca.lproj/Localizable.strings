@@ -736,3 +736,14 @@
 "Zona guardada" = "Zona desada";
 "Última actualización" = "Darrera actualització";
 "Este lugar ya existe." = "Aquest lloc ja existeix.";
+"Sin mascota" = "Sense mascota";
+"Mencionar" = "Menciona";
+"Te ha mencionado." = "T’ha mencionat.";
+"Grabar audio" = "Grava àudio";
+"Detener" = "Atura";
+"Ubicación" = "Ubicació";
+"Permite el micrófono en Ajustes." = "Permet el micròfon a Configuració.";
+"No se pudo grabar el audio." = "No s’ha pogut gravar l’àudio.";
+"Pausar" = "Pausa";
+"Reproducir audio" = "Reprodueix l’àudio";
+"No se pudo reproducir el audio." = "No s’ha pogut reproduir l’àudio.";

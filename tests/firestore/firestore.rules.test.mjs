@@ -8,6 +8,7 @@ import {
   assertFails
 } from "@firebase/rules-unit-testing";
 import {
+  Bytes,
   collection,
   deleteDoc,
   deleteField,
@@ -726,4 +727,29 @@ test("blocking an incoming follower decrements the owner count only once", async
   changes.update(doc(db, "users/a"), { followersCount: 0, lastBlockedUid: "b" });
   await assertSucceeds(changes.commit());
   await assertFails(updateDoc(doc(db, "users/a"), { followersCount: -1 }));
+});
+
+test("private chat parts are immutable and readable only after delivery by unblocked members", async () => {
+  const database = uid => env.authenticatedContext(uid, { email_verified: true }).firestore();
+  const nonce = "12345678-1234-4234-8234-123456789abc";
+  const parent = "conversations/alice_bob";
+  const message = parent + "/messages/alice-" + nonce;
+  const path = message + "/privateParts/0";
+  const bytes = Bytes.fromUint8Array(Uint8Array.of(12, 34));
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), parent), { participants: ["alice","bob"] }));
+  const alice = database("alice"), bob = database("bob"), eve = database("eve");
+  await assertFails(setDoc(doc(eve, path), { owner: "eve", nonce, bytes }));
+  await assertSucceeds(setDoc(doc(alice, path), { owner: "alice", nonce, bytes }));
+  await assertFails(getDoc(doc(bob, path)));
+  await assertFails(updateDoc(doc(alice, path), { bytes }));
+  await assertSucceeds(setDoc(doc(alice, message), {
+    senderId: "alice", text: "🎙 2 s", imageUrl: "", videoUrl: "", fileKind: "m4a", partCount: 1,
+    readBy: ["alice"], createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(getDoc(doc(bob, path)));
+  await assertFails(getDoc(doc(eve, path)));
+  await assertFails(deleteDoc(doc(alice, path)));
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), "users/bob/blocked/alice"), { uid:"alice" }));
+  await assertFails(getDoc(doc(alice, path)));
+  await assertFails(getDoc(doc(bob, path)));
 });

@@ -85,7 +85,7 @@ struct PawlyRecipientPicker: View {
 
     var body: some View {
         Section {
-            TextField("Nombre de usuario", text: $query).textInputAutocapitalization(.never).autocorrectionDisabled()
+            TextField("Buscar por nombre o usuario", text: $query).textInputAutocapitalization(.never).autocorrectionDisabled()
             DisclosureGroup("Contactos", isExpanded: $contacts) {
                 if contacts { PawlyContactDiscoveryView { query = "@" + $0; contacts = false } }
             }
@@ -137,6 +137,22 @@ struct PawlyRecipientPicker: View {
                 try await Task.sleep(nanoseconds: 300_000_000)
                 let names = try await store.searchUsers(term)
                 rows = names.map { .init(id: $0.id, name: $0.displayName, username: $0.username, photo: $0.photoURL) }
+                if !term.hasPrefix("@") && term.count >= 2 {
+                    let db=Firestore.firestore()
+                    let base=db.collection("users").whereField("isPublic", isEqualTo:true).order(by:"displayName")
+                    for prefix in Set([term, term.capitalized]) {
+                        let matches=try await base.start(at:[prefix]).end(at:[prefix+"\u{f8ff}"]).limit(to:12).getDocuments()
+                        var seen=Set(rows.map(\.id))
+                        for doc in matches.documents where doc.documentID != me && seen.insert(doc.documentID).inserted {
+                            try Task.checkCancellation()
+                            do {
+                                if let user=try await store.publicUser(doc.documentID) {
+                                    rows.append(.init(id:user.id,name:user.displayName,username:user.username,photo:user.photoURL))
+                                }
+                            } catch let problem as NSError where problem.domain == FirestoreErrorDomain && problem.code == FirestoreErrorCode.permissionDenied.rawValue { continue }
+                        }
+                    }
+                }
             }
             guard request == token && !Task.isCancelled else { return }
             var seen = Set(people.map(\.id))

@@ -43,7 +43,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Pawly necesita acceso a tus fotos para añadir imágenes de tus mascotas.
         INFOPLIST_KEY_NSCameraUsageDescription: Pawly necesita la cámara para hacer fotos de tus mascotas.
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: Pawly necesita el micrófono para grabar vídeos.
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Pawly necesita el micrófono para grabar vídeos y mensajes de voz.
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: Pawly puede usar tu ubicación para mostrar lugares y servicios cercanos para mascotas.
         INFOPLIST_KEY_CLOUDINARY_CLOUD_NAME: "$(CLOUDINARY_CLOUD_NAME)"
         INFOPLIST_KEY_CLOUDINARY_IMAGE_UPLOAD_PRESET: "$(CLOUDINARY_IMAGE_UPLOAD_PRESET)"

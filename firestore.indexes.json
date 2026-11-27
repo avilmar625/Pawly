@@ -93,5 +93,7 @@
     {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "authorId", "order": "ASCENDING"}, {"fieldPath": "likeCount", "order": "DESCENDING"}]},
     {"collectionGroup": "posts", "queryScope": "COLLECTION", "fields": [{"fieldPath": "authorId", "order": "ASCENDING"}, {"fieldPath": "commentCount", "order": "DESCENDING"}]}
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {"collectionGroup": "privateParts", "fieldPath": "bytes", "indexes": []}
+  ]
 }

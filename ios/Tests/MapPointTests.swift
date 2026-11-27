@@ -11,6 +11,9 @@ import Foundation
         for text in ["91,2", "-20,181", "nan, 2", "Calle Mayor 12", "", "12,34,56"] {
             precondition(PawlyMapPoint.parse(text) == nil)
         }
+        let link = PawlyMapPoint.shareURL(PawlyMapPoint.parse("41.38,2.16")!, name:"Café & Parc")!
+        precondition(PawlyMapPoint.sharedURL(in: "Paseo\n" + link.absoluteString) == link)
+        precondition(PawlyMapPoint.sharedURL(in:"https://maps.apple.com.ejemplo.com/?ll=41,2") == nil)
         let negative = PawlyMapPoint.approximate(PawlyMapPoint.parse("-33.8688, -70.6693")!)
         precondition(negative.latitude == -33.87 && negative.longitude == -70.67)
         precondition(PawlyMapPoint.parse("0, 0") != nil)
@@ -23,6 +26,6 @@ import Foundation
         precondition(PawlyLostPinEdit.set(0, 0).matches(0, 0, invalidated: false))
         precondition(PawlyLostPinEdit.clear.matches(nil, nil, invalidated: true))
         precondition(!PawlyLostPinEdit.keep.matches(nil, nil, invalidated: false))
-        print("Map coordinate entry, bounds, labels and privacy rounding passed")
+        print("Map coordinates, privacy rounding and share links passed")
     }
 }

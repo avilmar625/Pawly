@@ -736,3 +736,14 @@
 "Zona guardada" = "Saved area";
 "Última actualización" = "Last updated";
 "Este lugar ya existe." = "This place already exists.";
+"Sin mascota" = "No pet";
+"Mencionar" = "Mention";
+"Te ha mencionado." = "You were mentioned.";
+"Grabar audio" = "Record audio";
+"Detener" = "Stop";
+"Ubicación" = "Location";
+"Permite el micrófono en Ajustes." = "Allow microphone access in Settings.";
+"No se pudo grabar el audio." = "Audio recording failed.";
+"Pausar" = "Pause";
+"Reproducir audio" = "Play audio";
+"No se pudo reproducir el audio." = "Audio playback failed.";

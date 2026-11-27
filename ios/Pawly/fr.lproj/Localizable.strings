@@ -736,3 +736,14 @@
 "Zona guardada" = "Zone enregistrée";
 "Última actualización" = "Dernière mise à jour";
 "Este lugar ya existe." = "Ce lieu existe déjà.";
+"Sin mascota" = "Sans animal";
+"Mencionar" = "Mentionner";
+"Te ha mencionado." = "Vous a mentionné.";
+"Grabar audio" = "Enregistrer un message vocal";
+"Detener" = "Arrêter";
+"Ubicación" = "Position";
+"Permite el micrófono en Ajustes." = "Autorisez le microphone dans Réglages.";
+"No se pudo grabar el audio." = "Impossible d’enregistrer le son.";
+"Pausar" = "Pause";
+"Reproducir audio" = "Lire le son";
+"No se pudo reproducir el audio." = "Impossible de lire le son.";

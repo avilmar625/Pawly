@@ -103,6 +103,13 @@ struct PickedMovie: Transferable {
         return UIImage(cgImage: frame.image)
     }
 
+    func privateFile() throws -> (kind: String, data: Data)? {
+        guard let data else { return nil }
+        if kind == .video { return (try PawlyUploadContract.videoFormat(data).ext, data) }
+        guard let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.78), jpeg.count <= 8*1024*1024 else { throw PawlyMediaError.imageTooLarge }
+        return ("jpg", jpeg)
+    }
+
     func upload(owner: String, forPost: Bool) async throws -> (image: String, video: String) {
         try await upload(owner: owner, prefix: forPost ? "post" : "message")
     }

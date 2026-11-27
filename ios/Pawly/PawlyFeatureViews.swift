@@ -3,6 +3,7 @@ import FirebaseFirestore
 import PhotosUI
 import UIKit
 import AVKit
+import MapKit
 import FirebaseAuth
 import Combine
 
@@ -1267,7 +1268,7 @@ struct CommunityView:View {
                     guard let destination=pushRouter.destination else{return}
                     Task { await handlePushDestination(destination) }
                 }
-                .sheet(isPresented:$composer){PostComposerSheet(petName:pets.selectedPet?.name ?? "", initialCategory:composerCategory){text,category,imageURL,videoURL in try await store.publish(text:text,petName:pets.selectedPet?.name ?? "",category:category,imageURL:imageURL,videoURL:videoURL)}}
+                .sheet(isPresented:$composer){PostComposerSheet(initialCategory:composerCategory){text,pet,category,imageURL,videoURL,mention in try await store.publish(text:text,petName:pet,category:category,imageURL:imageURL,videoURL:videoURL,mention:mention)}}
                 .sheet(item:$comments){post in CommentsView(store:store,post:post,highlightedCommentID:highlightedCommentID)}
                 .sheet(isPresented:$people){PeopleSearchSheet(store:store)}
                 .sheet(isPresented:$inbox,onDismiss:{
@@ -1363,7 +1364,7 @@ struct PawlyNotificationsView:View {
     }
     private func open(_ notice: PawlyNotice) {
         markRead(notice)
-        guard !opening, ["LIKE","COMMENT","LOST_PET"].contains(notice.type), !notice.postID.isEmpty else { return }
+        guard !opening, ["LIKE","COMMENT","LOST_PET","MENTION"].contains(notice.type), !notice.postID.isEmpty else { return }
         opening = true
         Task {
             defer { opening = false }
@@ -1507,6 +1508,8 @@ struct FeedPostCard:View {
                 AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { ProgressView() }
                     .frame(maxWidth:.infinity).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14)).pawlyPhoto(url)
             }
+            if let id=post.mentionID { PawlyMentionLink(id:id) }
+            if let url=PawlyMapPoint.sharedURL(in:post.text) { Link(destination:url) { Label("Ubicación",systemImage:"map") } }
             if !post.videoURL.isEmpty, let url=URL(string:post.videoURL) {
                 PawlyVideoPreview(url: url, inline: true).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
             }
@@ -1519,9 +1522,15 @@ struct FeedPostCard:View {
 
 struct PostComposerSheet:View {
     @Environment(\.dismiss) private var dismiss
-    var petName:String
+    @EnvironmentObject private var pets:PawlyPetStore
+    @State private var petID = ""
+    @State private var pickPoint = false
+    @State private var link: URL?
+    @State private var tagged: PawlyIdentity?
+    @State private var tagPicker = false
+    @StateObject private var clip = PawlyAttachmentDraft(maximumDuration:60)
     var initialCategory:String = "STORY"
-    var onPublish:(String,String,String,String) async throws->Void
+    var onPublish:(String,String,String,String,String,String?) async throws->Void
     @State private var text=""
     @State private var category="STORY"
     @State private var busy=false
@@ -1532,12 +1541,28 @@ struct PostComposerSheet:View {
             Form {
                 Picker("Tipo",selection:$category){Text("Historia").tag("STORY");Text("Adopción").tag("ADOPTION");Text("Perdido").tag("LOST");Text("Encontrado").tag("FOUND");Text("Acogida").tag("FOSTER")}
                 TextField("¿Qué queréis compartir?",text:$text,axis:.vertical).lineLimit(5...10)
-                Section("Archivo adjunto") { PawlyAttachmentPicker(draft: attachment) }
+                Section("Archivo adjunto") { PawlyAttachmentPicker(draft: attachment,allowsVideo:false); PawlyAttachmentPicker(draft:clip,videoOnly:true) }
+                Picker("Mascota",selection:$petID) {
+                    Text("Sin mascota").tag("")
+                    ForEach(pets.pets) { pet in Text(verbatim:pet.name).tag(pet.id) }
+                }
+                Button { pickPoint=true } label: { Label("Ubicación",systemImage:"map") }
+                if let link { HStack { Link("Ver detalle",destination:link); Spacer(); Button("Quitar") { self.link=nil } } }
+                if Auth.auth().currentUser?.isEmailVerified == true {
+                    Button { tagPicker=true } label: { Label("Mencionar",systemImage:"at") }
+                    if let tagged { HStack { PawlyIdentityRow(person:tagged); Spacer(); Button("Quitar") { self.tagged=nil } } }
+                }
                 if busy { ProgressView("Publicando…") }
-                if !petName.isEmpty{LabeledContent("Mascota",value:petName)}
                 if let error{Text(LocalizedStringKey(error)).foregroundStyle(.red)}
             }
             .disabled(busy)
+            .sheet(isPresented:$pickPoint) {
+                PawlyMapPointPicker(query:"",point:nil,title:"Ubicación") { name, point in link=PawlyMapPoint.shareURL(point,name:name) }
+            }
+            .sheet(isPresented:$tagPicker) {
+                NavigationStack { List { PawlyRecipientPicker { person in tagged=person; tagPicker=false } }
+                    .navigationTitle("Mencionar").toolbar { Button("Cerrar") { tagPicker=false } } }
+            }
             .interactiveDismissDisabled(busy)
             .navigationTitle("Nueva publicación").onAppear{category=initialCategory}.toolbar{
                 ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}.disabled(busy)}
@@ -1547,12 +1572,14 @@ struct PostComposerSheet:View {
                         do {
                             guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
                             let media = try await attachment.upload(owner: uid, forPost: true)
-                            try await onPublish(text, category, media.image, media.video)
+                            let video = try await clip.upload(owner:uid,forPost:true)
+                            let body = [text,link?.absoluteString ?? ""].filter { !$0.isEmpty }.joined(separator:"\n")
+                            try await onPublish(body, pets.pets.first(where:{$0.id == petID})?.name ?? "", category, media.image, video.video, tagged?.id)
                             dismiss()
                         } catch { self.error=PawlyServiceMessage.key(for: error) }
                         busy=false
                     }
-                }.disabled(busy || attachment.loading || text.count > 2000 || (text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && !attachment.hasAttachment))}
+                }.disabled(busy || clip.loading || attachment.loading || text.count > 2000 || (text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && !attachment.hasAttachment && !clip.hasAttachment && link == nil))}
             }
         }
     }
@@ -1828,6 +1855,12 @@ struct ChatView:View {
     @State private var historyLoading = false
     @StateObject private var attachment = PawlyAttachmentDraft()
     @State private var sending=false
+    @State private var choosingPoint=false
+    @State private var mapLink: URL?
+    @StateObject private var voice = PawlyVoiceDraft()
+    @State private var nearBottom = true
+    @State private var forceBottom = true
+    @FocusState private var typing: Bool
 
     var body:some View {
         NavigationStack {
@@ -1848,11 +1881,16 @@ struct ChatView:View {
                             }
                             ForEach(messages) { message in
                                 messageRow(message).id(message.id)
+                                    .onAppear { if message.id == messages.last?.id { nearBottom = true } }
+                                    .onDisappear { if message.id == messages.last?.id { nearBottom = false } }
                             }
                         }.padding(14)
                     }
                     .onChange(of: messages.last?.id) { newestID in
-                        if let newestID { proxy.scrollTo(newestID, anchor: .bottom) }
+                        if let newestID, nearBottom || forceBottom { proxy.scrollTo(newestID, anchor: .bottom); forceBottom = false }
+                    }
+                    .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+                        if nearBottom, let id = messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
                     }
                 }
                 if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
@@ -1863,7 +1901,12 @@ struct ChatView:View {
             .toolbar { ToolbarItem(placement: .principal) { NavigationLink { PawlyPublicProfile(userID: chat.otherUserID) } label: { HStack { PawlyChatAvatar(userID: chat.otherUserID, name: chat.otherUserName, size: 30); Text(verbatim: chat.otherUserName).font(.headline) } } } }
             .toolbar { ToolbarItem(placement:.confirmationAction) { Button("Cerrar") { dismiss() } } }
             .onAppear { listen() }
-            .onDisappear { store.stopMessages() }
+            .onDisappear { store.stopMessages(); voice.cancel() }
+            .sheet(isPresented:$choosingPoint) {
+                PawlyMapPointPicker(query:"", point:nil, title:"Ubicación") { label, point in
+                    mapLink = PawlyMapPoint.shareURL(point, name:label)
+                }
+            }
         }
     }
 
@@ -1894,6 +1937,12 @@ struct ChatView:View {
                         Label { Text(verbatim: message.text) } icon: { Image(systemName: "person.crop.rectangle") }
                             .foregroundStyle(message.senderID == store.uid ? .white : PawlyColors.ink)
                     }.buttonStyle(.borderless)
+                } else if message.fileKind != "" {
+                    PawlyPrivateMessageFile(store:store, chat:chat.id, message:message)
+                    if !message.text.hasPrefix("🎙") && !message.text.hasPrefix("📎") { Text(verbatim:message.text) }
+                } else if let url = PawlyMapPoint.sharedURL(in: message.text) {
+                    Link(destination:url) { Label(URLComponents(url:url,resolvingAgainstBaseURL:false)?.queryItems?.first(where:{$0.name=="q"})?.value ?? "Mapas", systemImage:"map.fill") }
+                    if message.text.contains("\n") { Text(verbatim:message.text.split(separator:"\n").dropLast().joined(separator:"\n")) }
                 } else if !message.text.isEmpty {
                     Text(message.text).foregroundStyle(message.senderID == store.uid ? .white : PawlyColors.ink)
                 }
@@ -1917,13 +1966,29 @@ struct ChatView:View {
 
     private var composer:some View {
         VStack(alignment: .leading) {
-            PawlyAttachmentPicker(draft: attachment)
             HStack {
-                TextField("Mensaje", text: $draft, axis: .vertical).lineLimit(1...4).textFieldStyle(.roundedBorder)
+                PawlyAttachmentPicker(draft: attachment).disabled(voice.hasAudio || voice.recording || mapLink != nil)
+                Button { choosingPoint=true } label: { Label("Ubicación",systemImage:"mappin").labelStyle(.iconOnly) }
+                    .disabled(voice.hasAudio || voice.recording || attachment.hasAttachment || attachment.loading)
+                if voice.recording {
+                    Button { voice.stop() } label: { Label("Detener",systemImage:"stop.fill") }
+                } else if !voice.hasAudio {
+                    Button { Task { await voice.start() } } label: { Label("Grabar audio",systemImage:"mic.fill").labelStyle(.iconOnly) }
+                        .disabled(attachment.hasAttachment || attachment.loading || mapLink != nil || voice.requesting)
+                }
+                if voice.hasAudio || voice.recording {
+                    Text(verbatim:"\(Int(voice.seconds)) s").monospacedDigit()
+                    Button("Cancelar") { voice.cancel() }
+                }
+            }.buttonStyle(.borderless)
+            if let issue = voice.error { Text(LocalizedStringKey(issue)).font(.caption) }
+            if let mapLink { HStack { Label("Ubicación",systemImage:"map"); Spacer(); Link("Ver detalle",destination:mapLink); Button("Quitar") { self.mapLink=nil } } }
+            HStack {
+                TextField("Mensaje", text: $draft, axis: .vertical).focused($typing).lineLimit(1...4).textFieldStyle(.roundedBorder)
                 if sending { ProgressView() }
                 else {
                     Button(action: send) { Label("Enviar", systemImage: "arrow.up.circle.fill").labelStyle(.iconOnly).font(.title) }
-                        .disabled(attachment.loading || (draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !attachment.hasAttachment))
+                        .disabled(voice.recording || attachment.loading || (draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !attachment.hasAttachment && !voice.hasAudio && mapLink == nil))
                 }
             }
         }.padding(.horizontal).padding(.vertical, 5).disabled(sending)
@@ -1932,14 +1997,17 @@ struct ChatView:View {
     private func send() {
         guard !sending else {return}
         sending=true
-        let value=draft
+        let value=[draft,mapLink?.absoluteString ?? ""].filter { !$0.isEmpty }.joined(separator:"\n")
+        forceBottom=true
         Task {
             defer{sending=false}
             do {
-                guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
+                guard Auth.auth().currentUser != nil else { throw PawlyCommunityError.notSignedIn }
                 guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyCommunityError.verifyEmail }
-                let media = try await attachment.upload(owner: uid, forPost: false)
-                try await store.sendMessage(conversationID: chat.id, text: value, imageURL: media.image, videoURL: media.video)
+                let file = try voice.file() ?? attachment.privateFile()
+                let fallback = file?.kind == "m4a" ? "🎙 \(Int(voice.seconds)) s" : "📎"
+                try await store.sendMessage(conversationID: chat.id, text: value.isEmpty ? fallback : value, file:file)
+                voice.cancel(); mapLink=nil
                 draft = ""
                 attachment.clear()
                 error = nil
@@ -1990,4 +2058,138 @@ struct AccountView:View {
 struct PawlyEmptyState:View {
     let icon:String;let title:String;let detail:String
     var body:some View{VStack(spacing:12){Image(systemName:icon).font(.system(size:38)).foregroundStyle(PawlyColors.primary).padding(20).background(PawlyColors.mint,in:Circle());Text(LocalizedStringKey(title)).font(.title3.bold()).foregroundStyle(PawlyColors.ink);Text(LocalizedStringKey(detail)).font(.subheadline).multilineTextAlignment(.center).foregroundStyle(PawlyColors.muted).padding(.horizontal,28)}.frame(maxWidth:.infinity,maxHeight:.infinity).background(PawlyColors.canvas)}
+}
+
+@MainActor private final class PawlyVoiceDraft: ObservableObject {
+    @Published private(set) var recording=false
+    @Published private(set) var requesting=false
+    @Published private(set) var hasAudio=false
+    @Published private(set) var seconds=0.0
+    @Published private(set) var error:String?
+    private var recorder: AVAudioRecorder?
+    private var fileURL: URL?
+    private var clock: Task<Void,Never>?
+    private var generation=UUID()
+    func start() async {
+        guard !recording, !requesting else { return }
+        cancel()
+        let token=generation
+        requesting=true; defer { requesting=false }
+        let session=AVAudioSession.sharedInstance()
+        let allowed=await withCheckedContinuation { continuation in session.requestRecordPermission { continuation.resume(returning:$0) } }
+        guard generation == token else { return }
+        guard allowed else { error="Permite el micrófono en Ajustes."; return }
+        do {
+            try session.setCategory(.playAndRecord,mode:.default,options:.defaultToSpeaker)
+            try session.setActive(true)
+            let url=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension("m4a")
+            fileURL=url
+            let device=try AVAudioRecorder(url:url,settings:[AVFormatIDKey:kAudioFormatMPEG4AAC,AVSampleRateKey:24000,AVNumberOfChannelsKey:1,AVEncoderBitRateKey:48000])
+            guard device.record(forDuration:60) else { throw PawlyCommunityError.invalidMessage }
+            recorder=device; recording=true
+            clock=Task { [weak self] in
+                while !Task.isCancelled, let self, self.recording {
+                    if !device.isRecording { self.stop(); break }
+                    self.seconds=device.currentTime
+                    try? await Task.sleep(nanoseconds:200_000_000)
+                }
+            }
+        } catch { cancel(); self.error="No se pudo grabar el audio." }
+    }
+    func stop() {
+        guard let recorder else { return }
+        seconds=max(seconds,recorder.currentTime); recorder.stop(); self.recorder=nil
+        recording=false; hasAudio=seconds > 0; clock?.cancel()
+        try? AVAudioSession.sharedInstance().setActive(false,options:.notifyOthersOnDeactivation)
+    }
+    func cancel() {
+        generation=UUID(); stop(); if let fileURL { try? FileManager.default.removeItem(at:fileURL) }
+        fileURL=nil; seconds=0; hasAudio=false; error=nil
+    }
+    func file() throws -> (kind:String,data:Data)? {
+        guard hasAudio, let fileURL else { return nil }
+        return ("m4a",try Data(contentsOf:fileURL))
+    }
+}
+
+private struct PawlyPrivateMessageFile: View {
+    let store:PawlyCommunityStore
+    let chat:String
+    let message:PawlyChatMessage
+    @State private var local:URL?
+    @State private var busy=false
+    @State private var issue:String?
+    @State private var task:Task<Void,Never>?
+    var body:some View {
+        VStack(alignment:.leading) {
+            if let local {
+                if message.fileKind == "jpg", let image=UIImage(contentsOfFile:local.path) {
+                    Image(uiImage:image).resizable().scaledToFit().frame(maxHeight:150).pawlyPhoto(local)
+                } else if message.fileKind == "m4a" { PawlyAudioPlayback(url:local) }
+                else { PawlyVideoPreview(url:local,inline:true).frame(width:205,height:150) }
+            } else {
+                Button { task=Task { await load() } } label: {
+                    HStack { if busy { ProgressView() }; Label(message.fileKind == "m4a" ? message.text : "Archivo adjunto",systemImage:message.fileKind == "m4a" ? "waveform" : "paperclip") }
+                }.disabled(busy).buttonStyle(.borderless)
+            }
+            if let issue { Text(LocalizedStringKey(issue)).font(.caption) }
+        }.onDisappear { task?.cancel(); if let local { try? FileManager.default.removeItem(at:local) }; local=nil }
+    }
+    @MainActor private func load() async {
+        guard !busy, ["jpg","mp4","mov","webm","3gp","m4a"].contains(message.fileKind) else { return }
+        busy=true; defer { busy=false }
+        do {
+            let bytes=try await store.privateFile(chat:chat,message:message); try Task.checkCancellation()
+            let url=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathExtension(message.fileKind)
+            try bytes.write(to:url, options:[.atomic,.completeFileProtection]); local=url; issue=nil
+        } catch { if !Task.isCancelled { issue=PawlyServiceMessage.key(for:error) } }
+    }
+}
+
+private struct PawlyMentionLink: View {
+    let id:String
+    @State private var user:PawlyPublicUser?
+    var body:some View {
+        Group {
+            if let user { NavigationLink { PawlyPublicProfile(userID:id) } label: { Text(verbatim:"@" + user.username) } }
+        }.task(id:id) { user=try? await PawlyCommunityStore().publicUser(id) }
+    }
+}
+
+private struct PawlyAudioPlayback: View {
+    let url: URL
+    @State private var player: AVAudioPlayer?
+    @State private var position = 0.0
+    @State private var playing = false
+    @State private var failed = false
+    var body: some View {
+        HStack {
+            Button {
+                do {
+                    if player == nil { player = try AVAudioPlayer(contentsOf:url) }
+                    guard let player else { return }
+                    if playing { player.pause(); playing=false }
+                    else {
+                        if position >= player.duration { player.currentTime=0; position=0 }
+                        playing=player.play(); failed = !playing
+                    }
+                } catch { failed=true }
+            } label: {
+                Image(systemName:playing ? "pause.circle.fill" : "play.circle.fill").font(.title2)
+            }.buttonStyle(.borderless).accessibilityLabel(playing ? "Pausar" : "Reproducir audio")
+            ProgressView(value:position,total:max(position,player?.duration ?? 1,0.01)).frame(maxWidth:100)
+            Text(verbatim:"\(Int(position)) / \(Int(player?.duration ?? 0)) s").font(.caption.monospacedDigit())
+        }
+        .onAppear { player=try? AVAudioPlayer(contentsOf:url); failed=player == nil }
+        .task(id:playing) {
+            guard playing, let player else { return }
+            while !Task.isCancelled && player.isPlaying {
+                position=player.currentTime
+                try? await Task.sleep(nanoseconds:200_000_000)
+            }
+            if !Task.isCancelled { position=player.duration; self.playing=false }
+        }
+        .onDisappear { player?.stop(); player=nil; playing=false }
+        if failed { Text("No se pudo reproducir el audio.").font(.caption) }
+    }
 }

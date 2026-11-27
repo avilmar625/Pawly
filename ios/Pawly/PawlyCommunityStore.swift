@@ -8,6 +8,7 @@ struct PawlyFeedPost: Identifiable {
     var id:String; var authorId:String; var authorName:String; var authorPhoto:String; var petName:String
     var text:String; var imageURL:String; var videoURL:String; var category:String
     var likeCount:Int; var commentCount:Int; var likedByMe:Bool; var createdAt:Date?
+    var mentionID: String?
     var areaChanged = false
     var lostLatCell: Int?
     var lostLonCell: Int?
@@ -55,6 +56,8 @@ struct PawlyChat: Identifiable {
     var unreadCount:Int = 0
 }
 struct PawlyChatMessage: Identifiable {
+    var fileKind = ""
+    var partCount = 0
     var sharedProfileUID: String? = nil
     var id:String; var senderID:String; var text:String; var imageURL:String; var videoURL:String; var readBy:[String]; var createdAt:Date?
 }
@@ -174,7 +177,7 @@ final class PawlyCommunityStore: ObservableObject {
             likeCount:data["likeCount"] as? Int ?? 0,
             commentCount:data["commentCount"] as? Int ?? 0,
             likedByMe:likes.contains(currentUID),
-            createdAt:(data["createdAt"] as? Timestamp)?.dateValue(), areaChanged: data["lostAreaEdited"] as? Bool ?? false,
+            createdAt:(data["createdAt"] as? Timestamp)?.dateValue(), mentionID: data["mentionUid"] as? String, areaChanged: data["lostAreaEdited"] as? Bool ?? false,
             lostLatCell: data["lostLatCell"] as? Int, lostLonCell: data["lostLonCell"] as? Int
         )
     }
@@ -191,7 +194,7 @@ final class PawlyCommunityStore: ObservableObject {
             imageURL:x["imageUrl"] as? String ?? "",videoURL:x["videoUrl"] as? String ?? "",
             category:x["category"] as? String ?? "STORY",likeCount:x["likeCount"] as? Int ?? 0,
             commentCount:x["commentCount"] as? Int ?? 0,likedByMe:likes.contains(uid),
-            createdAt:(x["createdAt"] as? Timestamp)?.dateValue(), areaChanged: x["lostAreaEdited"] as? Bool ?? false,
+            createdAt:(x["createdAt"] as? Timestamp)?.dateValue(), mentionID: x["mentionUid"] as? String, areaChanged: x["lostAreaEdited"] as? Bool ?? false,
             lostLatCell: x["lostLatCell"] as? Int, lostLonCell: x["lostLonCell"] as? Int)
     }
     func listenFeed() {
@@ -235,7 +238,7 @@ final class PawlyCommunityStore: ObservableObject {
         blockedFeedListener = nil
         blockedByFeedListener = nil
     }
-    func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "", lostArea: CLLocationCoordinate2D? = nil) async throws -> String {
+    func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "", lostArea: CLLocationCoordinate2D? = nil, mention: String? = nil) async throws -> String {
         guard auth.currentUser?.isAnonymous == false else { throw PawlyCommunityError.notSignedIn }
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
         guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty) else{throw PawlyCommunityError.invalidPost}
@@ -253,16 +256,23 @@ final class PawlyCommunityStore: ObservableObject {
             data["lostLatCell"] = Int((point.latitude * 100).rounded())
             data["lostLonCell"] = Int((point.longitude * 100).rounded())
         }
-        if isVerified { try await reference.setData(data) }
-        else {
+        let batch = db.batch()
+        if let mention {
+            guard isVerified, mention != uid else { throw PawlyCommunityError.verifyEmail }
+            data["mentionUid"] = mention
+            let notice = db.collection("users").document(mention).collection("notifications").document("MENTION-" + reference.documentID)
+            batch.setData(["actorId":uid,"actorName":data["authorName"] as? String ?? "Pawly","type":"MENTION",
+                           "message":"Te ha mencionado.","relatedId":reference.documentID,"sourceEventId":reference.documentID,
+                           "createdAt":FieldValue.serverTimestamp(),"read":false], forDocument:notice)
+        }
+        if !isVerified {
             if !imageURL.isEmpty { data["imageAssetId"] = PawlyCloudinaryUploader.indexID(for: imageURL) }
             if !videoURL.isEmpty { data["videoAssetId"] = PawlyCloudinaryUploader.indexID(for: videoURL) }
-            let batch = db.batch()
-            batch.setData(data, forDocument: reference)
             batch.setData(["postId": reference.documentID, "at": FieldValue.serverTimestamp()],
                           forDocument: db.collection("postPublishLimits").document(uid))
-            try await batch.commit()
         }
+        batch.setData(data, forDocument:reference)
+        try await batch.commit()
         return reference.documentID
     }
 
@@ -780,7 +790,7 @@ final class PawlyCommunityStore: ObservableObject {
                 let documents = snapshot.documents
                 let messages = documents.prefix(limit).reversed().map { document in
                     let fields = document.data()
-                    return PawlyChatMessage(sharedProfileUID: fields["sharedProfileUid"] as? String, id: document.documentID, senderID: fields["senderId"] as? String ?? "",
+                    return PawlyChatMessage(fileKind: fields["fileKind"] as? String ?? "", partCount: fields["partCount"] as? Int ?? 0, sharedProfileUID: fields["sharedProfileUid"] as? String, id: document.documentID, senderID: fields["senderId"] as? String ?? "",
                         text: fields["text"] as? String ?? "", imageURL: fields["imageUrl"] as? String ?? "",
                         videoURL: fields["videoUrl"] as? String ?? "", readBy: fields["readBy"] as? [String] ?? [],
                         createdAt: (fields["createdAt"] as? Timestamp)?.dateValue())
@@ -788,10 +798,10 @@ final class PawlyCommunityStore: ObservableObject {
                 onUpdate(.success((messages, documents.count > limit)))
             }
     }
-    func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "", sharedProfileUID: String? = nil, messageID: String? = nil) async throws {
+    func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "", sharedProfileUID: String? = nil, messageID: String? = nil, file: (kind: String, data: Data)? = nil) async throws {
         try requireVerified();guard let uid else{throw PawlyCommunityError.notSignedIn}
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
-        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidMessage}
+        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty || file != nil),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidMessage}
         let ref=db.collection("conversations").document(conversationID), conv=try await ref.getDocument()
         let participants=conv.get("participants") as? [String] ?? []
         guard participants.contains(uid),participants.count==2 else{throw PawlyCommunityError.notParticipant}
@@ -800,7 +810,7 @@ final class PawlyCommunityStore: ObservableObject {
         let b=try await db.collection("users").document(other).collection("blocked").document(uid).getDocument()
         guard !a.exists,!b.exists else{throw PawlyCommunityError.blocked}
         let messages = ref.collection("messages")
-        let msg = messageID.map { messages.document($0) } ?? messages.document()
+        let msg = messageID.map { messages.document($0) } ?? messages.document(uid + "-" + UUID().uuidString)
         if messageID != nil {
             let previous = try await msg.getDocument()
             if previous.exists {
@@ -811,10 +821,29 @@ final class PawlyCommunityStore: ObservableObject {
         var fields: [String: Any] = ["senderId":uid,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"readBy":[uid],"createdAt":FieldValue.serverTimestamp()]
         if let sharedProfileUID { fields["sharedProfileUid"] = sharedProfileUID }
         let batch = db.batch()
+        var staged: [DocumentReference] = []
+        if let file {
+            let chunk = 512 * 1024
+            let count = (file.data.count + chunk - 1) / chunk
+            guard (1...80).contains(count) else { throw PawlyMediaError.videoTooLarge }
+            fields["fileKind"] = file.kind; fields["partCount"] = count
+            do {
+                for first in stride(from: 0, to: count, by: 8) {
+                    let group = db.batch()
+                    for index in first..<min(count, first + 8) {
+                        let part = msg.collection("privateParts").document(String(index))
+                        let data = file.data.subdata(in: index*chunk..<min(file.data.count,(index+1)*chunk))
+                        group.setData(["bytes":data,"owner":uid,"nonce":String(msg.documentID.suffix(36))], forDocument:part)
+                        staged.append(part)
+                    }
+                    try await group.commit()
+                }
+            } catch { await discardParts(staged); throw error }
+        }
         batch.setData(fields, forDocument: msg)
         let preview = clean.isEmpty ? (videoURL.isEmpty ? "📷 Fotografía" : "🎥 Vídeo") : String(clean.prefix(120))
         batch.updateData(["lastMessage":preview,"updatedAt":FieldValue.serverTimestamp()],forDocument:ref)
-        try await batch.commit()
+        do { try await batch.commit() } catch { await discardParts(staged); throw error }
         Task {
             await PawlyPushDispatcher.send(
                 type: "MESSAGE",
@@ -824,6 +853,26 @@ final class PawlyCommunityStore: ObservableObject {
             )
         }
     }
+    private func discardParts(_ refs: [DocumentReference]) async {
+        guard !refs.isEmpty else { return }
+        let batch = db.batch()
+        for ref in refs { batch.deleteDocument(ref) }
+        try? await batch.commit()
+    }
+
+    func privateFile(chat: String, message: PawlyChatMessage) async throws -> Data {
+        guard (1...80).contains(message.partCount) else { throw PawlyCommunityError.invalidMessage }
+        let parts = db.collection("conversations").document(chat).collection("messages").document(message.id).collection("privateParts")
+        var file = Data()
+        for index in 0..<message.partCount {
+            try Task.checkCancellation()
+            let part = try await parts.document(String(index)).getDocument(source:.server)
+            guard let bytes = part.get("bytes") as? Data, bytes.count <= 524288 else { throw PawlyCommunityError.invalidMessage }
+            file.append(bytes)
+        }
+        return file
+    }
+
     func markRead(conversationID: String, messages: [PawlyChatMessage]) async {
         guard let uid, isVerified else { return }
         let collection = db.collection("conversations").document(conversationID).collection("messages")

@@ -19,6 +19,17 @@ enum PawlyMapPoint {
         return .init(latitude: lat, longitude: lon)
     }
 
+    static func shareURL(_ point: CLLocationCoordinate2D, name: String) -> URL? {
+        var url = URLComponents(string: "https://maps.apple.com/")
+        url?.queryItems = [URLQueryItem(name:"ll",value:label(point,approximate:false).replacingOccurrences(of:" ",with:"")),URLQueryItem(name:"q",value:String(name.prefix(120)))]
+        return url?.url
+    }
+    static func sharedURL(in text:String) -> URL? {
+        guard let line=text.components(separatedBy:.newlines).last, let url=URL(string:line), url.scheme=="https", url.host=="maps.apple.com", url.user==nil, url.password==nil,
+              URLComponents(url:url,resolvingAgainstBaseURL:false)?.queryItems?.contains(where:{$0.name=="ll"}) == true else { return nil }
+        return url
+    }
+
     static func approximate(_ point: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
         .init(latitude: (point.latitude * 100).rounded()/100, longitude: (point.longitude * 100).rounded()/100)
     }

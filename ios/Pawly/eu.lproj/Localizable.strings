@@ -736,3 +736,14 @@
 "Zona guardada" = "Gordetako eremua";
 "Última actualización" = "Azken eguneraketa";
 "Este lugar ya existe." = "Leku hau badago jada.";
+"Sin mascota" = "Maskotarik gabe";
+"Mencionar" = "Aipatu";
+"Te ha mencionado." = "Aipatu zaitu.";
+"Grabar audio" = "Grabatu audioa";
+"Detener" = "Gelditu";
+"Ubicación" = "Kokapena";
+"Permite el micrófono en Ajustes." = "Baimendu mikrofonoa ezarpenetan.";
+"No se pudo grabar el audio." = "Ezin izan da audioa grabatu.";
+"Pausar" = "Pausatu";
+"Reproducir audio" = "Erreproduzitu audioa";
+"No se pudo reproducir el audio." = "Ezin izan da audioa erreproduzitu.";

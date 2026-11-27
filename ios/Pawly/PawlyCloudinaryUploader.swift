@@ -1,6 +1,7 @@
 import Foundation
 import CryptoKit
 import FirebaseAuth
+import OSLog
 import ImageIO
 import UniformTypeIdentifiers
 import FirebaseFirestore
@@ -68,7 +69,10 @@ struct PawlyCloudinaryUploader {
                                        "secureUrl": asset.secure_url, "createdAt": FieldValue.serverTimestamp()])
             } catch {
                 // The owner index is create-only. A prior write may have committed before losing its response.
-                guard let existing = try? await ref.getDocument(), existing.get("uid") as? String == owner,
+                let issue = error as NSError
+                Logger(subsystem:"com.alexvilarrubla.pawly", category:"Media").notice("Asset registration failed in \(issue.domain, privacy:.public), code \(issue.code, privacy:.public), type \(contract.resource, privacy:.public)")
+                if issue.domain == FirestoreErrorDomain && [FirestoreErrorCode.unavailable.rawValue, FirestoreErrorCode.unauthenticated.rawValue].contains(issue.code) { throw error }
+                guard let existing = try? await ref.getDocument(source:.server), existing.get("uid") as? String == owner,
                       existing.get("publicId") as? String == asset.public_id,
                       existing.get("secureUrl") as? String == asset.secure_url else { throw PawlyMediaError.indexFailed }
             }
