@@ -754,7 +754,7 @@ service cloud.firestore {
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'lastCommentId'])
             && verified()
             && !blockedEitherWay(resource.data.authorId)
-            && request.resource.data.commentCount == resource.data.commentCount + 1
+            && request.resource.data.commentCount == resource.data.get('commentCount', 0) + 1
             && request.resource.data.lastCommentId is string
             && !exists(/databases/$(database)/documents/posts/$(postId)/comments/$(request.resource.data.lastCommentId))
             && existsAfter(/databases/$(database)/documents/posts/$(postId)/comments/$(request.resource.data.lastCommentId))

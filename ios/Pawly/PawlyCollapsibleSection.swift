@@ -37,10 +37,24 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .top) {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            content.padding(.top, 8)
-        } label: {
+        Group {
+            HStack(spacing: 4) {
+                Button { isExpanded.toggle() } label: {
+                    header
+                }.buttonStyle(.borderless)
+                .accessibilityValue(Text(isExpanded ? "Contraer" : "Expandir"))
+                if let onAdd {
+                    Button(action: onAdd) {
+                        Image(systemName: "plus.circle.fill").font(.title3).frame(width: 44, height: 44)
+                    }.buttonStyle(.borderless).accessibilityLabel("Añadir registro").accessibilityHint(Text(LocalizedStringKey(title)))
+                }
+            }
+            if isExpanded { content }
+        }.tint(tint)
+         .onChange(of: isExpanded) { UserDefaults.standard.set($0, forKey: storageKey) }
+    }
+
+    private var header: some View {
             HStack(spacing: 11) {
                 if let icon {
                     Image(systemName: icon)
@@ -55,7 +69,8 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
                         Text(LocalizedStringKey(subtitle)).font(.caption).foregroundStyle(PawlyColors.muted)
                     }
                 }
-                Spacer(minLength: 8)
+                Spacer(minLength: 4)
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down").font(.caption).foregroundStyle(tint)
             }
             .padding(highlighted ? 12 : 2)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -65,15 +80,5 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
                 }
             }
             .contentShape(Rectangle())
-        }
-        if let onAdd {
-            Button(action: onAdd) { Image(systemName: "plus.circle.fill").font(.title3).frame(width: 40, height: 40) }
-                .buttonStyle(.borderless).accessibilityLabel("Añadir registro").accessibilityHint(Text(LocalizedStringKey(title)))
-        }
-        }
-        .tint(tint)
-        .onChange(of: isExpanded) { value in
-            UserDefaults.standard.set(value, forKey: storageKey)
-        }
     }
 }
