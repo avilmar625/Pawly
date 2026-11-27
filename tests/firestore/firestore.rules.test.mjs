@@ -563,3 +563,23 @@ test("only a lost notice owner can edit the text or replace its registered media
   }));
   await assertSucceeds(updateDoc(post, { ...changes, videoUrl: url, lostMediaAssetId: id }));
 });
+
+test("profile cards require a public profile accessible to both conversation participants", async () => {
+  const chat = "author_reader";
+  await env.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    await setDoc(doc(db, "conversations", chat), { participants: ["author", "reader"] });
+    await setDoc(doc(db, "users/public"), { isPublic: true });
+    await setDoc(doc(db, "users/private"), { isPublic: false });
+    await setDoc(doc(db, "users/blocked"), { isPublic: true });
+    await setDoc(doc(db, "users/blocked/blocked/reader"), { createdAt: new Date() });
+  });
+  const db = env.authenticatedContext("author", { email_verified: true }).firestore();
+  const send = sharedProfileUid => setDoc(doc(db, "conversations", chat, "messages", sharedProfileUid), {
+    senderId: "author", text: "Perfil Pawly", imageUrl: "", videoUrl: "", readBy: ["author"], createdAt: serverTimestamp(), sharedProfileUid
+  });
+  await assertSucceeds(send("public"));
+  await assertFails(send("private"));
+  await assertFails(send("blocked"));
+  await assertFails(send("missing"));
+});

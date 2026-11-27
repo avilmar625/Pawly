@@ -1821,7 +1821,12 @@ struct ChatView:View {
         HStack {
             if message.senderID == store.uid { Spacer(minLength: 28) }
             VStack(alignment:.leading,spacing:5) {
-                if !message.text.isEmpty {
+                if let profile = message.sharedProfileUID {
+                    NavigationLink { PawlyPublicProfile(userID: profile) } label: {
+                        Label { Text(verbatim: message.text) } icon: { Image(systemName: "person.crop.rectangle") }
+                            .foregroundStyle(message.senderID == store.uid ? .white : PawlyColors.ink)
+                    }.buttonStyle(.borderless)
+                } else if !message.text.isEmpty {
                     Text(message.text).foregroundStyle(message.senderID == store.uid ? .white : PawlyColors.ink)
                 }
                 if !message.imageURL.isEmpty, let url=URL(string:message.imageURL) {

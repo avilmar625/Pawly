@@ -799,12 +799,22 @@ service cloud.firestore {
       allow delete: if false;
 
       match /messages/{messageId} {
+        function canShareProfile(profileUid) {
+          let members = get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+          let recipient = members[0] == request.auth.uid ? members[1] : members[0];
+          return profileUid is string && profileUid.matches('^[A-Za-z0-9_-]{1,128}$')
+            && get(/databases/$(database)/documents/users/$(profileUid)).data.isPublic == true
+            && !blockedEitherWay(profileUid)
+            && !exists(/databases/$(database)/documents/users/$(profileUid)/blocked/$(recipient))
+            && !exists(/databases/$(database)/documents/users/$(recipient)/blocked/$(profileUid));
+        }
         allow read: if signedIn()
           && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants
           && !blockedEitherWay(get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0] == request.auth.uid ? get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[1] : get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants[0]);
         allow create: if verified()
           && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.keys().hasOnly(['senderId', 'text', 'imageUrl', 'videoUrl', 'readBy', 'createdAt'])
+          && request.resource.data.keys().hasOnly(['senderId', 'text', 'imageUrl', 'videoUrl', 'readBy', 'createdAt','sharedProfileUid'])
+          && (!('sharedProfileUid' in request.resource.data) || canShareProfile(request.resource.data.sharedProfileUid))
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 2000
           && (request.resource.data.text.size() > 0

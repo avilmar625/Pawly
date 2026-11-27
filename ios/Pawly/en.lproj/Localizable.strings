@@ -698,3 +698,11 @@
 "No hay una ubicación disponible para este aviso." = "No location is available for this alert.";
 "El vídeo debe durar como máximo 60 segundos." = "The video must be 60 seconds or shorter.";
 "No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto." = "The area could not be located. Try a more specific address or town.";
+"Conversaciones" = "Conversations";
+"Contactos" = "Contacts";
+"Compartir fuera de Pawly" = "Share outside Pawly";
+"Destinatarios" = "Recipients";
+"No hay destinatarios disponibles." = "No recipients available.";
+"Enviado" = "Sent";
+"Buscar por nombre o usuario" = "Search by name or username";
+"Solo se pueden compartir perfiles públicos." = "Only public profiles can be shared.";

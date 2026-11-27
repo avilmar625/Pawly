@@ -698,3 +698,11 @@
 "No hay una ubicación disponible para este aviso." = "Für diese Meldung ist kein Standort verfügbar.";
 "El vídeo debe durar como máximo 60 segundos." = "Das Video darf höchstens 60 Sekunden lang sein.";
 "No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto." = "Gebiet nicht gefunden. Versuche eine genauere Adresse oder einen Ort.";
+"Conversaciones" = "Unterhaltungen";
+"Contactos" = "Kontakte";
+"Compartir fuera de Pawly" = "Außerhalb von Pawly teilen";
+"Destinatarios" = "Empfänger";
+"No hay destinatarios disponibles." = "Keine Empfänger verfügbar.";
+"Enviado" = "Gesendet";
+"Buscar por nombre o usuario" = "Nach Name oder Benutzername suchen";
+"Solo se pueden compartir perfiles públicos." = "Nur öffentliche Profile können geteilt werden.";

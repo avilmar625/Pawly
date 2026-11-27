@@ -42,6 +42,9 @@ struct PawlyMoreHubView: View {
       storageKey:sectionKey("people"), defaultExpanded:false
      ) {
       NavigationLink { PawlyProfileEditorView() } label:{Label("Mi perfil público",systemImage:"person.crop.circle")}
+      if let id = session.user?.uid {
+       NavigationLink { PawlyProfileShareView(profileID: id) } label: { Label("Compartir perfil", systemImage: "square.and.arrow.up") }
+      }
       NavigationLink { PetSharingSheet() } label:{Label("Compartir mascotas",systemImage:"person.2.badge.plus")}
       NavigationLink { AccountView() } label:{Label("Cuenta y privacidad",systemImage:"person.badge.key.fill")}
       NavigationLink { PawlyBlockedUsersView() } label:{Label("Usuarios bloqueados",systemImage:"hand.raised")}

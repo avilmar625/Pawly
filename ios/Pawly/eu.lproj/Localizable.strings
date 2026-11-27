@@ -698,3 +698,11 @@
 "No hay una ubicación disponible para este aviso." = "Abisu honek ez du kokapenik eskuragarri.";
 "El vídeo debe durar como máximo 60 segundos." = "Bideoak gehienez 60 segundo iraun dezake.";
 "No se ha podido localizar la zona. Prueba con una dirección o municipio más concreto." = "Ezin izan da eremua aurkitu. Saiatu helbide edo herri zehatzago batekin.";
+"Conversaciones" = "Elkarrizketak";
+"Contactos" = "Kontaktuak";
+"Compartir fuera de Pawly" = "Partekatu Pawlytik kanpo";
+"Destinatarios" = "Hartzaileak";
+"No hay destinatarios disponibles." = "Ez dago hartzailerik eskuragarri.";
+"Enviado" = "Bidalia";
+"Buscar por nombre o usuario" = "Bilatu izenaren edo erabiltzaile-izenaren arabera";
+"Solo se pueden compartir perfiles públicos." = "Profil publikoak bakarrik parteka daitezke.";

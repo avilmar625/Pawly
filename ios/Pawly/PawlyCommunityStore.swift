@@ -48,6 +48,7 @@ struct PawlyChat: Identifiable {
     var unreadCount:Int = 0
 }
 struct PawlyChatMessage: Identifiable {
+    var sharedProfileUID: String? = nil
     var id:String; var senderID:String; var text:String; var imageURL:String; var videoURL:String; var readBy:[String]; var createdAt:Date?
 }
 
@@ -524,6 +525,11 @@ final class PawlyCommunityStore: ObservableObject {
         let clean=username.trimmingCharacters(in:.whitespacesAndNewlines).replacingOccurrences(of:"@",with:"").lowercased()
         let usernameDoc=try await db.collection("usernames").document(clean).getDocument()
         guard let other=usernameDoc.get("uid") as? String,other != me else{throw PawlyCommunityError.userNotFound}
+        return try await startConversation(userID: other)
+    }
+    func startConversation(userID other: String) async throws -> String {
+        try requireVerified()
+        guard let me = uid, other != me, !other.isEmpty else { throw PawlyCommunityError.userNotFound }
         let otherProfile=try await db.collection("users").document(other).getDocument()
         guard otherProfile.exists,otherProfile.get("isPublic") as? Bool != false else{throw PawlyCommunityError.userNotFound}
         let a=try await db.collection("users").document(me).collection("blocked").document(other).getDocument()
@@ -668,7 +674,7 @@ final class PawlyCommunityStore: ObservableObject {
                 let documents = snapshot.documents
                 let messages = documents.prefix(limit).reversed().map { document in
                     let fields = document.data()
-                    return PawlyChatMessage(id: document.documentID, senderID: fields["senderId"] as? String ?? "",
+                    return PawlyChatMessage(sharedProfileUID: fields["sharedProfileUid"] as? String, id: document.documentID, senderID: fields["senderId"] as? String ?? "",
                         text: fields["text"] as? String ?? "", imageURL: fields["imageUrl"] as? String ?? "",
                         videoURL: fields["videoUrl"] as? String ?? "", readBy: fields["readBy"] as? [String] ?? [],
                         createdAt: (fields["createdAt"] as? Timestamp)?.dateValue())
@@ -676,7 +682,7 @@ final class PawlyCommunityStore: ObservableObject {
                 onUpdate(.success((messages, documents.count > limit)))
             }
     }
-    func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "") async throws {
+    func sendMessage(conversationID:String,text:String,imageURL:String = "",videoURL:String = "", sharedProfileUID: String? = nil, messageID: String? = nil) async throws {
         try requireVerified();guard let uid else{throw PawlyCommunityError.notSignedIn}
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
         guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidMessage}
@@ -687,8 +693,19 @@ final class PawlyCommunityStore: ObservableObject {
         let a=try await db.collection("users").document(uid).collection("blocked").document(other).getDocument()
         let b=try await db.collection("users").document(other).collection("blocked").document(uid).getDocument()
         guard !a.exists,!b.exists else{throw PawlyCommunityError.blocked}
-        let batch=db.batch(), msg=ref.collection("messages").document()
-        batch.setData(["senderId":uid,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"readBy":[uid],"createdAt":FieldValue.serverTimestamp()],forDocument:msg)
+        let messages = ref.collection("messages")
+        let msg = messageID.map { messages.document($0) } ?? messages.document()
+        if messageID != nil {
+            let previous = try await msg.getDocument()
+            if previous.exists {
+                guard previous.get("senderId") as? String == uid, previous.get("sharedProfileUid") as? String == sharedProfileUID else { throw PawlyCommunityError.invalidMessage }
+                return
+            }
+        }
+        var fields: [String: Any] = ["senderId":uid,"text":clean,"imageUrl":imageURL,"videoUrl":videoURL,"readBy":[uid],"createdAt":FieldValue.serverTimestamp()]
+        if let sharedProfileUID { fields["sharedProfileUid"] = sharedProfileUID }
+        let batch = db.batch()
+        batch.setData(fields, forDocument: msg)
         let preview = clean.isEmpty ? (videoURL.isEmpty ? "📷 Fotografía" : "🎥 Vídeo") : String(clean.prefix(120))
         batch.updateData(["lastMessage":preview,"updatedAt":FieldValue.serverTimestamp()],forDocument:ref)
         try await batch.commit()

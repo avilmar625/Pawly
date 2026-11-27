@@ -82,6 +82,7 @@ struct PawlyPublicProfile: View {
                     VStack(alignment: .leading) { Text(verbatim: user.displayName).font(.headline); Text(verbatim: "@" + user.username) }
                 }
                 if !user.bio.isEmpty { Text(verbatim: user.bio) }
+                NavigationLink { PawlyProfileShareView(profileID: user.id) } label: { Label("Compartir perfil", systemImage: "square.and.arrow.up") }
                 if user.id != store.uid {
                     Button(user.following ? "Dejar de seguir" : "Seguir") { act {
                         try await store.setFollowing(user, follow: !user.following)
