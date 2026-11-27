@@ -41,6 +41,17 @@ struct PawlyVideoPreview: View {
     var body: some View {
         ZStack {
             Color.black
+            if let poster = PawlyVideoPoster.url(for: url) {
+                GeometryReader { geometry in
+                    AsyncImage(url: poster) { phase in
+                        switch phase {
+                        case .success(let image): image.resizable().scaledToFill()
+                        case .empty: ProgressView().tint(.white).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        default: Color.clear
+                        }
+                    }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                }
+            }
             Image(systemName: "play.circle.fill").font(.system(size: 48)).foregroundStyle(.white)
         }.modifier(PawlyMediaLink(item: .video(url), items: []))
     }
@@ -74,7 +85,7 @@ private struct PawlyMediaViewer: View {
                 Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.white, .black.opacity(0.7))
                     .frame(width: 48, height: 48)
             }.accessibilityLabel("Cerrar").padding(6)
-        }.preferredColorScheme(.dark)
+        }.environment(\.colorScheme, .dark)
     }
 }
 

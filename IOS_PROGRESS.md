@@ -64,3 +64,15 @@ La rama de entrega es `codex/ios-auditoria-integral-2026-11`, desde `bcc39e10`. 
 El autor puede fijar un nuevo punto desde Editar aviso o retirar la zona. La app escribe la celda aproximada de la publicación y la de su alerta activa en una transacción. Retirar la zona elimina las dos coordenadas y pausa la alerta. Una edición conserva el estado de avisos ya pausados y resueltos. Si el aviso antiguo carecía de alerta de proximidad, editar su mapa no crea una. El texto público conserva la línea Zona que utilizan Android y los avisos históricos. Si cambia a la vez el mismo dato en dos dispositivos, el editor conserva el borrador y permite cargar la última versión.
 
 Pasaron las cuatro pruebas específicas de reglas sobre avisos y mapas en el emulador, la prueba Swift de lectura, sustitución y retirada de la zona, y los siete catálogos (719 claves). El siguiente paso de staging es publicar las reglas actualizadas antes de probar la edición con dos cuentas. La creación del aviso conserva su contrato anterior.
+
+## Pruebas personales de Alex · nueva fase de experiencia de uso
+
+| Encargo | Estado de esta ronda |
+|---|---|
+| Publicar, filtros, errores y visor | Se elimina el aviso fijo de correo. Las cuentas con correo registrado pueden crear posts con control de autor, medios registrados y una publicación por minuto antes de verificarse. Comentarios y operaciones sensibles conservan su autorización. Los filtros distinguen categoría y adjunto. El visor aplica su tema solo a su contenido. |
+| Miniaturas | El componente común solicita un JPEG de hasta 640 px para vídeos públicos compatibles de Cloudinary. El indicador de reproducción sirve también para enlaces antiguos sin miniatura. |
+| Permiso de respuesta | En el emulador pasó la operación completa de cuatro identidades distintas al responder a una respuesta, con rechazo del destinatario falso. El bloqueo observado en el dispositivo no se ha reproducido con las reglas de la rama. Es necesario desplegar las reglas e índices en el Firebase al que apunta el dispositivo. |
+| Presentación | Calendario sin título interno y Recordatorios con un único indicador de autorización. Market reúne buscador y filtro, muestra el filtro activo y deja la explicación en Información. |
+| Pendiente en esta ronda | Hoy, paseo y Diario con vídeo, Salud, selector común, contadores y visibilidad de identidades, menciones, ubicación de posts y chat, voz y protección de archivos privados, exploración y publicación de lugares, detalle del mapa y zona privada de suscripción. Música opcional al final. |
+
+Dos pruebas nuevas de seguridad pasaron en demo-pawly. Para aplicar estos cambios en staging: firebase deploy --only firestore:rules,firestore:indexes --project ID_DE_STAGING. No hubo despliegue remoto. Probar reproducción, colores, publicación sin verificar y los controles compactos en Xcode.

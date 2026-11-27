@@ -717,3 +717,7 @@
 "Retirar zona del aviso" = "Remove the alert area";
 "Otra persona o dispositivo ha modificado el aviso. Tu borrador sigue aquí." = "The alert was edited elsewhere. Your draft is still here.";
 "Descartar borrador y cargar la última versión" = "Discard draft and load latest version";
+"Todas las categorías" = "All categories";
+"Cualquier adjunto" = "Any attachment";
+"No se ha podido completar la consulta. Inténtalo más tarde." = "The request could not be completed. Try again later.";
+"Información" = "Information";

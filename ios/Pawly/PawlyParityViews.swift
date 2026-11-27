@@ -483,6 +483,7 @@ private struct PawlyMarketCategory: Identifiable {
 }
 
 struct PawlyMarketView: View {
+ @State private var info = false
  @State private var search = ""
  @State private var category = "Todo"
  @State private var message: String?
@@ -500,13 +501,16 @@ struct PawlyMarketView: View {
   NavigationStack {
    ScrollView {
     VStack(alignment:.leading,spacing:16) {
-     VStack(alignment:.leading,spacing:5){Text("Pawly Market").font(.title2.bold());Text("Encuentra productos en tiendas externas. Pawly no procesa pagos ni pedidos.").font(.subheadline).foregroundStyle(.secondary)}
-     HStack { TextField("¿Qué estás buscando?",text:$search).textFieldStyle(.roundedBorder);Button { openSearch(search) } label:{Image(systemName:"magnifyingglass").padding(11)}.buttonStyle(.borderedProminent).tint(PawlyColors.primary).disabled(search.trimmingCharacters(in:.whitespaces).isEmpty) }
      HStack {
-      Label("Categoría",systemImage:"line.3.horizontal.decrease")
-      Spacer()
-      Picker("Categoría",selection:$category){ForEach(["Todo"]+categories.map(\.id),id:\.self){Text(LocalizedStringKey($0)).tag($0)}}.pickerStyle(.menu)
-     }.padding(10).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:14))
+      TextField("¿Qué estás buscando?",text:$search).textFieldStyle(.roundedBorder).submitLabel(.search)
+       .onSubmit { if !search.trimmingCharacters(in:.whitespaces).isEmpty { openSearch(search) } }
+      Menu {
+       Picker("Categoría", selection:$category) { ForEach(["Todo"]+categories.map(\.id),id:\.self){Text(LocalizedStringKey($0)).tag($0)} }
+      } label: { Image(systemName: category == "Todo" ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill") }
+       .accessibilityLabel("Filtrar").accessibilityValue(Text(LocalizedStringKey(category)))
+      Button { openSearch(search) } label: { Image(systemName:"magnifyingglass") }.accessibilityLabel("Buscar")
+       .disabled(search.trimmingCharacters(in:.whitespaces).isEmpty)
+     }
      ForEach(visible) { item in
       Button { openSearch(search.isEmpty ? item.query:search) } label: {
        HStack(spacing:12){Image(systemName:item.icon).font(.title3).foregroundStyle(PawlyColors.primary).frame(width:43,height:43).background(PawlyColors.mint,in:RoundedRectangle(cornerRadius:13));VStack(alignment:.leading,spacing:3){Text(item.id).font(.headline).foregroundStyle(.primary);Text(item.detail).font(.caption).foregroundStyle(.secondary)};Spacer();Image(systemName:"arrow.up.right").foregroundStyle(PawlyColors.primary)}.padding(13).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:16))
@@ -516,6 +520,8 @@ struct PawlyMarketView: View {
      if let message { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) }
     }.padding(18)
    }.background(PawlyColors.canvas).navigationTitle("Pawly Market").navigationBarTitleDisplayMode(.inline)
+    .toolbar { Button { info = true } label: { Image(systemName:"info.circle") }.accessibilityLabel("Información") }
+    .alert("Pawly Market", isPresented:$info) { Button("Cerrar") {} } message: { Text("Encuentra productos en tiendas externas. Pawly no procesa pagos ni pedidos.") }
   }
  }
  private func openSearch(_ term:String) {

@@ -19,9 +19,11 @@ enum PawlyServiceMessage {
         }
         if issue.domain == FirestoreErrorDomain {
             switch issue.code {
+            case FirestoreErrorCode.failedPrecondition.rawValue:
+                return "No se ha podido completar la consulta. Inténtalo más tarde."
             case FirestoreErrorCode.permissionDenied.rawValue, FirestoreErrorCode.unauthenticated.rawValue: return "Tu cuenta no tiene permiso para esta acción."
             case FirestoreErrorCode.unavailable.rawValue, FirestoreErrorCode.deadlineExceeded.rawValue: return "Comprueba la conexión y vuelve a intentarlo."
-            default: break
+            default: return "No se ha podido completar la consulta. Inténtalo más tarde."
             }
         }
         if issue.domain == NSURLErrorDomain, issue.code != NSURLErrorCancelled {

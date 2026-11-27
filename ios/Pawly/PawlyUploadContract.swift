@@ -97,3 +97,19 @@ struct PawlyUploadContract {
         return ("mp4", "video/mp4")
     }
 }
+
+enum PawlyVideoPoster {
+    static func url(for video: URL) -> URL? {
+        guard var components = URLComponents(url: video, resolvingAgainstBaseURL: false),
+              components.scheme == "https", components.host == "res.cloudinary.com",
+              components.user == nil, components.password == nil, components.query == nil else { return nil }
+        var pieces = components.percentEncodedPath.split(separator: "/").map(String.init)
+        guard pieces.count >= 4, pieces[1] == "video", pieces[2] == "upload",
+              !pieces[3].hasPrefix("s--"), let file = pieces.last else { return nil }
+        let base = (file as NSString).deletingPathExtension
+        pieces[pieces.count - 1] = base + ".jpg"
+        pieces.insert("c_limit,w_640,q_auto", at: 3)
+        components.percentEncodedPath = "/" + pieces.joined(separator: "/")
+        return components.url
+    }
+}

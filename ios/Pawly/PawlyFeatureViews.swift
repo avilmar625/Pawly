@@ -1163,7 +1163,7 @@ struct CommunityView:View {
                         }
                         Menu {
                             Picker("Tipo", selection: $filter.category) {
-                                Text("Todos").tag("")
+                                Text("Todas las categorías").tag("")
                                 Text("Historia").tag("STORY")
                                 Text("Adopción").tag("ADOPTION")
                                 Text("Perdido").tag("LOST")
@@ -1174,14 +1174,14 @@ struct CommunityView:View {
                                 ForEach(PawlyFeedOrder.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
                             }
                             Picker("Archivo adjunto", selection: $filter.media) {
-                                Text("Todos").tag(""); Text("Fotografía").tag("image"); Text("Vídeo").tag("video")
+                                Text("Cualquier adjunto").tag(""); Text("Fotografía").tag("image"); Text("Vídeo").tag("video")
                             }
                             Toggle("Cuentas que sigo", isOn: $filter.following)
                             Button("Restablecer filtros") { filter = PawlyFeedFilter(); browsing = false }
 
                         } label: { Label("Filtrar", systemImage: filter == PawlyFeedFilter() ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill").labelStyle(.iconOnly) }
                     }
-                    if let status=store.statusMessage{Text(status).font(.caption).foregroundStyle(.red)}
+                    if let status=store.statusMessage{Text(LocalizedStringKey(status)).font(.caption).foregroundStyle(.red)}
                     if searching {
                         HStack {
                             TextField("Buscar publicaciones", text: $filter.query).textFieldStyle(.roundedBorder)
@@ -1485,7 +1485,6 @@ struct PostComposerSheet:View {
                 if busy { ProgressView("Publicando…") }
                 if !petName.isEmpty{LabeledContent("Mascota",value:petName)}
                 if let error{Text(LocalizedStringKey(error)).foregroundStyle(.red)}
-                Text("Para publicar necesitas verificar tu correo.").font(.caption).foregroundStyle(.secondary)
             }
             .disabled(busy)
             .interactiveDismissDisabled(busy)
@@ -1496,7 +1495,6 @@ struct PostComposerSheet:View {
                         busy=true
                         do {
                             guard let uid=Auth.auth().currentUser?.uid else { throw PawlyCommunityError.notSignedIn }
-                            guard Auth.auth().currentUser?.isEmailVerified == true else { throw PawlyCommunityError.verifyEmail }
                             let media = try await attachment.upload(owner: uid, forPost: true)
                             try await onPublish(text, category, media.image, media.video)
                             dismiss()

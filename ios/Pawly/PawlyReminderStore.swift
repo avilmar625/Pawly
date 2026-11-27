@@ -155,7 +155,6 @@ struct PawlyRemindersView: View {
     @AppStorage("pawly.notificationsEnabled") private var noticesEnabled = true
     @State private var editing: PawlyLocalReminder?
     @State private var showAdd = false
-    @State private var permissionMessage:String?
     var body: some View {
         List {
             Section("Agenda compartida") {
@@ -181,13 +180,12 @@ struct PawlyRemindersView: View {
                         PawlyAppDelegate.disableRemoteNotifications()
                     }
                 } else {
-                    Button { noticesEnabled = true; Task { permissionMessage = await store.requestPermission() } } label: {
+                    Button { noticesEnabled = true; Task { _ = await store.requestPermission() } } label: {
                         Label("Activar avisos", systemImage: "bell.badge")
                     }.buttonStyle(.borderless)
                 }
                 Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Label("Abrir ajustes de notificaciones",systemImage:"gear") }.buttonStyle(.borderless) }
-            if let permissionMessage { Section { Text(LocalizedStringKey(permissionMessage)).font(.caption).foregroundStyle(.secondary) } }
-            if let message = store.statusMessage { Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) } }
+            if let message = store.statusMessage, message != "Notificaciones activadas en este dispositivo." { Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) } }
         }
         .navigationTitle("Agenda")
         .sheet(isPresented: $showAdd) { if let pet = pets.selectedPet { form(for: pet) } }

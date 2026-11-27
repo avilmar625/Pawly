@@ -662,3 +662,46 @@ test("an edited lost area accepts a coarse pin without creating a proximity aler
   await assertFails(setDoc(alert, fields));
   await assertSucceeds(setDoc(alert, { ...fields, latCell: 0, lonCell: 0 }));
 });
+
+test("a registered email account can publish before verification with a server-timed cooldown", async () => {
+  const uid = "publisher";
+  await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(), "users", uid), { uid, displayName: "Alex", username: "alex" }));
+  const db = env.authenticatedContext(uid, { email: "publisher@example.test", email_verified: false }).firestore();
+  const publish = (id, changes = {}, withLimit = true) => {
+    const batch = writeBatch(db);
+    batch.set(doc(db, "posts", id), { authorId: uid, authorName: "Alex", category: "STORY", text: "Un paseo",
+      imageUrl: "", videoUrl: "", likedBy: [], likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), ...changes });
+    if (withLimit) batch.set(doc(db, "postPublishLimits", uid), { postId: id, at: serverTimestamp() });
+    return batch.commit();
+  };
+  await assertFails(publish("without", {}, false));
+  await assertFails(publish("spoof", { authorName: "Otro" }));
+  await assertFails(publish("boost", { likeCount: 10 }));
+  await assertFails(publish("unregistered-media", { imageUrl: "https://example.test/photo" }));
+  await assertSucceeds(publish("first"));
+  await assertFails(publish("second"));
+});
+
+test("four distinct accounts can reply across a thread without notifying the post owner", async () => {
+  await env.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    await setDoc(doc(db, "users/fourth"), { displayName: "Cuarta", username: "cuarta" });
+    await setDoc(doc(db, "posts/p"), { authorId: "first", commentCount: 2 });
+    await setDoc(doc(db, "posts/p/comments/root"), { authorId: "second", authorName: "Segunda", replyCount: 1 });
+    await setDoc(doc(db, "posts/p/comments/reply"), { authorId: "third", authorName: "Tercera", threadId: "root" });
+  });
+  const db = env.authenticatedContext("fourth", { email_verified: true }).firestore();
+  const post = doc(db, "posts/p");
+  const send = recipient => {
+    const batch = writeBatch(db);
+    batch.set(doc(post,"comments/final"), { text: "Gracias", authorId: "fourth", authorName: "Cuarta", threadId: "root",
+      replyToId: "reply", replyToAuthorId: "third", replyToName: "Tercera", createdAt: serverTimestamp() });
+    batch.update(doc(post,"comments/root"), { replyCount: 2, lastReplyId: "final" });
+    batch.update(post,{ commentCount: 3, lastCommentId: "final" });
+    batch.set(doc(db,"users",recipient,"notifications","COMMENT-fourth-final"), { type:"COMMENT", actorId:"fourth",
+      actorName:"Cuarta", message:"Ha respondido a tu comentario.", relatedId:"p", sourceEventId:"final", createdAt:serverTimestamp(), read:false });
+    return batch.commit();
+  };
+  await assertFails(send("first"));
+  await assertSucceeds(send("third"));
+});

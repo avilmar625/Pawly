@@ -658,9 +658,26 @@ service cloud.firestore {
         && alert.latCell == post.lostLatCell && alert.lonCell == post.lostLonCell;
     }
 
+    match /postPublishLimits/{uid} {
+      function newPost(id) { return /databases/$(database)/documents/posts/$(id); }
+      allow create, update: if owner(uid) && request.resource.data.keys().hasOnly(['postId','at'])
+        && request.resource.data.postId.matches('^[a-zA-Z0-9_-]{1,128}$') && request.resource.data.at == request.time
+        && (resource == null || request.time >= resource.data.at + duration.value(60,'s'))
+        && !exists(newPost(request.resource.data.postId)) && getAfter(newPost(request.resource.data.postId)).data.authorId == uid;
+    }
+
     match /posts/{postId} {
       allow read: if signedIn();
-      allow create: if verified()
+      function limitedPublisher(d) {
+        let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+        let limit = getAfter(/databases/$(database)/documents/postPublishLimits/$(request.auth.uid)).data;
+        return request.auth.token.get('email','') != '' && limit.at == request.time && limit.postId == postId
+          && profile.uid == request.auth.uid && d.authorName in [profile.get('displayName',''),profile.get('username','')]
+          && d.createdAt == request.time && d.likeCount == 0 && d.commentCount == 0 && d.likedBy == []
+          && (d.imageUrl == '' || ownedPostAsset(d.imageAssetId,d.imageUrl,'image','post-photos'))
+          && (d.get('videoUrl','') == '' || ownedPostAsset(d.videoAssetId,d.videoUrl,'video','post-videos'));
+      }
+      allow create: if signedIn() && (verified() || limitedPublisher(request.resource.data))
         && (!request.resource.data.keys().hasAny(['lostLatCell','lostLonCell']) ||
           (request.resource.data.category == 'LOST' && validLostCell(request.resource.data,'lostLatCell','lostLonCell')
            && !request.resource.data.get('lostAreaEdited',false)))

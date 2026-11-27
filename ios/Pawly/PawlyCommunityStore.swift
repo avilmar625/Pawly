@@ -201,7 +201,7 @@ final class PawlyCommunityStore: ObservableObject {
 
         feedListener = db.collection("posts").order(by:"createdAt",descending:true).limit(to:50).addSnapshotListener { [weak self] snap,error in
             guard let self else { return }
-            if let error { self.statusMessage = error.localizedDescription; return }
+            if let error { self.statusMessage = PawlyServiceMessage.key(for: error); return }
             self.cachedFeed = snap?.documents.compactMap { d in
                 Self.feedPost(d, uid: uid)
             } ?? []
@@ -235,9 +235,9 @@ final class PawlyCommunityStore: ObservableObject {
         blockedByFeedListener = nil
     }
     func publish(text:String,petName:String,category:String,imageURL:String = "",videoURL:String = "", lostArea: CLLocationCoordinate2D? = nil) async throws -> String {
-        try requireVerified()
+        guard auth.currentUser?.isAnonymous == false else { throw PawlyCommunityError.notSignedIn }
         let clean=text.trimmingCharacters(in:.whitespacesAndNewlines)
-        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty),imageURL.isEmpty || videoURL.isEmpty else{throw PawlyCommunityError.invalidPost}
+        guard clean.count<=2000,(!clean.isEmpty || !imageURL.isEmpty || !videoURL.isEmpty) else{throw PawlyCommunityError.invalidPost}
         guard let uid else{throw PawlyCommunityError.notSignedIn}
         let profile=try await db.collection("users").document(uid).getDocument()
         let reference = db.collection("posts").document()
@@ -252,7 +252,16 @@ final class PawlyCommunityStore: ObservableObject {
             data["lostLatCell"] = Int((point.latitude * 100).rounded())
             data["lostLonCell"] = Int((point.longitude * 100).rounded())
         }
-        try await reference.setData(data)
+        if isVerified { try await reference.setData(data) }
+        else {
+            if !imageURL.isEmpty { data["imageAssetId"] = PawlyCloudinaryUploader.indexID(for: imageURL) }
+            if !videoURL.isEmpty { data["videoAssetId"] = PawlyCloudinaryUploader.indexID(for: videoURL) }
+            let batch = db.batch()
+            batch.setData(data, forDocument: reference)
+            batch.setData(["postId": reference.documentID, "at": FieldValue.serverTimestamp()],
+                          forDocument: db.collection("postPublishLimits").document(uid))
+            try await batch.commit()
+        }
         return reference.documentID
     }
 
@@ -703,7 +712,7 @@ final class PawlyCommunityStore: ObservableObject {
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
                 if let error {
-                    self.statusMessage = error.localizedDescription
+                    self.statusMessage = PawlyServiceMessage.key(for: error)
                     return
                 }
                 self.unreadNotificationCount = snapshot?.documents.count ?? 0
@@ -721,7 +730,7 @@ final class PawlyCommunityStore: ObservableObject {
         blockedChatsListener?.remove()
         blockedByChatsListener?.remove()
         chatsListener=db.collection("conversations").whereField("participants",arrayContains:uid).addSnapshotListener { [weak self] snap,error in
-            guard let self else{return};if let error{self.statusMessage=error.localizedDescription;return}
+            guard let self else{return};if let error{self.statusMessage=PawlyServiceMessage.key(for: error);return}
             self.cachedChats = (snap?.documents.compactMap { d -> PawlyChat? in
                 let x=d.data()
                 let participants=x["participants"] as? [String] ?? []
@@ -742,14 +751,14 @@ final class PawlyCommunityStore: ObservableObject {
         }
         blockedChatsListener = db.collection("users").document(uid).collection("blocked").addSnapshotListener { [weak self] snap,error in
             guard let self else { return }
-            if let error { self.statusMessage = error.localizedDescription; return }
+            if let error { self.statusMessage = PawlyServiceMessage.key(for: error); return }
             self.blockedChatIDs = Set(snap?.documents.map { $0.documentID } ?? [])
             self.refreshVisibleChats()
             Task { await self.refreshUnreadMessageCounts() }
         }
         blockedByChatsListener = db.collection("users").document(uid).collection("blockedBy").addSnapshotListener { [weak self] snap,error in
             guard let self else { return }
-            if let error { self.statusMessage = error.localizedDescription; return }
+            if let error { self.statusMessage = PawlyServiceMessage.key(for: error); return }
             self.blockedByChatIDs = Set(snap?.documents.map { $0.documentID } ?? [])
             self.refreshVisibleChats()
             Task { await self.refreshUnreadMessageCounts() }
