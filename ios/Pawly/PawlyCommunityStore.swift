@@ -94,8 +94,7 @@ final class PawlyCommunityStore: ObservableObject {
         targetUID: String,
         type: String,
         relatedID: String = "",
-        sourceEventID: String = "",
-        reply: Bool = false
+        sourceEventID: String = ""
     ) async {
         guard let actorUID = uid, !targetUID.isEmpty, targetUID != actorUID else { return }
 
@@ -106,7 +105,7 @@ final class PawlyCommunityStore: ObservableObject {
             message = "Le ha gustado tu publicación."
             notificationID = "LIKE-\(actorUID)-\(relatedID)"
         case "COMMENT":
-            message = reply ? "Ha respondido a tu comentario." : "Ha comentado tu publicación."
+            message = "Ha comentado tu publicación."
             notificationID = "COMMENT-\(actorUID)-\(sourceEventID)"
         case "FOLLOW":
             message = "Ha empezado a seguirte."
@@ -379,9 +378,26 @@ final class PawlyCommunityStore: ObservableObject {
             "commentCount": FieldValue.increment(Int64(1)),
             "lastCommentId": comment.documentID
         ], forDocument: post)
+        if let target, target.authorId != uid {
+            let name = [profile.get("displayName"), profile.get("username")].compactMap { $0 as? String }
+                .first { !$0.isEmpty && $0.count <= 80 }
+            if let name {
+                let inbox = db.collection("users").document(target.authorId).collection("notifications")
+                let notice = inbox.document("COMMENT-\(uid)-\(comment.documentID)")
+                batch.setData(["actorId": uid, "actorName": name, "type": "COMMENT",
+                               "message": "Ha respondido a tu comentario.", "relatedId": postID,
+                               "sourceEventId": comment.documentID, "createdAt": FieldValue.serverTimestamp(), "read": false],
+                              forDocument: notice)
+            }
+        }
         try await batch.commit()
-        await createActivityNotification(targetUID: target?.authorId ?? postAuthorID, type: "COMMENT",
-                                         relatedID: postID, sourceEventID: comment.documentID, reply: target != nil)
+        if let target {
+            if target.authorId != uid {
+                await PawlyPushDispatcher.send(type: "COMMENT", recipientUID: target.authorId, relatedID: postID, sourceEventID: comment.documentID)
+            }
+        } else {
+            await createActivityNotification(targetUID: postAuthorID, type: "COMMENT", relatedID: postID, sourceEventID: comment.documentID)
+        }
     }
     func publicUser(_ id: String) async throws -> PawlyPublicUser? {
         guard let me = uid, !id.isEmpty else { throw PawlyCommunityError.notSignedIn }

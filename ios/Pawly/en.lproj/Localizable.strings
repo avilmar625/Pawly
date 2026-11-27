@@ -710,3 +710,7 @@
 "Mapa de selección" = "Location selection map";
 "Acerca o mueve el mapa y confirma el punto central." = "Zoom or pan the map, then confirm its center point.";
 "No se encontró la dirección. Puedes elegir el punto en el mapa." = "Address not found. You can choose the point on the map.";
+"Esta publicación ya no está disponible." = "This post is no longer available.";
+"Ha comentado tu publicación." = "Commented on your post.";
+"Le ha gustado tu publicación." = "Liked your post.";
+"Ha empezado a seguirte." = "Started following you.";

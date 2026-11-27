@@ -543,6 +543,18 @@ test("replies bind the thread, target, count and notification to the actual comm
     relatedId: "thread", sourceEventId: "reply", createdAt: serverTimestamp(), read: false };
   await assertFails(setDoc(doc(db, "users/stranger/notifications/COMMENT-writer-reply"), notification));
   await assertSucceeds(setDoc(doc(db, "users/reader/notifications/COMMENT-writer-reply"), notification));
+
+  await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(), "users/reader"), { username: "reader", displayName: "Reader" }));
+  const reader = env.authenticatedContext("reader", { email_verified: true }).firestore();
+  const second = writeBatch(reader);
+  const thread = doc(reader, "posts/thread");
+  second.set(doc(thread, "comments/response"), { authorId: "reader", authorName: "Reader", text: "Reply to the reply",
+    threadId: "root", replyToId: "reply", replyToAuthorId: "writer", replyToName: "Writer", createdAt: serverTimestamp() });
+  second.update(doc(thread, "comments/root"), { lastReplyId: "response", replyCount: 2 });
+  second.update(thread, { lastCommentId: "response", commentCount: 3 });
+  second.set(doc(reader, "users/writer/notifications/COMMENT-reader-response"), {
+    ...notification, actorId: "reader", actorName: "Reader", sourceEventId: "response" });
+  await assertSucceeds(second.commit());
 });
 
 test("only a lost notice owner can edit the text or replace its registered media", async () => {

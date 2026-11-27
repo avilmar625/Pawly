@@ -196,11 +196,11 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)).data;
         }
         function sourceComment() {
-          return get(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)/comments/$(request.resource.data.sourceEventId)).data;
+          return getAfter(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)/comments/$(request.resource.data.sourceEventId)).data;
         }
         function validActorName() {
-          return request.resource.data.actorName == actorProfile().displayName
-            || request.resource.data.actorName == actorProfile().username;
+          return request.resource.data.actorName == actorProfile().get('displayName','')
+            || request.resource.data.actorName == actorProfile().get('username','');
         }
         function validActivitySource() {
           return request.resource.data.type == 'LIKE'
@@ -214,7 +214,7 @@ service cloud.firestore {
             && request.resource.data.sourceEventId is string
             && request.resource.data.sourceEventId.size() > 0
             && sourceComment().get('replyToAuthorId', sourcePost().authorId) == uid
-            && sourcePost().lastCommentId == request.resource.data.sourceEventId
+            && getAfter(/databases/$(database)/documents/posts/$(request.resource.data.relatedId)).data.lastCommentId == request.resource.data.sourceEventId
             && sourceComment().authorId == request.auth.uid
             && notificationId == 'COMMENT-' + request.auth.uid + '-' + request.resource.data.sourceEventId
           || request.resource.data.type == 'FOLLOW'

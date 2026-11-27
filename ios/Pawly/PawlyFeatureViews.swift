@@ -1262,10 +1262,14 @@ struct CommunityView:View {
 }
 
 private struct PawlyNotice: Identifiable {
-    let id:String;let actorName:String;let actorID:String;let type:String;let message:String;let createdAt:Date?;let isRead:Bool
+    let id:String;let actorName:String;let actorID:String;let type:String;let message:String;let createdAt:Date?;let isRead:Bool; let postID:String; let sourceID:String
 }
 
 struct PawlyNotificationsView:View {
+    @StateObject private var community = PawlyCommunityStore()
+    @State private var openedPost: PawlyFeedPost?
+    @State private var highlight: String?
+    @State private var opening = false
     @State private var notices:[PawlyNotice]=[]
     @State private var message:String?
     @State private var listener:ListenerRegistration?
@@ -1279,7 +1283,7 @@ struct PawlyNotificationsView:View {
                 if let message {Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.red)}
                 if notices.isEmpty {VStack(spacing:8){Image(systemName:"bell").font(.largeTitle).foregroundStyle(PawlyColors.primary);Text("Aún no hay avisos").font(.headline);Text("Aquí aparecerán las novedades de Comunidad.").font(.caption).foregroundStyle(.secondary)}.frame(maxWidth:.infinity).padding(.vertical,30).listRowSeparator(.hidden)}
                 ForEach(notices) { notice in
-                    Button { markRead(notice) } label: {
+                    Button { open(notice) } label: {
                         HStack(alignment:.top,spacing:11) {
                             Image(systemName:notice.type == "FOLLOW" ? "person.badge.plus":notice.type == "COMMENT" ? "text.bubble.fill":"heart.fill")
                                 .foregroundStyle(PawlyColors.primary).frame(width:36,height:36).background(PawlyColors.mint,in:Circle())
@@ -1292,6 +1296,7 @@ struct PawlyNotificationsView:View {
             }
             .navigationTitle("Avisos")
             .toolbar { ToolbarItem(placement:.topBarTrailing) { Button("Marcar leídos",action:markAllRead).disabled(!notices.contains(where:{!$0.isRead})) } }
+            .sheet(item: $openedPost) { post in CommentsView(store: community, post: post, highlightedCommentID: highlight) }
             .onAppear(perform:startListening).onDisappear{listener?.remove();listener=nil}
         }
     }
@@ -1300,9 +1305,23 @@ struct PawlyNotificationsView:View {
         listener=collection.order(by:"createdAt",descending:true).limit(to:60).addSnapshotListener{snapshot,error in
             if let error {DispatchQueue.main.async{message=PawlyServiceMessage.key(for: error)};return}
             let loaded=snapshot?.documents.map{doc in
-                PawlyNotice(id:doc.documentID,actorName:doc.get("actorName") as? String ?? "Usuario Pawly",actorID:doc.get("actorId") as? String ?? "",type:doc.get("type") as? String ?? "",message:doc.get("message") as? String ?? "",createdAt:(doc.get("createdAt") as? Timestamp)?.dateValue(),isRead:doc.get("read") as? Bool ?? false)
+                PawlyNotice(id:doc.documentID,actorName:doc.get("actorName") as? String ?? "Usuario Pawly",actorID:doc.get("actorId") as? String ?? "",type:doc.get("type") as? String ?? "",message:doc.get("message") as? String ?? "",createdAt:(doc.get("createdAt") as? Timestamp)?.dateValue(),isRead:doc.get("read") as? Bool ?? false, postID:doc.get("relatedId") as? String ?? "", sourceID:doc.get("sourceEventId") as? String ?? "")
             } ?? []
             DispatchQueue.main.async{notices=loaded;message=nil}
+        }
+    }
+    private func open(_ notice: PawlyNotice) {
+        markRead(notice)
+        guard !opening, ["LIKE","COMMENT","LOST_PET"].contains(notice.type), !notice.postID.isEmpty else { return }
+        opening = true
+        Task {
+            defer { opening = false }
+            do {
+                if let post = try await community.loadPost(notice.postID) {
+                    highlight = notice.type == "COMMENT" && !notice.sourceID.isEmpty ? notice.sourceID : nil
+                    openedPost = post
+                } else { message = "Esta publicación ya no está disponible." }
+            } catch { message = PawlyServiceMessage.key(for: error) }
         }
     }
     private func markRead(_ notice:PawlyNotice) {
