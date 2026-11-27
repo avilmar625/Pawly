@@ -1135,11 +1135,11 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['interestedCount'])
         && request.resource.data.interestedCount is int
         && (
-          (request.resource.data.interestedCount == resource.data.interestedCount + 1
+          (request.resource.data.interestedCount == resource.data.get('interestedCount',0) + 1
             && !exists(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid))
             && existsAfter(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid)))
           ||
-          (request.resource.data.interestedCount == resource.data.interestedCount - 1
+          (request.resource.data.interestedCount == (resource.data.get('interestedCount',0) > 0 ? resource.data.interestedCount - 1 : 0)
             && request.resource.data.interestedCount >= 0
             && exists(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid))
             && !existsAfter(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid)))
@@ -1150,13 +1150,16 @@ service cloud.firestore {
         // Only the event organizer can list participants. Individual members can
         // still read their own RSVP, but cannot enumerate anyone else's attendance.
         // Attendee enumeration goes through the Worker, which also filters both block directions.
+        function countBefore() { return get(/databases/$(database)/documents/events/$(eventId)).data.get('interestedCount', 0); }
+        function countAfter() { return getAfter(/databases/$(database)/documents/events/$(eventId)).data.interestedCount; }
         allow list: if false;
         allow get: if signedIn() && request.auth.uid == uid;
         allow create: if verified() && request.auth.uid == uid
           && request.resource.data.keys().hasOnly(['uid', 'createdAt'])
           && request.resource.data.uid == uid
-          && request.resource.data.createdAt == request.time;
-        allow delete: if verified() && request.auth.uid == uid;
+          && request.resource.data.createdAt == request.time && countAfter() == countBefore() + 1;
+        allow delete: if verified() && request.auth.uid == uid
+          && countAfter() == (countBefore() > 0 ? countBefore() - 1 : 0);
         allow update: if false;
       }
     }

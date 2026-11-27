@@ -187,7 +187,7 @@ struct PawlyRemindersView: View {
                 Button { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } label: { Label("Abrir ajustes de notificaciones",systemImage:"gear") }.buttonStyle(.borderless) }
             if let message = store.statusMessage, message != "Notificaciones activadas en este dispositivo." { Section { Text(LocalizedStringKey(message)).font(.caption).foregroundStyle(.secondary) } }
         }
-        .navigationTitle("Agenda")
+        .navigationTitle("Recordatorios").navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showAdd) { if let pet = pets.selectedPet { form(for: pet) } }
         .sheet(item: $editing) { item in if let pet = pets.selectedPet { form(for: pet, reminder: item) } }
         .onAppear { store.loadForCurrentUser(); store.refreshAuthorizationStatus() }

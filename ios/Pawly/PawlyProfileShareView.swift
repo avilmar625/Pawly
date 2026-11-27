@@ -92,7 +92,10 @@ struct PawlyRecipientPicker: View {
             ForEach(people) { person in
                 Button { choose(person) } label: {
                     HStack {
-                        PawlyIdentityRow(person: person)
+                        if person.chat != nil && person.username.isEmpty {
+                            PawlyChatAvatar(userID:person.id,name:person.name)
+                            Text(verbatim:person.name)
+                        } else { PawlyIdentityRow(person: person) }
                         Spacer()
                         if selected.contains(person.id) || sent.contains(person.id) { Image(systemName: "checkmark.circle.fill") }
                     }

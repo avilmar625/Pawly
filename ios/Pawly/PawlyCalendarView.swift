@@ -145,6 +145,7 @@ struct PawlyCalendarView: View {
             } else { PawlyEmptyState(icon: "calendar", title: "Añade una mascota", detail: "Su calendario de cuidados aparecerá aquí.") }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar { NavigationLink { PawlyRemindersView() } label: { Label("Recordatorios", systemImage: "bell.badge") } }
     }
 

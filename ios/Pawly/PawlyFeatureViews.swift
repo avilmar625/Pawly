@@ -1861,6 +1861,7 @@ struct ChatView:View {
     @State private var nearBottom = true
     @State private var forceBottom = true
     @FocusState private var typing: Bool
+    @State private var followKeyboard=false
 
     var body:some View {
         NavigationStack {
@@ -1889,8 +1890,10 @@ struct ChatView:View {
                     .onChange(of: messages.last?.id) { newestID in
                         if let newestID, nearBottom || forceBottom { proxy.scrollTo(newestID, anchor: .bottom); forceBottom = false }
                     }
+                    .onChange(of:typing) { focused in if focused { followKeyboard=nearBottom } }
                     .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
-                        if nearBottom, let id = messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
+                        if followKeyboard, let id = messages.last?.id { proxy.scrollTo(id, anchor: .bottom) }
+                        followKeyboard=false
                     }
                 }
                 if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
