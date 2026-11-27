@@ -43,7 +43,7 @@ struct PawlyCareTask: Identifiable {
     var daysOfWeek: [Int]? = nil
 }
 struct PawlyDiaryEntry: Identifiable {
-    var id: String; var text: String; var title: String; var category: String; var photos: [String]; var date: Date?; var position: Int; var updatedAt: Date?; var videoURL = ""
+    var id: String; var text: String; var title: String; var category: String; var photos: [String]; var date: Date?; var position: Int; var updatedAt: Date?; var videoURLs: [String] = []
 }
 struct PawlyCareLogEntry: Identifiable {
     var id: String
@@ -769,7 +769,7 @@ final class PawlyPetStore: ObservableObject {
             let date = (payload?["date"] as? NSNumber).map { Date(timeIntervalSince1970: $0.doubleValue / 1000) }
             return PawlyDiaryEntry(id:d.documentID,text:payload?["text"] as? String ?? text,
                 title:payload?["title"] as? String ?? text,category:payload?["category"] as? String ?? "Otros",
-                photos:payload?["photos"] as? [String] ?? [],date:date,position:d.get("position") as? Int ?? 0,updatedAt:timestamp,videoURL:payload?["videoUrl"] as? String ?? "")
+                photos:payload?["photos"] as? [String] ?? [],date:date,position:d.get("position") as? Int ?? 0,updatedAt:timestamp,videoURLs:payload?["videoUrls"] as? [String] ?? [payload?["videoUrl"] as? String].compactMap { $0 }.filter { !$0.isEmpty })
         }.sorted { ($0.date ?? $0.updatedAt ?? .distantPast) > ($1.date ?? $1.updatedAt ?? .distantPast) }
     }
     func addDiaryEntry(_ text: String, pet: PawlyPet) async throws {

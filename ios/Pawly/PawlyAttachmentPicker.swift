@@ -4,7 +4,7 @@ import PhotosUI
 import ImageIO
 import SwiftUI
 
-private struct PickedMovie: Transferable {
+struct PickedMovie: Transferable {
     let data: Data
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(importedContentType: .movie) { received in
@@ -211,5 +211,25 @@ private struct PawlyPhotoThumbnail: View {
                 kCGImageSourceThumbnailMaxPixelSize: 144
               ] as CFDictionary) else { return nil }
         return UIImage(cgImage: image)
+    }
+}
+
+final class PawlyRecordedClip: Identifiable {
+    let id = UUID()
+    let url: URL
+
+    init(data: Data) throws {
+        let format = try PawlyUploadContract.videoFormat(data)
+        url = FileManager.default.temporaryDirectory.appendingPathComponent(id.uuidString).appendingPathExtension(format.ext)
+        try data.write(to: url, options: [.atomic, .completeFileProtection])
+    }
+
+    deinit { try? FileManager.default.removeItem(at: url) }
+}
+
+extension PawlyAttachmentDraft {
+    static func uploadDiaryClip(_ data: Data, owner: String) async throws -> String {
+        _ = try await preview(data, kind: .video, maximumDuration: 60)
+        return try await PawlyCloudinaryUploader().uploadVideo(data, folder: "diary-videos", ownerUID: owner)
     }
 }

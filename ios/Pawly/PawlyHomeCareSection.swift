@@ -190,9 +190,14 @@ struct PawlyHomeCareSection: View {
                 }
             }
 
-            if !careLogs.isEmpty {
+            Group {
                 PawlyPersistentDisclosureGroup(title: "Actividad reciente", subtitle: pet.name, icon: "clock",
-                    storageKey: "pawly.home.\(scope).recentCare", defaultExpanded: false) {
+                    storageKey: "pawly.home.\(scope).recentCare", defaultExpanded: true) {
+                    if careLogs.isEmpty {
+                        Button { quickCareAction = "Paseo"; showQuickCareLog = true } label: {
+                            Label("Registrar paseo", systemImage: "figure.walk")
+                        }.buttonStyle(.borderless)
+                    }
                     ForEach(careLogs.prefix(3)) { entry in
                         HStack { Text(verbatim: entry.taskTitle); Spacer()
                             if let date = entry.occurredAt { Text(date, style: .relative).font(.caption).foregroundStyle(.secondary) }

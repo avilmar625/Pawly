@@ -195,10 +195,12 @@ struct PawlyCareLogForm: View {
                             .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                     }
                 }
-                if action == "Paseo" { Section("Vídeo") { PawlyAttachmentPicker(draft: video, videoOnly: true) } }
                 Section("Detalles") {
                     TextField("Notas", text: $note, axis: .vertical).lineLimit(2...5)
                     TextField("Descripción (opcional)", text: $description, axis: .vertical).lineLimit(2...5)
+                }
+                Section("Archivo adjunto") {
+                    if action == "Paseo" { PawlyAttachmentPicker(draft: video, videoOnly: true) }
                     PhotosPicker(selection: $photos, maxSelectionCount: max(1,4-cameraPhotos.count), matching: .images) {
                         Label("Elegir de la galería",systemImage:"photo")
                     }.disabled(cameraPhotos.count >= 4)

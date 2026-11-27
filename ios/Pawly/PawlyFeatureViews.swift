@@ -919,7 +919,8 @@ struct DiaryView:View {
     @State private var launchCamera=false
     @State private var showPhotoPicker=false
     @State private var diaryFilter="Todos"
-    @StateObject private var video = PawlyAttachmentDraft(maximumDuration: 60)
+    @State private var pickedClips: [PhotosPickerItem] = []
+    @State private var recordedClips: [PawlyRecordedClip] = []
     @State private var searchOpen = false
     @State private var search = ""
     @State private var newestFirst=true
@@ -966,18 +967,33 @@ struct DiaryView:View {
                                     }
                                     .pickerStyle(.menu).buttonStyle(.borderless)
                                     DatePicker("Fecha del recuerdo",selection:$date,displayedComponents:.date)
+                                    HStack(spacing: 18) {
                                     PhotosPicker(selection:$selectedPhotos,maxSelectionCount:max(1,8-cameraPhotos.count),matching:.images) {
                                         Label("Elegir de la galería",systemImage:"photo")
                                     }.buttonStyle(.borderless).disabled(cameraPhotos.count >= 8)
                                     PawlyCameraButton(requestCapture:$launchCamera) { data in if selectedPhotos.count+cameraPhotos.count < 8 { cameraPhotos.append(data) } }
                                         .disabled(selectedPhotos.count+cameraPhotos.count >= 8)
+                                        PhotosPicker(selection: $pickedClips, maxSelectionCount: max(1, 8-recordedClips.count), matching: .videos) {
+                                            Label("Elegir vídeo", systemImage: "film")
+                                        }.disabled(recordedClips.count >= 8)
+                                        PawlyCameraButton(kind: .video, label: "Grabar vídeo") { data in
+                                            guard pickedClips.count + recordedClips.count < 8 else { return }
+                                            do { recordedClips.append(try PawlyRecordedClip(data: data)) }
+                                            catch { self.error = PawlyServiceMessage.key(for: error) }
+                                        }.disabled(pickedClips.count + recordedClips.count >= 8)
+                                    }.labelStyle(.iconOnly).buttonStyle(.borderless).disabled(busy)
                                     if selectedPhotos.count+cameraPhotos.count > 0 {
                                         PawlyPhotoSelection(gallery: $selectedPhotos, camera: $cameraPhotos)
                                         LabeledContent("Fotografías seleccionadas",value:"\(selectedPhotos.count+cameraPhotos.count)/8")
                                         Button("Quitar selección",role:.destructive){selectedPhotos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                                     }
                                     if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
-                                    PawlyAttachmentPicker(draft: video, videoOnly: true)
+                                    if !pickedClips.isEmpty || !recordedClips.isEmpty {
+                                        HStack {
+                                            LabeledContent("Vídeo", value: "\(pickedClips.count + recordedClips.count)/8")
+                                            Button(role: .destructive) { pickedClips = []; recordedClips = [] } label: { Label("Quitar", systemImage: "trash").labelStyle(.iconOnly) }
+                                        }.disabled(busy)
+                                    }
 
                             }
                         }
@@ -993,10 +1009,10 @@ struct DiaryView:View {
                                     if searchOpen { TextField("Buscar", text: $search).textFieldStyle(.roundedBorder) }
                                     Picker("Filtrar recuerdos",selection:$diaryFilter) {
                                         ForEach(diaryCategories,id:\.self){Text(LocalizedStringKey($0)).tag($0)}
-                                    }.pickerStyle(.menu)
-                                    Spacer()
+                                    }.pickerStyle(.menu).labelsHidden().lineLimit(1)
+                                    Spacer(minLength: 2)
                                     Button { newestFirst.toggle() } label:{
-                                        Label(newestFirst ? "Más recientes":"Más antiguos",systemImage:newestFirst ? "arrow.down":"arrow.up")
+                                        Label(newestFirst ? "Más recientes":"Más antiguos",systemImage:newestFirst ? "arrow.down":"arrow.up").labelStyle(.iconOnly)
                                             .font(.caption.weight(.semibold))
                                     }.buttonStyle(.borderless)
                                 }
@@ -1025,18 +1041,8 @@ struct DiaryView:View {
                                                 .padding(9).background(PawlyColors.mint,in:Circle())
                                         }
                                         if !entry.text.isEmpty { Text(entry.text).font(.subheadline).foregroundStyle(PawlyColors.ink) }
-                                        if !entry.videoURL.isEmpty, let clip = URL(string: entry.videoURL) { PawlyVideoPreview(url: clip).frame(height:180) }
-                                        if !entry.photos.isEmpty {
-                                            ScrollView(.horizontal,showsIndicators:false) {
-                                                HStack(spacing:8) {
-                                                    ForEach(entry.photos,id:\.self){url in
-                                                        AsyncImage(url:URL(string:url)){image in image.resizable().scaledToFill()}
-                                                            placeholder:{RoundedRectangle(cornerRadius:12).fill(PawlyColors.mint)}
-                                                            .frame(width:150,height:115).clipShape(RoundedRectangle(cornerRadius:12)).pawlyPhoto(URL(string: url), gallery: entry.photos)
-                                                    }
-                                                }
-                                            }
-                                        }
+                                        PawlyDiaryGallery(photos: entry.photos, videos: entry.videoURLs)
+
                                     }
                                     .padding(.vertical,5)
                                     .swipeActions { Button(role:.destructive){remove(entry)}label:{Label("Eliminar",systemImage:"trash")} }
@@ -1050,11 +1056,11 @@ struct DiaryView:View {
             .toolbar {
                 if editorExpanded && !pets.pets.isEmpty {
                     ToolbarItem(placement:.cancellationAction) { Button("Cancelar") {
-                        title=""; note=""; selectedPhotos=[]; cameraPhotos=[]; video.clear(); editorExpanded=false
+                        title=""; note=""; selectedPhotos=[]; cameraPhotos=[]; pickedClips=[]; recordedClips=[]; editorExpanded=false
                         UserDefaults.standard.set(false, forKey:editorStorageKey)
                     }.disabled(busy) }
                     ToolbarItem(placement:.confirmationAction) { Button(busy ? "Guardando…" : "Guardar") { Task { await add() } }
-                        .disabled(busy || video.loading || video.error != nil || (title.isEmpty && note.isEmpty && selectedPhotos.isEmpty && cameraPhotos.isEmpty && !video.hasAttachment)) }
+                        .disabled(busy || (title.isEmpty && note.isEmpty && selectedPhotos.isEmpty && cameraPhotos.isEmpty && pickedClips.isEmpty && recordedClips.isEmpty)) }
                 }
             }
             .navigationTitle("Recuerdos")
@@ -1091,19 +1097,26 @@ struct DiaryView:View {
             for data in cameraPhotos {
                 urls.append(try await PawlyCloudinaryUploader().uploadImage(data,folder:"diary-photos",ownerUID:uid))
             }
-            let clip = try await video.upload(owner: uid, prefix: "diary").video
+            var clips: [String] = []
+            for item in pickedClips {
+                guard let movie = try await item.loadTransferable(type: PickedMovie.self) else { throw PawlyMediaError.unsupportedVideo }
+                clips.append(try await PawlyAttachmentDraft.uploadDiaryClip(movie.data, owner: uid))
+            }
+            for recorded in recordedClips {
+                clips.append(try await PawlyAttachmentDraft.uploadDiaryClip(Data(contentsOf: recorded.url, options: .mappedIfSafe), owner: uid))
+            }
             let payload:[String:Any] = [
                 "pawlyDiaryVersion":1,
                 "title":title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? (note.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "Un recuerdo especial" : note.trimmingCharacters(in:.whitespacesAndNewlines).prefix(48).description):title.trimmingCharacters(in:.whitespacesAndNewlines),
                 "text":note.trimmingCharacters(in:.whitespacesAndNewlines),
                 "category":category,
                 "date":Int64(date.timeIntervalSince1970*1000),
-                "photos":urls, "videoUrl":clip
+                "photos":urls, "videoUrls":clips, "videoUrl":clips.first ?? ""
             ]
             let data=try JSONSerialization.data(withJSONObject:payload,options:[.sortedKeys])
             guard let raw=String(data:data,encoding:.utf8) else{throw PawlyMediaError.invalidImage}
             try await pets.addDiaryEntry(raw,pet:pet)
-            title="";note="";category="Paseos";selectedPhotos=[];cameraPhotos=[];video.clear();await load()
+            title="";note="";category="Paseos";selectedPhotos=[];cameraPhotos=[];pickedClips=[];recordedClips=[];await load()
         } catch let saveError {
             self.error = saveError.localizedDescription
         }
@@ -1214,10 +1227,6 @@ struct CommunityView:View {
                             Picker("Ordenar", selection: $filter.order) {
                                 ForEach(PawlyFeedOrder.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
                             }
-                            Picker("Archivo adjunto", selection: $filter.media) {
-                                Text("Cualquier adjunto").tag(""); Text("Fotografía").tag("image"); Text("Vídeo").tag("video")
-                            }
-                            Toggle("Cuentas que sigo", isOn: $filter.following)
                             Button("Restablecer filtros") { filter = PawlyFeedFilter(); browsing = false }
 
                         } label: { Label("Filtrar", systemImage: filter == PawlyFeedFilter() ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill").labelStyle(.iconOnly) }
@@ -1498,7 +1507,7 @@ struct FeedPostCard:View {
                     .frame(maxWidth:.infinity).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14)).pawlyPhoto(url)
             }
             if !post.videoURL.isEmpty, let url=URL(string:post.videoURL) {
-                PawlyVideoPreview(url: url).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
+                PawlyVideoPreview(url: url, inline: true).frame(height:220).clipShape(RoundedRectangle(cornerRadius:14))
             }
             if post.category == "LOST" { PawlyLostPostActions(post: post, onEdited: onEdited) }
             HStack(spacing:20){Button(action:onLike){Label("\(post.likeCount)",systemImage:post.likedByMe ? "heart.fill":"heart")}.foregroundStyle(post.likedByMe ? .pink:PawlyColors.muted);Button(action:onComment){Label("\(post.commentCount)",systemImage:"bubble.right")}.foregroundStyle(PawlyColors.muted)}

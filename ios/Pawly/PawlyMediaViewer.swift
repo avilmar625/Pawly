@@ -38,7 +38,26 @@ private extension PawlyMediaItem {
 
 struct PawlyVideoPreview: View {
     let url: URL
+    var inline = false
+    @State private var playing = false
+    @State private var full = false
     var body: some View {
+        Group {
+            if playing && inline {
+                PawlyFullVideo(url: url).overlay(alignment: .topTrailing) {
+                    Button { playing = false; full = true } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right").padding(12).background(.black.opacity(0.6), in: Circle()).foregroundStyle(.white)
+                    }.accessibilityLabel("Pantalla completa").buttonStyle(.borderless)
+                }
+            } else {
+                Button { if inline { playing = true } else { full = true } } label: { poster }
+                    .buttonStyle(.borderless).accessibilityLabel("Reproducir vídeo")
+            }
+        }.fullScreenCover(isPresented: $full) { PawlyMediaViewer(items: [.video(url)], initial: .video(url)) }
+         .onDisappear { playing = false }
+    }
+
+    var poster: some View {
         ZStack {
             Color.black
             if let poster = PawlyVideoPoster.url(for: url) {
@@ -53,7 +72,7 @@ struct PawlyVideoPreview: View {
                 }
             }
             Image(systemName: "play.circle.fill").font(.system(size: 48)).foregroundStyle(.white)
-        }.modifier(PawlyMediaLink(item: .video(url), items: []))
+        }
     }
 }
 
@@ -193,6 +212,30 @@ private struct ZoomPhoto: UIViewRepresentable {
         if context.coordinator.imageView.image !== image {
             view.setZoomScale(1, animated: false)
             context.coordinator.imageView.image = image
+        }
+    }
+}
+
+struct PawlyDiaryGallery: View {
+    let photos: [String]
+    let videos: [String]
+    var body: some View {
+        let items = PawlyMediaItem.photos(photos) + videos.compactMap(URL.init(string:)).filter { $0.scheme == "https" }.map(PawlyMediaItem.video)
+        if !items.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                        Group {
+                            switch item {
+                            case .photo(let url):
+                                AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { PawlyColors.mint }
+                            case .video(let url): PawlyVideoPreview(url: url).poster
+                            }
+                        }.frame(width: 150, height: 115).clipShape(RoundedRectangle(cornerRadius: 12))
+                         .modifier(PawlyMediaLink(item: item, items: items))
+                    }
+                }
+            }
         }
     }
 }
