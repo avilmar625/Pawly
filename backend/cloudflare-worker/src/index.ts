@@ -828,13 +828,21 @@ export async function handleCommunityPlaceSubmission(
     const input = parseCommunityPlaceInput(JSON.parse(raw));
     if (!input) return json({ error: "La propuesta de lugar no es válida." }, 400);
     const accessToken = await (dependencies.getAccessToken ?? googleAccessToken)(env);
-    const placeId = uid + "_" + input.submissionId;
-    const existing = await readDocument(env, accessToken, `communityPlaces/${placeId}`);
+    const legacyId = uid + "_" + input.submissionId;
+    const legacy = await readDocument(env, accessToken, "communityPlaces/" + legacyId);
+    if (legacy && decodeFirestoreString(legacy.fields?.authorUid) === uid) {
+      return json({ id: legacyId, status: decodeFirestoreString(legacy.fields?.status) || "pending", duplicate: true });
+    }
+    const profile = await readDocument(env, accessToken, "users/" + uid);
+    if (!profile || decodeFirestoreString(profile.fields?.moderationStatus) === "restricted") return json({ error: "Tu cuenta no tiene permiso para esta acción." }, 403);
+    const key = [input.name.normalize("NFKC").toLowerCase().replace(/\s+/g, " "), input.latitude.toFixed(3), input.longitude.toFixed(3)].join("|");
+    const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
+    const placeId = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join("");
+    const existing = await readDocument(env, accessToken, "communityPlaces/" + placeId);
     if (existing) {
-      if (decodeFirestoreString(existing.fields?.authorUid) !== uid) return json({ error: "Identificador de propuesta no válido." }, 409);
+      if (decodeFirestoreString(existing.fields?.authorUid) !== uid) return json({ error: "Este lugar ya existe." }, 409);
       return json({ id: placeId, status: decodeFirestoreString(existing.fields?.status) || "pending", duplicate: true });
     }
-
     // One proposal per verified account per UTC day. The create-only document is
     // an atomic reservation: concurrent requests cannot bypass the daily limit.
     const limitId = communityPlaceDailyLimitId(uid, new Date());
@@ -861,7 +869,7 @@ export async function handleCommunityPlaceSubmission(
         longitude: { doubleValue: input.longitude },
         description: { stringValue: input.description },
         authorUid: { stringValue: uid },
-        status: { stringValue: "pending" },
+        status: { stringValue: "approved" },
         createdAt: { timestampValue: new Date().toISOString() }
       } })
     });
@@ -875,7 +883,7 @@ export async function handleCommunityPlaceSubmission(
       }
       return json({ error: "No se pudo guardar la propuesta. Inténtalo de nuevo." }, 502);
     }
-    return json({ id: placeId, status: "pending" }, 201);
+    return json({ id: placeId, status: "approved" }, 201);
   } catch {
     return json({ error: "No se pudo enviar la propuesta de lugar." }, 502);
   }

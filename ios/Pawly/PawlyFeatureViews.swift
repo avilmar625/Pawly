@@ -861,6 +861,7 @@ struct PetSharingSheet:View {
                     Button(busy ? "Enviando…" : "Enviar invitación"){Task{await invite()}}
                         .disabled(busy || pets.selectedPet == nil || pets.selectedPet?.ownerUID != nil || username.trimmingCharacters(in:.whitespaces).count<3)
                 }
+                PawlyRecipientPicker { person in username = person.username }
                 Section("Invitaciones recibidas") {
                     if pending.isEmpty {Text("No tienes invitaciones pendientes.").font(.caption).foregroundStyle(.secondary)}
                     ForEach(pending) { invitation in
@@ -876,7 +877,7 @@ struct PetSharingSheet:View {
                 }
                 if let status {Section{Text(status).font(.footnote).foregroundStyle(PawlyColors.muted)}}
             }
-            .navigationTitle("Compartir perfil")
+            .navigationTitle("Compartir mascotas")
             .toolbar{ToolbarItem(placement:.confirmationAction){Button("Cerrar"){dismiss()}}}
             .task{await load()}
         }
@@ -1809,7 +1810,7 @@ struct NewChatSheet:View {
     @State private var busy=false
     @State private var error:String?
     var body:some View{
-        NavigationStack{Form{TextField("Nombre de usuario de Pawly",text:$username).textInputAutocapitalization(.never).autocorrectionDisabled();if let error{Text(LocalizedStringKey(error)).foregroundStyle(.red)};Text("Puedes escribir a una cuenta pública ya registrada.").font(.caption).foregroundStyle(.secondary)}
+        NavigationStack{Form{PawlyRecipientPicker { person in username = person.username };TextField("Nombre de usuario de Pawly",text:$username).textInputAutocapitalization(.never).autocorrectionDisabled();if let error{Text(LocalizedStringKey(error)).foregroundStyle(.red)};Text("Puedes escribir a una cuenta pública ya registrada.").font(.caption).foregroundStyle(.secondary)}
             .navigationTitle("Nuevo mensaje").toolbar{ToolbarItem(placement:.cancellationAction){Button("Cancelar"){dismiss()}};ToolbarItem(placement:.confirmationAction){Button("Continuar"){Task{busy=true;do{try await onStart(username);dismiss()}catch{self.error=PawlyServiceMessage.key(for: error)};busy=false}}.disabled(busy || username.trimmingCharacters(in:.whitespaces).count<3)}}}
     }
 }

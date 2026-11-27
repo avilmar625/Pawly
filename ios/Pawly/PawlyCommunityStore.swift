@@ -20,6 +20,7 @@ struct PawlyPublicUser:Identifiable {
     var id:String;var username:String;var displayName:String;var bio:String;var photoURL:String;var followersCount:Int;var following:Bool
 }
 struct PawlyLostPetSubscription {
+    var updatedAt: Date?
     var enabled: Bool
     var radiusKm: Int
     var latitude: Double
@@ -337,6 +338,7 @@ final class PawlyCommunityStore: ObservableObject {
               let latCell = document.get("latCell") as? NSNumber,
               let lonCell = document.get("lonCell") as? NSNumber else { return nil }
         return PawlyLostPetSubscription(
+            updatedAt: (document.get("updatedAt") as? Timestamp)?.dateValue(),
             enabled: document.get("enabled") as? Bool ?? false,
             radiusKm: document.get("radiusKm") as? Int ?? 10,
             latitude: latCell.doubleValue / 100,

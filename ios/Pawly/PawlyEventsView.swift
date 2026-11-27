@@ -65,13 +65,6 @@ final class PawlyEventsStore: ObservableObject {
             guard request == token else { return }
             var values: [PawlyEventItem] = []
             for document in snapshot.documents {
-                guard
-                    let startAt = (document.get("startAt") as? Timestamp)?.dateValue(),
-                    let title = document.get("title") as? String,
-                    let description = document.get("description") as? String,
-                    let location = document.get("location") as? String
-                else { continue }
-
                 if filter.following && !followed.contains(document.get("organizerUid") as? String ?? "") { continue }
                 var interested = false
                 if filter.interested {
@@ -79,7 +72,28 @@ final class PawlyEventsStore: ObservableObject {
                     if !interested { continue }
                 }
 
-                values.append(PawlyEventItem(
+                if let item = Self.event(document, interested: interested) { values.append(item) }
+            }
+            guard request == token, !Task.isCancelled else { return }
+            cursor = snapshot.documents.last
+            more = snapshot.documents.count == 30
+            let seen = Set(events.map(\.id))
+            events += values.filter { !seen.contains($0.id) }
+            errorMessage = nil
+        } catch {
+            if request == token { errorMessage = PawlyServiceMessage.key(for: error) }
+        }
+    }
+
+    static func event(_ document: DocumentSnapshot, interested: Bool = false) -> PawlyEventItem? {
+                guard
+                    let startAt = (document.get("startAt") as? Timestamp)?.dateValue(),
+                    let title = document.get("title") as? String,
+                    let description = document.get("description") as? String,
+                    let location = document.get("location") as? String
+                else { return nil }
+
+                return PawlyEventItem(
                     id: document.documentID,
                     title: title,
                     description: description,
@@ -95,17 +109,7 @@ final class PawlyEventsStore: ObservableObject {
                     interestedCount: document.get("interestedCount") as? Int ?? 0,
                     interestedByMe: interested, photoURL: document.get("photoUrl") as? String ?? "",
                     videoURL: document.get("videoUrl") as? String ?? ""
-                ))
-            }
-            guard request == token, !Task.isCancelled else { return }
-            cursor = snapshot.documents.last
-            more = snapshot.documents.count == 30
-            let seen = Set(events.map(\.id))
-            events += values.filter { !seen.contains($0.id) }
-            errorMessage = nil
-        } catch {
-            if request == token { errorMessage = PawlyServiceMessage.key(for: error) }
-        }
+                )
     }
 
     func save(
@@ -445,7 +449,7 @@ struct PawlyEventsView: View {
     }
 }
 
-private struct PawlyEventDetailsSheet: View {
+struct PawlyEventDetailsSheet: View {
     @Environment(\.dismiss) private var dismiss
     let event: PawlyEventItem
     @ObservedObject var store: PawlyEventsStore

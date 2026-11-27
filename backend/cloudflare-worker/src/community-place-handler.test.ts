@@ -19,11 +19,12 @@ const dependencies = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("POST /v1/community-places", () => {
-  it("creates a pending proposal and never accepts a client-selected author or status", async () => {
+  it("publishes a verified contribution and never accepts a client-selected author or status", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const method = init?.method ?? "GET";
-      if (method === "GET" && url.includes("/communityPlaces/verified-user-1_")) {
+      if (url.endsWith("/users/verified-user-1")) return Response.json({ fields: {} });
+      if (method === "GET" && url.includes("/communityPlaces/")) {
         return new Response("not found", { status: 404 });
       }
       if (method === "POST" && url.includes("/communityPlaceSubmissionLimits?documentId=")) {
@@ -32,7 +33,7 @@ describe("POST /v1/community-places", () => {
       if (method === "POST" && url.includes("/communityPlaces?documentId=")) {
         const body = JSON.parse(String(init?.body));
         expect(body.fields.authorUid.stringValue).toBe("verified-user-1");
-        expect(body.fields.status.stringValue).toBe("pending");
+        expect(body.fields.status.stringValue).toBe("approved");
         expect(body.fields.latitude.doubleValue).toBe(36.7);
         return new Response("{}", { status: 201 });
       }
@@ -50,14 +51,15 @@ describe("POST /v1/community-places", () => {
       dependencies
     );
     expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toMatchObject({ status: "pending" });
+    await expect(response.json()).resolves.toMatchObject({ status: "approved" });
   });
 
   it("enforces the atomic one-proposal-per-day limit", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const method = init?.method ?? "GET";
-      if (method === "GET" && url.includes("/communityPlaces/verified-user-1_")) {
+      if (url.endsWith("/users/verified-user-1")) return Response.json({ fields: {} });
+      if (method === "GET" && url.includes("/communityPlaces/")) {
         return new Response("not found", { status: 404 });
       }
       if (method === "POST" && url.includes("/communityPlaceSubmissionLimits?documentId=")) {
@@ -76,7 +78,7 @@ describe("POST /v1/community-places", () => {
       dependencies
     );
     expect(response.status).toBe(429);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("returns an existing pending proposal idempotently on client retry", async () => {

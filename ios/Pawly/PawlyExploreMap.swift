@@ -28,6 +28,8 @@ private struct ExplorePin: Identifiable {
     let id: String
     let name: String
     let layer: ExploreLayer
+    var event: PawlyEventItem?
+    var place: PawlyCommunityPlace?
     let coordinate: CLLocationCoordinate2D
 
     init?(_ id: String, _ name: String?, _ layer: ExploreLayer, _ latitude: Double?, _ longitude: Double?) {
@@ -51,6 +53,8 @@ struct PawlyExploreMap: View {
     @State private var failed: [ExploreLayer] = []
     @State private var loading = false
     @State private var selected: ExplorePin?
+    @State private var details: ExplorePin?
+    @StateObject private var events = PawlyEventsStore()
 
     private var visible: [ExplorePin] {
         let favourites = saved.compactMap { ExplorePin($0.id, $0.name, .favourite, $0.latitude, $0.longitude) }
@@ -82,14 +86,23 @@ struct PawlyExploreMap: View {
                 MapAnnotation(coordinate: pin.coordinate) {
                     Button { selected = pin } label: {
                         Image(systemName: pin.layer.symbol).foregroundStyle(.white).padding(8)
-                            .background(pin.layer.color, in: Circle())
+                            .background(pin.layer.color, in: Circle()).overlay(Circle().stroke(.white, lineWidth: selected?.id == pin.id ? 3 : 0)).scaleEffect(selected?.id == pin.id ? 1.25 : 1)
                     }.accessibilityLabel(pin.name)
                 }
             }
             if let selected {
                 HStack {
-                    Label(selected.name, systemImage: selected.layer.symbol)
+                    if let photo = selected.event?.photoURL, !photo.isEmpty, let url = URL(string:photo) {
+                        AsyncImage(url:url) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
+                            .frame(width:46,height:46).clipped()
+                    }
+                    VStack(alignment:.leading) {
+                        Text(verbatim:selected.name).font(.headline)
+                        Text(LocalizedStringKey(selected.event?.category ?? selected.place?.category ?? selected.layer.rawValue)).font(.caption)
+                        if selected.event != nil || selected.place != nil { Button("Ver detalle") { details = selected } }
+                    }
                     Spacer()
+                    Button { self.selected = nil } label: { Label("Cerrar", systemImage:"xmark").labelStyle(.iconOnly) }
                     Button("Cómo llegar") {
                         let item = MKMapItem(placemark: MKPlacemark(coordinate: selected.coordinate))
                         item.name = selected.name
@@ -105,7 +118,10 @@ struct PawlyExploreMap: View {
         .onReceive(gps.$location) { fix in
             if let fix { region = MKCoordinateRegion(center: fix.coordinate, latitudinalMeters: 8000, longitudinalMeters: 8000) }
         }.onDisappear { gps.cancel() }
-        .task { await load() }
+        .sheet(item: $details) { pin in
+            if let event = pin.event { PawlyEventDetailsSheet(event: event, store: events) { Task { await load(); selected = nil } } }
+            else if let place = pin.place { PawlyCommunityPlaceDetailView(place: place) }
+        }.task { await load() }
     }
 
     @MainActor private func load() async {
@@ -123,8 +139,11 @@ struct PawlyExploreMap: View {
                 let records = try await query.getDocuments()
                 guard !Task.isCancelled else { return }
                 let pins = records.documents.compactMap { doc in
-                    ExplorePin(doc.documentID, doc.get(field) as? String, layer,
+                    var pin = ExplorePin(doc.documentID, doc.get(field) as? String, layer,
                                (doc.get("latitude") as? NSNumber)?.doubleValue, (doc.get("longitude") as? NSNumber)?.doubleValue)
+                    if layer == .event { pin?.event = PawlyEventsStore.event(doc) }
+                    else { pin?.place = PawlyCommunityPlacesStore.mapPlace(doc) }
+                    return pin
                 }
                 remote.removeAll { $0.layer == layer }
                 remote.append(contentsOf: pins)

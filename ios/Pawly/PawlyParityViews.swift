@@ -298,6 +298,7 @@ struct PawlyExploreView:View{
  @State private var nearMe=false
  @State private var query=""
  @State private var area=""
+ @State private var ideaSearch: UUID?
  @State private var category="Veterinarios"
  @State private var results:[PawlyPlaceResult]=[]
  @StateObject private var savedStore = PawlySavedPlacesStore()
@@ -322,9 +323,9 @@ struct PawlyExploreView:View{
     }.padding(8).background(PawlyColors.surface)
     switch page {
     case 0:
-     PawlyExploreIdeasView(saved:$savedIdeas,collections:collections,onSearch:{category=$0;query="";page=1})
+     PawlyExploreIdeasView(saved:$savedIdeas,collections:collections,onSearch:{category=$0;query="";page=1;ideaSearch=UUID()})
     case 2:
-     PawlyExploreSavedView(savedIdeas:$savedIdeas,savedPlaces:savedStore,onSearch:{category=$0;query="";page=1})
+     PawlyExploreSavedView(savedIdeas:$savedIdeas,savedPlaces:savedStore,onSearch:{category=$0;query="";page=1;ideaSearch=UUID()})
     case 3:
      PawlyExploreCollectionsView(store:collections)
     default:
@@ -363,6 +364,7 @@ struct PawlyExploreView:View{
     .onDisappear { mapSearch.cancel(); locationProvider.cancel() }
     .onChange(of: [category, query, area]) { _ in mapSearch.cancel(); results = []; error = nil }
     .onChange(of: page) { _ in mapSearch.cancel() }
+    .task(id: ideaSearch) { if ideaSearch != nil && page == 1 { await search() } }
     .onChange(of:savedIdeas){value in UserDefaults.standard.set(Array(value),forKey:ideaKey)}
     .onReceive(locationProvider.$location){value in
      if nearMe,let value {
@@ -698,6 +700,9 @@ struct PawlyLostPetView: View {
  @State private var alertRadius=10
  @State private var subscriptionLocation:CLLocationCoordinate2D?
  @State private var lostLocation:CLLocationCoordinate2D?
+ @State private var confirmedZone: PawlyLostPetSubscription?
+ @State private var town = ""
+ @State private var subscriptionError: String?
  @State private var subscriptionSaved=false
  @State private var posterImage: UIImage?
  @State private var posterURL:URL?
@@ -765,25 +770,24 @@ struct PawlyLostPetView: View {
       Toggle("Quiero recibir avisos de mi zona",isOn:$receiveNearbyAlerts)
        .onChange(of:receiveNearbyAlerts){enabled in
         subscriptionSaved=false
-        if enabled && subscriptionLocation == nil { locationProvider.request() }
+        if !enabled { locationProvider.cancel() }
        }
       Picker("Radio de recepción",selection:$alertRadius) {
        ForEach([5,10,20,30,50,100],id:\.self){Text("\($0) km").tag($0)}
       }.onChange(of:alertRadius){_ in subscriptionSaved=false}
       Text("Solo se enviarán alertas si otra persona también ha activado esta función y el aviso está dentro del radio. Tu posición exacta no se comparte.")
        .font(.caption).foregroundStyle(.secondary)
-      Button {
-       locationProvider.request()
-      } label: {
-       Label(subscriptionLocation == nil ? "Usar mi ubicación aproximada":"Actualizar mi ubicación aproximada",
-             systemImage:"location.circle")
-      }
-    if let locationMessage=locationProvider.message {
-       Text(LocalizedStringKey(locationMessage)).font(.caption).foregroundStyle(.secondary)
-      }
-      if subscriptionLocation != nil {
-       Text("Ubicación de recepción disponible (se guarda redondeada a ~1 km).")
-        .font(.caption).foregroundStyle(PawlyColors.primary)
+      Button { subscriptionError=nil; locationProvider.request() } label: {
+       HStack {
+        if locationProvider.pending || savingSubscription { ProgressView() }
+        Label("Actualizar mi ubicación aproximada", systemImage:"location.circle")
+       }
+      }.disabled(!receiveNearbyAlerts || locationProvider.pending || savingSubscription)
+      if let message = subscriptionError ?? locationProvider.message { Text(LocalizedStringKey(message)).font(.caption) }
+      if let zone = confirmedZone {
+       let coordinate = CLLocationCoordinate2D(latitude: zone.latitude, longitude: zone.longitude)
+       LabeledContent("Zona guardada", value: town.isEmpty ? PawlyMapPoint.label(coordinate, approximate: true) : town)
+       if let date = zone.updatedAt { LabeledContent("Última actualización", value: date.formatted(date:.abbreviated,time:.shortened)) }
       }
       Button {
        Task { await saveSubscription() }
@@ -837,9 +841,15 @@ struct PawlyLostPetView: View {
    .onChange(of:contact){_ in posterURL=nil;includeContact=false}
    .onChange(of:includeContact){_ in posterURL=nil}
    .onReceive(locationProvider.$location){location in
-    if receiveNearbyAlerts, let location { subscriptionLocation=location.coordinate;subscriptionSaved=false }
+    if receiveNearbyAlerts, let location { subscriptionLocation=PawlyMapPoint.approximate(location.coordinate);subscriptionSaved=false; Task { await saveSubscription() } }
    }
    .task { await loadSubscription() }
+   .task(id: confirmedZone.map { "\($0.latitude),\($0.longitude)" }) {
+    town=""
+    guard let zone=confirmedZone else { return }
+    let mark=try? await CLGeocoder().reverseGeocodeLocation(CLLocation(latitude:zone.latitude,longitude:zone.longitude)).first
+    if !Task.isCancelled { town=mark?.locality ?? mark?.subAdministrativeArea ?? "" }
+   }
    .onDisappear { locationProvider.cancel() }
   }
  }
@@ -885,15 +895,17 @@ struct PawlyLostPetView: View {
  @MainActor private func loadSubscription() async {
   do {
    if let saved=try await community.loadLostPetSubscription() {
+    confirmedZone=saved
     receiveNearbyAlerts=saved.enabled
     alertRadius=saved.radiusKm
     subscriptionLocation=CLLocationCoordinate2D(latitude:saved.latitude,longitude:saved.longitude)
     subscriptionSaved=true
    }
-  } catch let loadError { self.error=loadError.localizedDescription }
+  } catch let loadError { subscriptionError=PawlyServiceMessage.key(for:loadError) }
  }
 
  @MainActor private func saveSubscription() async {
+  guard !savingSubscription else { return }; subscriptionError=nil
   savingSubscription=true
   defer { savingSubscription=false }
   do {
@@ -903,15 +915,16 @@ struct PawlyLostPetView: View {
      return
     }
     try await community.saveLostPetSubscription(enabled: true, radiusKm: alertRadius, latitude: coordinate.latitude, longitude: coordinate.longitude)
+    confirmedZone = try await community.loadLostPetSubscription()
    } else {
     try await community.disableLostPetSubscription()
-    subscriptionLocation = nil
+    subscriptionLocation = nil; confirmedZone=nil
     locationProvider.cancel()
    }
    subscriptionSaved=true
    error=nil
    status="Preferencias de alertas guardadas."
-  } catch let saveError { self.error=saveError.localizedDescription }
+  } catch let saveError { subscriptionError=PawlyServiceMessage.key(for:saveError) }
  }
 
  @MainActor private func publish() async {

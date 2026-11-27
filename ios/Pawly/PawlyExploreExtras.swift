@@ -103,13 +103,11 @@ struct PawlyExploreIdeasView:View {
                         Text("Lugares que otros miembros comparten").font(.subheadline).foregroundStyle(PawlyColors.ink)
                     }
                 }.padding(14).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:18))
-                HStack { Image(systemName:"magnifyingglass").foregroundStyle(PawlyColors.muted);TextField("Buscar planes o lugares",text:$query) }
-                    .padding(13).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:15))
                 HStack {
-                    Label("Categoría",systemImage:"line.3.horizontal.decrease")
-                    Spacer()
-                    Picker("Categoría",selection:$category){ForEach(["Todo","Naturaleza","Playas","Comer","Alojarse"],id:\.self){Text(LocalizedStringKey($0)).tag($0)}}.pickerStyle(.menu)
-                }.padding(8).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:15))
+                    Image(systemName:"magnifyingglass").foregroundStyle(PawlyColors.muted)
+                    TextField("Buscar planes o lugares",text:$query)
+                    Picker("Categoría",selection:$category){ForEach(["Todo","Naturaleza","Playas","Comer","Alojarse"],id:\.self){Text(LocalizedStringKey($0)).tag($0)}}.pickerStyle(.menu).labelsHidden()
+                }.padding(10).background(PawlyColors.surface,in:RoundedRectangle(cornerRadius:15))
                 Text("Ideas para vuestra próxima salida").font(.headline).foregroundStyle(PawlyColors.ink)
                 ForEach(visible){idea in
                     VStack(alignment:.leading,spacing:0) {
@@ -123,7 +121,7 @@ struct PawlyExploreIdeasView:View {
                                 Text(LocalizedStringKey(idea.name)).font(.title3.bold())
                                 Text(LocalizedStringKey(idea.subtitle)).font(.caption)
                             }.foregroundStyle(.white).padding(14)
-                        }.frame(height:175)
+                        }.frame(height:175).contentShape(Rectangle()).onTapGesture { onSearch(idea.searchCategory) }
                         .overlay(alignment:.topTrailing){
                             Button {
                                 if saved.contains(idea.id){saved.remove(idea.id)}else{saved.insert(idea.id)}

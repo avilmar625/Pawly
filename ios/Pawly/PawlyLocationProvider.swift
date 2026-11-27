@@ -8,7 +8,7 @@ import OSLog
     @Published private(set) var message: String?
     private let manager = CLLocationManager()
     private let log = Logger(subsystem: "com.alexvilarrubla.pawly", category: "Location")
-    private var pending = false
+    @Published private(set) var pending = false
     private var locating = false
     private var attempts = 0
     private var retry: Task<Void, Never>?

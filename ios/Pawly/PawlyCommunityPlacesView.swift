@@ -114,7 +114,7 @@ final class PawlyCommunityPlacesStore: ObservableObject {
             "description": cleanDescription,
             "latitude": coordinate.latitude,
             "longitude": coordinate.longitude,
-            "status": "pending"
+            "status": place.status
         ])
         await load()
     }
@@ -128,7 +128,7 @@ final class PawlyCommunityPlacesStore: ObservableObject {
         await load()
     }
 
-    private static func mapPlace(_ document: QueryDocumentSnapshot) -> PawlyCommunityPlace? {
+    static func mapPlace(_ document: QueryDocumentSnapshot) -> PawlyCommunityPlace? {
         guard
             let name = document.get("name") as? String,
             let category = document.get("category") as? String,
@@ -176,8 +176,6 @@ struct PawlyCommunityPlacesView: View {
     var body: some View {
         List {
             Section {
-                Text("Los lugares aprobados aparecen para toda la comunidad. Las propuestas nuevas pasan por revisión antes de mostrarse.")
-                    .font(.caption).foregroundStyle(.secondary)
                 Button { showCreate = true } label: {
                     Label("Proponer un lugar", systemImage: "plus.circle.fill")
                 }
@@ -282,8 +280,10 @@ private struct PawlyCommunityPlaceRow: View {
     }
 }
 
-private struct PawlyCommunityPlaceDetailView: View {
+struct PawlyCommunityPlaceDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var reporting = false
+    @State private var reportMessage: String?
     let place: PawlyCommunityPlace
 
     var body: some View {
@@ -302,6 +302,27 @@ private struct PawlyCommunityPlaceDetailView: View {
                             item.name = place.name
                             item.openInMaps()
                         } label: { Label("Abrir en Mapas", systemImage: "map") }
+                    }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                VStack {
+                    if let reportMessage { Text(LocalizedStringKey(reportMessage)).font(.caption) }
+                    Button("Denunciar") { reporting = true }
+                }
+            }
+            .confirmationDialog("Denunciar", isPresented: $reporting) {
+                ForEach(["Contenido inapropiado", "Spam o fraude", "Información falsa"], id: \.self) { reason in
+                    Button(LocalizedStringKey(reason)) {
+                        Task {
+                            guard let user = Auth.auth().currentUser, user.isEmailVerified else { reportMessage = "Verifica tu correo electrónico."; return }
+                            do {
+                                try await Firestore.firestore().collection("reports").addDocument(data: [
+                                    "reporterId":user.uid, "targetType":"place", "targetId":place.id, "reason":reason, "status":"open", "createdAt":FieldValue.serverTimestamp()
+                                ])
+                                reportMessage = "Denuncia enviada."
+                            } catch { reportMessage = PawlyServiceMessage.key(for: error) }
+                        }
                     }
                 }
             }
@@ -369,26 +390,15 @@ private struct PawlyCommunityPlaceForm: View {
                     }
                 }
                 if let error { Section { Text(LocalizedStringKey(error)).foregroundStyle(.red) } }
-                Section {
-                    Text("La propuesta se enviará a revisión. Se requiere una ubicación concreta del lugar; no se utiliza ni se guarda tu posición personal.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                Section {
-                    Button("Cancelar") { dismiss() }
-                        .disabled(saving)
-                    Button {
-                        Task { await saveProposal() }
-                    } label: {
-                        HStack {
-                            Spacer()
-                            if saving { ProgressView() }
-                            Text(saving ? "Enviando…" : "Enviar propuesta")
-                            Spacer()
-                        }
-                    }
-                    .disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 ||
-                              location.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 ||
-                              description.trimmingCharacters(in: .whitespacesAndNewlines).count < 10)
+            }.listStyle(.plain)
+            .navigationBarTitleDisplayMode(.inline)
+            .interactiveDismissDisabled(saving)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() }.disabled(saving) }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { Task { await saveProposal() } } label: {
+                        if saving { ProgressView() } else { Text(existing == nil ? "Publicar" : "Guardar") }
+                    }.disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).count < 3 || coordinate == nil || description.trimmingCharacters(in: .whitespacesAndNewlines).count < 10)
                 }
             }
             .sheet(isPresented: $choosingPoint) {
