@@ -571,26 +571,25 @@ final class PawlyCommunityStore: ObservableObject {
         ], forDocument: theirBlockedBy)
 
         var otherProfileChanges: [String: Any] = [:]
+        var ownChanges: [String: Any] = [:]
         if iFollow {
             batch.deleteDocument(myFollowing)
             batch.deleteDocument(theirFollower)
-            batch.updateData([
-                "followingCount": FieldValue.increment(Int64(-1)),
-                "lastFollowingChangeUid": user.id
-            ], forDocument: meRef)
+            ownChanges["followingCount"] = FieldValue.increment(Int64(-1))
+            ownChanges["lastFollowingChangeUid"] = user.id
             otherProfileChanges["followersCount"] = FieldValue.increment(Int64(-1))
         }
         if theyFollow {
             batch.deleteDocument(theirFollowing)
             batch.deleteDocument(myFollower)
             otherProfileChanges["followingCount"] = FieldValue.increment(Int64(-1))
+            ownChanges["followersCount"] = FieldValue.increment(Int64(-1))
+            ownChanges["lastBlockedUid"] = user.id
         }
         if !otherProfileChanges.isEmpty {
             batch.updateData(otherProfileChanges, forDocument: otherRef)
         }
-        // Firestore currently does not authorize a client-initiated decrement of
-        // its own followersCount when it blocks an incoming follower. The relation
-        // is removed here; that one display counter needs a trusted backend repair.
+        if !ownChanges.isEmpty { batch.updateData(ownChanges, forDocument: meRef) }
         try await batch.commit()
     }
 

@@ -108,9 +108,11 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount'])
         && (
           (request.resource.data.followersCount == getFollowersCount(resource.data) + 1
+            && !exists(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid))
             && existsAfter(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid)))
           ||
           (request.resource.data.followersCount == getFollowersCount(resource.data) - 1
+            && exists(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid))
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/followers/$(request.auth.uid)))
         )
         || verified()
@@ -128,6 +130,17 @@ service cloud.firestore {
             && exists(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid))
             && !existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastFollowingChangeUid)))
         )
+        || owner(uid) && verified()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount','followingCount','lastFollowingChangeUid','lastBlockedUid'])
+        && request.resource.data.lastBlockedUid is string
+        && existsAfter(/databases/$(database)/documents/users/$(uid)/blocked/$(request.resource.data.lastBlockedUid))
+        && exists(/databases/$(database)/documents/users/$(uid)/followers/$(request.resource.data.lastBlockedUid))
+        && !existsAfter(/databases/$(database)/documents/users/$(uid)/followers/$(request.resource.data.lastBlockedUid))
+        && request.resource.data.followersCount == getFollowersCount(resource.data) - 1
+        && (getFollowingCount(request.resource.data) == getFollowingCount(resource.data)
+          || (getFollowingCount(request.resource.data) == getFollowingCount(resource.data) - 1
+            && exists(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastBlockedUid))
+            && !existsAfter(/databases/$(database)/documents/users/$(uid)/following/$(request.resource.data.lastBlockedUid))))
         || verified()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount'])
         && (request.resource.data.followersCount == getFollowersCount(resource.data)
@@ -1097,10 +1110,12 @@ service cloud.firestore {
         && request.resource.data.interestedCount is int
         && (
           (request.resource.data.interestedCount == resource.data.interestedCount + 1
+            && !exists(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid))
             && existsAfter(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid)))
           ||
           (request.resource.data.interestedCount == resource.data.interestedCount - 1
             && request.resource.data.interestedCount >= 0
+            && exists(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid))
             && !existsAfter(/databases/$(database)/documents/events/$(eventId)/interested/$(request.auth.uid)))
         );
       allow delete: if admin() || (verified() && resource.data.organizerUid == request.auth.uid);

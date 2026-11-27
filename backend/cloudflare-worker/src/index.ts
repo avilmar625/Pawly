@@ -881,6 +881,70 @@ export async function handleCommunityPlaceSubmission(
   }
 }
 
+async function identityPage(env: Env, accessToken: string, uid: string, parent: string, collection: string, pageToken: string) {
+    const url = new URL(firestoreRoot(env) + "/" + parent + "/" + collection);
+    url.searchParams.set("pageSize", collection === "following" ? "10" : "12");
+    if (typeof pageToken === "string" && pageToken) url.searchParams.set("pageToken", pageToken);
+    const listResponse = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
+    if (!listResponse.ok) throw new Error("No se pudieron consultar las respuestas de asistencia.");
+    const page = await listResponse.json() as { documents?: any[]; nextPageToken?: string };
+    // At most 12 attendees × 3 reads + event + list + token = 39 external
+    // subrequests, safely below the Workers Free limit of 50.
+    // Each attendee requires three independent reads; process two attendees at a
+    // time to stay within Cloudflare's six simultaneous outgoing connections.
+    const attendees = await mapInBatches(page.documents ?? [], 2, async document => {
+      const attendeeUid = String(document.name ?? "").split("/").pop() || "";
+      if (!attendeeUid) return null;
+      const [blockedByMe, blockedMe, profile] = await Promise.all([
+        attendeeUid === uid ? null : readDocument(env, accessToken, `users/${uid}/blocked/${attendeeUid}`),
+        attendeeUid === uid ? null : readDocument(env, accessToken, `users/${attendeeUid}/blocked/${uid}`),
+        readDocument(env, accessToken, `users/${attendeeUid}`)
+      ]);
+      if (blockedByMe || blockedMe || !profile || decodeFirestoreString(profile.fields?.moderationStatus) === "restricted") return null;
+      // A self-created following edge cannot authorize viewing a private identity.
+      if (collection === "following" && profile.fields?.isPublic?.booleanValue !== true &&
+          !await readDocument(env, accessToken, "users/" + uid + "/followers/" + attendeeUid)) return null;
+      return {
+        uid: attendeeUid,
+        isPublic: profile.fields?.isPublic?.booleanValue === true,
+        displayName: decodeFirestoreString(profile.fields?.displayName) || "Usuario privado",
+        username: decodeFirestoreString(profile.fields?.username),
+        photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
+      };
+    });
+    let total: number | undefined;
+    if (!pageToken) {
+      const response = await fetch(firestoreRoot(env) + "/" + parent + ":runAggregationQuery", {
+        method: "POST", headers: { authorization: "Bearer " + accessToken, "content-type": "application/json" },
+        body: JSON.stringify({ structuredAggregationQuery: {
+          structuredQuery: { from: [{ collectionId: collection }] }, aggregations: [{ alias: "total", count: {} }]
+        } })
+      });
+      if (!response.ok) throw new Error("No se pudo contar la lista.");
+      const rows = await response.json() as { result?: { aggregateFields?: { total?: { integerValue?: string } } } }[];
+      const count = Number(rows[0]?.result?.aggregateFields?.total?.integerValue);
+      if (Number.isSafeInteger(count) && count >= 0) total = count;
+    }
+    return { people: attendees.filter(Boolean), nextPageToken: page.nextPageToken ?? "", total };
+}
+
+export async function handleRelationships(request: Request, env: Env,
+  dependencies: { verifyUser?: (request: Request, env: Env) => Promise<string | null>; getAccessToken?: (env: Env) => Promise<string> } = {}
+): Promise<Response> {
+  const uid = await (dependencies.verifyUser ?? verifiedRequestUser)(request, env);
+  if (!uid) return json({ error: "Inicia sesión con una cuenta verificada." }, 401);
+  try {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > 8192) return json({ error: "Petición demasiado grande." }, 413);
+    const { relation, pageToken = "", ...extra } = JSON.parse(raw);
+    if (Object.keys(extra).length || !["followers", "following"].includes(relation) || typeof pageToken !== "string" || pageToken.length > 6000) {
+      return json({ error: "Consulta no válida." }, 400);
+    }
+    const token = await (dependencies.getAccessToken ?? googleAccessToken)(env);
+    return json(await identityPage(env, token, uid, "users/" + uid, relation, pageToken));
+  } catch { return json({ error: "No se pudieron consultar las relaciones." }, 502); }
+}
+
 export async function handleEventAttendees(
   request: Request,
   env: Env,
@@ -901,33 +965,8 @@ export async function handleEventAttendees(
     if (!event || decodeFirestoreString(event.fields?.organizerUid) !== uid) {
       return json({ error: "Solo la persona organizadora puede consultar los asistentes." }, 403);
     }
-    const url = new URL(`${firestoreRoot(env)}/events/${encodeURIComponent(body.eventId)}/interested`);
-    url.searchParams.set("pageSize", "12");
-    if (typeof body.pageToken === "string" && body.pageToken) url.searchParams.set("pageToken", body.pageToken);
-    const listResponse = await fetch(url.toString(), { headers: { authorization: `Bearer ${accessToken}` } });
-    if (!listResponse.ok) throw new Error("No se pudieron consultar las respuestas de asistencia.");
-    const page = await listResponse.json() as { documents?: any[]; nextPageToken?: string };
-    // At most 12 attendees × 3 reads + event + list + token = 39 external
-    // subrequests, safely below the Workers Free limit of 50.
-    // Each attendee requires three independent reads; process two attendees at a
-    // time to stay within Cloudflare's six simultaneous outgoing connections.
-    const attendees = await mapInBatches(page.documents ?? [], 2, async document => {
-      const attendeeUid = decodeFirestoreString(document.fields?.uid) || String(document.name ?? "").split("/").pop() || "";
-      if (!attendeeUid || attendeeUid === uid) return null;
-      const [blockedByMe, blockedMe, profile] = await Promise.all([
-        readDocument(env, accessToken, `users/${uid}/blocked/${attendeeUid}`),
-        readDocument(env, accessToken, `users/${attendeeUid}/blocked/${uid}`),
-        readDocument(env, accessToken, `users/${attendeeUid}`)
-      ]);
-      if (blockedByMe || blockedMe || !profile) return null;
-      return {
-        uid: attendeeUid,
-        displayName: decodeFirestoreString(profile.fields?.displayName) || "Usuario privado",
-        username: decodeFirestoreString(profile.fields?.username),
-        photoUrl: decodeFirestoreString(profile.fields?.photoUrl)
-      };
-    });
-    return json({ attendees: attendees.filter(Boolean), nextPageToken: page.nextPageToken ?? "" });
+    const result = await identityPage(env, accessToken, uid, "events/" + body.eventId, "interested", body.pageToken || "");
+    return json({ attendees: result.people, nextPageToken: result.nextPageToken, total: result.total });
   } catch {
     return json({ error: "No se pudo cargar la lista privada de asistentes." }, 502);
   }
@@ -1055,6 +1094,9 @@ export default {
     }
     if (request.method === "POST" && url.pathname === "/v1/community-places") {
       return handleCommunityPlaceSubmission(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/v1/me/relationships") {
+      return handleRelationships(request, env);
     }
     if (request.method === "POST" && url.pathname === "/v1/events/attendees") {
       return handleEventAttendees(request, env);

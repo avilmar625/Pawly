@@ -227,6 +227,10 @@ struct PawlyProfileEditorView:View {
    photoURL=d["photoUrl"] as? String ?? ""
    followers=d["followersCount"] as? Int ?? 0
    following=d["followingCount"] as? Int ?? 0
+   async let followerTotal = userRef.collection("followers").count.getAggregation(source: .server)
+   async let followingTotal = userRef.collection("following").count.getAggregation(source: .server)
+   if let total = try? await followerTotal { followers = total.count.intValue }
+   if let total = try? await followingTotal { following = total.count.intValue }
    accountType=d["accountType"] as? String ?? "personal"
    professionalCategory=d["professionalCategory"] as? String ?? "Veterinario"
    professionalLocation=d["professionalLocation"] as? String ?? ""

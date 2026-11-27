@@ -705,3 +705,25 @@ test("four distinct accounts can reply across a thread without notifying the pos
   await assertFails(send("first"));
   await assertSucceeds(send("third"));
 });
+
+test("RSVP counters cannot be replayed or decremented by a non-attendee", async () => {
+  const attending = env.authenticatedContext("attendee", { email_verified: true }).firestore();
+  const absent = env.authenticatedContext("other", { email_verified: true }).firestore();
+  await assertFails(updateDoc(doc(attending, "events/event-1"), { interestedCount: 2 }));
+  await assertFails(updateDoc(doc(absent, "events/event-1"), { interestedCount: 0 }));
+});
+
+test("blocking an incoming follower decrements the owner count only once", async () => {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, "users/a"), { followersCount: 1, followingCount: 0 });
+    await setDoc(doc(db, "users/a/followers/b"), { uid: "b" });
+  });
+  const db = env.authenticatedContext("a", { email_verified: true }).firestore();
+  const changes = writeBatch(db);
+  changes.set(doc(db, "users/a/blocked/b"), { uid: "b" });
+  changes.delete(doc(db, "users/a/followers/b"));
+  changes.update(doc(db, "users/a"), { followersCount: 0, lastBlockedUid: "b" });
+  await assertSucceeds(changes.commit());
+  await assertFails(updateDoc(doc(db, "users/a"), { followersCount: -1 }));
+});

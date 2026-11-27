@@ -7,54 +7,87 @@ enum PawlyRelationship: String {
     var title: LocalizedStringKey { self == .followers ? "Seguidores" : "Siguiendo" }
 }
 
+struct PawlyIdentity: Identifiable {
+    let id: String
+    let name: String
+    let username: String
+    let photo: String
+    let isPublic: Bool
+    var chat: String? = nil
+
+    init(id: String, name: String, username: String, photo: String = "", isPublic: Bool = true, chat: String? = nil) {
+        self.id = id; self.name = name; self.username = username
+        self.photo = photo; self.isPublic = isPublic; self.chat = chat
+    }
+
+    init?(_ row: [String: Any]) {
+        guard let uid = row["uid"] as? String, !uid.isEmpty else { return nil }
+        self.init(id: uid, name: row["displayName"] as? String ?? "Pawly", username: row["username"] as? String ?? "",
+                  photo: row["photoUrl"] as? String ?? "", isPublic: row["isPublic"] as? Bool ?? false)
+    }
+
+    static func page(_ relation: PawlyRelationship, cursor: String) async throws -> ([Self], String, Int?) {
+        let response = try await PawlyBackendClient.postJSON(path: "/v1/me/relationships",
+            body: ["relation": relation.rawValue, "pageToken": cursor])
+        return ((response["people"] as? [[String: Any]] ?? []).compactMap(Self.init),
+                response["nextPageToken"] as? String ?? "", response["total"] as? Int)
+    }
+}
+
+struct PawlyIdentityRow: View {
+    let person: PawlyIdentity
+    var body: some View {
+        HStack {
+            ZStack {
+                Circle().fill(PawlyColors.mint)
+                Image(systemName: "person.fill").foregroundStyle(PawlyColors.primary)
+                if let url = URL(string: person.photo), url.scheme == "https" {
+                    AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: { Color.clear }
+                }
+            }.frame(width: 40, height: 40).clipShape(Circle()).accessibilityHidden(true)
+            VStack(alignment: .leading) {
+                Text(verbatim: person.name)
+                if !person.username.isEmpty { Text(verbatim: "@" + person.username).font(.caption).foregroundStyle(.secondary) }
+            }
+            if !person.isPublic { Image(systemName: "lock.fill").font(.caption).accessibilityLabel("Perfil privado") }
+        }
+    }
+}
+
 struct PawlyRelationshipList: View {
     let relation: PawlyRelationship
-    @StateObject private var store = PawlyCommunityStore()
-    @State private var users: [PawlyPublicUser] = []
-    @State private var cursor: DocumentSnapshot?
+    @State private var users: [PawlyIdentity] = []
+    @State private var cursor = ""
     @State private var more = true
+    @State private var total: Int?
     @State private var loading = false
     @State private var error: String?
 
     var body: some View {
         List {
+            if let total { LabeledContent("Perfiles visibles", value: "\(users.count) / \(total)") }
             ForEach(users) { user in
-                NavigationLink { PawlyPublicProfile(userID: user.id) } label: {
-                    VStack(alignment: .leading) {
-                        Text(verbatim: user.displayName)
-                        Text(verbatim: "@" + user.username).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
+                if user.isPublic { NavigationLink { PawlyPublicProfile(userID: user.id) } label: { PawlyIdentityRow(person: user) } }
+                else { PawlyIdentityRow(person: user) }
             }
             if loading { ProgressView() }
             else if let error { Text(LocalizedStringKey(error)); Button("Reintentar") { Task { await nextPage() } } }
             else if more { Button("Cargar más") { Task { await nextPage() } } }
-            else if users.isEmpty { Text("No hay perfiles públicos disponibles.") }
-        }
-        .navigationTitle(relation.title)
-        .task { if users.isEmpty && more { await nextPage() } }
+            else if users.isEmpty { Text("No hay destinatarios disponibles.") }
+        }.navigationTitle(relation.title)
+         .task { if users.isEmpty && more { await nextPage() } }
     }
 
     @MainActor private func nextPage() async {
-        guard !loading, let uid = store.uid else { return }
-        loading = true
-        defer { loading = false }
+        guard !loading else { return }
+        loading = true; defer { loading = false }
         do {
-            let size = 20
-            var query: Query = Firestore.firestore().collection("users").document(uid).collection(relation.rawValue)
-                .order(by: "createdAt", descending: true).limit(to: size)
-            if let cursor { query = query.start(afterDocument: cursor) }
-            let page = try await query.getDocuments()
-            var result: [PawlyPublicUser] = []
-            for doc in page.documents {
-                do { if let user = try await store.publicUser(doc.documentID) { result.append(user) } }
-                catch let denied as NSError where denied.domain == FirestoreErrorDomain && denied.code == FirestoreErrorCode.permissionDenied.rawValue { continue }
-            }
+            let (page, next, count) = try await PawlyIdentity.page(relation, cursor: cursor)
             try Task.checkCancellation()
             let previous = Set(users.map(\.id))
-            users.append(contentsOf: result.filter { !previous.contains($0.id) })
-            cursor = page.documents.last
-            more = page.documents.count == size
+            users += page.filter { !previous.contains($0.id) }
+            cursor = next; more = !next.isEmpty
+            if let count { total = count }
             error = nil
         } catch { if !Task.isCancelled { self.error = PawlyServiceMessage.key(for: error) } }
     }

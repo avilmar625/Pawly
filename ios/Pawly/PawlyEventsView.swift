@@ -23,13 +23,6 @@ struct PawlyEventItem: Identifiable {
     var videoURL: String = ""
 }
 
-struct PawlyEventAttendee: Identifiable {
-    var id: String
-    var displayName: String
-    var username: String
-    var photoURL: String
-}
-
 @MainActor
 final class PawlyEventsStore: ObservableObject {
     @Published private(set) var events: [PawlyEventItem] = []
@@ -230,7 +223,7 @@ final class PawlyEventsStore: ObservableObject {
         return try await db.collection("events").document(event.id).collection("interested").document(uid).getDocument().exists
     }
 
-    func loadAttendees(event: PawlyEventItem, pageToken: String = "") async throws -> (attendees: [PawlyEventAttendee], nextPageToken: String) {
+    func loadAttendees(event: PawlyEventItem, pageToken: String = "") async throws -> (attendees: [PawlyIdentity], nextPageToken: String, total: Int?) {
         guard Auth.auth().currentUser?.uid == event.organizerUID else {
             throw PawlyEventError.attendeesOrganizerOnly
         }
@@ -239,16 +232,7 @@ final class PawlyEventsStore: ObservableObject {
             body: ["eventId": event.id, "pageToken": pageToken]
         )
         let rows = response["attendees"] as? [[String: Any]] ?? []
-        let people = rows.compactMap { row -> PawlyEventAttendee? in
-            guard let id = row["uid"] as? String, !id.isEmpty else { return nil }
-            return PawlyEventAttendee(
-                id: id,
-                displayName: row["displayName"] as? String ?? "Usuario Pawly",
-                username: row["username"] as? String ?? "",
-                photoURL: row["photoUrl"] as? String ?? ""
-            )
-        }
-        return (people, response["nextPageToken"] as? String ?? "")
+        return (rows.compactMap(PawlyIdentity.init), response["nextPageToken"] as? String ?? "", response["total"] as? Int)
     }
 
     func report(_ event: PawlyEventItem, reason: String) async throws {
@@ -388,7 +372,7 @@ struct PawlyEventsView: View {
                             }
                             .font(.caption).foregroundStyle(PawlyColors.primary)
                         }
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -470,7 +454,8 @@ private struct PawlyEventDetailsSheet: View {
     @State private var edit = false
     @State private var interest: Bool?
     @State private var changingInterest = false
-    @State private var attendees: [PawlyEventAttendee] = []
+    @State private var actualTotal: Int?
+    @State private var attendees: [PawlyIdentity] = []
     @State private var nextPage = ""
     @State private var loadingAttendees = false
     @State private var message: String?
@@ -493,7 +478,7 @@ private struct PawlyEventDetailsSheet: View {
                     Label(event.category, systemImage: "calendar")
                     Label(event.location, systemImage: "mappin.and.ellipse")
                     Label(event.startAt.formatted(date: .complete, time: .shortened), systemImage: "clock")
-                    Label("\(event.interestedCount) personas interesadas", systemImage: "person.2")
+                    Label("\(actualTotal ?? event.interestedCount) personas interesadas", systemImage: "person.2")
                     if let latitude = event.latitude, let longitude = event.longitude {
                         Button {
                             let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
@@ -526,15 +511,11 @@ private struct PawlyEventDetailsSheet: View {
                                 Text(attendees.isEmpty ? "Ver asistentes" : "Actualizar asistentes")
                             }
                         }.disabled(loadingAttendees)
+                        if let actualTotal { LabeledContent("Perfiles visibles", value: "\(attendees.count) / \(actualTotal)") }
                         ForEach(attendees) { person in
-                            NavigationLink { PawlyPublicProfile(userID: person.id) } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(person.displayName)
-                                if !person.username.isEmpty {
-                                    Text("@\(person.username)").font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                            }
+                            if person.isPublic || person.id == Auth.auth().currentUser?.uid {
+                                NavigationLink { PawlyPublicProfile(userID: person.id) } label: { PawlyIdentityRow(person: person) }
+                            } else { PawlyIdentityRow(person: person) }
                         }
                         if !nextPage.isEmpty {
                             Button("Cargar más") { Task { await loadAttendees(pageToken: nextPage) } }
@@ -579,7 +560,8 @@ private struct PawlyEventDetailsSheet: View {
         do {
             let result = try await store.loadAttendees(event: event, pageToken: pageToken)
             if pageToken.isEmpty { attendees = result.attendees }
-            else { attendees += result.attendees }
+            else { let seen = Set(attendees.map(\.id)); attendees += result.attendees.filter { !seen.contains($0.id) } }
+            if let total = result.total { actualTotal = total }
             nextPage = result.nextPageToken
             message = nil
         } catch { message = PawlyServiceMessage.key(for: error) }
