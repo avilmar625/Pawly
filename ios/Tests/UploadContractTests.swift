@@ -16,6 +16,14 @@ import Foundation
                      response("owner", url: "https://res.cloudinary.com/other/image/upload/pawly/post-photos/owner/asset.jpg"), Data()] {
             precondition((try? contract.asset(from: data)) == nil)
         }
+        for folder in ["diary-videos", "pet-videos"] {
+            let video = try PawlyUploadContract(cloud: "cloud", preset: "videos", resource: "video", folder: folder, owner: "owner")
+            precondition(video.folder == "pawly/" + folder + "/owner")
+            precondition((try? PawlyUploadContract(cloud: "cloud", preset: "images", resource: "image", folder: folder, owner: "owner")) == nil)
+        }
+        let movie = URL(string: "https://res.cloudinary.com/cloud/video/upload/v1/pawly/post-videos/a/clip.mp4")!
+        precondition(PawlyVideoPoster.url(for: movie)?.path == "/cloud/video/upload/c_limit,w_640,q_auto/v1/pawly/post-videos/a/clip.jpg")
+        precondition(PawlyVideoPoster.url(for: URL(string: "https://res.cloudinary.com/cloud/video/upload/s--private--/clip.mp4")!) == nil)
         for (brand, ext) in [("qt  ", "mov"), ("isom", "mp4"), ("3gp4", "3gp")] {
             let format = try PawlyUploadContract.videoFormat(Data(("0000ftyp" + brand).utf8))
             precondition(format.ext == ext)

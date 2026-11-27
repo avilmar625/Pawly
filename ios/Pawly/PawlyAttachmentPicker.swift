@@ -104,8 +104,10 @@ private struct PickedMovie: Transferable {
     }
 
     func upload(owner: String, forPost: Bool) async throws -> (image: String, video: String) {
+        try await upload(owner: owner, prefix: forPost ? "post" : "message")
+    }
+    func upload(owner: String, prefix: String) async throws -> (image: String, video: String) {
         guard let data else { return ("", "") }
-        let prefix = forPost ? "post" : "message"
         let scope = "\(owner)/\(prefix)"
         let url: String
         if let uploadedURL, uploadedScope == scope {
@@ -124,15 +126,16 @@ private struct PickedMovie: Transferable {
 struct PawlyAttachmentPicker: View {
     @ObservedObject var draft: PawlyAttachmentDraft
     var allowsVideo = true
+    var videoOnly = false
     @State private var item: PhotosPickerItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                PhotosPicker(selection: $item, matching: allowsVideo ? .any(of: [.images, .videos]) : .images) {
-                    Label("Elegir de la galería", systemImage: "photo.on.rectangle")
+                PhotosPicker(selection: $item, matching: videoOnly ? .videos : (allowsVideo ? .any(of: [.images, .videos]) : .images)) {
+                    Label(videoOnly ? "Elegir vídeo" : "Elegir de la galería", systemImage: videoOnly ? "film" : "photo.on.rectangle")
                 }
-                PawlyCameraButton { draft.capture($0, kind: .photo) }
+                if !videoOnly { PawlyCameraButton { draft.capture($0, kind: .photo) } }
                 if allowsVideo { PawlyCameraButton(kind: .video, label: "Grabar vídeo") { draft.capture($0, kind: .video) } }
                 if draft.loading { ProgressView() }
                 if draft.hasAttachment || draft.loading || draft.error != nil {

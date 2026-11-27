@@ -43,7 +43,7 @@ struct PawlyCareTask: Identifiable {
     var daysOfWeek: [Int]? = nil
 }
 struct PawlyDiaryEntry: Identifiable {
-    var id: String; var text: String; var title: String; var category: String; var photos: [String]; var date: Date?; var position: Int; var updatedAt: Date?
+    var id: String; var text: String; var title: String; var category: String; var photos: [String]; var date: Date?; var position: Int; var updatedAt: Date?; var videoURL = ""
 }
 struct PawlyCareLogEntry: Identifiable {
     var id: String
@@ -58,6 +58,7 @@ struct PawlyCareLogEntry: Identifiable {
     var description: String
     var walker: String
     var photoURLs: [String]
+    var videoURL = ""
 }
 struct PawlyPetInvitation:Identifiable {
     var id:String;var sharedPetID:String;var petName:String;var ownerName:String;var ownerUID:String;var role:String
@@ -513,7 +514,7 @@ final class PawlyPetStore: ObservableObject {
                 mapURL: document.get("mapUrl") as? String ?? "",
                 description: document.get("description") as? String ?? "",
                 walker: document.get("walker") as? String ?? "",
-                photoURLs: document.get("photoUrls") as? [String] ?? []
+                photoURLs: document.get("photoUrls") as? [String] ?? [], videoURL: document.get("videoUrl") as? String ?? ""
             )
         }
     }
@@ -527,7 +528,7 @@ final class PawlyPetStore: ObservableObject {
         description: String = "",
         walker: String = "",
         photoURLs: [String] = [],
-        mapURL: String = ""
+        mapURL: String = "", videoURL: String = ""
     ) async throws {
         try await ensureSharedPet(pet)
         guard let user = Auth.auth().currentUser else { throw PawlyStoreError.notSignedIn }
@@ -567,6 +568,7 @@ final class PawlyPetStore: ObservableObject {
             "photoUrls": photoURLs,
             "mapUrl": mapURL
         ]
+        if !videoURL.isEmpty { data["videoUrl"] = videoURL; data["videoAssetId"] = PawlyCloudinaryUploader.indexID(for: videoURL) }
         if let distanceKm { data["distanceKm"] = distanceKm }
         try await reference.setData(data)
     }
@@ -767,7 +769,7 @@ final class PawlyPetStore: ObservableObject {
             let date = (payload?["date"] as? NSNumber).map { Date(timeIntervalSince1970: $0.doubleValue / 1000) }
             return PawlyDiaryEntry(id:d.documentID,text:payload?["text"] as? String ?? text,
                 title:payload?["title"] as? String ?? text,category:payload?["category"] as? String ?? "Otros",
-                photos:payload?["photos"] as? [String] ?? [],date:date,position:d.get("position") as? Int ?? 0,updatedAt:timestamp)
+                photos:payload?["photos"] as? [String] ?? [],date:date,position:d.get("position") as? Int ?? 0,updatedAt:timestamp,videoURL:payload?["videoUrl"] as? String ?? "")
         }.sorted { ($0.date ?? $0.updatedAt ?? .distantPast) > ($1.date ?? $1.updatedAt ?? .distantPast) }
     }
     func addDiaryEntry(_ text: String, pet: PawlyPet) async throws {

@@ -3,6 +3,7 @@ import PhotosUI
 import FirebaseAuth
 
 struct PawlyCareLogsView: View {
+    init(startWithForm: Bool = false) { _showAdd = State(initialValue: startWithForm) }
     @EnvironmentObject private var pets: PawlyPetStore
     @State private var logs: [PawlyCareLogEntry] = []
     @State private var showAdd = false
@@ -49,7 +50,8 @@ struct PawlyCareLogsView: View {
                             if !entry.mapURL.isEmpty, let url=URL(string:entry.mapURL) {
                                 Link(destination:url){Label("Ver mapa",systemImage:"map").font(.caption)}
                             }
-                            if !entry.photoURLs.isEmpty {
+                            if !entry.videoURL.isEmpty, let clip = URL(string: entry.videoURL) { PawlyVideoPreview(url: clip).frame(height: 170) }
+                                if !entry.photoURLs.isEmpty {
                                 ScrollView(.horizontal, showsIndicators: false) {
                                     HStack(spacing: 8) {
                                         ForEach(entry.photoURLs, id: \.self) { url in
@@ -80,7 +82,7 @@ struct PawlyCareLogsView: View {
                 .refreshable { await load(pet) }
                 .task(id: pet.id) { await load(pet) }
                 .sheet(isPresented: $showAdd) {
-                    PawlyCareLogForm(petName: pet.name) { title, action, note, distance, description, walker, photos, mapURL in
+                    PawlyCareLogForm(pet: pet) { selected, title, action, note, distance, description, walker, photos, mapURL, clip in
                         var photoURLs: [String] = []
                         if let uid = Auth.auth().currentUser?.uid {
                             for data in photos {
@@ -91,7 +93,7 @@ struct PawlyCareLogsView: View {
                             }
                         }
                         try await pets.logCareAction(
-                            pet: pet,
+                            pet: selected,
                             taskTitle: title,
                             action: action,
                             note: note,
@@ -99,7 +101,7 @@ struct PawlyCareLogsView: View {
                             description: description,
                             walker: walker,
                             photoURLs: photoURLs,
-                            mapURL: mapURL
+                            mapURL: mapURL, videoURL: clip
                         )
                         await load(pet)
                     }
@@ -139,19 +141,22 @@ struct PawlyCareLogsView: View {
 
 struct PawlyCareLogForm: View {
     @Environment(\.dismiss) private var dismiss
-    let petName: String
+    @EnvironmentObject private var pets: PawlyPetStore
+    @State private var chosenID: String
+    @StateObject private var video = PawlyAttachmentDraft(maximumDuration: 60)
+    @State private var mapOpen = false
     let fixedAction: Bool
-    var onSave: (String, String, String, Double?, String, String, [Data], String) async throws -> Void
+    var onSave: (PawlyPet, String, String, String, Double?, String, String, [Data], String, String) async throws -> Void
 
     @State private var title: String
     @State private var action: String
 
     init(
-        petName: String,
+        pet: PawlyPet,
         initialAction: String? = nil,
-        onSave: @escaping (String, String, String, Double?, String, String, [Data], String) async throws -> Void
+        onSave: @escaping (PawlyPet, String, String, String, Double?, String, String, [Data], String, String) async throws -> Void
     ) {
-        self.petName = petName
+        _chosenID = State(initialValue: pet.id)
         self.fixedAction = initialAction != nil
         self.onSave = onSave
         _title = State(initialValue: initialAction ?? "Paseo")
@@ -185,10 +190,12 @@ struct PawlyCareLogForm: View {
                     Section("Paseo") {
                         TextField("Distancia en km (opcional)", text: $distance)
                             .keyboardType(.decimalPad)
+                        Button { mapOpen = true } label: { Label("Seleccionar zona del paseo", systemImage: "map") }
                         TextField("Enlace HTTPS al mapa (opcional)",text:$mapURL)
                             .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
                     }
                 }
+                if action == "Paseo" { Section("Vídeo") { PawlyAttachmentPicker(draft: video, videoOnly: true) } }
                 Section("Detalles") {
                     TextField("Notas", text: $note, axis: .vertical).lineLimit(2...5)
                     TextField("Descripción (opcional)", text: $description, axis: .vertical).lineLimit(2...5)
@@ -204,11 +211,21 @@ struct PawlyCareLogForm: View {
                     }
                 }
                 Section {
-                    LabeledContent("Mascota", value: petName)
+                    Picker("Mascota", selection: $chosenID) {
+                        ForEach(pets.pets) { pet in Text(verbatim: pet.name).tag(pet.id) }
+                    }
                     Text("El registro se compartirá con las personas que tengan permiso de edición en esta mascota.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 if let error { Text(error).foregroundStyle(.red) }
+            }
+            .sheet(isPresented: $mapOpen) {
+                PawlyMapPointPicker(query: "", point: URLComponents(string: mapURL)?.queryItems?.first(where: { $0.name == "ll" })?.value.flatMap(PawlyMapPoint.parse),
+                                    title: "Seleccionar zona del paseo") { name, point in
+                    var url = URLComponents(); url.scheme = "https"; url.host = "maps.apple.com"; url.path = "/"
+                    url.queryItems = [URLQueryItem(name: "ll", value: PawlyMapPoint.label(point, approximate: false)), URLQueryItem(name: "q", value: name)]
+                    mapURL = url.url?.absoluteString ?? ""
+                }
             }
             .navigationTitle(action == "Paseo" ? "Registrar paseo" : "Registrar cuidado")
             .toolbar {
@@ -237,7 +254,9 @@ struct PawlyCareLogForm: View {
                                     guard let data=try await item.loadTransferable(type:Data.self) else {throw PawlyMediaError.invalidImage}
                                     imageData.append(data)
                                 }
-                                try await onSave(
+                                guard let selected = pets.pets.first(where: { $0.id == chosenID }), let uid = Auth.auth().currentUser?.uid else { throw PawlyStoreError.notSignedIn }
+                                let clip = action == "Paseo" ? try await video.upload(owner: uid, prefix: "pet").video : ""
+                                try await onSave(selected,
                                     title.trimmingCharacters(in: .whitespacesAndNewlines),
                                     action,
                                     note.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -245,7 +264,7 @@ struct PawlyCareLogForm: View {
                                     description.trimmingCharacters(in: .whitespacesAndNewlines),
                                     walker.trimmingCharacters(in: .whitespacesAndNewlines),
                                     Array(imageData.prefix(4)),
-                                    cleanMap
+                                    cleanMap, clip
                                 )
                                 dismiss()
                             } catch {
@@ -253,7 +272,7 @@ struct PawlyCareLogForm: View {
                             }
                         }
                     }
-                    .disabled(busy || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(busy || video.loading || video.error != nil || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }

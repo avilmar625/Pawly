@@ -38,7 +38,7 @@ struct PawlyUploadContract {
             throw PawlyMediaError.invalidConfiguration
         }
         let imageFolders = ["profile-photos", "dog-photos", "pet-photos", "post-photos", "message-photos", "diary-photos"]
-        let videoFolders = ["post-videos", "message-videos"]
+        let videoFolders = ["post-videos", "message-videos", "pet-videos", "diary-videos"]
         guard (resource == "image" && imageFolders.contains(folder)) || (resource == "video" && videoFolders.contains(folder)),
               !owner.isEmpty, !owner.contains("/"), !owner.contains("\r"), !owner.contains("\n") else {
             throw PawlyMediaError.invalidFolder

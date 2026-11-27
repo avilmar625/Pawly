@@ -377,7 +377,7 @@ service cloud.firestore {
           allow create: if owner(uid)
             && request.resource.data.keys().hasOnly([
               'id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note',
-              'distanceKm', 'mapUrl', 'description', 'walker', 'photoUrls'
+              'distanceKm', 'mapUrl', 'description', 'walker', 'photoUrls','videoUrl','videoAssetId'
             ])
             && request.resource.data.id == logId
             && request.resource.data.actorUid == request.auth.uid
@@ -390,7 +390,8 @@ service cloud.firestore {
             && (!('mapUrl' in request.resource.data) || (request.resource.data.mapUrl is string && request.resource.data.mapUrl.size() <= 2048 && (request.resource.data.mapUrl == '' || request.resource.data.mapUrl.matches('^https?://.+$'))))
             && (!('description' in request.resource.data) || (request.resource.data.description is string && request.resource.data.description.size() <= 600))
             && (!('walker' in request.resource.data) || (request.resource.data.walker is string && request.resource.data.walker.size() <= 80))
-            && (!('photoUrls' in request.resource.data) || (request.resource.data.photoUrls is list && request.resource.data.photoUrls.size() <= 4));
+            && (!request.resource.data.keys().hasAny(['videoUrl','videoAssetId']) || (request.resource.data.videoAssetId.matches('^[a-f0-9]{64}$') && ownedPostAsset(request.resource.data.videoAssetId,request.resource.data.videoUrl,'video','pet-videos')))
+          && (!('photoUrls' in request.resource.data) || (request.resource.data.photoUrls is list && request.resource.data.photoUrls.size() <= 4));
         }
       }
     }
@@ -498,7 +499,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor']
           && request.resource.data.keys().hasOnly([
               'id', 'taskTitle', 'action', 'actorUid', 'actorName', 'occurredAt', 'note',
-              'distanceKm', 'mapUrl', 'description', 'walker', 'photoUrls'
+              'distanceKm', 'mapUrl', 'description', 'walker', 'photoUrls','videoUrl','videoAssetId'
             ])
           && request.resource.data.id == logId
           && request.resource.data.actorUid == request.auth.uid
@@ -511,6 +512,7 @@ service cloud.firestore {
           && (!('mapUrl' in request.resource.data) || (request.resource.data.mapUrl is string && request.resource.data.mapUrl.size() <= 2048 && (request.resource.data.mapUrl == '' || request.resource.data.mapUrl.matches('^https?://.+$'))))
           && (!('description' in request.resource.data) || (request.resource.data.description is string && request.resource.data.description.size() <= 600))
           && (!('walker' in request.resource.data) || (request.resource.data.walker is string && request.resource.data.walker.size() <= 80))
+          && (!request.resource.data.keys().hasAny(['videoUrl','videoAssetId']) || (request.resource.data.videoAssetId.matches('^[a-f0-9]{64}$') && ownedPostAsset(request.resource.data.videoAssetId,request.resource.data.videoUrl,'video','pet-videos')))
           && (!('photoUrls' in request.resource.data) || (request.resource.data.photoUrls is list && request.resource.data.photoUrls.size() <= 4));
         allow delete: if isMember()
           && get(/databases/$(database)/documents/sharedPets/$(sharedPetId)/members/$(request.auth.uid)).data.role in ['owner', 'editor'];
@@ -900,7 +902,7 @@ service cloud.firestore {
           || (request.resource.data.secureUrl is string
             && request.resource.data.secureUrl.size() <= 2048
             && request.resource.data.secureUrl.matches('^https://.*')))
-        && request.resource.data.publicId.matches('^pawly/(profile-photos|dog-photos|pet-photos|post-photos|message-photos|diary-photos|post-videos|message-videos)/' + request.auth.uid + '/.+$')
+        && request.resource.data.publicId.matches('^pawly/(profile-photos|dog-photos|pet-photos|post-photos|message-photos|diary-photos|post-videos|message-videos|diary-videos|pet-videos)/' + request.auth.uid + '/.+$')
         && request.resource.data.resourceType in ['image', 'video']
         && request.resource.data.createdAt == request.time;
       allow get, list: if signedIn() && resource.data.uid == request.auth.uid;

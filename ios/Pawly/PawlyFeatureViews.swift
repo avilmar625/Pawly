@@ -233,6 +233,10 @@ struct CareView:View {
     @State private var tasks:[PawlyCareTask]=[]
     @State private var historyCategory="Todos"
     @State private var showEntry=false
+    @State private var selectedType: String?
+    @State private var dueDetail: PawlyPassportEntry?
+    @State private var sharePDF = false
+    @State private var showCareForm = false
     @State private var showTask=false
     @State private var showShare=false
     @State private var exportURL:URL?
@@ -278,11 +282,11 @@ struct CareView:View {
             }
     }
     private var emergencyEntries:[PawlyPassportEntry] {
-        let types:Set<String>=["Microchip","Alergia","Seguro","Veterinario habitual","Contacto de emergencia"]
+        let types:Set<String>=["Microchip","Alergia","Enfermedad","Medicación","Tratamiento","Seguro","Veterinario habitual","Contacto de emergencia"]
         return passport.filter { types.contains($0.type) }
     }
     private var emergencyShareText:String {
-        (["Ficha de emergencia de \(pets.selectedPet?.name ?? "mi mascota")"] +
+        ([PawlyLanguage.text("Ficha de emergencia", language:locale.identifier), pets.selectedPet?.name ?? "", pets.selectedPet?.breed ?? "", weightEntries.first.map { Measurement(value:$0.1,unit:UnitMass.kilograms).formatted() } ?? ""].filter { !$0.isEmpty } +
          emergencyEntries.map { "\($0.type): \($0.detail.isEmpty ? $0.title : $0.detail)" })
             .joined(separator:"\n")
     }
@@ -301,12 +305,11 @@ struct CareView:View {
                                     Text("Vacunas, tratamientos, visitas y datos importantes").font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button { showEntry=true } label:{Image(systemName:"plus.circle.fill").font(.title2)}
-                                    .accessibilityLabel("Añadir registro")
+
                             }
                             PawlyPersistentDisclosureGroup(
                                 title:"Historial",subtitle:"\(passport.count) registros",icon:"list.bullet.rectangle",
-                                storageKey:sectionKey("history"),defaultExpanded:true
+                                storageKey:sectionKey("history"),defaultExpanded:true, onAdd: { selectedType=nil; showEntry=true }
                             ) {
                                 VStack(alignment:.leading,spacing:10) {
                                     ScrollView(.horizontal,showsIndicators:false) {
@@ -361,14 +364,14 @@ struct CareView:View {
                         Section {
                             PawlyPersistentDisclosureGroup(
                                 title:"Próximas actuaciones",subtitle:"\(upcomingEntries.count) fechas y cuidados previstos",
-                                icon:"calendar.badge.clock",storageKey:sectionKey("upcoming"),defaultExpanded:true
+                                icon:"calendar.badge.clock",storageKey:sectionKey("upcoming"),defaultExpanded:true, onAdd: { selectedType="Revisión"; showEntry=true }
                             ) {
                                 if upcomingEntries.isEmpty {
                                     Text("No hay próximas actuaciones registradas.")
                                         .font(.subheadline).foregroundStyle(.secondary)
                                 } else {
                                     ForEach(upcomingEntries) { entry in
-                                        HStack(alignment:.top,spacing:10) {
+                                        Button { dueDetail=entry } label: { HStack(alignment:.top,spacing:10) {
                                             Image(systemName:"calendar").foregroundStyle(PawlyColors.primary).frame(width:22)
                                             VStack(alignment:.leading,spacing:3) {
                                                 Text(entry.title).font(.subheadline.weight(.semibold))
@@ -379,6 +382,7 @@ struct CareView:View {
                                             Text(statusLabel(computedPassportStatus(entry))).font(.caption2.weight(.bold))
                                                 .foregroundStyle(computedPassportStatus(entry) == "VENCIDO" ? .red:PawlyColors.primary)
                                         }
+                                        .contentShape(Rectangle()) }.buttonStyle(.borderless)
                                     }
                                 }
                             }.id(sectionKey("upcoming"))
@@ -387,8 +391,20 @@ struct CareView:View {
                         Section {
                             PawlyPersistentDisclosureGroup(
                                 title:"Ficha de emergencia",subtitle:"\(emergencyEntries.count) datos importantes",
-                                icon:"cross.case.fill",storageKey:sectionKey("emergency"),defaultExpanded:true
+                                icon:"cross.case.fill",storageKey:sectionKey("emergency"),defaultExpanded:true, onAdd: { selectedType="Contacto de emergencia"; showEntry=true }
                             ) {
+                                if let pet = pets.selectedPet {
+                                    HStack {
+                                        if let url = URL(string: pet.photoURL), !pet.photoURL.isEmpty {
+                                            AsyncImage(url:url) { $0.resizable().scaledToFill() } placeholder: { PawlyAvatarPlaceholder() }
+                                                .frame(width:48,height:48).clipShape(Circle()).pawlyPhoto(url)
+                                        }
+                                        VStack(alignment:.leading) { Text(verbatim:pet.name).font(.headline)
+                                            Text(verbatim:[pet.breed,pet.age].filter { !$0.isEmpty }.joined(separator:" · ")).font(.caption)
+                                        }
+                                    }
+                                    if let kg = weightEntries.first?.1 { LabeledContent("Peso",value:Measurement(value:kg,unit:UnitMass.kilograms).formatted()) }
+                                }
                                 if emergencyEntries.isEmpty {
                                     Text("Añade microchip, alergias, seguro y veterinario habitual para tener los datos importantes a mano.")
                                         .font(.subheadline).foregroundStyle(.secondary)
@@ -408,7 +424,7 @@ struct CareView:View {
                                 PawlyPersistentDisclosureGroup(
                                     title:"Evolución del peso",
                                     subtitle:"Últimas \(min(6,weightEntries.count)) mediciones · \(weightEntries.count) en total",
-                                    icon:"chart.bar.fill",storageKey:sectionKey("weight"),defaultExpanded:true
+                                    icon:"chart.bar.fill",storageKey:sectionKey("weight"),defaultExpanded:true, onAdd: { selectedType="Peso"; showEntry=true }
                                 ) {
                                     let chartPoints=Array(weightEntries.prefix(6).reversed())
                                     Group {
@@ -439,7 +455,7 @@ struct CareView:View {
                         Section {
                             PawlyPersistentDisclosureGroup(
                                 title:"Historial de cuidados",subtitle:"Paseos, alimentación, medicación y otras acciones",
-                                icon:"list.bullet.clipboard",storageKey:sectionKey("careLogs"),defaultExpanded:false
+                                icon:"list.bullet.clipboard",storageKey:sectionKey("careLogs"),defaultExpanded:false, onAdd: { showCareForm=true }
                             ) {
                                 NavigationLink { PawlyCareLogsView() } label:{
                                     Label("Ver historial de cuidados",systemImage:"clock.arrow.circlepath")
@@ -450,7 +466,7 @@ struct CareView:View {
                         Section {
                             PawlyPersistentDisclosureGroup(
                                 title:"Rutinas de cuidado",subtitle:"\(tasks.count) rutinas configuradas",
-                                icon:"checklist",storageKey:sectionKey("routines"),defaultExpanded:true
+                                icon:"checklist",storageKey:sectionKey("routines"),defaultExpanded:true, onAdd: { showTask=true }
                             ) {
                                 if tasks.isEmpty {
                                     Text("Añade alimentación, paseos, medicación o revisiones.").foregroundStyle(.secondary)
@@ -471,10 +487,6 @@ struct CareView:View {
                                         }
                                     }
                                 }
-                                HStack {
-                                    Spacer()
-                                    Button { showTask=true } label:{Label("Añadir rutina",systemImage:"plus")}
-                                }
                             }.id(sectionKey("routines"))
                         }
                         if let error { Section { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) } }
@@ -485,9 +497,10 @@ struct CareView:View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItemGroup(placement:.topBarTrailing) {
-                    if exporting { ProgressView() }
-                    else if let exportURL { ShareLink(item:exportURL){Image(systemName:"square.and.arrow.up")} }
-                    else { Button(action:exportPDF){Image(systemName:"square.and.arrow.up")}.disabled(!exportReady).accessibilityLabel("Exportar PDF") }
+                    Button {
+                        if exportURL != nil { sharePDF=true } else { exportPDF() }
+                    } label: { if exporting { ProgressView() } else { Image(systemName:"square.and.arrow.up") } }
+                    .disabled(exporting || !exportReady).accessibilityLabel("Exportar PDF")
                     Button{showShare=true} label:{Image(systemName:"person.2.badge.plus")}
                 }
             }
@@ -496,7 +509,26 @@ struct CareView:View {
                 await load()
                 if startWithNewEntry { showEntry = true }
             }
-            .sheet(isPresented:$showEntry){PassportEntrySheet(initialType: initialEntryType, latestWeight: weightEntries.first?.1){entry in try await savePassportEntry(entry)}}
+            .sheet(isPresented:$showEntry){PassportEntrySheet(initialType: selectedType ?? initialEntryType, latestWeight: weightEntries.first?.1){entry in try await savePassportEntry(entry)}}
+            .sheet(isPresented:$sharePDF) { if let exportURL { PawlyFileShareSheet(file: exportURL) } }
+            .sheet(isPresented:$showCareForm) { PawlyCareLogsView(startWithForm: true) }
+            .sheet(item:$dueDetail) { entry in
+                NavigationStack { List {
+                    Text(verbatim:entry.title).font(.headline)
+                    if !entry.detail.isEmpty { Text(verbatim:entry.detail) }
+                    if !entry.nextDoseDate.isEmpty { LabeledContent("Fecha",value:entry.nextDoseDate) }
+                    ForEach([entry.clinic,entry.product,entry.dose,entry.frequency].enumerated().map { $0.offset },id:\.self) { i in
+                        let value = [entry.clinic,entry.product,entry.dose,entry.frequency][i]
+                        if !value.isEmpty { Text(verbatim:value) }
+                    }
+                    Button("Marcar como realizado") {
+                        Task { do {
+                            var done=entry; done.status="REALIZADO"; done.nextDoseDate=""; done.reminderEnabled=false
+                            try await savePassportEntry(done); dueDetail=nil
+                        } catch { self.error=PawlyServiceMessage.key(for:error); dueDetail=nil } }
+                    }
+                }.navigationTitle("Próxima actuación").toolbar { Button("Cerrar") { dueDetail=nil } } }
+            }
             .sheet(isPresented:$showTask){CareTaskSheet{task in await save(task)}}
             .sheet(isPresented:$showShare){PetSharingSheet()}
         }
@@ -520,7 +552,7 @@ struct CareView:View {
                     try PawlyPDFExporter.create(pet: pet, passport: entries, tasks: routines)
                 }.value
                 guard pets.selectedPet == pet, exportReady else { return }
-                exportURL = file
+                exportURL = file; sharePDF = true
                 error = nil
             } catch { self.error = PawlyServiceMessage.key(for: error) }
         }
@@ -649,7 +681,7 @@ struct PassportEntrySheet:View {
             Form {
                 Section(type == "Peso" ? "Peso" : "Registro sanitario") {
                     if !fixedWeight {
-                        Picker("Tipo",selection:$type){ForEach(["Vacuna","Desparasitación","Medicación","Visita veterinaria","Revisión","Tratamiento","Alergia","Intervención","Peso","Microchip","Seguro","Veterinario habitual","Contacto de emergencia","Otro"],id:\.self){Text(LocalizedStringKey($0))}}
+                        Picker("Tipo",selection:$type){ForEach(["Vacuna","Desparasitación","Medicación","Visita veterinaria","Revisión","Tratamiento","Alergia","Enfermedad","Intervención","Peso","Microchip","Seguro","Veterinario habitual","Contacto de emergencia","Otro"],id:\.self){Text(LocalizedStringKey($0))}}
                     }
                     if type == "Peso" {
                         HStack(spacing: 20) {
@@ -887,6 +919,9 @@ struct DiaryView:View {
     @State private var launchCamera=false
     @State private var showPhotoPicker=false
     @State private var diaryFilter="Todos"
+    @StateObject private var video = PawlyAttachmentDraft(maximumDuration: 60)
+    @State private var searchOpen = false
+    @State private var search = ""
     @State private var newestFirst=true
     @State private var busy=false
     @State private var error:String?
@@ -895,7 +930,7 @@ struct DiaryView:View {
     private var editorStorageKey:String { "pawly.diary.\(preferenceScope).newMemory" }
     private var diaryCategories:[String] { ["Todos"] + Set(entries.map(\.category)).sorted() }
     private var filteredEntries:[PawlyDiaryEntry] {
-        let matching=entries.filter { diaryFilter == "Todos" || $0.category == diaryFilter }
+        let matching=entries.filter { entry in (diaryFilter == "Todos" || entry.category == diaryFilter) && (search.isEmpty || [entry.title,entry.text,entry.category].contains { $0.localizedStandardContains(search) }) }
         return matching.sorted {
             let left=$0.date ?? $0.updatedAt ?? .distantPast
             let right=$1.date ?? $1.updatedAt ?? .distantPast
@@ -942,16 +977,8 @@ struct DiaryView:View {
                                         Button("Quitar selección",role:.destructive){selectedPhotos=[];cameraPhotos=[]}.buttonStyle(.borderless)
                                     }
                                     if let error { Text(LocalizedStringKey(error)).font(.caption).foregroundStyle(.red) }
-                                    Button { Task { await add() } } label:{
-                                        HStack {
-                                            Spacer()
-                                            if busy { ProgressView() }
-                                            Label(busy ? "Guardando…":"Guardar recuerdo",systemImage:"plus.circle.fill")
-                                            Spacer()
-                                        }.padding(.vertical,5)
-                                    }
-                                    .buttonStyle(.borderedProminent).tint(PawlyColors.primary)
-                                    .disabled(busy || (title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && note.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && selectedPhotos.isEmpty && cameraPhotos.isEmpty))
+                                    PawlyAttachmentPicker(draft: video, videoOnly: true)
+
                             }
                         }
                         Section {
@@ -962,6 +989,8 @@ struct DiaryView:View {
                                     Text("\(filteredEntries.count) recuerdos").font(.caption.weight(.semibold)).foregroundStyle(PawlyColors.primary)
                                 }
                                 HStack {
+                                    Button { searchOpen.toggle(); if !searchOpen { search = "" } } label: { Image(systemName:"magnifyingglass") }.accessibilityLabel("Buscar").buttonStyle(.borderless)
+                                    if searchOpen { TextField("Buscar", text: $search).textFieldStyle(.roundedBorder) }
                                     Picker("Filtrar recuerdos",selection:$diaryFilter) {
                                         ForEach(diaryCategories,id:\.self){Text(LocalizedStringKey($0)).tag($0)}
                                     }.pickerStyle(.menu)
@@ -996,6 +1025,7 @@ struct DiaryView:View {
                                                 .padding(9).background(PawlyColors.mint,in:Circle())
                                         }
                                         if !entry.text.isEmpty { Text(entry.text).font(.subheadline).foregroundStyle(PawlyColors.ink) }
+                                        if !entry.videoURL.isEmpty, let clip = URL(string: entry.videoURL) { PawlyVideoPreview(url: clip).frame(height:180) }
                                         if !entry.photos.isEmpty {
                                             ScrollView(.horizontal,showsIndicators:false) {
                                                 HStack(spacing:8) {
@@ -1014,7 +1044,17 @@ struct DiaryView:View {
                             }
                         }
                     }
-                    .refreshable{await load()}
+                    .listStyle(.plain).refreshable{await load()}
+                }
+            }
+            .toolbar {
+                if editorExpanded && !pets.pets.isEmpty {
+                    ToolbarItem(placement:.cancellationAction) { Button("Cancelar") {
+                        title=""; note=""; selectedPhotos=[]; cameraPhotos=[]; video.clear(); editorExpanded=false
+                        UserDefaults.standard.set(false, forKey:editorStorageKey)
+                    }.disabled(busy) }
+                    ToolbarItem(placement:.confirmationAction) { Button(busy ? "Guardando…" : "Guardar") { Task { await add() } }
+                        .disabled(busy || video.loading || video.error != nil || (title.isEmpty && note.isEmpty && selectedPhotos.isEmpty && cameraPhotos.isEmpty && !video.hasAttachment)) }
                 }
             }
             .navigationTitle("Recuerdos")
@@ -1051,18 +1091,19 @@ struct DiaryView:View {
             for data in cameraPhotos {
                 urls.append(try await PawlyCloudinaryUploader().uploadImage(data,folder:"diary-photos",ownerUID:uid))
             }
+            let clip = try await video.upload(owner: uid, prefix: "diary").video
             let payload:[String:Any] = [
                 "pawlyDiaryVersion":1,
                 "title":title.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? (note.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty ? "Un recuerdo especial" : note.trimmingCharacters(in:.whitespacesAndNewlines).prefix(48).description):title.trimmingCharacters(in:.whitespacesAndNewlines),
                 "text":note.trimmingCharacters(in:.whitespacesAndNewlines),
                 "category":category,
                 "date":Int64(date.timeIntervalSince1970*1000),
-                "photos":urls
+                "photos":urls, "videoUrl":clip
             ]
             let data=try JSONSerialization.data(withJSONObject:payload,options:[.sortedKeys])
             guard let raw=String(data:data,encoding:.utf8) else{throw PawlyMediaError.invalidImage}
             try await pets.addDiaryEntry(raw,pet:pet)
-            title="";note="";category="Paseos";selectedPhotos=[];cameraPhotos=[];await load()
+            title="";note="";category="Paseos";selectedPhotos=[];cameraPhotos=[];video.clear();await load()
         } catch let saveError {
             self.error = saveError.localizedDescription
         }

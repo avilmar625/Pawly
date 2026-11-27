@@ -190,6 +190,16 @@ struct PawlyHomeCareSection: View {
                 }
             }
 
+            if !careLogs.isEmpty {
+                PawlyPersistentDisclosureGroup(title: "Actividad reciente", subtitle: pet.name, icon: "clock",
+                    storageKey: "pawly.home.\(scope).recentCare", defaultExpanded: false) {
+                    ForEach(careLogs.prefix(3)) { entry in
+                        HStack { Text(verbatim: entry.taskTitle); Spacer()
+                            if let date = entry.occurredAt { Text(date, style: .relative).font(.caption).foregroundStyle(.secondary) }
+                        }
+                    }
+                }
+            }
             if let upcoming = nextUpcoming {
                 Button { selectedUpcoming = upcoming } label: {
                     HStack(spacing: 12) {
@@ -287,7 +297,7 @@ struct PawlyHomeCareSection: View {
         }
         .sheet(isPresented: $showDiary) { DiaryView(openPhotoPickerOnEnter: true).environmentObject(pets) }
         .sheet(isPresented: $showQuickCareLog) {
-            PawlyCareLogForm(petName: pet.name, initialAction: quickCareAction) { title, action, note, distance, description, walker, photos, mapURL in
+            PawlyCareLogForm(pet: pet, initialAction: quickCareAction) { selected, title, action, note, distance, description, walker, photos, mapURL, clip in
                 var photoURLs: [String] = []
                 if let uid = Auth.auth().currentUser?.uid {
                     for data in photos {
@@ -296,7 +306,7 @@ struct PawlyHomeCareSection: View {
                     }
                 }
                 try await pets.logCareAction(
-                    pet: pet,
+                    pet: selected,
                     taskTitle: title,
                     action: action,
                     note: note,
@@ -304,7 +314,7 @@ struct PawlyHomeCareSection: View {
                     description: description,
                     walker: walker,
                     photoURLs: photoURLs,
-                    mapURL: mapURL
+                    mapURL: mapURL, videoURL: clip
                 )
                 await load()
             }

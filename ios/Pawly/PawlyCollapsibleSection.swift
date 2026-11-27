@@ -7,6 +7,7 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
     let icon: String?
     let storageKey: String
     let highlighted: Bool
+    let onAdd: (() -> Void)?
     let tint: Color
     private let content: Content
     @State private var isExpanded: Bool
@@ -19,6 +20,7 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
         defaultExpanded: Bool = true,
         highlighted: Bool = false,
         tint: Color = PawlyColors.primary,
+        onAdd: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
@@ -26,6 +28,7 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
         self.icon = icon
         self.storageKey = storageKey
         self.highlighted = highlighted
+        self.onAdd = onAdd
         self.tint = tint
         self.content = content()
         _isExpanded = State(
@@ -34,6 +37,7 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
     }
 
     var body: some View {
+        HStack(alignment: .top) {
         DisclosureGroup(isExpanded: $isExpanded) {
             content.padding(.top, 8)
         } label: {
@@ -61,6 +65,11 @@ struct PawlyPersistentDisclosureGroup<Content: View>: View {
                 }
             }
             .contentShape(Rectangle())
+        }
+        if let onAdd {
+            Button(action: onAdd) { Image(systemName: "plus.circle.fill").font(.title3).frame(width: 40, height: 40) }
+                .buttonStyle(.borderless).accessibilityLabel("Añadir registro").accessibilityHint(Text(LocalizedStringKey(title)))
+        }
         }
         .tint(tint)
         .onChange(of: isExpanded) { value in
